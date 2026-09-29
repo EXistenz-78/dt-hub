@@ -15,5 +15,7 @@ let package = Package(
     .target(name: "HubKit"),
     .target(name: "HubCore", dependencies: ["HubKit"]),
     .testTarget(name: "HubCoreTests", dependencies: ["HubCore", "HubKit"]),
+    // Checks App/Localizable.xcstrings: every string translated in en and it (spec §12).
+    .testTarget(name: "CatalogTests"),
   ]
 )
