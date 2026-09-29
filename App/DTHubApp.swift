@@ -1,10 +1,23 @@
+import HubCore
+import HubKit
 import SwiftUI
 
 @main
 struct DTHubApp: App {
+  @State private var workspace = WorkspaceState(
+    generationTab: WorkspaceTab(
+      id: WorkspaceTab.generationID,
+      title: String(localized: "tab.generation"),
+      systemImage: "slider.horizontal.3"))
+
   var body: some Scene {
     WindowGroup(String(localized: "app.title")) {
-      Text("app.title")
+      MainWindowView(workspace: workspace)
+    }
+    .windowResizability(.contentMinSize)
+
+    Settings {
+      PreferencesView()
     }
   }
 }

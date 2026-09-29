@@ -1,0 +1,35 @@
+import HubCore
+import HubKit
+import SwiftUI
+
+/// Header, tab bar, and the content of the selected tab (spec §7).
+struct MainWindowView: View {
+  let workspace: WorkspaceState
+
+  // M1 has no Draw Things link: M2 replaces these with the live connection and model.
+  private let connection: ConnectionStatus = .disconnected
+  private let selectedModel: String? = nil
+
+  var body: some View {
+    VStack(spacing: DS.panelPadding) {
+      HeaderBar(connection: connection, selectedModel: selectedModel)
+      WorkspaceTabBar(workspace: workspace)
+      tabContent
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+    .padding(20)
+    .frame(minWidth: 900, idealWidth: 1100, minHeight: 640, idealHeight: 820)
+    .background(DSBackground())
+    .background(DSWindowConfigurator())
+    .tint(DS.accent)
+  }
+
+  @ViewBuilder private var tabContent: some View {
+    if workspace.selectedTabID == WorkspaceTab.generationID {
+      GenerationTabView()
+    } else {
+      // Plug-in tabs arrive with the plug-in contract (M7).
+      EmptyView()
+    }
+  }
+}
