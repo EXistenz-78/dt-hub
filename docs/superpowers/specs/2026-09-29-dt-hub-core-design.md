@@ -217,6 +217,7 @@ La v1 include un **plug-in di prova**, solo nei test e in build Debug, per verif
 - **Memoria:** l'LLM viene **scaricato prima di ogni generazione DT** e ricaricato al primo uso successivo.
 - **v1:** il servizio esiste e ha una prova nelle Preferenze (una domanda di testo, e una di visione con un'immagine scelta). Il miglioramento del prompt arriva col plug-in PM2.
 - **Generazione strutturata:** lo schema JSON di MLXGuidedGeneration è disponibile per i plug-in che vogliono risposte strutturate.
+- **Più modelli:** il servizio gestisce un elenco di modelli nella cartella scelta, **uno solo caricato alla volta**. Un plug-in può dichiarare uno o più modelli che gli servono (es. il plug-in Qwen Image 2.1 userà i due prompt enhancer ufficiali `Qwen/Qwen-Image-2.1-PE-T2I` e `-PE-I2I`, fine-tune di Qwen3.5 9B, architettura `qwen3_5` già supportata da MLXVLM). Se un modello richiesto manca, le Preferenze ne propongono lo scaricamento. Un modello in safetensors formato Hugging Face si carica direttamente; la quantizzazione a 4 o 8 bit, consigliata per la memoria, è un'operazione una tantum.
 
 ## 10. Errori
 
