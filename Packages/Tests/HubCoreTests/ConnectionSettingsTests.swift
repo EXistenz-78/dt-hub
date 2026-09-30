@@ -15,6 +15,9 @@ struct ConnectionSettingsTests {
     ("http://localhost", .invalidHost),
     ("local host", .invalidHost),
     ("localhost/api", .invalidHost),
+    ("localhost:7859", .invalidHost),
+    ("192.168.1.20:7859", .invalidHost),
+    ("[::1]", .invalidHost),
   ])
   func rejectsBadHosts(host: String, expected: ConnectionSettings.ValidationError) {
     #expect(ConnectionSettings(host: host).validationError == expected)
@@ -42,5 +45,19 @@ struct ConnectionSettingsTests {
 
     defaults.set(Data("garbage".utf8), forKey: ConnectionSettingsStore.key)
     #expect(store.load() == .default)
+  }
+
+  @Test func acceptsABareIPv6Address() {
+    #expect(ConnectionSettings(host: "::1").validationError == nil)
+  }
+
+  @Test(arguments: [("7859", 7859), (" 7860 ", 7860), ("99999", 99999)])
+  func readsThePortFromText(text: String, port: Int) {
+    #expect(ConnectionSettings.parsePort(text) == port)
+  }
+
+  @Test(arguments: ["", "abc", "78 59", "-1", "7859x"])
+  func rejectsPortTextThatIsNotANumber(text: String) {
+    #expect(ConnectionSettings.parsePort(text) == nil)
   }
 }

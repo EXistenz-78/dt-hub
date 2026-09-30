@@ -262,13 +262,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Enter a host name or IP address, without http:// or paths"
+            "value": "Enter only a host name or IP address, without http://, paths or :port"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Inserisci un nome host o un indirizzo IP, senza http:// né percorsi"
+            "value": "Inserisci solo un nome host o un indirizzo IP, senza http://, percorsi né :porta"
           }
         }
       }

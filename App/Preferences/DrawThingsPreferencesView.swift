@@ -9,6 +9,8 @@ struct DrawThingsPreferencesView: View {
 
   @State private var draft = ConnectionSettings.default
   @State private var secret = ""
+  /// The port as typed: parsed on every keystroke, so Connect never uses a stale value.
+  @State private var portText = ""
   @State private var isApplying = false
 
   private var monitor: ConnectionMonitor { connection.monitor }
@@ -17,7 +19,10 @@ struct DrawThingsPreferencesView: View {
     Form {
       Section {
         TextField("prefs.dt.host", text: $draft.host)
-        TextField("prefs.dt.port", value: $draft.port, format: .number.grouping(.never))
+        TextField("prefs.dt.port", text: $portText)
+          .onChange(of: portText) {
+            draft.port = ConnectionSettings.parsePort(portText) ?? 0
+          }
         Toggle("prefs.dt.tls", isOn: $draft.useTLS)
         SecureField("prefs.dt.secret", text: $secret, prompt: Text("prefs.dt.secret.placeholder"))
       } footer: {
@@ -62,6 +67,7 @@ struct DrawThingsPreferencesView: View {
     .formStyle(.grouped)
     .onAppear {
       draft = connection.settings
+      portText = String(connection.settings.port)
       secret = connection.savedSecret()
     }
   }
