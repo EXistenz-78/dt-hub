@@ -25,7 +25,18 @@ public final class GenerationSession {
     case failed(BackendError)
   }
 
+  /// Which batch of the RUN is running (1-based).
+  public struct Batch: Equatable, Sendable {
+    public let index: Int
+    public let count: Int
+    public init(index: Int, count: Int) {
+      self.index = index
+      self.count = count
+    }
+  }
+
   public private(set) var phase: Phase = .idle
+  public private(set) var batch = Batch(index: 1, count: 1)
   /// The latest preview while running; cleared when a RUN starts.
   public private(set) var preview: CGImage?
   /// Newest first.
@@ -43,23 +54,37 @@ public final class GenerationSession {
     return false
   }
 
-  /// Starts a RUN; ignored while one is running. The monitor's checks pause meanwhile.
+  /// Starts a RUN of one job; ignored while one is running.
   public func start(_ job: GenerationJob, backend: any GenerationBackend, monitor: ConnectionMonitor) {
-    guard !isRunning else { return }
-    phase = .running(step: nil, totalSteps: job.parameters.steps)
+    start([job], backend: backend, monitor: monitor)
+  }
+
+  /// Starts a RUN made of batches, run one after the other (see `batchesForRun`); ignored
+  /// while one is running. The monitor's checks pause meanwhile.
+  public func start(_ batches: [GenerationJob], backend: any GenerationBackend, monitor: ConnectionMonitor) {
+    guard !isRunning, let first = batches.first else { return }
+    phase = .running(step: nil, totalSteps: first.parameters.steps)
+    batch = Batch(index: 1, count: batches.count)
     preview = nil
     monitor.pause()
+    let store = store
     task = Task {
       defer { monitor.resume() }
       do {
-        for try await update in backend.generate(job) {
-          switch update {
-          case .progress(let step, let total):
-            phase = .running(step: step, totalSteps: total)
-          case .preview(let image):
-            preview = image
-          case .finished(let images):
-            keep(images, of: job)
+        for (number, job) in batches.enumerated() {
+          try Task.checkCancellation()
+          batch = Batch(index: number + 1, count: batches.count)
+          phase = .running(step: nil, totalSteps: job.parameters.steps)
+          for try await update in backend.generate(job) {
+            switch update {
+            case .progress(let step, let total):
+              phase = .running(step: step, totalSteps: total)
+            case .preview(let image):
+              preview = image
+            case .finished(let images):
+              let saved = await Self.save(images, of: job, in: store)
+              results.insert(contentsOf: saved, at: 0)
+            }
           }
         }
         phase = .idle
@@ -72,7 +97,8 @@ public final class GenerationSession {
     }
   }
 
-  /// Stop: cancels the RUN on the server; images already received are kept.
+  /// Stop: cancels the RUN on the server; the batches already finished are kept, the one
+  /// running is lost (Draw Things sends its images only at the end).
   public func cancel() {
     task?.cancel()
   }
@@ -87,18 +113,21 @@ public final class GenerationSession {
     if case .failed = phase { phase = .idle }
   }
 
-  private func keep(_ images: [CGImage], of job: GenerationJob) {
-    let date = Date()
-    for (index, image) in images.enumerated() {
-      var url: URL?
-      var saveError: String?
-      do {
-        url = try store.save(image, job: job, index: index, date: date)
-      } catch {
-        saveError = String(describing: error)
+  /// Encodes and writes the images away from the main actor; an image that cannot be saved
+  /// is kept with the reason.
+  private nonisolated static func save(
+    _ images: [CGImage], of job: GenerationJob, in store: any ImageStore
+  ) async -> [GeneratedImage] {
+    await Task.detached(priority: .userInitiated) {
+      let date = Date()
+      return images.enumerated().map { index, image in
+        do {
+          let url = try store.save(image, job: job, index: index, date: date)
+          return GeneratedImage(image: image, job: job, date: date, fileURL: url, saveError: nil)
+        } catch {
+          return GeneratedImage(image: image, job: job, date: date, fileURL: nil, saveError: String(describing: error))
+        }
       }
-      results.insert(
-        GeneratedImage(image: image, job: job, date: date, fileURL: url, saveError: saveError), at: index)
-    }
+    }.value
   }
 }

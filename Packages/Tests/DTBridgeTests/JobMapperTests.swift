@@ -34,7 +34,7 @@ struct JobMapperTests {
     let configuration = JobMapper.request(
       for: GenerationJob(prompt: "", model: "m.ckpt", parameters: parameters)
     ).configuration
-    #expect(configuration.width == 960)
+    #expect(configuration.width == 1024)
     #expect(configuration.height == 2048)
     #expect(configuration.steps == 1)
     #expect(configuration.batchSize == 4)
@@ -51,6 +51,19 @@ struct JobMapperTests {
     let update = try JobMapper.update(for: .progress(GenerationProgress(stage: .textEncoding, totalSteps: 8)))
     guard case .progress(let step, _)? = update else { Issue.record("not progress"); return }
     #expect(step == nil)
+  }
+
+  @Test func secondPassSamplingCarriesTheStep() throws {
+    let update = try JobMapper.update(for: .progress(GenerationProgress(stage: .secondPassSampling(step: 2), totalSteps: 8)))
+    guard case .progress(let step, _)? = update else { Issue.record("not progress"); return }
+    #expect(step == 2)
+  }
+
+  @Test func aServerThatFinishesWithoutAnImageMeansNoImages() {
+    let error = DrawThingsError.incompleteResponse("the server finished without returning an image; check the server log")
+    #expect(JobMapper.backendError(for: error) as? BackendError == .noImages)
+    let broken = DrawThingsError.incompleteResponse("the stream ended in the middle of a chunked tensor")
+    #expect(JobMapper.backendError(for: broken) as? BackendError != .noImages)
   }
 
   @Test func libraryErrorsBecomeBackendErrors() {

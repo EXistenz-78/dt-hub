@@ -132,6 +132,68 @@ struct GenerationSessionTests {
     #expect(session.results[0].saveError != nil)
   }
 
+  @Test func runsTheBatchesOneAfterTheOther() async {
+    let backend = FakeBackend(.success(catalog))
+    await backend.setGeneration([.finished([testImage(), testImage()])])
+    let monitor = await connected(backend)
+    let session = GenerationSession(store: MemoryImageStore())
+    let batches = [job, second(seed: 10), second(seed: 11)]
+
+    session.start(batches, backend: backend, monitor: monitor)
+    await session.waitUntilFinished()
+    #expect(await backend.jobs == batches)
+    // Newest batch first, images of a batch in order, each with its own batch's job.
+    #expect(session.results.map(\.job.parameters.seed) == [11, 11, 10, 10, 9, 9])
+    #expect(session.phase == .idle)
+  }
+
+  @Test func reportsWhichBatchIsRunning() async throws {
+    let backend = FakeBackend(.success(catalog))
+    await backend.setGeneration([.finished([testImage()])], stepDelay: .milliseconds(200))
+    let monitor = await connected(backend)
+    let session = GenerationSession(store: MemoryImageStore())
+
+    session.start([job, second(seed: 10)], backend: backend, monitor: monitor)
+    #expect(session.batch == .init(index: 1, count: 2))
+    try await Task.sleep(for: .milliseconds(300))
+    #expect(session.batch == .init(index: 2, count: 2))
+    await session.waitUntilFinished()
+  }
+
+  @Test func stopKeepsTheBatchesAlreadyFinished() async throws {
+    let backend = FakeBackend(.success(catalog))
+    await backend.setGeneration([.finished([testImage()])], stepDelay: .milliseconds(200))
+    let monitor = await connected(backend)
+    let store = MemoryImageStore()
+    let session = GenerationSession(store: store)
+
+    session.start([job, second(seed: 10), second(seed: 11)], backend: backend, monitor: monitor)
+    try await Task.sleep(for: .milliseconds(300))
+    session.cancel()
+    await session.waitUntilFinished()
+    #expect(session.phase == .idle)
+    #expect(session.results.map(\.job.parameters.seed) == [9])
+    #expect(store.count == 1)
+    #expect(await backend.jobs.count == 2)
+  }
+
+  @Test func aFailureKeepsTheBatchesAlreadyFinished() async throws {
+    let backend = FakeBackend(.success(catalog))
+    await backend.setGeneration([.finished([testImage()])])
+    let monitor = await connected(backend)
+    let session = GenerationSession(store: MemoryImageStore())
+    await backend.failFromJob(2, with: .unreachable("gone"))
+
+    session.start([job, second(seed: 10)], backend: backend, monitor: monitor)
+    await session.waitUntilFinished()
+    #expect(session.phase == .failed(.unreachable("gone")))
+    #expect(session.results.count == 1)
+  }
+
+  func second(seed: UInt32) -> GenerationJob {
+    GenerationJob(prompt: "p", model: "a.ckpt", parameters: GenerationParameters(steps: 4, seed: seed, randomSeed: false))
+  }
+
   @Test func newestRunComesFirst() async {
     let backend = FakeBackend(.success(catalog))
     let monitor = await connected(backend)

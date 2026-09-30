@@ -17,6 +17,11 @@ struct DTHubApp: App {
       MainWindowView(workspace: workspace, connection: connection, generation: generation)
     }
     .windowResizability(.contentMinSize)
+    .commands {
+      CommandMenu(String(localized: "tab.generation")) {
+        GenerationCommands(generation: generation, connection: connection)
+      }
+    }
 
     Window(String(localized: "results.title"), id: ResultsWindow.id) {
       ResultsView(controller: generation, connection: connection)

@@ -1,9 +1,10 @@
 import HubKit
 import SwiftUI
 
-/// A whole number you can type or step. The text is read on every keystroke and kept only
-/// when it is a valid number in range; when editing ends it is corrected (`commit`, e.g.
-/// snapping to 64) and shown again. Arrows beside it step by `step`.
+/// A whole number you can type or step. The whole text is read on every keystroke
+/// (`NumberText`: out of range → nearest bound), so a RUN started mid-edit uses what is typed.
+/// When editing ends the value is corrected (`commit`, e.g. snapping to 64) and shown again;
+/// text that is not a number goes back to the value. Arrows beside it step by `step`.
 struct IntField: View {
   let label: String
   @Binding var value: Int
@@ -25,9 +26,7 @@ struct IntField: View {
         .frame(width: width)
         .focused($focused)
         .onChange(of: text) {
-          if let number = Int(text.trimmingCharacters(in: .whitespaces)), range.contains(number) {
-            value = number
-          }
+          if let number = NumberText.int(text, in: range), number != value { value = number }
         }
         .onSubmit(finish)
         .onChange(of: focused) { if !focused { finish() } }
@@ -36,11 +35,15 @@ struct IntField: View {
         .accessibilityLabel(label)
     }
     .onAppear { text = String(value) }
-    .onChange(of: value) { if !focused { text = String(value) } }
+    // Also while focused, when the change did not come from the text (arrows, ratio lock).
+    .onChange(of: value) {
+      if !focused || NumberText.int(text, in: range) != value { text = String(value) }
+    }
   }
 
   private func finish() {
-    value = commit(min(max(value, range.lowerBound), range.upperBound))
+    let typed = NumberText.int(text, in: range) ?? value
+    value = commit(min(max(typed, range.lowerBound), range.upperBound))
     text = String(value)
   }
 }
@@ -67,8 +70,7 @@ struct DecimalField: View {
         .frame(width: width)
         .focused($focused)
         .onChange(of: text) {
-          let normalized = text.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")
-          if let number = Double(normalized), range.contains(number) { value = number }
+          if let number = NumberText.decimal(text, in: range), number != value { value = number }
         }
         .onSubmit(finish)
         .onChange(of: focused) { if !focused { finish() } }
@@ -77,11 +79,13 @@ struct DecimalField: View {
         .accessibilityLabel(label)
     }
     .onAppear { text = formatted(value) }
-    .onChange(of: value) { if !focused { text = formatted(value) } }
+    .onChange(of: value) {
+      if !focused || NumberText.decimal(text, in: range) != value { text = formatted(value) }
+    }
   }
 
   private func finish() {
-    value = min(max(value, range.lowerBound), range.upperBound)
+    value = NumberText.decimal(text, in: range) ?? min(max(value, range.lowerBound), range.upperBound)
     text = formatted(value)
   }
 

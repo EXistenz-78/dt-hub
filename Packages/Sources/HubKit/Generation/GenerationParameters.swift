@@ -80,11 +80,12 @@ public struct GenerationParameters: Equatable, Codable, Sendable {
     if let ratio, ratio > 0 { width = Self.snap(Double(newHeight) * ratio) }
   }
 
-  /// The same parameters forced into the allowed ranges; sizes rounded down to multiples of 64.
+  /// The same parameters forced into the allowed ranges; sizes rounded to the nearest multiple
+  /// of 64, as the size fields do when editing ends.
   public func clamped() -> GenerationParameters {
     var copy = self
-    copy.width = Self.snapDown(width)
-    copy.height = Self.snapDown(height)
+    copy.width = Self.snap(Double(width))
+    copy.height = Self.snap(Double(height))
     copy.steps = min(max(steps, Self.stepsRange.lowerBound), Self.stepsRange.upperBound)
     copy.guidanceScale = min(max(guidanceScale, Self.guidanceRange.lowerBound), Self.guidanceRange.upperBound)
     copy.cfgZeroInitSteps = min(max(cfgZeroInitSteps, 0), copy.steps)
@@ -98,10 +99,5 @@ public struct GenerationParameters: Equatable, Codable, Sendable {
   public static func snap(_ size: Double) -> Int {
     let rounded = Int((size / 64).rounded()) * 64
     return min(max(rounded, sizeRange.lowerBound), sizeRange.upperBound)
-  }
-
-  private static func snapDown(_ size: Int) -> Int {
-    let clamped = min(max(size, sizeRange.lowerBound), sizeRange.upperBound)
-    return clamped / 64 * 64
   }
 }

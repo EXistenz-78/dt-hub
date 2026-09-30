@@ -30,10 +30,10 @@ struct SeedBatchCard: View {
               .focused($seedFocused)
               .disabled(controller.parameters.randomSeed)
               .onChange(of: seedText) {
-                if let seed = UInt32(seedText.trimmingCharacters(in: .whitespaces)) {
-                  controller.parameters.seed = seed
-                }
+                if let seed = Self.seed(from: seedText) { controller.parameters.seed = seed }
               }
+              .onSubmit(finishSeed)
+              .onChange(of: seedFocused) { if !seedFocused { finishSeed() } }
             Button {
               controller.parameters.seed = UInt32.random(in: .min ... .max)
               controller.parameters.randomSeed = false
@@ -60,5 +60,16 @@ struct SeedBatchCard: View {
     }
     .onAppear { seedText = String(controller.parameters.seed) }
     .onChange(of: controller.parameters.seed) { if !seedFocused { seedText = String(controller.parameters.seed) } }
+  }
+
+  /// The seed in the text, clamped to 0…4294967295; nil when it is not a number.
+  private static func seed(from text: String) -> UInt32? {
+    NumberText.int(text, in: 0...Int(UInt32.max)).map { UInt32($0) }
+  }
+
+  /// When editing ends the field shows the seed that will be used.
+  private func finishSeed() {
+    if let seed = Self.seed(from: seedText) { controller.parameters.seed = seed }
+    seedText = String(controller.parameters.seed)
   }
 }

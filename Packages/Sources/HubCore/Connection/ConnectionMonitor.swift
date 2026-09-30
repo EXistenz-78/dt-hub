@@ -67,9 +67,11 @@ public final class ConnectionMonitor {
     }
   }
 
-  /// Stops the periodic checks until `resume()`.
+  /// Stops the periodic checks until `resume()`; a check already on its way is ignored
+  /// (a busy server must not turn the dot red during a RUN).
   public func pause() {
     isPaused = true
+    generation += 1
   }
 
   public func resume() {

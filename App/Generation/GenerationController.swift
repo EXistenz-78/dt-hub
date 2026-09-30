@@ -27,22 +27,33 @@ final class GenerationController {
     outputFolder = outputSettings.folder()
   }
 
-  /// Starts a RUN when the server, the model and the session allow it.
-  func run(with connection: DrawThingsConnection) {
+  /// True when the server, the model and the session allow a RUN.
+  func canRun(with connection: DrawThingsConnection) -> Bool {
     let monitor = connection.monitor
-    guard !session.isRunning,
-      let backend = monitor.backend,
-      let model = connection.selection.selectedFile,
-      RunAvailability.blocker(connection: monitor.status, selectedModel: model, catalog: monitor.catalog) == nil
-    else { return }
-    let job = GenerationJob(prompt: prompt, model: model, parameters: parameters.resolvedForRun())
-    session.start(job, backend: backend, monitor: monitor)
+    return !session.isRunning && monitor.backend != nil
+      && RunAvailability.blocker(
+        connection: monitor.status, selectedModel: connection.selection.selectedFile, catalog: monitor.catalog) == nil
   }
 
-  /// "Resume parameters": puts a result's prompt, parameters (with its seed) and model back.
+  /// Starts a RUN, split into its batches (`batchesForRun`). With a random seed, the seed
+  /// drawn for the first batch is shown in the Seed field.
+  @discardableResult
+  func run(with connection: DrawThingsConnection) -> Bool {
+    guard canRun(with: connection), let backend = connection.monitor.backend,
+      let model = connection.selection.selectedFile
+    else { return false }
+    let batches = parameters.batchesForRun().map { GenerationJob(prompt: prompt, model: model, parameters: $0) }
+    if parameters.randomSeed, let first = batches.first { parameters.seed = first.parameters.seed }
+    session.start(batches, backend: backend, monitor: connection.monitor)
+    return true
+  }
+
+  /// "Resume parameters": puts back the prompt, model and parameters of the batch that made
+  /// the image (its seed, batch count 1). A ratio lock follows the resumed size.
   func resume(_ result: GeneratedImage, with connection: DrawThingsConnection) {
     prompt = result.job.prompt
     parameters = result.job.parameters
+    if lockRatio { lockedRatio = currentRatio }
     connection.selection.select(result.job.model)
   }
 

@@ -94,6 +94,21 @@ struct ConnectionMonitorTests {
     #expect(monitor.status == .disconnected)
   }
 
+  @Test func aCheckAlreadyRunningWhenPausedIsIgnored() async throws {
+    let backend = FakeBackend(.success(catalogA))
+    let monitor = ConnectionMonitor()
+    await monitor.replaceBackend(backend)
+    await backend.setResult(.failure(.unreachable("busy generating")))
+    await backend.setDelay(.milliseconds(300))
+    let check = Task { await monitor.refresh() }
+    try await Task.sleep(for: .milliseconds(100))
+    monitor.pause()
+    await check.value
+    #expect(monitor.status == .connected)
+    #expect(monitor.catalog == catalogA)
+    monitor.resume()
+  }
+
   @Test func showsConnectingWhileTheFirstCheckRuns() async throws {
     let monitor = ConnectionMonitor()
     let check = Task { await monitor.replaceBackend(FakeBackend(.success(catalogA), delay: .milliseconds(300))) }

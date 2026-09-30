@@ -16,10 +16,10 @@ struct GenerationParametersTests {
     #expect(clamped.batchCount == 100)
   }
 
-  @Test func roundsSizesDownToMultiplesOf64() {
+  @Test func roundsSizesToTheNearestMultipleOf64() {
     let clamped = GenerationParameters(width: 1000, height: 1343).clamped()
-    #expect(clamped.width == 960)
-    #expect(clamped.height == 1280)
+    #expect(clamped.width == 1024)
+    #expect(clamped.height == 1344)
   }
 
   @Test func samplersMatchDrawThingsRawValues() {

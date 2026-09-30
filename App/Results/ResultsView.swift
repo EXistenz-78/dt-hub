@@ -61,15 +61,32 @@ struct ResultsView: View {
   @ViewBuilder private var statusLine: some View {
     switch session.phase {
     case .running(let step, let total):
-      VStack(alignment: .leading, spacing: 4) {
-        if let step {
-          ProgressView(value: Double(step), total: Double(max(total, 1)))
-          Text(String(format: String(localized: "results.progress.step"), step, total))
-            .font(.caption).foregroundStyle(.secondary)
-        } else {
-          ProgressView().progressViewStyle(.linear)
-          Text("results.progress.preparing").font(.caption).foregroundStyle(.secondary)
+      HStack(alignment: .center, spacing: DS.controlGap) {
+        VStack(alignment: .leading, spacing: 4) {
+          if let step {
+            ProgressView(value: Double(step), total: Double(max(total, 1)))
+          } else {
+            ProgressView().progressViewStyle(.linear)
+          }
+          HStack(spacing: DS.controlGap) {
+            if session.batch.count > 1 {
+              Text(String(format: String(localized: "results.progress.batch"), session.batch.index, session.batch.count))
+            }
+            if let step {
+              Text(String(format: String(localized: "results.progress.step"), step, total))
+            } else {
+              Text("results.progress.preparing")
+            }
+          }
+          .font(.caption).foregroundStyle(.secondary)
         }
+        Button {
+          session.cancel()
+        } label: {
+          Label("header.stop", systemImage: "stop.fill")
+        }
+        .buttonStyle(DSPillButtonStyle())
+        .help(String(localized: "header.stop.help"))
       }
     case .failed(let error):
       HStack(alignment: .top, spacing: DS.controlGap) {

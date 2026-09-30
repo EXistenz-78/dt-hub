@@ -23,12 +23,15 @@ enum JobMapper {
   }
 
   /// The update for a library event; nil for events DT Hub does not show (audio, downloads,
-  /// single images: the final list arrives with `.completed`).
+  /// single images: the batch's full list arrives with `.completed`).
   static func update(for event: GenerationEvent) throws -> GenerationUpdate? {
     switch event {
     case .progress(let progress):
-      if case .sampling(let step) = progress.stage {
+      switch progress.stage {
+      case .sampling(let step), .secondPassSampling(let step):
         return .progress(step: step, totalSteps: progress.totalSteps)
+      default:
+        break
       }
       return .progress(step: nil, totalSteps: progress.totalSteps)
     case .preview(let image):
@@ -46,6 +49,10 @@ enum JobMapper {
     if error is CancellationError || error is BackendError { return error }
     if case DrawThingsError.connectionFailed(let detail) = error { return BackendError.unreachable(detail) }
     if case DrawThingsError.unauthenticated = error { return BackendError.unauthorized }
+    // The library reports a RUN that ends without images (e.g. #131) this way.
+    if case DrawThingsError.incompleteResponse(let detail) = error, detail.contains("without returning an image") {
+      return BackendError.noImages
+    }
     return BackendError.generationFailed(error.localizedDescription)
   }
 }

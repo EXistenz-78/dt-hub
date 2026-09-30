@@ -100,7 +100,8 @@ struct HeaderBar: View {
     return nil
   }
 
-  /// RUN, or Stop with the progress while a generation runs (spec §7).
+  /// RUN, or Stop with the progress while a generation runs (spec §7). ⌘↩ and ⌘. are in the
+  /// Generation menu (`GenerationCommands`), so they work from every window.
   @ViewBuilder private var runButton: some View {
     if case .running(let step, let total) = generation.session.phase {
       Button {
@@ -118,12 +119,10 @@ struct HeaderBar: View {
         }
       }
       .buttonStyle(DSPillButtonStyle(prominent: true))
-      .keyboardShortcut(".", modifiers: .command)
       .help(String(localized: "header.stop.help"))
     } else {
       Button {
-        generation.run(with: connection)
-        openWindow(id: ResultsWindow.id)
+        if generation.run(with: connection) { openWindow(id: ResultsWindow.id) }
       } label: {
         HStack(spacing: DS.pillIconGap) {
           Image(systemName: "play.fill")
@@ -134,7 +133,6 @@ struct HeaderBar: View {
       }
       .buttonStyle(DSPillButtonStyle(prominent: true))
       .disabled(runBlocker != nil)
-      .keyboardShortcut(.return, modifiers: .command)
       .help(runHelp)
     }
   }
