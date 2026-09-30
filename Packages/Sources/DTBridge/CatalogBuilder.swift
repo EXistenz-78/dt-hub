@@ -41,7 +41,8 @@ enum CatalogBuilder {
   /// Upscalers of Draw Things' zoo (Real-ESRGAN, UltraSharp, Remacri, NMKD…), by file name.
   static func isUpscaler(_ file: String) -> Bool {
     let name = file.lowercased()
-    guard !name.contains("_lora_") else { return false }
+    // Latent upscalers (e.g. LTX's spatial upscaler) are helpers of a model, not image upscalers.
+    guard !name.contains("_lora_"), !name.contains("latent"), !name.contains("spatial") else { return false }
     return ["esrgan", "upscal", "ultrasharp", "remacri", "superscale", "4x_", "2x_"].contains { name.contains($0) }
   }
 

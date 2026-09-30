@@ -207,18 +207,24 @@ struct AdvancedCardView: View {
         range: AdvancedParameters.aestheticRange, step: 0.5)
     }
     CardRow(label: String(localized: "advanced.sdxl.crop")) {
-      SizePair(width: advanced.cropLeft, height: advanced.cropTop, range: AdvancedParameters.conditioningRange.upperBound)
+      SizePair(
+        width: advanced.cropLeft, height: advanced.cropTop, range: AdvancedParameters.conditioningRange.upperBound,
+        commit: AdvancedParameters.crop)
     }
     CardRow(label: String(localized: "advanced.sdxl.original")) {
-      SizePair(width: advanced.originalWidth, height: advanced.originalHeight, range: AdvancedParameters.conditioningRange.upperBound)
+      SizePair(
+        width: advanced.originalWidth, height: advanced.originalHeight,
+        range: AdvancedParameters.conditioningRange.upperBound, commit: AdvancedParameters.conditioningSize)
     }
     CardRow(label: String(localized: "advanced.sdxl.target")) {
-      SizePair(width: advanced.targetWidth, height: advanced.targetHeight, range: AdvancedParameters.conditioningRange.upperBound)
+      SizePair(
+        width: advanced.targetWidth, height: advanced.targetHeight,
+        range: AdvancedParameters.conditioningRange.upperBound, commit: AdvancedParameters.conditioningSize)
     }
     CardRow(label: String(localized: "advanced.sdxl.negativeOriginal")) {
       SizePair(
         width: advanced.negativeOriginalWidth, height: advanced.negativeOriginalHeight,
-        range: AdvancedParameters.conditioningRange.upperBound)
+        range: AdvancedParameters.conditioningRange.upperBound, commit: AdvancedParameters.conditioningSize)
     }
     Text("advanced.autoSizeHint")
       .font(.caption)
@@ -312,21 +318,23 @@ private struct FilePicker: View {
   }
 }
 
-/// Width × height in multiples of 64; 0 = automatic.
+/// Width × height, each corrected by `commit` when editing ends (Hires fix: multiples of 64
+/// up to 2048, 0 = automatic; SDXL sizes: multiples of 64 up to 8192; SDXL crop: any pixel).
 private struct SizePair: View {
   @Binding var width: Int
   @Binding var height: Int
   let range: Int
+  var commit: (Int) -> Int = { $0 == 0 ? 0 : GenerationParameters.snap(Double($0)) }
 
   var body: some View {
     HStack(spacing: 4) {
       IntField(
         label: String(localized: "card.dimensions.width"), value: $width, range: 0...range, step: 64,
-        commit: { $0 == 0 ? 0 : GenerationParameters.snap(Double($0)) })
+        commit: commit)
       Text(verbatim: "×").foregroundStyle(.secondary)
       IntField(
         label: String(localized: "card.dimensions.height"), value: $height, range: 0...range, step: 64,
-        commit: { $0 == 0 ? 0 : GenerationParameters.snap(Double($0)) })
+        commit: commit)
     }
   }
 }

@@ -46,7 +46,10 @@ struct CatalogBuilderTests {
 
   @Test func upscalersAndFaceRestorersComeFromTheFileNames() {
     let catalog = CatalogBuilder.build(
-      files: [klein, vae, "realesrgan_x4plus_f16.ckpt", "4x_ultrasharp_f16.ckpt", "restoreformer_v1.0_f16.ckpt", "parsenet_v1.0_f16.ckpt"],
+      files: [
+        klein, vae, "realesrgan_x4plus_f16.ckpt", "4x_ultrasharp_f16.ckpt", "restoreformer_v1.0_f16.ckpt",
+        "parsenet_v1.0_f16.ckpt", "ltx_2.3_spatial_upscaler_x1.5_f16.ckpt",
+      ],
       modelSpecs: specs, loraMetadata: Data())
     #expect(catalog.upscalers == ["4x_ultrasharp_f16.ckpt", "realesrgan_x4plus_f16.ckpt"])
     #expect(catalog.faceRestorers == ["restoreformer_v1.0_f16.ckpt"])

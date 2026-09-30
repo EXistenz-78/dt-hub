@@ -118,7 +118,20 @@ struct AdvancedCompositionTests {
     let sent = compose(parameters, model: sd15)
     #expect(sent.hiresFix)
     #expect(sent.hiresFixWidth == 512)
-    #expect(sent.hiresFixHeight == 512)
+    #expect(sent.hiresFixHeight == 320)
+  }
+
+  @Test func anAutomaticHiresFixKeepsTheAspectRatio() {
+    var parameters = GenerationParameters(width: 768, height: 512)
+    parameters.advanced.hiresFix = true
+    let sent = compose(parameters, model: sd15)
+    #expect(sent.hiresFixWidth == 512)
+    #expect(sent.hiresFixHeight == 320)
+    var portrait = GenerationParameters(width: 832, height: 1216)
+    portrait.advanced.hiresFix = true
+    let tall = compose(portrait, model: klein)
+    #expect(tall.hiresFixHeight == 1024)
+    #expect(tall.hiresFixWidth == 704)
   }
 
   @Test func aHiresFixNotSmallerThanTheImageIsDropped() {

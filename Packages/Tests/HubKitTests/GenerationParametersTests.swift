@@ -211,6 +211,20 @@ struct AdvancedParametersTests {
     #expect(decoded == parameters)
   }
 
+  @Test func conditioningSizesSnapTo64UpTo8192AndZeroStaysAutomatic() {
+    #expect(AdvancedParameters.conditioningSize(4096) == 4096)
+    #expect(AdvancedParameters.conditioningSize(1000) == 1024)
+    #expect(AdvancedParameters.conditioningSize(9000) == 8192)
+    #expect(AdvancedParameters.conditioningSize(0) == 0)
+    #expect(AdvancedParameters.conditioningSize(20) == 0)
+  }
+
+  @Test func cropKeepsTheTypedPixels() {
+    #expect(AdvancedParameters.crop(16) == 16)
+    #expect(AdvancedParameters.crop(9000) == 8192)
+    #expect(AdvancedParameters.crop(-3) == 0)
+  }
+
   @Test func compressionMatchesDrawThingsRawValues() {
     #expect(CompressionArtifacts.allCases.map(\.rawValue) == [0, 1, 2, 3])
   }

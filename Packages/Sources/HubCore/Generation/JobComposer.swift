@@ -37,9 +37,12 @@ public enum JobComposer {
       advanced.reset(.faceRestoration)
     }
     if advanced.hiresFix {
+      // One factor for both sides: the start keeps the image's proportions, its long side at
+      // most the native size.
       let native = model?.capabilities.nativeSize ?? 512
-      if advanced.hiresFixWidth == 0 { advanced.hiresFixWidth = min(native, parameters.width) }
-      if advanced.hiresFixHeight == 0 { advanced.hiresFixHeight = min(native, parameters.height) }
+      let factor = min(1, Double(native) / Double(max(parameters.width, parameters.height)))
+      if advanced.hiresFixWidth == 0 { advanced.hiresFixWidth = GenerationParameters.snap(Double(parameters.width) * factor) }
+      if advanced.hiresFixHeight == 0 { advanced.hiresFixHeight = GenerationParameters.snap(Double(parameters.height) * factor) }
       if advanced.hiresFixWidth >= parameters.width, advanced.hiresFixHeight >= parameters.height {
         advanced.reset(.hiresFix)
       }

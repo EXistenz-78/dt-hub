@@ -93,6 +93,18 @@ public struct AdvancedParameters: Equatable, Codable, Sendable {
   /// 0 = the upscaler's own factor.
   public static let upscalerFactors = [0, 2, 4]
 
+  /// An SDXL conditioning size as typed: 0 (or anything that rounds to it) = automatic,
+  /// otherwise the nearest multiple of 64 up to 8192.
+  public static func conditioningSize(_ value: Int) -> Int {
+    let snapped = Int((Double(value) / 64).rounded()) * 64
+    return min(max(snapped, conditioningRange.lowerBound), conditioningRange.upperBound)
+  }
+
+  /// An SDXL crop as typed: any pixel value from 0 to 8192.
+  public static func crop(_ value: Int) -> Int {
+    min(max(value, conditioningRange.lowerBound), conditioningRange.upperBound)
+  }
+
   /// The same values forced into the allowed ranges; tile sizes on multiples of 64.
   public func clamped() -> AdvancedParameters {
     func clamp<T: Comparable>(_ value: T, _ range: ClosedRange<T>) -> T {
