@@ -13,17 +13,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		185BAAE94E9B8DA055484F53 /* Packages */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Packages; path = Packages; sourceTree = SOURCE_ROOT; };
-		26BE388AD6E6D7E846B549DF /* DTHub.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DTHub.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		185BAAE94E9B8DA055484F53 /* Packages */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Packages; sourceTree = SOURCE_ROOT; };
+		26BE388AD6E6D7E846B549DF /* DTHub.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; name = DTHub.app; path = "DT Hub.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		D5F0ADBF4B9373D5B83F79A8 /* App */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			explicitFileTypes = {
-			};
-			explicitFolders = (
-			);
 			path = App;
 			sourceTree = "<group>";
 		};
@@ -361,10 +357,6 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		D7B41D6E5C2A4F0B9E3A1C02 /* DTBridge */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = DTBridge;
-		};
 		032BDA881CF996C0D4322A03 /* HubCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = HubCore;
@@ -372,6 +364,10 @@
 		70D3CFE438FB285241F2685E /* HubKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = HubKit;
+		};
+		D7B41D6E5C2A4F0B9E3A1C02 /* DTBridge */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = DTBridge;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

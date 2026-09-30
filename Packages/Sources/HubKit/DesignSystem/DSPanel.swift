@@ -2,19 +2,21 @@ import SwiftUI
 
 /// .ultraThinMaterial @ 19 · stroke .thinMaterial 1pt @ 18, brightness +0.1 ·
 /// shadow black 20%, radius 2, y 4. Padding is left to the caller.
+/// The shadow belongs to the panel's shape only: on the whole view it would also fall under
+/// every text inside, blurring it.
 struct DSPanel: ViewModifier {
   func body(content: Content) -> some View {
     content
-      .background(
-        .ultraThinMaterial,
-        in: RoundedRectangle(cornerRadius: DS.panelRadius, style: .continuous)
-      )
+      .background {
+        RoundedRectangle(cornerRadius: DS.panelRadius, style: .continuous)
+          .fill(.ultraThinMaterial)
+          .shadow(color: .black.opacity(0.20), radius: 2, x: 0, y: 4)
+      }
       .overlay(
         RoundedRectangle(cornerRadius: DS.panelStrokeRadius, style: .continuous)
           .strokeBorder(.thinMaterial, lineWidth: 1)
           .brightness(0.1)
       )
-      .shadow(color: .black.opacity(0.20), radius: 2, x: 0, y: 4)
   }
 }
 

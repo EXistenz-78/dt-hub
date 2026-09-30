@@ -5,6 +5,8 @@ import SwiftUI
 /// [Plug-ins ▾] [Model ▾ · family] … ● DT [⚙︎] [▶ Run] (spec §7).
 struct HeaderBar: View {
   let connection: DrawThingsConnection
+  let generation: GenerationController
+  @Environment(\.openWindow) private var openWindow
 
   private var monitor: ConnectionMonitor { connection.monitor }
   private var selection: ModelSelection { connection.selection }
@@ -98,20 +100,43 @@ struct HeaderBar: View {
     return nil
   }
 
-  private var runButton: some View {
-    Button {
-      // Generation arrives in M3.
-    } label: {
-      HStack(spacing: DS.pillIconGap) {
-        Image(systemName: "play.fill")
-          .font(.system(size: 14, weight: .semibold))
-        Text("header.run")
+  /// RUN, or Stop with the progress while a generation runs (spec §7).
+  @ViewBuilder private var runButton: some View {
+    if case .running(let step, let total) = generation.session.phase {
+      Button {
+        generation.session.cancel()
+      } label: {
+        HStack(spacing: DS.pillIconGap) {
+          Image(systemName: "stop.fill")
+            .font(.system(size: 14, weight: .semibold))
+            .accessibilityHidden(true)
+          Text("header.stop")
+          if let step {
+            Text(verbatim: "\(step)/\(total)")
+              .monospacedDigit()
+          }
+        }
       }
+      .buttonStyle(DSPillButtonStyle(prominent: true))
+      .keyboardShortcut(".", modifiers: .command)
+      .help(String(localized: "header.stop.help"))
+    } else {
+      Button {
+        generation.run(with: connection)
+        openWindow(id: ResultsWindow.id)
+      } label: {
+        HStack(spacing: DS.pillIconGap) {
+          Image(systemName: "play.fill")
+            .font(.system(size: 14, weight: .semibold))
+            .accessibilityHidden(true)
+          Text("header.run")
+        }
+      }
+      .buttonStyle(DSPillButtonStyle(prominent: true))
+      .disabled(runBlocker != nil)
+      .keyboardShortcut(.return, modifiers: .command)
+      .help(runHelp)
     }
-    .buttonStyle(DSPillButtonStyle(prominent: true))
-    .disabled(runBlocker != nil)
-    .keyboardShortcut(.return, modifiers: .command)
-    .help(runHelp)
   }
 
   private var runHelp: String {

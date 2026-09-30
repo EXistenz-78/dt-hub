@@ -2,7 +2,8 @@ import SwiftUI
 
 /// A collapsible card of the Generation tab (spec §7). `tint` colours the card, e.g.
 /// `DS.remove` for the negative prompt. A custom disclosure rather than `DisclosureGroup`:
-/// the stock control keeps a system focus ring around its triangle.
+/// the stock control keeps a system focus ring around its triangle. Pass a localized title
+/// (`String(localized:)`): the catalog test rejects literals here.
 public struct DSCollapsibleCard<Content: View>: View {
   let title: String
   let systemImage: String?
@@ -33,6 +34,8 @@ public struct DSCollapsibleCard<Content: View>: View {
           .frame(maxWidth: .infinity, alignment: .leading)
       }
     }
+    // Fills the height it is offered, so cards side by side can share one height (`DSCardRow`).
+    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     .background(
       (tint ?? Color.clear).opacity(0.12),
       in: RoundedRectangle(cornerRadius: DS.panelRadius, style: .continuous)
@@ -48,6 +51,7 @@ public struct DSCollapsibleCard<Content: View>: View {
         Image(systemName: "chevron.right")
           .font(.system(size: 9, weight: .bold))
           .rotationEffect(.degrees(isExpanded ? 90 : 0))
+          .accessibilityHidden(true)
         if let systemImage {
           Image(systemName: systemImage)
             .font(.system(size: 12, weight: .semibold))
@@ -61,7 +65,9 @@ public struct DSCollapsibleCard<Content: View>: View {
       .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
-    .focusable(false)
+    // Reachable with the keyboard; only the system focus ring is hidden.
+    .focusEffectDisabled()
+    .accessibilityAddTraits(.isHeader)
   }
 }
 
