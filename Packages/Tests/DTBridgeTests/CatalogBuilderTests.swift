@@ -44,6 +44,33 @@ struct CatalogBuilderTests {
     #expect(catalog.loras == [CatalogLoRA(file: bareLoRA, name: bareLoRA, family: nil)])
   }
 
+  @Test func upscalersAndFaceRestorersComeFromTheFileNames() {
+    let catalog = CatalogBuilder.build(
+      files: [klein, vae, "realesrgan_x4plus_f16.ckpt", "4x_ultrasharp_f16.ckpt", "restoreformer_v1.0_f16.ckpt", "parsenet_v1.0_f16.ckpt"],
+      modelSpecs: specs, loraMetadata: Data())
+    #expect(catalog.upscalers == ["4x_ultrasharp_f16.ckpt", "realesrgan_x4plus_f16.ckpt"])
+    #expect(catalog.faceRestorers == ["restoreformer_v1.0_f16.ckpt"])
+  }
+
+  @Test func capabilitiesComeFromTheSpec() {
+    let flux1 = CatalogBuilder.capabilities([
+      "guidance_embed": true, "tea_cache_coefficients": [1.0], "clip_encoder": "clip_vit_l14_f16.ckpt",
+      "text_encoder": "t5_xxl_encoder_q6p.ckpt", "default_scale": 16,
+    ])
+    #expect(flux1 == ModelCapabilities(
+      guidanceEmbed: true, teaCache: true, clipL: true, openClipG: false, t5: true,
+      optionalT5: false, clipSkip: false, nativeSize: 1024))
+    let sd3 = CatalogBuilder.capabilities([
+      "clip_encoder": "clip_vit_l14_f16.ckpt", "t5_encoder": "t5_xxl_encoder_q6p.ckpt",
+      "text_encoder": "open_clip_vit_bigg14_f16.ckpt", "default_scale": 16,
+    ])
+    #expect(sd3.clipL && sd3.openClipG && sd3.t5 && sd3.optionalT5 && sd3.clipSkip)
+    let klein = CatalogBuilder.capabilities(["text_encoder": "qwen_3_8b_q8p.ckpt", "default_scale": 16])
+    #expect(klein == ModelCapabilities(
+      guidanceEmbed: false, teaCache: false, clipL: false, openClipG: false, t5: false,
+      optionalT5: false, clipSkip: false, nativeSize: 1024))
+  }
+
   @Test func noFilesMeansModelBrowsingIsOff() {
     let catalog = CatalogBuilder.build(files: [], modelSpecs: [:], loraMetadata: Data())
     #expect(catalog.isModelBrowsingDisabled)
@@ -52,7 +79,7 @@ struct CatalogBuilderTests {
   @Test func specInfoFallsBackToTheFileName() {
     let named = CatalogBuilder.specInfo(json: Data(#"{"name": "Z Image", "version": "z_image"}"#.utf8), file: "z.ckpt")
     let unnamed = CatalogBuilder.specInfo(json: Data(#"{"file": "z.ckpt"}"#.utf8), file: "z.ckpt")
-    #expect(named == ModelSpecInfo(name: "Z Image", family: "z_image"))
-    #expect(unnamed == ModelSpecInfo(name: "z.ckpt", family: nil))
+    #expect(named.name == "Z Image" && named.family == "z_image")
+    #expect(unnamed.name == "z.ckpt" && unnamed.family == nil)
   }
 }
