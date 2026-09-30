@@ -8,7 +8,7 @@ struct HeaderBar: View {
   let selectedModel: String?
 
   private var runBlocker: RunBlocker? {
-    RunAvailability.blocker(connection: connection, selectedModel: selectedModel)
+    RunAvailability.blocker(connection: connection, selectedModel: selectedModel, catalog: .empty)
   }
 
   var body: some View {
@@ -71,6 +71,7 @@ struct HeaderBar: View {
     switch runBlocker {
     case .notConnected: String(localized: "run.blocked.notConnected")
     case .noModelSelected: String(localized: "run.blocked.noModel")
+    case .modelNotOnServer: String(localized: "run.blocked.modelMissing")
     case nil: String(localized: "header.run.help")
     }
   }
