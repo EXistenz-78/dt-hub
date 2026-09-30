@@ -78,3 +78,52 @@ struct AdvancedFieldTests {
     #expect(advanced.hiddenModifiedFields(for: sd15, sampler: .uniPCTrailing).isEmpty)
   }
 }
+
+struct AdvancedCompositionTests {
+  let klein = AdvancedFieldTests().klein
+  let sd15 = AdvancedFieldTests().sd15
+
+  func compose(_ parameters: GenerationParameters, model: CatalogModel, catalog extra: ModelCatalog? = nil) -> AdvancedParameters {
+    let catalog = extra ?? ModelCatalog(
+      models: [klein, sd15], loras: [], fileCount: 4,
+      upscalers: ["realesrgan_x4plus_f16.ckpt"], faceRestorers: ["restoreformer_v1.0_f16.ckpt"])
+    return JobComposer.batches(
+      prompt: "p", negativePrompt: "", model: model.file, family: model.family,
+      parameters: parameters, catalog: catalog) { 1 }[0].parameters.advanced
+  }
+
+  @Test func fieldsTheModelDoesNotUseAreNotSent() {
+    var parameters = GenerationParameters()
+    parameters.advanced.clipSkip = 2
+    parameters.advanced.sharpness = 4
+    #expect(compose(parameters, model: klein).clipSkip == 1)
+    #expect(compose(parameters, model: klein).sharpness == 4)
+    #expect(compose(parameters, model: sd15).clipSkip == 2)
+  }
+
+  @Test func filesTheServerDoesNotListAreNotSent() {
+    var parameters = GenerationParameters()
+    parameters.advanced.refinerModel = "gone.ckpt"
+    parameters.advanced.upscaler = "gone_x4.ckpt"
+    parameters.advanced.faceRestoration = "restoreformer_v1.0_f16.ckpt"
+    let sent = compose(parameters, model: klein)
+    #expect(sent.refinerModel == "")
+    #expect(sent.upscaler == "")
+    #expect(sent.faceRestoration == "restoreformer_v1.0_f16.ckpt")
+  }
+
+  @Test func anAutomaticHiresFixStartsAtTheNativeSize() {
+    var parameters = GenerationParameters(width: 1536, height: 1024)
+    parameters.advanced.hiresFix = true
+    let sent = compose(parameters, model: sd15)
+    #expect(sent.hiresFix)
+    #expect(sent.hiresFixWidth == 512)
+    #expect(sent.hiresFixHeight == 512)
+  }
+
+  @Test func aHiresFixNotSmallerThanTheImageIsDropped() {
+    var parameters = GenerationParameters(width: 512, height: 512)
+    parameters.advanced.hiresFix = true
+    #expect(!compose(parameters, model: sd15).hiresFix)
+  }
+}
