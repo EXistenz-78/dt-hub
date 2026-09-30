@@ -10,6 +10,12 @@ public final class ConnectionMonitor {
   public private(set) var catalog: ModelCatalog = .empty
   public private(set) var lastError: BackendError?
 
+  /// What the status dot shows: yellow ("connecting") also when the server answers but has
+  /// "Model browsing" off, because nothing can be generated until it is turned on.
+  public var indicator: ConnectionStatus {
+    status == .connected && catalog.isModelBrowsingDisabled ? .connecting : status
+  }
+
   /// How often the server is checked, connected or not.
   public static let defaultInterval: Duration = .seconds(5)
 

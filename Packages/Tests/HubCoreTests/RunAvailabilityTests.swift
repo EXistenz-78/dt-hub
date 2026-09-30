@@ -32,4 +32,14 @@ struct RunAvailabilityTests {
       RunAvailability.blocker(connection: .connected, selectedModel: "gone.ckpt", catalog: catalog)
         == .modelNotOnServer)
   }
+
+  /// A reachable server that lists no files has "Model browsing" off: nothing can be chosen.
+  @Test func modelBrowsingOffBlocksBeforeTheModelCheck() {
+    #expect(
+      RunAvailability.blocker(connection: .connected, selectedModel: klein, catalog: .empty)
+        == .modelBrowsingDisabled)
+    #expect(
+      RunAvailability.blocker(connection: .connected, selectedModel: nil, catalog: .empty)
+        == .modelBrowsingDisabled)
+  }
 }

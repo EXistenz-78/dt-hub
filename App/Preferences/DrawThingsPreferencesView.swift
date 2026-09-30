@@ -37,7 +37,7 @@ struct DrawThingsPreferencesView: View {
 
       Section {
         HStack(spacing: DS.controlGap) {
-          DSStatusDot(status: monitor.status)
+          DSStatusDot(status: monitor.indicator)
           VStack(alignment: .leading, spacing: 2) {
             Text(statusLine)
             if case .unreachable(let detail)? = monitor.lastError {

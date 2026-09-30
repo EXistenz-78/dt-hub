@@ -70,6 +70,15 @@ struct ConnectionMonitorTests {
     #expect(monitor.catalog == .empty)
   }
 
+  @Test func dotIsYellowWhenModelBrowsingIsOff() async {
+    let monitor = ConnectionMonitor()
+    await monitor.replaceBackend(FakeBackend(.success(.empty)))
+    #expect(monitor.status == .connected)
+    #expect(monitor.indicator == .connecting)
+    await monitor.replaceBackend(FakeBackend(.success(catalogA)))
+    #expect(monitor.indicator == .connected)
+  }
+
   @Test func showsConnectingWhileTheFirstCheckRuns() async throws {
     let monitor = ConnectionMonitor()
     let check = Task { await monitor.replaceBackend(FakeBackend(.success(catalogA), delay: .milliseconds(300))) }

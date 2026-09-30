@@ -20,7 +20,7 @@ struct HeaderBar: View {
       pluginsMenu
       modelMenu
       Spacer(minLength: DS.groupGap)
-      DSStatusDot(status: monitor.status)
+      DSStatusDot(status: monitor.indicator)
         .padding(.horizontal, 6)
         .help(statusText)
         .accessibilityLabel(statusText)
@@ -90,7 +90,9 @@ struct HeaderBar: View {
   /// The family of the selected model, or a warning when the server lacks it.
   private var modelDetail: String? {
     if let selectedModel { return selectedModel.family }
-    if selection.selectedFile != nil, monitor.status == .connected {
+    if selection.selectedFile != nil, monitor.status == .connected,
+      !monitor.catalog.isModelBrowsingDisabled
+    {
       return String(localized: "header.model.missing")
     }
     return nil
@@ -116,12 +118,16 @@ struct HeaderBar: View {
     switch runBlocker {
     case .notConnected: String(localized: "run.blocked.notConnected")
     case .noModelSelected: String(localized: "run.blocked.noModel")
+    case .modelBrowsingDisabled: String(localized: "header.model.browsingDisabled")
     case .modelNotOnServer: String(localized: "run.blocked.modelMissing")
     case nil: String(localized: "header.run.help")
     }
   }
 
   private var statusText: String {
-    ConnectionStatusText.headline(status: monitor.status, error: monitor.lastError)
+    if monitor.status == .connected, monitor.catalog.isModelBrowsingDisabled {
+      return String(localized: "header.model.browsingDisabled")
+    }
+    return ConnectionStatusText.headline(status: monitor.status, error: monitor.lastError)
   }
 }

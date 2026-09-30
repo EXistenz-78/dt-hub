@@ -4,6 +4,8 @@ import HubKit
 public enum RunBlocker: Equatable, Sendable {
   case notConnected
   case noModelSelected
+  /// The server answers but lists no files: its "Model browsing" option is off.
+  case modelBrowsingDisabled
   /// The selected model is not installed on the connected server.
   case modelNotOnServer
 }
@@ -15,6 +17,7 @@ public enum RunAvailability {
     connection: ConnectionStatus, selectedModel: String?, catalog: ModelCatalog
   ) -> RunBlocker? {
     guard connection == .connected else { return .notConnected }
+    guard !catalog.isModelBrowsingDisabled else { return .modelBrowsingDisabled }
     guard let selectedModel, !selectedModel.isEmpty else { return .noModelSelected }
     guard catalog.model(forFile: selectedModel) != nil else { return .modelNotOnServer }
     return nil
