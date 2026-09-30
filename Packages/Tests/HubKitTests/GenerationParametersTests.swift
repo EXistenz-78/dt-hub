@@ -78,6 +78,28 @@ struct LoRASelectionTests {
     #expect(job.promptWithTriggers == "a fox")
   }
 
+  @Test func updatesTheLoRAWithThatFileWhereverItIs() {
+    var parameters = GenerationParameters(loras: [LoRASelection(file: "a"), LoRASelection(file: "b")])
+    parameters.updateLoRA(LoRASelection(file: "b", weight: 0.3, trigger: "x"))
+    #expect(parameters.loras == [LoRASelection(file: "a"), LoRASelection(file: "b", weight: 0.3, trigger: "x")])
+  }
+
+  @Test func updatingALoRAAlreadyRemovedChangesNothing() {
+    var parameters = GenerationParameters(loras: [LoRASelection(file: "a"), LoRASelection(file: "b")])
+    parameters.removeLoRA("b")
+    // A row still editing "b" ends its edit after the removal.
+    parameters.updateLoRA(LoRASelection(file: "b", weight: 0.3))
+    #expect(parameters.loras == [LoRASelection(file: "a")])
+  }
+
+  @Test func thePromptIsTrimmedWhereItJoinsTheTriggers() {
+    let job = GenerationJob(
+      prompt: "\n  a fox  ", model: "m.ckpt", parameters: GenerationParameters(loras: [LoRASelection(file: "a", trigger: "cine1p")]))
+    #expect(job.promptWithTriggers == "cine1p a fox")
+    let blank = GenerationJob(prompt: "   ", model: "m.ckpt", parameters: GenerationParameters(loras: [LoRASelection(file: "a", trigger: "cine1p")]))
+    #expect(blank.promptWithTriggers == "cine1p")
+  }
+
   @Test func removesALoRA() {
     var parameters = GenerationParameters(loras: [LoRASelection(file: "a"), LoRASelection(file: "b")])
     parameters.removeLoRA("a")

@@ -82,6 +82,14 @@ public struct GenerationParameters: Equatable, Codable, Sendable {
     loras.removeAll { $0.file == file }
   }
 
+  /// Replaces the LoRA with the same file, wherever it is now; nothing when it was removed.
+  /// The LoRA card's rows write through this, not through an array index: a row that ends
+  /// its edit after a removal must not write into another LoRA or past the end.
+  public mutating func updateLoRA(_ selection: LoRASelection) {
+    guard let index = loras.firstIndex(where: { $0.file == selection.file }) else { return }
+    loras[index] = selection
+  }
+
   /// Allowed ranges, used by the cards and by `clamped()`.
   public static let sizeRange = 64...2048
   public static let stepsRange = 1...150

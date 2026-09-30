@@ -17,10 +17,11 @@ public struct GenerationJob: Equatable, Codable, Sendable {
   }
 
   /// What Draw Things receives: the trigger words of the job's LoRAs, in order, then the
-  /// prompt, separated by spaces.
+  /// prompt, separated by spaces; edges trimmed where they join.
   public var promptWithTriggers: String {
     let triggers = parameters.loras.map { $0.trigger.trimmingCharacters(in: .whitespacesAndNewlines) }
-    return (triggers + [prompt]).filter { !$0.isEmpty }.joined(separator: " ")
+    let text = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+    return (triggers + [text]).filter { !$0.isEmpty }.joined(separator: " ")
   }
 
   /// Lenient, like `GenerationParameters`: jobs saved before the negative prompt existed load.

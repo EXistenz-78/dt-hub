@@ -24,9 +24,9 @@ struct LoRACard: View {
           Text("card.lora.none")
             .foregroundStyle(.secondary)
         }
-        ForEach($controller.parameters.loras) { $selection in
+        ForEach(controller.parameters.loras) { selection in
           LoRARow(
-            selection: $selection,
+            selection: binding(for: selection),
             name: catalog.lora(forFile: selection.file)?.name ?? selection.file,
             status: catalog.status(of: selection, family: family),
             remove: { controller.parameters.removeLoRA(selection.file) })
@@ -34,6 +34,15 @@ struct LoRACard: View {
         addMenu
       }
     }
+  }
+
+  /// A row's binding found by file, not by array index: a row still editing when its LoRA
+  /// is removed (or replaced by "Resume parameters") then writes nowhere, instead of past
+  /// the end of the list or into the LoRA that took its place.
+  private func binding(for selection: LoRASelection) -> Binding<LoRASelection> {
+    Binding(
+      get: { controller.parameters.loras.first { $0.file == selection.file } ?? selection },
+      set: { controller.parameters.updateLoRA($0) })
   }
 
   private var addMenu: some View {
