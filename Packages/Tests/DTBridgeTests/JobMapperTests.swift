@@ -1,0 +1,61 @@
+import DrawThingsClient
+import HubKit
+import Testing
+
+@testable import DTBridge
+
+struct JobMapperTests {
+  @Test func mapsEveryBaseParameter() {
+    let parameters = GenerationParameters(
+      width: 832, height: 1216, steps: 4, guidanceScale: 1.5, cfgZeroStar: true, cfgZeroInitSteps: 2,
+      sampler: .ddimTrailing, shift: 2, resolutionDependentShift: false,
+      seed: 42, randomSeed: false, batchSize: 2, batchCount: 3)
+    let request = JobMapper.request(
+      for: GenerationJob(prompt: "a lighthouse", model: "flux_2_klein_9b_f16.ckpt", parameters: parameters))
+    let configuration = request.configuration
+    #expect(request.prompt == "a lighthouse")
+    #expect(configuration.model == "flux_2_klein_9b_f16.ckpt")
+    #expect(configuration.width == 832)
+    #expect(configuration.height == 1216)
+    #expect(configuration.steps == 4)
+    #expect(configuration.guidanceScale == 1.5)
+    #expect(configuration.sampler == .ddimtrailing)
+    #expect(configuration.shift == 2)
+    #expect(configuration.seed == 42)
+    #expect(configuration.batchSize == 2)
+    #expect(configuration.batchCount == 3)
+    #expect(configuration.cfgZeroStar)
+    #expect(configuration.cfgZeroInitSteps == 2)
+    #expect(!configuration.resolutionDependentShift)
+  }
+
+  @Test func clampsOutOfRangeValuesBeforeSending() {
+    let parameters = GenerationParameters(width: 1000, height: 5000, steps: 0, batchSize: 9)
+    let configuration = JobMapper.request(
+      for: GenerationJob(prompt: "", model: "m.ckpt", parameters: parameters)
+    ).configuration
+    #expect(configuration.width == 960)
+    #expect(configuration.height == 2048)
+    #expect(configuration.steps == 1)
+    #expect(configuration.batchSize == 4)
+  }
+
+  @Test func samplingProgressCarriesTheStep() throws {
+    let update = try JobMapper.update(for: .progress(GenerationProgress(stage: .sampling(step: 3), totalSteps: 8)))
+    guard case .progress(let step, let total)? = update else { Issue.record("not progress"); return }
+    #expect(step == 3)
+    #expect(total == 8)
+  }
+
+  @Test func otherStagesHaveNoStep() throws {
+    let update = try JobMapper.update(for: .progress(GenerationProgress(stage: .textEncoding, totalSteps: 8)))
+    guard case .progress(let step, _)? = update else { Issue.record("not progress"); return }
+    #expect(step == nil)
+  }
+
+  @Test func libraryErrorsBecomeBackendErrors() {
+    #expect(JobMapper.backendError(for: DrawThingsError.connectionFailed("down")) as? BackendError == .unreachable("down"))
+    #expect(JobMapper.backendError(for: DrawThingsError.unauthenticated) as? BackendError == .unauthorized)
+    #expect(JobMapper.backendError(for: CancellationError()) is CancellationError)
+  }
+}

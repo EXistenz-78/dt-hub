@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import HubKit
 import Testing
@@ -25,5 +26,31 @@ struct LiveServerTests {
     let backend = DrawThingsBackend(host: "localhost", port: 1, useTLS: true, sharedSecret: nil)
     await #expect(throws: BackendError.self) { try await backend.fetchCatalog() }
     await backend.shutdown()
+  }
+
+  @Test(.enabled(if: address != nil))
+  func generatesOneImage() async throws {
+    let parts = try #require(Self.address?.split(separator: ":"))
+    let backend = DrawThingsBackend(
+      host: String(parts[0]), port: Int(parts[1]) ?? 7859, useTLS: true, sharedSecret: nil)
+    let model = try #require(
+      try await backend.fetchCatalog().models.first { $0.family == "flux2_9b" }?.file,
+      "needs a FLUX.2 [klein] model on the server")
+    let job = GenerationJob(
+      prompt: "a red bicycle leaning on a stone wall", model: model,
+      parameters: GenerationParameters(width: 512, height: 512, steps: 4, sampler: .ddimTrailing, seed: 7, randomSeed: false))
+    var sawProgress = false
+    var images: [CGImage] = []
+    for try await update in backend.generate(job) {
+      switch update {
+      case .progress: sawProgress = true
+      case .preview: break
+      case .finished(let final): images = final
+      }
+    }
+    await backend.shutdown()
+    #expect(sawProgress)
+    #expect(images.count == 1)
+    #expect(images.first?.width == 512)
   }
 }
