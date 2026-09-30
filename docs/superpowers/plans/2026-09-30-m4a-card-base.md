@@ -4,18 +4,18 @@
 
 **Goal:** Il livello 1 della spec §6 è completo:
 - prompt negativo dentro la card Prompt;
-- card LoRA (più LoRA, con peso e modalità, filtrate per famiglia);
+- card LoRA (più LoRA, con peso, modalità e trigger word, filtrate per famiglia);
 - campi mostrati secondo la famiglia del modello;
 - all'avvio si ritrovano l'ultimo prompt e gli ultimi parametri.
 
 **Architecture:**
-- **HubKit** riceve `LoRASelection`/`LoRAMode`. `GenerationParameters.loras` e `GenerationJob.negativePrompt` si aggiungono con una decodifica tollerante, così i file salvati da versioni diverse si caricano sempre.
+- **HubKit** riceve `LoRASelection`/`LoRAMode`. `GenerationParameters.loras` e `GenerationJob.negativePrompt` si aggiungono con una decodifica tollerante, così i file salvati da versioni diverse si caricano sempre. `CatalogLoRA` guadagna la trigger word e il peso suggerito. `GenerationJob.promptWithTriggers` compone ciò che riceve Draw Things.
 - **HubCore** riceve tre pezzi:
   - la tabella famiglia → campi (`FamilyTraits`, chiave `version` di DT);
   - la compatibilità delle LoRA con il catalogo;
   - `JobComposer`, che dal contenuto del tab costruisce i batch, togliendo ciò che la famiglia non usa e le LoRA non utilizzabili.
 - **HubCore** riceve anche `SessionStore`, che scrive `session.json`.
-- **DTBridge** manda a Draw Things il negativo e le LoRA.
+- **DTBridge** legge dai metadati del server la trigger word (`prefix`) e il peso suggerito (`weight`), e manda a Draw Things il negativo, le LoRA e il prompt con le trigger word davanti.
 - **App:** il controller salva la sessione 0,5 s dopo l'ultima modifica e all'uscita. La card Prompt mostra il negativo, Campionamento nasconde Shift e CFG-Zero* dove non servono, e la nuova card LoRA occupa il posto libero accanto a Campionamento.
 
 **Tech Stack:** Swift 6, SwiftUI, macOS 26, Xcode 27, Swift Testing, DrawThings-Swift 2.2.x.
@@ -45,7 +45,13 @@
 - **LoRA (spec §6):**
   - più LoRA, ciascuna una sola volta, con peso −1,5…2,5 (passo 0,05, due decimali) e modalità Tutto/Base/Refiner (valori di Draw Things 0/1/2);
   - il menu "Aggiungi LoRA" offre prima quelle della famiglia del modello, poi quelle di famiglia sconosciuta; con famiglia del modello sconosciuta, tutte;
-  - una LoRA di un'altra famiglia o sparita dal server resta nella card con il motivo in arancio e non viene inviata.
+  - una LoRA di un'altra famiglia o sparita dal server resta nella card con il motivo in arancio e non viene inviata;
+  - aggiungendo una LoRA si usa il peso suggerito dai metadati (`weight`, presente su poche), altrimenti 1.
+- **Trigger word (deciso con l'utente, 30 settembre 2026):**
+  - ogni LoRA ha un proprio campo "Trigger", precompilato con il `prefix` di Draw Things (44 LoRA su 100 sul server dell'utente) e modificabile;
+  - la trigger word **non entra nel testo del prompt**: l'LLM che riscriverà i prompt (M6, PM2) non deve poterla alterare;
+  - al RUN, le trigger word delle LoRA inviate, nell'ordine della card e senza spazi ai bordi, vanno davanti al prompt, separate da spazi (`promptWithTriggers`); una LoRA non inviata non aggiunge la sua;
+  - il PNG ("Description") registra il prompt inviato, trigger word comprese; il lavoro in JSON conserva prompt e trigger separati, così "Riprendi parametri" non le duplica.
 - **Ripristino (spec §11):**
   - prompt, negativo, parametri (LoRA comprese) e "Blocca proporzioni" in `~/Library/Application Support/DT Hub/session.json`;
   - scrittura 0,5 s dopo l'ultima modifica e all'uscita dall'app;
@@ -58,7 +64,7 @@
   - Indentazione a 2 spazi.
   - Ogni commit termina con `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 - **Test dal vivo:** solo con `DTHUB_LIVE_DT=localhost:7859` (API Server dell'app Draw Things acceso, model browsing attivo).
-- **Fuori da M4a:** card Avanzate, avviso "valori nascosti attivi" (M4b); editor JSON, preset, import (M4c); modalità del seed; Strength (arriva con i plug-in I2I).
+- **Fuori da M4a:** card Avanzate, avviso "valori nascosti attivi" (M4b); editor JSON, preset, import (M4c); Strength (arriva con i plug-in I2I); modalità del seed (rimandata a quando servirà: decisione dell'utente, 30 settembre 2026).
 
 ## Review Focus
 
@@ -69,6 +75,10 @@
   - tutti i campi visibili (test `anUnknownFamilyShowsEverything`, Task 2);
   - le LoRA ripristinate risultano "Non presente sul server" finché il catalogo non arriva (test `statusSaysWhyALoRAIsNotSent`);
   - il RUN resta bloccato da `RunAvailability`.
+- **LoRA con trigger word:**
+  - le trigger word finiscono davanti al prompt solo per le LoRA inviate, senza doppi spazi, anche con prefissi che finiscono con virgola o spazio (test `triggerWordsGoInFrontOfThePromptInOrder`, `triggerWordsArePutInFrontOfThePrompt`, `sendsOnlyTheUsableLoRAs`);
+  - il PNG le registra (test `theDescriptionIsThePromptSentWithItsTriggerWords`);
+  - una sessione o un PNG senza il campo si carica (test `aLoRAWithoutTriggerOrModeLoads`).
 - **Negativo scritto, poi si passa a una famiglia che non lo usa:** il testo resta conservato ma non viene inviato (test `keepsTheNegativePromptWhereTheFamilyUsesIt`, Task 3). Allo stesso modo CFG-Zero* acceso su un modello senza shift non viene inviato (test `turnsCFGZeroOffWhereTheFamilyHasNoShift`).
 
 ---
@@ -78,16 +88,18 @@
 **Files:**
 - Create: `Packages/Sources/HubKit/Generation/LoRASelection.swift`
 - Modify: `Packages/Sources/HubKit/Generation/GenerationParameters.swift` (campo `loras`, `addLoRA`/`removeLoRA`, pesi in `clamped()`, decodifica tollerante)
-- Modify: `Packages/Sources/HubKit/Generation/GenerationJob.swift` (campo `negativePrompt`, decodifica tollerante)
+- Modify: `Packages/Sources/HubKit/Generation/GenerationJob.swift` (campo `negativePrompt`, `promptWithTriggers`, decodifica tollerante)
+- Modify: `Packages/Sources/HubKit/Catalog/ModelCatalog.swift` (`CatalogLoRA.trigger`, `CatalogLoRA.defaultWeight`)
 - Test: `Packages/Tests/HubKitTests/GenerationParametersTests.swift` (suite `LoRASelectionTests`, `LenientDecodingTests`)
 
 **Interfaces:**
 - Consumes: `GenerationParameters` di M3 (campi, `default`, `clamped()`).
 - Produces (HubKit, `public`):
   - `enum LoRAMode: Int, CaseIterable, Identifiable, Codable, Sendable { case all = 0, base = 1, refiner = 2 }`;
-  - `struct LoRASelection: Equatable, Codable, Sendable, Identifiable` con `file: String`, `weight: Double`, `mode: LoRAMode`, `static let weightRange = -1.5...2.5`, `init(file:weight: = 1, mode: = .all)`;
-  - `GenerationParameters.loras: [LoRASelection]` (predefinito `[]`, ultimo parametro dell'init), `mutating func addLoRA(_ file: String)`, `mutating func removeLoRA(_ file: String)`, decodifica tollerante;
-  - `GenerationJob.negativePrompt: String` e `init(prompt:negativePrompt: = "", model:parameters:)`.
+  - `struct LoRASelection: Equatable, Codable, Sendable, Identifiable` con `file: String`, `weight: Double`, `mode: LoRAMode`, `trigger: String`, `static let weightRange = -1.5...2.5`, `init(file:weight: = 1, mode: = .all, trigger: = "")`, decodifica tollerante;
+  - `GenerationParameters.loras: [LoRASelection]` (predefinito `[]`, ultimo parametro dell'init), `mutating func addLoRA(_ file: String, weight: Double = 1, trigger: String = "")`, `mutating func removeLoRA(_ file: String)`, decodifica tollerante;
+  - `GenerationJob.negativePrompt: String`, `init(prompt:negativePrompt: = "", model:parameters:)`, `var promptWithTriggers: String`;
+  - `CatalogLoRA.trigger: String`, `CatalogLoRA.defaultWeight: Double?`, `init(file:name:family:trigger: = "", defaultWeight: = nil)`.
 
 - [ ] **Step 1: Creare il branch**
 
@@ -158,6 +170,28 @@ struct LoRASelectionTests {
     #expect(parameters.loras == [LoRASelection(file: "style.safetensors", weight: 0.6)])
   }
 
+  @Test func addsALoRAWithItsSuggestedWeightAndTrigger() {
+    var parameters = GenerationParameters.default
+    parameters.addLoRA("tarot.safetensors", weight: 0.8, trigger: "vintage tarot style")
+    #expect(parameters.loras == [LoRASelection(file: "tarot.safetensors", weight: 0.8, trigger: "vintage tarot style")])
+  }
+
+  @Test func triggerWordsGoInFrontOfThePromptInOrder() {
+    let job = GenerationJob(
+      prompt: "a fox in the snow", model: "m.ckpt",
+      parameters: GenerationParameters(loras: [
+        LoRASelection(file: "a", trigger: "70sfairytale, "), LoRASelection(file: "b"),
+        LoRASelection(file: "c", trigger: " cine1p "),
+      ]))
+    #expect(job.promptWithTriggers == "70sfairytale, cine1p a fox in the snow")
+    #expect(job.prompt == "a fox in the snow")
+  }
+
+  @Test func withoutTriggersThePromptIsSentAsItIs() {
+    let job = GenerationJob(prompt: "a fox", model: "m.ckpt", parameters: .default)
+    #expect(job.promptWithTriggers == "a fox")
+  }
+
   @Test func removesALoRA() {
     var parameters = GenerationParameters(loras: [LoRASelection(file: "a"), LoRASelection(file: "b")])
     parameters.removeLoRA("a")
@@ -197,6 +231,11 @@ struct LenientDecodingTests {
     #expect(decoded == parameters)
   }
 
+  @Test func aLoRAWithoutTriggerOrModeLoads() throws {
+    let decoded = try JSONDecoder().decode(LoRASelection.self, from: Data(#"{"file": "a", "weight": 0.5}"#.utf8))
+    #expect(decoded == LoRASelection(file: "a", weight: 0.5))
+  }
+
   @Test func aJobWithoutANegativePromptLoads() throws {
     let json = #"{"prompt": "fox", "model": "m.ckpt", "parameters": {}}"#
     let job = try JSONDecoder().decode(GenerationJob.self, from: Data(json.utf8))
@@ -230,13 +269,26 @@ public struct LoRASelection: Equatable, Codable, Sendable, Identifiable {
   /// 1 = full strength; Draw Things accepts −1,5…2,5.
   public var weight: Double
   public var mode: LoRAMode
+  /// Words that call the LoRA up. Kept apart from the prompt, so rewriting the prompt (for
+  /// example with the LLM) never touches them; put in front of the prompt at RUN.
+  public var trigger: String
 
   public static let weightRange = -1.5...2.5
 
-  public init(file: String, weight: Double = 1, mode: LoRAMode = .all) {
+  public init(file: String, weight: Double = 1, mode: LoRAMode = .all, trigger: String = "") {
     self.file = file
     self.weight = weight
     self.mode = mode
+    self.trigger = trigger
+  }
+
+  /// Lenient: a missing weight, mode or trigger takes its default.
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    file = try container.decode(String.self, forKey: .file)
+    weight = (try? container.decodeIfPresent(Double.self, forKey: .weight)) ?? 1
+    mode = (try? container.decodeIfPresent(LoRAMode.self, forKey: .mode)) ?? .all
+    trigger = (try? container.decodeIfPresent(String.self, forKey: .trigger)) ?? ""
   }
 }
 ```
@@ -317,10 +369,11 @@ public struct GenerationParameters: Equatable, Codable, Sendable {
 
   public static let `default` = GenerationParameters()
 
-  /// Adds a LoRA at full weight; a file already in the list is left as it is.
-  public mutating func addLoRA(_ file: String) {
+  /// Adds a LoRA (full weight unless its metadata suggests one); a file already in the
+  /// list is left as it is.
+  public mutating func addLoRA(_ file: String, weight: Double = 1, trigger: String = "") {
     guard !loras.contains(where: { $0.file == file }) else { return }
-    loras.append(LoRASelection(file: file))
+    loras.append(LoRASelection(file: file, weight: weight, trigger: trigger))
   }
 
   public mutating func removeLoRA(_ file: String) {
@@ -394,6 +447,7 @@ public struct GenerationParameters: Equatable, Codable, Sendable {
 - [ ] **Step 6: Sostituire `Packages/Sources/HubKit/Generation/GenerationJob.swift` con:**
 
 ```swift
+import Foundation
 import CoreGraphics
 
 /// One RUN, as sent to the backend: everything is resolved (the seed included).
@@ -409,6 +463,13 @@ public struct GenerationJob: Equatable, Codable, Sendable {
     self.negativePrompt = negativePrompt
     self.model = model
     self.parameters = parameters
+  }
+
+  /// What Draw Things receives: the trigger words of the job's LoRAs, in order, then the
+  /// prompt, separated by spaces.
+  public var promptWithTriggers: String {
+    let triggers = parameters.loras.map { $0.trigger.trimmingCharacters(in: .whitespacesAndNewlines) }
+    return (triggers + [prompt]).filter { !$0.isEmpty }.joined(separator: " ")
   }
 
   /// Lenient, like `GenerationParameters`: jobs saved before the negative prompt existed load.
@@ -432,15 +493,106 @@ public enum GenerationUpdate: Sendable {
 }
 ```
 
+- [ ] **Step 6b: Sostituire `Packages/Sources/HubKit/Catalog/ModelCatalog.swift` con:**
+
+```swift
+/// A generative model installed on the Draw Things server.
+public struct CatalogModel: Identifiable, Equatable, Sendable {
+  public var id: String { file }
+  public let file: String
+  public let name: String
+  /// Draw Things model version, e.g. "flux2_9b": the model family key of spec §5.
+  public let family: String?
+
+  public init(file: String, name: String, family: String?) {
+    self.file = file
+    self.name = name
+    self.family = family
+  }
+}
+
+/// A LoRA installed on the Draw Things server.
+public struct CatalogLoRA: Identifiable, Equatable, Sendable {
+  public var id: String { file }
+  public let file: String
+  public let name: String
+  /// Model family the LoRA was made for; nil when the server does not say.
+  public let family: String?
+  /// The trigger word Draw Things keeps for it (its `prefix`); empty when there is none.
+  public let trigger: String
+  /// The weight suggested by its metadata, when there is one.
+  public let defaultWeight: Double?
+
+  public init(file: String, name: String, family: String?, trigger: String = "", defaultWeight: Double? = nil) {
+    self.file = file
+    self.name = name
+    self.family = family
+    self.trigger = trigger
+    self.defaultWeight = defaultWeight
+  }
+}
+
+/// Models of one family, for the grouped model menu.
+public struct ModelFamilyGroup: Identifiable, Equatable, Sendable {
+  public var id: String { family ?? "" }
+  /// nil groups the models whose family is unknown.
+  public let family: String?
+  public let models: [CatalogModel]
+}
+
+/// What the Draw Things server has installed, as DT Hub needs it.
+public struct ModelCatalog: Equatable, Sendable {
+  public let models: [CatalogModel]
+  public let loras: [CatalogLoRA]
+  /// How many files the server listed. Zero when its "Model browsing" option is off (spec §10).
+  public let fileCount: Int
+
+  public init(models: [CatalogModel], loras: [CatalogLoRA], fileCount: Int) {
+    self.models = models
+    self.loras = loras
+    self.fileCount = fileCount
+  }
+
+  public static let empty = ModelCatalog(models: [], loras: [], fileCount: 0)
+
+  /// True when a reachable server lists no files at all: its model browsing is off.
+  public var isModelBrowsingDisabled: Bool { fileCount == 0 }
+
+  public func model(forFile file: String) -> CatalogModel? {
+    models.first { $0.file == file }
+  }
+
+  /// Models grouped by family: families in alphabetical order, the unknown family last,
+  /// models by name inside each group.
+  public var modelsByFamily: [ModelFamilyGroup] {
+    let grouped = Dictionary(grouping: models, by: \.family)
+    let families = grouped.keys.sorted { lhs, rhs in
+      switch (lhs, rhs) {
+      case (nil, _): false
+      case (_, nil): true
+      case let (l?, r?): l.localizedStandardCompare(r) == .orderedAscending
+      }
+    }
+    return families.map { family in
+      ModelFamilyGroup(
+        family: family,
+        models: grouped[family, default: []].sorted {
+          $0.name.localizedStandardCompare($1.name) == .orderedAscending
+        })
+    }
+  }
+}
+```
+
 - [ ] **Step 7: Verificare che passino**
 
 Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with"`
-Expected: HubKit `26 tests … passed`; HubCore, DTBridge e Catalog passano come prima (67, 16, 6).
+Expected: HubKit `30 tests … passed`; HubCore, DTBridge e Catalog passano come prima (67, 16, 6).
 
 - [ ] **Step 8: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: LoRA e prompt negativo nel contratto, decodifica tollerante dei parametri
+cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: LoRA con trigger word e prompt negativo nel contratto, decodifica tollerante
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -623,7 +775,9 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 **Files:**
 - Create: `Packages/Sources/HubCore/Generation/JobComposer.swift`
+- Modify: `Packages/Sources/HubCore/Output/ImageStore.swift` (il campo PNG "Description" registra `job.promptWithTriggers`)
 - Test: `Packages/Tests/HubCoreTests/FamilyTraitsTests.swift` (aggiungere la suite `JobComposerTests` in fondo)
+- Test: `Packages/Tests/HubCoreTests/PNGImageStoreTests.swift` (test `theDescriptionIsThePromptSentWithItsTriggerWords`)
 
 **Interfaces:**
 - Consumes: `FamilyTraits.of`, `ModelCatalog.status(of:family:)` (Task 2); `GenerationParameters.batchesForRun(randomSeed:)` (M3); `GenerationJob.init(prompt:negativePrompt:model:parameters:)` (Task 1).
@@ -675,6 +829,62 @@ struct JobComposerTests {
 }
 ```
 
+- [ ] **Step 1b: Test del PNG.** Sostituire `Packages/Tests/HubCoreTests/PNGImageStoreTests.swift` con:
+
+```swift
+import ImageIO
+import Foundation
+import HubKit
+import Testing
+
+@testable import HubCore
+
+struct PNGImageStoreTests {
+  let job = GenerationJob(
+    prompt: "a lighthouse at dusk", model: "flux_2_klein_9b_f16.ckpt",
+    parameters: GenerationParameters(seed: 1234, randomSeed: false))
+  let date = Date(timeIntervalSince1970: 1_790_000_000)
+
+  func tempFolder() -> URL {
+    FileManager.default.temporaryDirectory.appendingPathComponent("PNGImageStoreTests-\(UUID())", isDirectory: true)
+  }
+
+  @Test func savesAPNGWithTheJobInside() throws {
+    let store = PNGImageStore(folder: tempFolder())
+    let url = try store.save(testImage(), job: job, index: 0, date: date)
+    #expect(url.pathExtension == "png")
+    #expect(url.lastPathComponent.hasSuffix("-1234.png"))
+    #expect(PNGImageStore.job(in: url) == job)
+  }
+
+  @Test func theDescriptionIsThePromptSentWithItsTriggerWords() throws {
+    let triggered = GenerationJob(
+      prompt: "a fox", model: "m.ckpt",
+      parameters: GenerationParameters(seed: 5, randomSeed: false, loras: [LoRASelection(file: "t", trigger: "vintage tarot style")]))
+    let url = try PNGImageStore(folder: tempFolder()).save(testImage(), job: triggered, index: 0, date: date)
+    let source = try #require(CGImageSourceCreateWithURL(url as CFURL, nil))
+    let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
+    let png = properties?[kCGImagePropertyPNGDictionary] as? [CFString: Any]
+    #expect(png?[kCGImagePropertyPNGDescription] as? String == "vintage tarot style a fox")
+    #expect(PNGImageStore.job(in: url) == triggered)
+  }
+
+  @Test func namesEachImageOfABatchAndNeverOverwrites() throws {
+    let store = PNGImageStore(folder: tempFolder())
+    let first = try store.save(testImage(), job: job, index: 0, date: date)
+    let second = try store.save(testImage(), job: job, index: 1, date: date)
+    let again = try store.save(testImage(), job: job, index: 0, date: date)
+    #expect(second.lastPathComponent.hasSuffix("-1234-2.png"))
+    #expect(Set([first, second, again]).count == 3)
+  }
+
+  @Test func reportsAFolderItCannotCreate() {
+    let store = PNGImageStore(folder: URL(fileURLWithPath: "/System/DT Hub test"))
+    #expect(throws: ImageStoreError.self) { try store.save(testImage(), job: job, index: 0, date: date) }
+  }
+}
+```
+
 - [ ] **Step 2: Verificare che falliscano**
 
 Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter HubCoreTests 2>&1 | grep -E "error:" | head -3`
@@ -705,30 +915,36 @@ public enum JobComposer {
 }
 ```
 
+- [ ] **Step 3b: In `Packages/Sources/HubCore/Output/ImageStore.swift` registrare il prompt inviato**
+
+Sostituire `kCGImagePropertyPNGDescription: job.prompt,` con `kCGImagePropertyPNGDescription: job.promptWithTriggers,`.
+
 - [ ] **Step 4: Verificare che passino**
 
 Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with"`
-Expected: HubCore `78 tests … passed`.
+Expected: HubCore `79 tests … passed`.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: JobComposer — il RUN senza campi e LoRA che la famiglia non usa
+cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: JobComposer — il RUN senza campi e LoRA che la famiglia non usa; PNG con le trigger word
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ---
 
-### Task 4: Negativo e LoRA verso Draw Things (DTBridge)
+### Task 4: Trigger word dal server; negativo, LoRA e trigger verso Draw Things (DTBridge)
 
 **Files:**
 - Modify: `Packages/Sources/DTBridge/JobMapper.swift` (`request(for:)`)
-- Test: `Packages/Tests/DTBridgeTests/JobMapperTests.swift` (test `sendsTheNegativePromptAndTheLoRAs`)
+- Modify: `Packages/Sources/DTBridge/CatalogBuilder.swift` (`parseLoRAMetadata` legge `prefix` e `weight`)
+- Test: `Packages/Tests/DTBridgeTests/JobMapperTests.swift` (test `sendsTheNegativePromptAndTheLoRAs`, `triggerWordsArePutInFrontOfThePrompt`)
+- Test: `Packages/Tests/DTBridgeTests/CatalogBuilderTests.swift` (`loRAsComeFromMetadataPlusUndescribedLoRAFiles` con trigger e peso)
 
 **Interfaces:**
 - Consumes: `GenerationJob.negativePrompt`, `GenerationParameters.loras`, `LoRASelection`, `HubKit.LoRAMode` (Task 1); dalla libreria `GenerationRequest(prompt:negativePrompt:configuration:)`, `DrawThingsConfiguration.loras: [LoRAConfig]`, `LoRAConfig(file:weight:mode:)`, `DrawThingsClient.LoRAMode`.
-- Produces: `JobMapper.request(for:)` che imposta `negativePrompt` e `configuration.loras`.
+- Produces: `JobMapper.request(for:)` che imposta `prompt` = `job.promptWithTriggers`, `negativePrompt` e `configuration.loras`; `CatalogBuilder.parseLoRAMetadata` che riempie `trigger` (senza spazi ai bordi) e `defaultWeight`.
 
 - [ ] **Step 1: Scrivere il test che fallisce.** Sostituire `Packages/Tests/DTBridgeTests/JobMapperTests.swift` con:
 
@@ -770,11 +986,18 @@ struct JobMapperTests {
     ])
     let request = JobMapper.request(
       for: GenerationJob(prompt: "a fox", negativePrompt: "blurry", model: "m.ckpt", parameters: parameters))
+    #expect(request.prompt == "a fox")
     #expect(request.negativePrompt == "blurry")
     #expect(request.configuration.loras == [
       LoRAConfig(file: "style.safetensors", weight: 0.75, mode: .base),
       LoRAConfig(file: "detail.safetensors", weight: 1, mode: .all),
     ])
+  }
+
+  @Test func triggerWordsArePutInFrontOfThePrompt() {
+    let parameters = GenerationParameters(loras: [LoRASelection(file: "tarot.safetensors", trigger: "vintage tarot style")])
+    let request = JobMapper.request(for: GenerationJob(prompt: "a fox", model: "m.ckpt", parameters: parameters))
+    #expect(request.prompt == "vintage tarot style a fox")
   }
 
   @Test func clampsOutOfRangeValuesBeforeSending() {
@@ -822,10 +1045,73 @@ struct JobMapperTests {
 }
 ```
 
-- [ ] **Step 2: Verificare che fallisca**
+- [ ] **Step 1b: Sostituire `Packages/Tests/DTBridgeTests/CatalogBuilderTests.swift` con:**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter JobMapperTests 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with"`
-Expected: `✘ Test sendsTheNegativePromptAndTheLoRAs()` fallisce (negativo vuoto, nessuna LoRA).
+```swift
+import Foundation
+import HubKit
+import Testing
+
+@testable import DTBridge
+
+struct CatalogBuilderTests {
+  let klein = "flux_2_klein_9b_f16.ckpt"
+  let vae = "flux_2_vae_f16.ckpt"
+  let describedLoRA = "sun_direction_lora_f16.ckpt"
+  let bareLoRA = "hyper_sdxl_8_step_lora_f16.ckpt"
+  let specs = ["flux_2_klein_9b_f16.ckpt": ModelSpecInfo(name: "FLUX.2 [klein] 9B", family: "flux2_9b")]
+  let loraJSON = Data(
+    """
+    [{"file": "sun_direction_lora_f16.ckpt", "name": "Sun direction", "version": "flux2_9b",
+      "prefix": "match the sun direction ", "weight": 0.8},
+     {"file": "not_installed_lora_f16.ckpt", "name": "Gone", "version": "flux2_9b"},
+     {"name": "No file"}]
+    """.utf8)
+
+  @Test func modelsAreTheFilesWithASpec() {
+    let catalog = CatalogBuilder.build(
+      files: [klein, vae, describedLoRA, bareLoRA], modelSpecs: specs, loraMetadata: loraJSON)
+    #expect(catalog.models == [CatalogModel(file: klein, name: "FLUX.2 [klein] 9B", family: "flux2_9b")])
+    #expect(catalog.fileCount == 4)
+  }
+
+  @Test func loRAsComeFromMetadataPlusUndescribedLoRAFiles() {
+    let catalog = CatalogBuilder.build(
+      files: [klein, vae, describedLoRA, bareLoRA], modelSpecs: specs, loraMetadata: loraJSON)
+    #expect(
+      catalog.loras == [
+        CatalogLoRA(
+          file: describedLoRA, name: "Sun direction", family: "flux2_9b",
+          trigger: "match the sun direction", defaultWeight: 0.8),
+        CatalogLoRA(file: bareLoRA, name: bareLoRA, family: nil),
+      ])
+  }
+
+  @Test func unreadableLoRAMetadataIsNotFatal() {
+    let catalog = CatalogBuilder.build(
+      files: [klein, bareLoRA], modelSpecs: specs, loraMetadata: Data("not json".utf8))
+    #expect(catalog.models.count == 1)
+    #expect(catalog.loras == [CatalogLoRA(file: bareLoRA, name: bareLoRA, family: nil)])
+  }
+
+  @Test func noFilesMeansModelBrowsingIsOff() {
+    let catalog = CatalogBuilder.build(files: [], modelSpecs: [:], loraMetadata: Data())
+    #expect(catalog.isModelBrowsingDisabled)
+  }
+
+  @Test func specInfoFallsBackToTheFileName() {
+    let named = CatalogBuilder.specInfo(json: Data(#"{"name": "Z Image", "version": "z_image"}"#.utf8), file: "z.ckpt")
+    let unnamed = CatalogBuilder.specInfo(json: Data(#"{"file": "z.ckpt"}"#.utf8), file: "z.ckpt")
+    #expect(named == ModelSpecInfo(name: "Z Image", family: "z_image"))
+    #expect(unnamed == ModelSpecInfo(name: "z.ckpt", family: nil))
+  }
+}
+```
+
+- [ ] **Step 2: Verificare che falliscano**
+
+Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter DTBridgeTests 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with"`
+Expected: falliscono `sendsTheNegativePromptAndTheLoRAs()`, `triggerWordsArePutInFrontOfThePrompt()` e `loRAsComeFromMetadataPlusUndescribedLoRAFiles()`.
 
 - [ ] **Step 3: Sostituire `Packages/Sources/DTBridge/JobMapper.swift` con:**
 
@@ -857,7 +1143,7 @@ enum JobMapper {
         file: $0.file, weight: Float($0.weight),
         mode: DrawThingsClient.LoRAMode(rawValue: Int8($0.mode.rawValue)) ?? .all)
     }
-    return GenerationRequest(prompt: job.prompt, negativePrompt: job.negativePrompt, configuration: configuration)
+    return GenerationRequest(prompt: job.promptWithTriggers, negativePrompt: job.negativePrompt, configuration: configuration)
   }
 
   /// The update for a library event; nil for events DT Hub does not show (audio, downloads,
@@ -898,15 +1184,76 @@ enum JobMapper {
 
 Nota: l'argomento `loras:` dell'init di `DrawThingsConfiguration` va prima di `shift:`, e `LoRAMode` esiste sia in HubKit sia nella libreria. Per questo le LoRA si assegnano dopo l'init, con il nome qualificato.
 
+- [ ] **Step 3b: Sostituire `Packages/Sources/DTBridge/CatalogBuilder.swift` con:**
+
+```swift
+import Foundation
+import HubKit
+
+/// Name and family of a model file, read from its Draw Things model specification.
+struct ModelSpecInfo: Equatable, Sendable {
+  let name: String
+  let family: String?
+}
+
+/// Turns what the server's echo reports into a `ModelCatalog` (spec §5).
+///
+/// A file is a model when a model specification describes it: the specs bundled with
+/// DrawThings-Swift cover the official models, the server's own cover the imported ones.
+/// Every other file (text encoders, VAEs, ControlNets, upscalers…) is not a model.
+/// LoRAs come from the server's LoRA metadata; a file named `…_lora_…` without metadata
+/// is still listed, with no family.
+enum CatalogBuilder {
+  static func build(files: [String], modelSpecs: [String: ModelSpecInfo], loraMetadata: Data) -> ModelCatalog {
+    let installed = Set(files)
+    let loraEntries = parseLoRAMetadata(loraMetadata).filter { installed.contains($0.file) }
+    let loraFiles = Set(loraEntries.map(\.file))
+
+    let models = files
+      .filter { !loraFiles.contains($0) }
+      .compactMap { file in
+        modelSpecs[file].map { CatalogModel(file: file, name: $0.name, family: $0.family) }
+      }
+    let unlistedLoRAs = files
+      .filter { $0.contains("_lora_") && !loraFiles.contains($0) && modelSpecs[$0] == nil }
+      .map { CatalogLoRA(file: $0, name: $0, family: nil) }
+
+    return ModelCatalog(models: models, loras: loraEntries + unlistedLoRAs, fileCount: files.count)
+  }
+
+  /// The server's LoRA metadata: a JSON array of objects with `file`, `name`, `version`,
+  /// `prefix` (the trigger word) and, for some, `weight`.
+  /// Unreadable data or entries without `file` are skipped, never fatal.
+  static func parseLoRAMetadata(_ data: Data) -> [CatalogLoRA] {
+    guard !data.isEmpty,
+      let array = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
+    else { return [] }
+    return array.compactMap { entry in
+      guard let file = entry["file"] as? String else { return nil }
+      return CatalogLoRA(
+        file: file, name: entry["name"] as? String ?? file, family: entry["version"] as? String,
+        trigger: (entry["prefix"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines),
+        defaultWeight: (entry["weight"] as? NSNumber)?.doubleValue)
+    }
+  }
+
+  /// Name and family from a spec's JSON object; the file name stands in for a missing name.
+  static func specInfo(json: Data, file: String) -> ModelSpecInfo {
+    let object = (try? JSONSerialization.jsonObject(with: json)) as? [String: Any] ?? [:]
+    return ModelSpecInfo(name: object["name"] as? String ?? file, family: object["version"] as? String)
+  }
+}
+```
+
 - [ ] **Step 4: Verificare che passino**
 
 Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with"`
-Expected: DTBridge `17 tests … passed`.
+Expected: DTBridge `18 tests … passed`.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: DTBridge invia prompt negativo e LoRA
+cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: DTBridge legge le trigger word e invia negativo, LoRA e trigger
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -1044,7 +1391,7 @@ public struct SessionStore: Sendable {
 - [ ] **Step 4: Verificare che passino**
 
 Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with"`
-Expected: HubCore `82 tests … passed`.
+Expected: HubCore `83 tests … passed`.
 
 - [ ] **Step 5: Commit**
 
@@ -1059,11 +1406,11 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ### Task 6: Testi della M4a (catalogo stringhe)
 
 **Files:**
-- Modify: `App/Localizable.xcstrings` (16 chiavi nuove)
+- Modify: `App/Localizable.xcstrings` (18 chiavi nuove)
 - Test: `Packages/Tests/CatalogTests/LocalizationCatalogTests.swift` (esistente: ogni chiave tradotta in en e it)
 
 **Interfaces:**
-- Produces: le chiavi `card.prompt.negative`, `card.prompt.negative.placeholder`, `card.prompt.negative.noEffect`, `card.lora`, `card.lora.add`, `card.lora.none`, `card.lora.noneAvailable`, `card.lora.unknownFamily`, `card.lora.weight`, `card.lora.mode`, `card.lora.mode.all`, `card.lora.mode.base`, `card.lora.mode.refiner`, `card.lora.remove`, `card.lora.otherFamily` (con `%@` = famiglia), `card.lora.notOnServer`.
+- Produces: le chiavi `card.prompt.negative`, `card.prompt.negative.placeholder`, `card.prompt.negative.noEffect`, `card.lora`, `card.lora.add`, `card.lora.none`, `card.lora.noneAvailable`, `card.lora.unknownFamily`, `card.lora.weight`, `card.lora.mode`, `card.lora.mode.all`, `card.lora.mode.base`, `card.lora.mode.refiner`, `card.lora.remove`, `card.lora.otherFamily` (con `%@` = famiglia), `card.lora.notOnServer`, `card.lora.trigger`, `card.lora.trigger.placeholder`.
 
 - [ ] **Step 1: Aggiungere le chiavi senza riformattare il catalogo**
 
@@ -1089,6 +1436,8 @@ new = {
     "card.lora.remove": ("Remove LoRA", "Rimuovi LoRA"),
     "card.lora.otherFamily": ("Made for %@: not used", "Fatta per %@: non usata"),
     "card.lora.notOnServer": ("Not on the server: not used", "Non presente sul server: non usata"),
+    "card.lora.trigger": ("Trigger", "Trigger"),
+    "card.lora.trigger.placeholder": ("No trigger word", "Nessuna trigger word"),
 }
 for key, (en, it) in new.items():
     d['strings'][key] = {"extractionState": "manual", "localizations": {
@@ -1100,7 +1449,7 @@ EOF
 git diff --stat App/Localizable.xcstrings
 ```
 
-Expected: `1 file changed, 272 insertions(+)` e nessuna riga tolta. Se compaiono righe tolte, il file è stato riformattato: annullare con `git checkout App/Localizable.xcstrings` e controllare indentazione e newline finale.
+Expected: `1 file changed, 306 insertions(+)` e nessuna riga tolta. Se compaiono righe tolte, il file è stato riformattato: annullare con `git checkout App/Localizable.xcstrings` e controllare indentazione e newline finale.
 
 - [ ] **Step 2: Verificare il catalogo**
 
@@ -1110,7 +1459,7 @@ Expected: `6 tests … passed`.
 - [ ] **Step 3: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add App/Localizable.xcstrings && git commit -m "feat: testi del prompt negativo e della card LoRA (it, en)
+cd "/Users/existenz/Software developement/DT Hub" && git add App/Localizable.xcstrings && git commit -m "feat: testi del prompt negativo e della card LoRA con trigger word (it, en)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -1440,9 +1789,11 @@ import HubCore
 import HubKit
 import SwiftUI
 
-/// The LoRAs of the next RUN, each with weight and mode (spec §6). The menu offers the LoRAs
+/// The LoRAs of the next RUN, each with weight, mode and trigger word (spec §6). The menu offers the LoRAs
 /// of the chosen model's family and those of unknown family; a LoRA that no longer fits
 /// (other family, gone from the server) stays in the list with the reason and is not sent.
+/// Trigger words stay in their own field, prefilled from Draw Things; at RUN those of the
+/// LoRAs sent go in front of the prompt (`GenerationJob.promptWithTriggers`).
 struct LoRACard: View {
   @Bindable var controller: GenerationController
   let connection: DrawThingsConnection
@@ -1503,7 +1854,7 @@ struct LoRACard: View {
 
   private func addButton(_ lora: CatalogLoRA, disabled: Bool) -> some View {
     Button {
-      controller.parameters.addLoRA(lora.file)
+      controller.parameters.addLoRA(lora.file, weight: lora.defaultWeight ?? 1, trigger: lora.trigger)
     } label: {
       Text(verbatim: lora.name)
     }
@@ -1512,7 +1863,7 @@ struct LoRACard: View {
 }
 
 /// One chosen LoRA: name and remove on the first line, mode and weight on the second, the
-/// reason in orange when it is not sent.
+/// trigger word on the third, the reason in orange when it is not sent.
 private struct LoRARow: View {
   @Binding var selection: LoRASelection
   let name: String
@@ -1550,6 +1901,14 @@ private struct LoRARow: View {
         DecimalField(
           label: String(localized: "card.lora.weight"), value: $selection.weight,
           range: LoRASelection.weightRange, step: 0.05, fractionDigits: 2)
+      }
+      HStack(spacing: DS.controlGap) {
+        Text("card.lora.trigger")
+          .foregroundStyle(.secondary)
+          .lineLimit(1)
+        TextField(String(localized: "card.lora.trigger"), text: $selection.trigger, prompt: Text("card.lora.trigger.placeholder"))
+          .labelsHidden()
+          .textFieldStyle(.roundedBorder)
       }
       if let reason {
         Text(reason)
@@ -1663,12 +2022,12 @@ struct DTHubApp: App {
 - [ ] **Step 8: Build e test**
 
 Run: `cd "/Users/existenz/Software developement/DT Hub" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"; cd Packages && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|Missing|Not in|Pass String"`
-Expected: `** BUILD SUCCEEDED **`; test HubKit 26, HubCore 82, DTBridge 17, Catalog 6: **131** passati.
+Expected: `** BUILD SUCCEEDED **`; test HubKit 30, HubCore 83, DTBridge 18, Catalog 6: **137** passati.
 
 - [ ] **Step 9: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add App && git commit -m "feat: prompt negativo, card LoRA, campi per famiglia e ripristino della sessione
+cd "/Users/existenz/Software developement/DT Hub" && git add App && git commit -m "feat: prompt negativo, card LoRA con trigger word, campi per famiglia e ripristino della sessione
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -1694,16 +2053,17 @@ defaults read com.exiztenz.DTHub drawThings.selectedModel; defaults write com.ex
 2. Scrivere un negativo con Text guidance 1: compare la nota "agisce solo con Text guidance maggiore di 1".
 3. "Aggiungi LoRA":
    - il menu mostra prima le LoRA `flux2_9b`, poi "Famiglia sconosciuta";
-   - dopo averne aggiunta una, compare la riga con nome, modalità, peso 1,00 e il pulsante per toglierla;
+   - aggiungere una LoRA con trigger word (es. "F2 realistic"): compare la riga con nome, modalità, peso 1,00, il campo Trigger precompilato ("realistic") e il pulsante per toglierla;
+   - il testo del prompt non cambia;
    - peso a 0,60; RUN a 512×512;
-   - nel PNG, `exiftool -UserComment` mostra `loras` con peso 0.6 e `negativePrompt`.
+   - nel PNG, `exiftool -Description` mostra "realistic <prompt>" e `exiftool -UserComment` mostra `loras` con peso 0.6, `trigger` e `negativePrompt`, con il `prompt` senza trigger.
 4. Scegliere Juggernaut Reborn (`v1`):
    - Shift e CFG-Zero* spariscono, il negativo resta;
    - la LoRA scelta mostra in arancio "Fatta per flux2_9b: non usata".
 5. Tornare a Flux 2 Klein, chiudere l'app con ⌘Q e riaprirla: prompt, negativo, LoRA, dimensioni e "Blocca proporzioni" sono quelli di prima.
-6. "Riprendi parametri" sull'immagine: tornano anche il negativo e la LoRA con peso 0,60.
+6. "Riprendi parametri" sull'immagine: tornano anche il negativo e la LoRA con peso 0,60 e la sua trigger word, che non compare nel testo del prompt.
 
-Punti che servono all'utente (interazione non automatizzabile in background): scrittura diretta del peso; menu Modalità.
+Punti che servono all'utente (interazione non automatizzabile in background): scrittura diretta del peso e della trigger word; menu Modalità.
 
 - [ ] **Step 3: Pulizia** (rimettere il modello annotato allo Step 1 al posto di `<modello-annotato>`)
 
@@ -1716,7 +2076,7 @@ osascript -e 'quit app "DT Hub"'; defaults delete com.exiztenz.DTHub output.fold
 ## Fine della M4a
 
 Esito atteso sul branch `m4a-card-base`:
-- **131 test verdi**, di cui 3 live eseguiti solo con `DTHUB_LIVE_DT`;
+- **137 test verdi**, di cui 3 live eseguiti solo con `DTHUB_LIVE_DT`;
 - build Xcode pulita;
 - livello 1 della spec §6 completo tranne la modalità del seed e Strength.
 
