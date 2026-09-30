@@ -19,12 +19,15 @@ public struct GenerationParameters: Equatable, Codable, Sendable {
   /// Images per batch, and batches per RUN.
   public var batchSize: Int
   public var batchCount: Int
+  /// The LoRAs of the LoRA card, in order; one entry per file.
+  public var loras: [LoRASelection]
 
   public init(
     width: Int = 1024, height: Int = 1024, steps: Int = 8, guidanceScale: Double = 1,
     cfgZeroStar: Bool = false, cfgZeroInitSteps: Int = 0,
     sampler: Sampler = .uniPCTrailing, shift: Double = 3, resolutionDependentShift: Bool = true,
-    seed: UInt32 = 0, randomSeed: Bool = true, batchSize: Int = 1, batchCount: Int = 1
+    seed: UInt32 = 0, randomSeed: Bool = true, batchSize: Int = 1, batchCount: Int = 1,
+    loras: [LoRASelection] = []
   ) {
     self.width = width
     self.height = height
@@ -39,9 +42,45 @@ public struct GenerationParameters: Equatable, Codable, Sendable {
     self.randomSeed = randomSeed
     self.batchSize = batchSize
     self.batchCount = batchCount
+    self.loras = loras
+  }
+
+  /// Reads saved parameters leniently: a missing or unreadable field takes its default, so
+  /// files written by older or newer versions (session, PNG metadata) still load.
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    func value<T: Decodable>(_ key: CodingKeys, _ fallback: T) -> T {
+      (try? container.decodeIfPresent(T.self, forKey: key)) ?? fallback
+    }
+    let fallback = Self.default
+    width = value(.width, fallback.width)
+    height = value(.height, fallback.height)
+    steps = value(.steps, fallback.steps)
+    guidanceScale = value(.guidanceScale, fallback.guidanceScale)
+    cfgZeroStar = value(.cfgZeroStar, fallback.cfgZeroStar)
+    cfgZeroInitSteps = value(.cfgZeroInitSteps, fallback.cfgZeroInitSteps)
+    sampler = value(.sampler, fallback.sampler)
+    shift = value(.shift, fallback.shift)
+    resolutionDependentShift = value(.resolutionDependentShift, fallback.resolutionDependentShift)
+    seed = value(.seed, fallback.seed)
+    randomSeed = value(.randomSeed, fallback.randomSeed)
+    batchSize = value(.batchSize, fallback.batchSize)
+    batchCount = value(.batchCount, fallback.batchCount)
+    loras = value(.loras, fallback.loras)
   }
 
   public static let `default` = GenerationParameters()
+
+  /// Adds a LoRA (full weight unless its metadata suggests one); a file already in the
+  /// list is left as it is.
+  public mutating func addLoRA(_ file: String, weight: Double = 1, trigger: String = "") {
+    guard !loras.contains(where: { $0.file == file }) else { return }
+    loras.append(LoRASelection(file: file, weight: weight, trigger: trigger))
+  }
+
+  public mutating func removeLoRA(_ file: String) {
+    loras.removeAll { $0.file == file }
+  }
 
   /// Allowed ranges, used by the cards and by `clamped()`.
   public static let sizeRange = 64...2048
@@ -92,6 +131,10 @@ public struct GenerationParameters: Equatable, Codable, Sendable {
     copy.shift = min(max(shift, Self.shiftRange.lowerBound), Self.shiftRange.upperBound)
     copy.batchSize = min(max(batchSize, Self.batchSizeRange.lowerBound), Self.batchSizeRange.upperBound)
     copy.batchCount = min(max(batchCount, Self.batchCountRange.lowerBound), Self.batchCountRange.upperBound)
+    for index in copy.loras.indices {
+      let range = LoRASelection.weightRange
+      copy.loras[index].weight = min(max(copy.loras[index].weight, range.lowerBound), range.upperBound)
+    }
     return copy
   }
 

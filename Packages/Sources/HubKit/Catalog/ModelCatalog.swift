@@ -20,11 +20,17 @@ public struct CatalogLoRA: Identifiable, Equatable, Sendable {
   public let name: String
   /// Model family the LoRA was made for; nil when the server does not say.
   public let family: String?
+  /// The trigger word Draw Things keeps for it (its `prefix`); empty when there is none.
+  public let trigger: String
+  /// The weight suggested by its metadata, when there is one.
+  public let defaultWeight: Double?
 
-  public init(file: String, name: String, family: String?) {
+  public init(file: String, name: String, family: String?, trigger: String = "", defaultWeight: Double? = nil) {
     self.file = file
     self.name = name
     self.family = family
+    self.trigger = trigger
+    self.defaultWeight = defaultWeight
   }
 }
 
