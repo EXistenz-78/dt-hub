@@ -9,11 +9,22 @@ import Observation
 @MainActor
 @Observable
 final class GenerationController {
-  var prompt = ""
-  var parameters = GenerationParameters.default
+  var prompt = "" {
+    didSet { scheduleSessionSave() }
+  }
+  /// Sent only when the model's family uses it (`JobComposer`).
+  var negativePrompt = "" {
+    didSet { scheduleSessionSave() }
+  }
+  var parameters = GenerationParameters.default {
+    didSet { scheduleSessionSave() }
+  }
   /// When on, width and height move together to keep `lockedRatio`.
   var lockRatio = false {
-    didSet { lockedRatio = lockRatio ? currentRatio : nil }
+    didSet {
+      lockedRatio = lockRatio ? currentRatio : nil
+      scheduleSessionSave()
+    }
   }
   /// Width ÷ height kept while `lockRatio` is on.
   private(set) var lockedRatio: Double?
@@ -22,9 +33,52 @@ final class GenerationController {
   private(set) var outputFolder: URL
 
   @ObservationIgnored private let outputSettings = OutputSettingsStore()
+  @ObservationIgnored private let sessionStore: SessionStore
+  @ObservationIgnored private var pendingSave: Task<Void, Never>?
 
-  init() {
+  /// Restores the last prompt and parameters (spec §11).
+  init(sessionStore: SessionStore = SessionStore(fileURL: SessionStore.defaultFileURL)) {
+    self.sessionStore = sessionStore
     outputFolder = outputSettings.folder()
+    if let snapshot = sessionStore.load() {
+      prompt = snapshot.prompt
+      negativePrompt = snapshot.negativePrompt
+      parameters = snapshot.parameters.clamped()
+      lockRatio = snapshot.lockRatio
+      // Observers do not run inside init: the locked ratio is set here.
+      lockedRatio = lockRatio ? currentRatio : nil
+    }
+    pendingSave?.cancel()
+    pendingSave = nil
+  }
+
+  /// The family of the chosen model, nil when unknown or while the catalog is not loaded.
+  func family(in connection: DrawThingsConnection) -> String? {
+    connection.selection.selectedModel(in: connection.monitor.catalog)?.family
+  }
+
+  /// Which base fields the chosen model's family uses.
+  func traits(in connection: DrawThingsConnection) -> FamilyTraits {
+    FamilyTraits.of(family(in: connection))
+  }
+
+  /// Writes the session half a second after the last change, so typing does not write
+  /// the file at every keystroke.
+  private func scheduleSessionSave() {
+    pendingSave?.cancel()
+    pendingSave = Task { [weak self] in
+      try? await Task.sleep(for: .milliseconds(500))
+      guard !Task.isCancelled else { return }
+      self?.saveSessionNow()
+    }
+  }
+
+  /// Writes the session at once (also when the app quits); a failure only loses the restore.
+  func saveSessionNow() {
+    pendingSave?.cancel()
+    pendingSave = nil
+    try? sessionStore.save(
+      SessionSnapshot(prompt: prompt, negativePrompt: negativePrompt, parameters: parameters, lockRatio: lockRatio))
   }
 
   /// True when the server, the model and the session allow a RUN.
@@ -42,16 +96,20 @@ final class GenerationController {
     guard canRun(with: connection), let backend = connection.monitor.backend,
       let model = connection.selection.selectedFile
     else { return false }
-    let batches = parameters.batchesForRun().map { GenerationJob(prompt: prompt, model: model, parameters: $0) }
+    let batches = JobComposer.batches(
+      prompt: prompt, negativePrompt: negativePrompt, model: model, family: family(in: connection),
+      parameters: parameters, catalog: connection.monitor.catalog)
     if parameters.randomSeed, let first = batches.first { parameters.seed = first.parameters.seed }
     session.start(batches, backend: backend, monitor: connection.monitor)
     return true
   }
 
-  /// "Resume parameters": puts back the prompt, model and parameters of the batch that made
-  /// the image (its seed, batch count 1). A ratio lock follows the resumed size.
+  /// "Resume parameters": puts back the prompt, negative prompt, model and parameters of the
+  /// batch that made the image (its seed, batch count 1, the LoRAs sent). A ratio lock
+  /// follows the resumed size.
   func resume(_ result: GeneratedImage, with connection: DrawThingsConnection) {
     prompt = result.job.prompt
+    negativePrompt = result.job.negativePrompt
     parameters = result.job.parameters
     if lockRatio { lockedRatio = currentRatio }
     connection.selection.select(result.job.model)

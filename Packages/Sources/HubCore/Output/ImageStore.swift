@@ -41,7 +41,7 @@ public struct PNGImageStore: ImageStore {
     let json = (try? JSONEncoder().encode(job)).flatMap { String(data: $0, encoding: .utf8) } ?? ""
     let properties: [CFString: Any] = [
       kCGImagePropertyPNGDictionary: [
-        kCGImagePropertyPNGDescription: job.prompt,
+        kCGImagePropertyPNGDescription: job.promptWithTriggers,
         kCGImagePropertyPNGSoftware: "DT Hub",
       ],
       kCGImagePropertyExifDictionary: [kCGImagePropertyExifUserComment: json],

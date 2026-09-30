@@ -5,7 +5,7 @@ import HubKit
 enum JobMapper {
   static func request(for job: GenerationJob) -> GenerationRequest {
     let parameters = job.parameters.clamped()
-    let configuration = DrawThingsConfiguration(
+    var configuration = DrawThingsConfiguration(
       width: Int32(parameters.width),
       height: Int32(parameters.height),
       steps: Int32(parameters.steps),
@@ -19,7 +19,13 @@ enum JobMapper {
       cfgZeroStar: parameters.cfgZeroStar,
       cfgZeroInitSteps: Int32(parameters.cfgZeroInitSteps),
       resolutionDependentShift: parameters.resolutionDependentShift)
-    return GenerationRequest(prompt: job.prompt, configuration: configuration)
+    // HubKit and the library both have a `LoRAMode`: the library's is qualified.
+    configuration.loras = parameters.loras.map {
+      LoRAConfig(
+        file: $0.file, weight: Float($0.weight),
+        mode: DrawThingsClient.LoRAMode(rawValue: Int8($0.mode.rawValue)) ?? .all)
+    }
+    return GenerationRequest(prompt: job.promptWithTriggers, negativePrompt: job.negativePrompt, configuration: configuration)
   }
 
   /// The update for a library event; nil for events DT Hub does not show (audio, downloads,

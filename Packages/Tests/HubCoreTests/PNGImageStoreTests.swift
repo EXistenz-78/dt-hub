@@ -1,3 +1,4 @@
+import ImageIO
 import Foundation
 import HubKit
 import Testing
@@ -20,6 +21,18 @@ struct PNGImageStoreTests {
     #expect(url.pathExtension == "png")
     #expect(url.lastPathComponent.hasSuffix("-1234.png"))
     #expect(PNGImageStore.job(in: url) == job)
+  }
+
+  @Test func theDescriptionIsThePromptSentWithItsTriggerWords() throws {
+    let triggered = GenerationJob(
+      prompt: "a fox", model: "m.ckpt",
+      parameters: GenerationParameters(seed: 5, randomSeed: false, loras: [LoRASelection(file: "t", trigger: "vintage tarot style")]))
+    let url = try PNGImageStore(folder: tempFolder()).save(testImage(), job: triggered, index: 0, date: date)
+    let source = try #require(CGImageSourceCreateWithURL(url as CFURL, nil))
+    let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
+    let png = properties?[kCGImagePropertyPNGDictionary] as? [CFString: Any]
+    #expect(png?[kCGImagePropertyPNGDescription] as? String == "vintage tarot style a fox")
+    #expect(PNGImageStore.job(in: url) == triggered)
   }
 
   @Test func namesEachImageOfABatchAndNeverOverwrites() throws {

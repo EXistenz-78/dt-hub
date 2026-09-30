@@ -32,7 +32,8 @@ enum CatalogBuilder {
     return ModelCatalog(models: models, loras: loraEntries + unlistedLoRAs, fileCount: files.count)
   }
 
-  /// The server's LoRA metadata: a JSON array of objects with `file`, `name`, `version`.
+  /// The server's LoRA metadata: a JSON array of objects with `file`, `name`, `version`,
+  /// `prefix` (the trigger word) and, for some, `weight`.
   /// Unreadable data or entries without `file` are skipped, never fatal.
   static func parseLoRAMetadata(_ data: Data) -> [CatalogLoRA] {
     guard !data.isEmpty,
@@ -41,7 +42,9 @@ enum CatalogBuilder {
     return array.compactMap { entry in
       guard let file = entry["file"] as? String else { return nil }
       return CatalogLoRA(
-        file: file, name: entry["name"] as? String ?? file, family: entry["version"] as? String)
+        file: file, name: entry["name"] as? String ?? file, family: entry["version"] as? String,
+        trigger: (entry["prefix"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines),
+        defaultWeight: (entry["weight"] as? NSNumber)?.doubleValue)
     }
   }
 

@@ -1,3 +1,4 @@
+import AppKit
 import HubCore
 import HubKit
 import SwiftUI
@@ -15,6 +16,9 @@ struct DTHubApp: App {
   var body: some Scene {
     WindowGroup(String(localized: "app.title")) {
       MainWindowView(workspace: workspace, connection: connection, generation: generation)
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
+          generation.saveSessionNow()
+        }
     }
     .windowResizability(.contentMinSize)
     .commands {

@@ -5,18 +5,19 @@ import SwiftUI
 /// cards two per row, cards in a row as tall as the tallest (spec §7).
 struct GenerationTabView: View {
   let controller: GenerationController
+  let connection: DrawThingsConnection
 
   var body: some View {
     ScrollView {
       VStack(spacing: DS.groupGap) {
-        PromptCard(controller: controller)
+        PromptCard(controller: controller, connection: connection)
         DSCardRow {
           DimensionsCard(controller: controller)
           SeedBatchCard(controller: controller)
         }
         DSCardRow {
-          SamplingCard(controller: controller)
-          Color.clear
+          SamplingCard(controller: controller, connection: connection)
+          LoRACard(controller: controller, connection: connection)
         }
       }
       .padding(.bottom, DS.groupGap)
