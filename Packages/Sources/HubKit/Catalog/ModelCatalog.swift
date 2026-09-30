@@ -5,11 +5,14 @@ public struct CatalogModel: Identifiable, Equatable, Sendable {
   public let name: String
   /// Draw Things model version, e.g. "flux2_9b": the model family key of spec §5.
   public let family: String?
+  /// What the model supports, from its specification.
+  public let capabilities: ModelCapabilities
 
-  public init(file: String, name: String, family: String?) {
+  public init(file: String, name: String, family: String?, capabilities: ModelCapabilities = .unknown) {
     self.file = file
     self.name = name
     self.family = family
+    self.capabilities = capabilities
   }
 }
 
@@ -48,11 +51,19 @@ public struct ModelCatalog: Equatable, Sendable {
   public let loras: [CatalogLoRA]
   /// How many files the server listed. Zero when its "Model browsing" option is off (spec §10).
   public let fileCount: Int
+  /// Upscaler and face-restoration files installed on the server, for the Upscaler card.
+  public let upscalers: [String]
+  public let faceRestorers: [String]
 
-  public init(models: [CatalogModel], loras: [CatalogLoRA], fileCount: Int) {
+  public init(
+    models: [CatalogModel], loras: [CatalogLoRA], fileCount: Int,
+    upscalers: [String] = [], faceRestorers: [String] = []
+  ) {
     self.models = models
     self.loras = loras
     self.fileCount = fileCount
+    self.upscalers = upscalers
+    self.faceRestorers = faceRestorers
   }
 
   public static let empty = ModelCatalog(models: [], loras: [], fileCount: 0)

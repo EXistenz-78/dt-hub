@@ -21,13 +21,15 @@ public struct GenerationParameters: Equatable, Codable, Sendable {
   public var batchCount: Int
   /// The LoRAs of the LoRA card, in order; one entry per file.
   public var loras: [LoRASelection]
+  /// The Advanced cards (spec §6, level 2).
+  public var advanced: AdvancedParameters
 
   public init(
     width: Int = 1024, height: Int = 1024, steps: Int = 8, guidanceScale: Double = 1,
     cfgZeroStar: Bool = false, cfgZeroInitSteps: Int = 0,
     sampler: Sampler = .uniPCTrailing, shift: Double = 3, resolutionDependentShift: Bool = true,
     seed: UInt32 = 0, randomSeed: Bool = true, batchSize: Int = 1, batchCount: Int = 1,
-    loras: [LoRASelection] = []
+    loras: [LoRASelection] = [], advanced: AdvancedParameters = .default
   ) {
     self.width = width
     self.height = height
@@ -43,6 +45,7 @@ public struct GenerationParameters: Equatable, Codable, Sendable {
     self.batchSize = batchSize
     self.batchCount = batchCount
     self.loras = loras
+    self.advanced = advanced
   }
 
   /// Reads saved parameters leniently: a missing or unreadable field takes its default, so
@@ -67,6 +70,7 @@ public struct GenerationParameters: Equatable, Codable, Sendable {
     batchSize = value(.batchSize, fallback.batchSize)
     batchCount = value(.batchCount, fallback.batchCount)
     loras = value(.loras, fallback.loras)
+    advanced = value(.advanced, fallback.advanced)
   }
 
   public static let `default` = GenerationParameters()
@@ -143,6 +147,7 @@ public struct GenerationParameters: Equatable, Codable, Sendable {
       let range = LoRASelection.weightRange
       copy.loras[index].weight = min(max(copy.loras[index].weight, range.lowerBound), range.upperBound)
     }
+    copy.advanced = advanced.clamped()
     return copy
   }
 
