@@ -52,6 +52,57 @@
         }
       }
     },
+    "header.model.browsingDisabled": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turn on “Model browsing” in the Draw Things API server settings"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Attiva “Model browsing” nelle impostazioni dell’API Server di Draw Things"
+          }
+        }
+      }
+    },
+    "header.model.empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No models installed on the server"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessun modello installato sul server"
+          }
+        }
+      }
+    },
+    "header.model.missing": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "not on the server"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "non presente sul server"
+          }
+        }
+      }
+    },
     "header.model.none": {
       "extractionState": "manual",
       "localizations": {
@@ -171,6 +222,210 @@
         }
       }
     },
+    "prefs.dt.connect": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connect"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Collega"
+          }
+        }
+      }
+    },
+    "prefs.dt.error.emptyHost": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter the server address"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inserisci l’indirizzo del server"
+          }
+        }
+      }
+    },
+    "prefs.dt.error.invalidHost": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter a host name or IP address, without http:// or paths"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inserisci un nome host o un indirizzo IP, senza http:// né percorsi"
+          }
+        }
+      }
+    },
+    "prefs.dt.error.invalidPort": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The port must be between 1 and 65535"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La porta deve essere tra 1 e 65535"
+          }
+        }
+      }
+    },
+    "prefs.dt.host": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Address"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indirizzo"
+          }
+        }
+      }
+    },
+    "prefs.dt.models": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld models available"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld modelli disponibili"
+          }
+        }
+      }
+    },
+    "prefs.dt.note": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DT Hub connects to a Draw Things server that is already running: the Draw Things app’s API server in gRPC mode, or gRPCServerCLI. Its API server uses TLS by default."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DT Hub si collega a un server Draw Things già avviato: l’API Server dell’app Draw Things in modalità gRPC, oppure gRPCServerCLI. L’API Server usa TLS per impostazione predefinita."
+          }
+        }
+      }
+    },
+    "prefs.dt.port": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Port"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Porta"
+          }
+        }
+      }
+    },
+    "prefs.dt.secret": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shared secret"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codice di accesso (shared secret)"
+          }
+        }
+      }
+    },
+    "prefs.dt.secret.placeholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Optional"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Facoltativo"
+          }
+        }
+      }
+    },
+    "prefs.dt.secret.saveError": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The shared secret could not be saved in the Keychain"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile salvare il codice di accesso nel Portachiavi"
+          }
+        }
+      }
+    },
+    "prefs.dt.tls": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use TLS"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa TLS"
+          }
+        }
+      }
+    },
     "prefs.empty.message": {
       "extractionState": "manual",
       "localizations": {
@@ -256,6 +511,23 @@
         }
       }
     },
+    "run.blocked.modelMissing": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The selected model is not on the server"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il modello scelto non è presente sul server"
+          }
+        }
+      }
+    },
     "run.blocked.noModel": {
       "extractionState": "manual",
       "localizations": {
@@ -337,6 +609,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Draw Things non raggiungibile"
+          }
+        }
+      }
+    },
+    "status.unauthorized": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Draw Things refused the shared secret"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Draw Things ha rifiutato il codice di accesso"
           }
         }
       }

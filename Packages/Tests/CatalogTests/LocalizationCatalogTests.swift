@@ -43,13 +43,26 @@ struct LocalizationCatalogTests {
     return (enumerator?.allObjects as? [URL] ?? []).filter { $0.pathExtension == "swift" }
   }
 
+  /// String literals given as the title of a design-system component (`DSCollapsibleCard`,
+  /// `DSMenuLabel`, `DSGroupHeader`, `DSPanelHeader`), in source order.
+  static func designSystemLiteralTitles(in source: String) -> [String] {
+    let pattern =
+      #"\bDS(?:CollapsibleCard|MenuLabel)\(\s*"((?:[^"\\]|\\.)*)"|\bDS(?:GroupHeader|PanelHeader)\([^)]*?\btitle:\s*"((?:[^"\\]|\\.)*)""#
+    let regex = try! NSRegularExpression(pattern: pattern)
+    let range = NSRange(source.startIndex..., in: source)
+    return regex.matches(in: source, range: range).compactMap { match in
+      [1, 2].lazy.compactMap { Range(match.range(at: $0), in: source) }.first.map { String(source[$0]) }
+    }
+  }
+
   /// String literals the app localizes: the first string argument of the SwiftUI
-  /// initializers that take a LocalizedStringKey, `String(localized:)`, and the
-  /// `.help` / `.accessibilityLabel` / `.navigationTitle` modifiers.
+  /// initializers that take a LocalizedStringKey, `String(localized:)`, and the modifiers
+  /// that show text (`.help`, `.accessibilityLabel/Hint/Value`, `.navigationTitle/Subtitle`,
+  /// `.alert`, `.confirmationDialog`).
   /// `Text(verbatim:)` and non-literal arguments are not localized, so not matched.
   static func localizedLiterals(in source: String) -> Set<String> {
     let pattern =
-      #"(?:\b(?:Text|Label|Tab|Button|Toggle|Menu|Section|Picker|WindowGroup|ContentUnavailableView)\(\s*|String\(localized:\s*|\.(?:help|accessibilityLabel|navigationTitle)\(\s*)"((?:[^"\\]|\\.)*)""#
+      #"(?:\b(?:Text|TextField|SecureField|Label|Tab|Button|Toggle|Menu|Section|Picker|Stepper|ProgressView|Link|LabeledContent|GroupBox|DisclosureGroup|WindowGroup|ContentUnavailableView|LocalizedStringKey|LocalizedStringResource)\(\s*|String\(localized:\s*|\.(?:help|accessibilityLabel|accessibilityHint|accessibilityValue|navigationTitle|navigationSubtitle|alert|confirmationDialog)\(\s*)"((?:[^"\\]|\\.)*)""#
     let regex = try! NSRegularExpression(pattern: pattern)
     let range = NSRange(source.startIndex..., in: source)
     return Set(
@@ -84,8 +97,39 @@ struct LocalizationCatalogTests {
       Text(verbatim: "raw")
       Text(tab.title)
       .help(String(localized: "c.key"))
+      TextField("d.key", text: $host)
+      SecureField("e.key", text: $secret)
+      Stepper("f.key", value: $steps)
+      ProgressView("g.key")
+      LabeledContent("h.key", value: size)
+      .alert("i.key", isPresented: $shown) { }
+      .accessibilityHint("j.key")
+      Text(LocalizedStringKey("k.key"))
       """
-    #expect(Self.localizedLiterals(in: source) == ["a.key", "b.key", "c.key"])
+    #expect(
+      Self.localizedLiterals(in: source)
+        == ["a.key", "b.key", "c.key", "d.key", "e.key", "f.key", "g.key", "h.key", "i.key", "j.key", "k.key"])
+  }
+
+  @Test func findsDesignSystemTitlesGivenAsStringLiterals() {
+    let source = """
+      DSCollapsibleCard("Prompt", isExpanded: $open) { }
+      DSMenuLabel(String(localized: "header.plugins"), systemImage: "cube")
+      DSGroupHeader(title: "Light")
+      DSPanelHeader(icon: "sun.max", title: String(localized: "panel.light"))
+      """
+    #expect(Self.designSystemLiteralTitles(in: source) == ["Prompt", "Light"])
+  }
+
+  /// Design-system components take a plain `String` title, which SwiftUI never localizes:
+  /// a literal there would ship untranslated (spec §12). Callers pass `String(localized:)`.
+  @Test func appNeverPassesStringLiteralsToDesignSystemTitles() throws {
+    var offenders: [String] = []
+    for file in try Self.appSwiftFiles() {
+      let source = try String(contentsOf: file, encoding: .utf8)
+      offenders += Self.designSystemLiteralTitles(in: source).map { "\(file.lastPathComponent): \($0)" }
+    }
+    #expect(offenders.isEmpty, "Pass String(localized:) instead: \(offenders.sorted())")
   }
 
   @Test func everyLocalizedLiteralOfTheAppIsInTheCatalog() throws {
