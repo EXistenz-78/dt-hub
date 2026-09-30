@@ -19,7 +19,11 @@ public final class ConnectionMonitor {
   /// How often the server is checked, connected or not.
   public static let defaultInterval: Duration = .seconds(5)
 
-  @ObservationIgnored private var backend: (any GenerationBackend)?
+  /// The backend in use, for generation (spec §4: HubCore talks to DT only through it).
+  public private(set) var backend: (any GenerationBackend)?
+  /// True while a generation runs: checks are skipped, so a slow check during a long model
+  /// load cannot turn the dot red or empty the catalog mid-run.
+  public private(set) var isPaused = false
   /// Bumped on every backend change, so a reply from a replaced backend is dropped.
   @ObservationIgnored private var generation = 0
 
@@ -41,6 +45,7 @@ public final class ConnectionMonitor {
   /// Asks the server for its catalog once. Shows "connecting" only when not already
   /// connected, so a periodic check does not make the dot blink.
   public func refresh() async {
+    guard !isPaused else { return }
     guard let backend else {
       status = .disconnected
       catalog = .empty
@@ -60,6 +65,15 @@ public final class ConnectionMonitor {
       catalog = .empty
       lastError = error as? BackendError ?? .unreachable(String(describing: error))
     }
+  }
+
+  /// Stops the periodic checks until `resume()`.
+  public func pause() {
+    isPaused = true
+  }
+
+  public func resume() {
+    isPaused = false
   }
 
   /// Checks the server every `interval` until the calling task is cancelled

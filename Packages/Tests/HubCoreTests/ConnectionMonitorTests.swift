@@ -79,6 +79,21 @@ struct ConnectionMonitorTests {
     #expect(monitor.indicator == .connected)
   }
 
+  @Test func pausedChecksLeaveTheStateAlone() async {
+    let backend = FakeBackend(.success(catalogA))
+    let monitor = ConnectionMonitor()
+    await monitor.replaceBackend(backend)
+    monitor.pause()
+    await backend.setResult(.failure(.unreachable("slow")))
+    await monitor.refresh()
+    #expect(monitor.status == .connected)
+    #expect(monitor.catalog == catalogA)
+    #expect(await backend.fetchCount == 1)
+    monitor.resume()
+    await monitor.refresh()
+    #expect(monitor.status == .disconnected)
+  }
+
   @Test func showsConnectingWhileTheFirstCheckRuns() async throws {
     let monitor = ConnectionMonitor()
     let check = Task { await monitor.replaceBackend(FakeBackend(.success(catalogA), delay: .milliseconds(300))) }
