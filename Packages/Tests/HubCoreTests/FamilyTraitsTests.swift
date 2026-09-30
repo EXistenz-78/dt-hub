@@ -52,3 +52,45 @@ struct LoRACompatibilityTests {
     #expect(catalog.status(of: LoRASelection(file: "gone.safetensors"), family: "flux2_9b") == .notOnServer)
   }
 }
+
+struct JobComposerTests {
+  let catalog = ModelCatalog(
+    models: [],
+    loras: [
+      CatalogLoRA(file: "a.safetensors", name: "Alpha", family: "flux2_9b"),
+      CatalogLoRA(file: "q.safetensors", name: "Qwen style", family: "qwen_image"),
+    ],
+    fileCount: 2)
+
+  func compose(family: String?, _ parameters: GenerationParameters) -> [GenerationJob] {
+    JobComposer.batches(
+      prompt: "fox", negativePrompt: "blurry", model: "m.ckpt", family: family,
+      parameters: parameters, catalog: catalog) { 7 }
+  }
+
+  @Test func sendsOnlyTheUsableLoRAs() {
+    let parameters = GenerationParameters(loras: [
+      LoRASelection(file: "a.safetensors", weight: 0.8), LoRASelection(file: "q.safetensors"),
+      LoRASelection(file: "gone.safetensors"),
+    ])
+    let jobs = compose(family: "flux2_9b", parameters)
+    #expect(jobs[0].parameters.loras == [LoRASelection(file: "a.safetensors", weight: 0.8)])
+  }
+
+  @Test func keepsTheNegativePromptWhereTheFamilyUsesIt() {
+    #expect(compose(family: "sdxl_base_v0.9", .default)[0].negativePrompt == "blurry")
+    #expect(compose(family: "seedvr2_7b", .default)[0].negativePrompt == "")
+  }
+
+  @Test func turnsCFGZeroOffWhereTheFamilyHasNoShift() {
+    let parameters = GenerationParameters(cfgZeroStar: true)
+    #expect(!compose(family: "v1", parameters)[0].parameters.cfgZeroStar)
+    #expect(compose(family: "flux2_9b", parameters)[0].parameters.cfgZeroStar)
+  }
+
+  @Test func splitsIntoBatchesWithTheirSeeds() {
+    let jobs = compose(family: "flux2_9b", GenerationParameters(seed: 3, randomSeed: false, batchCount: 2))
+    #expect(jobs.map(\.parameters.seed) == [3, 4])
+    #expect(jobs.allSatisfy { $0.prompt == "fox" && $0.model == "m.ckpt" })
+  }
+}
