@@ -2,6 +2,8 @@ import SwiftUI
 
 /// Preferences window (⌘,): Draw Things, LLM, Output (spec §7). Empty in M1.
 struct PreferencesView: View {
+  let connection: DrawThingsConnection
+
   var body: some View {
     TabView {
       Tab("prefs.tab.drawThings", systemImage: "server.rack") {

@@ -5,14 +5,11 @@ import SwiftUI
 /// Header, tab bar, and the content of the selected tab (spec §7).
 struct MainWindowView: View {
   let workspace: WorkspaceState
-
-  // M1 has no Draw Things link: M2 replaces these with the live connection and model.
-  private let connection: ConnectionStatus = .disconnected
-  private let selectedModel: String? = nil
+  let connection: DrawThingsConnection
 
   var body: some View {
     VStack(spacing: DS.panelPadding) {
-      HeaderBar(connection: connection, selectedModel: selectedModel)
+      HeaderBar(connection: connection)
       WorkspaceTabBar(workspace: workspace)
       tabContent
         .frame(maxWidth: .infinity, maxHeight: .infinity)

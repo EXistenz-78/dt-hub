@@ -114,14 +114,17 @@ public struct DSCheckboxToggleStyle: ToggleStyle {
   }
 }
 
-/// The label of a header menu: icon, title, and a small chevron. The chevron is drawn
-/// here because a plain-styled `Menu` hides the system indicator.
+/// The label of a header menu: icon, title, an optional secondary detail (e.g. the model
+/// family), and a small chevron. The chevron is drawn here because a plain-styled `Menu`
+/// hides the system indicator.
 public struct DSMenuLabel: View {
   let title: String
+  let detail: String?
   let systemImage: String
 
-  public init(_ title: String, systemImage: String) {
+  public init(_ title: String, detail: String? = nil, systemImage: String) {
     self.title = title
+    self.detail = detail
     self.systemImage = systemImage
   }
 
@@ -131,6 +134,13 @@ public struct DSMenuLabel: View {
         .font(.system(size: 14, weight: .semibold))
         .accessibilityHidden(true)
       Text(title)
+        .lineLimit(1)
+      if let detail {
+        Text(detail)
+          .font(.system(size: 11, weight: .medium, design: .monospaced))
+          .foregroundStyle(.secondary)
+          .lineLimit(1)
+      }
       Image(systemName: "chevron.down")
         .font(.system(size: 9, weight: .bold))
         .foregroundStyle(.secondary)

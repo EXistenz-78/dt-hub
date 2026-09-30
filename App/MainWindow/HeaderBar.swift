@@ -2,13 +2,17 @@ import HubCore
 import HubKit
 import SwiftUI
 
-/// [Plug-ins ▾] [Model ▾] … ● DT [⚙︎] [▶ Run] (spec §7).
+/// [Plug-ins ▾] [Model ▾ · family] … ● DT [⚙︎] [▶ Run] (spec §7).
 struct HeaderBar: View {
-  let connection: ConnectionStatus
-  let selectedModel: String?
+  let connection: DrawThingsConnection
+
+  private var monitor: ConnectionMonitor { connection.monitor }
+  private var selection: ModelSelection { connection.selection }
+  private var selectedModel: CatalogModel? { selection.selectedModel(in: monitor.catalog) }
 
   private var runBlocker: RunBlocker? {
-    RunAvailability.blocker(connection: connection, selectedModel: selectedModel, catalog: .empty)
+    RunAvailability.blocker(
+      connection: monitor.status, selectedModel: selection.selectedFile, catalog: monitor.catalog)
   }
 
   var body: some View {
@@ -16,7 +20,7 @@ struct HeaderBar: View {
       pluginsMenu
       modelMenu
       Spacer(minLength: DS.groupGap)
-      DSStatusDot(status: connection)
+      DSStatusDot(status: monitor.status)
         .padding(.horizontal, 6)
         .help(statusText)
         .accessibilityLabel(statusText)
@@ -44,16 +48,57 @@ struct HeaderBar: View {
 
   private var modelMenu: some View {
     Menu {
-      Text("header.model.unavailable")
+      modelMenuContent
     } label: {
-      DSMenuLabel(selectedModel ?? String(localized: "header.model.none"), systemImage: "cube")
+      DSMenuLabel(modelTitle, detail: modelDetail, systemImage: "cube")
     }
     .dsMenuPill()
   }
 
+  /// Models grouped by family, the selected one checked (spec §5, §7).
+  @ViewBuilder private var modelMenuContent: some View {
+    if monitor.status != .connected {
+      Text("header.model.unavailable")
+    } else if monitor.catalog.isModelBrowsingDisabled {
+      Text("header.model.browsingDisabled")
+    } else if monitor.catalog.models.isEmpty {
+      Text("header.model.empty")
+    } else {
+      ForEach(monitor.catalog.modelsByFamily) { group in
+        Section {
+          ForEach(group.models) { model in
+            Toggle(
+              isOn: Binding(
+                get: { selection.selectedFile == model.file },
+                set: { _ in selection.select(model.file) })
+            ) {
+              Text(verbatim: model.name)
+            }
+          }
+        } header: {
+          Text(verbatim: group.family ?? "—")
+        }
+      }
+    }
+  }
+
+  private var modelTitle: String {
+    if let selectedModel { return selectedModel.name }
+    return selection.selectedFile ?? String(localized: "header.model.none")
+  }
+
+  /// The family of the selected model, or a warning when the server lacks it.
+  private var modelDetail: String? {
+    if let selectedModel { return selectedModel.family }
+    if selection.selectedFile != nil, monitor.status == .connected {
+      return String(localized: "header.model.missing")
+    }
+    return nil
+  }
+
   private var runButton: some View {
     Button {
-      // Generation arrives in M3; until then RUN is always blocked (no connection).
+      // Generation arrives in M3.
     } label: {
       HStack(spacing: DS.pillIconGap) {
         Image(systemName: "play.fill")
@@ -77,10 +122,6 @@ struct HeaderBar: View {
   }
 
   private var statusText: String {
-    switch connection {
-    case .connected: String(localized: "status.connected")
-    case .connecting: String(localized: "status.connecting")
-    case .disconnected: String(localized: "status.disconnected")
-    }
+    ConnectionStatusText.headline(status: monitor.status, error: monitor.lastError)
   }
 }

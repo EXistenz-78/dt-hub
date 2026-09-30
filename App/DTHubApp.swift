@@ -9,15 +9,16 @@ struct DTHubApp: App {
       id: WorkspaceTab.generationID,
       title: String(localized: "tab.generation"),
       systemImage: "slider.horizontal.3"))
+  @State private var connection = DrawThingsConnection()
 
   var body: some Scene {
     WindowGroup(String(localized: "app.title")) {
-      MainWindowView(workspace: workspace)
+      MainWindowView(workspace: workspace, connection: connection)
     }
     .windowResizability(.contentMinSize)
 
     Settings {
-      PreferencesView()
+      PreferencesView(connection: connection)
     }
   }
 }
