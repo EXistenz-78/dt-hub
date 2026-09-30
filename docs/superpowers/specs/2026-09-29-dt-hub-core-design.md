@@ -274,12 +274,12 @@ Ogni tappa termina con qualcosa di utilizzabile.
 | M2 Collegamento DT | DTBridge: connessione, pallino di stato, catalogo con famiglie, menu modello; modalità "server già attivo" | si sceglie un modello reale da DT |
 | M3 Primo T2I | Card prompt; card Dimensioni, Sampling, Seed e batch; RUN/Stop; finestra risultati con anteprima; salvataggio PNG | **prima immagine generata da DT Hub** |
 | M4 Card complete | LoRA, negativo, card Avanzate, visibilità per famiglia, editor JSON, preset e import `custom_configs.json`, ripristino sessione | parità con il pannello di DT per il T2I |
-
-M4 si svolge in tre tappe, ognuna con revisione e merge (deciso con l'utente, 30 settembre 2026): **M4a** negativo, LoRA, visibilità per famiglia, ripristino sessione; **M4b** card Avanzate e avviso "valori nascosti attivi"; **M4c** editor JSON, preset, import di `custom_configs.json`.
 | M5 Server gestito | Modalità "avvia gRPCServerCLI", arresti inattesi e riavvio | DT Hub funziona senza l'app DT aperta |
 | M6 LLM | LLMBridge, scaricamento nella cartella scelta, politica di memoria, prova nelle Preferenze | l'LLM risponde, anche su immagini |
 | M7 Plug-in | Contratto HubKit, menu plug-in, card Contributi, pipeline, conflitti, plug-in di prova | la v1 è completa |
 | Dopo | PM2 → SLR → Riferimenti (I2I) → Espandi e maschera → Qwen Image 2.1 → Galleria | una spec breve per ciascuno |
+
+M4 si svolge in tre tappe, ognuna con revisione e merge (deciso con l'utente, 30 settembre 2026): **M4a** negativo, LoRA, visibilità per famiglia, ripristino sessione; **M4b** card Avanzate e avviso "valori nascosti attivi"; **M4c** editor JSON, preset, import di `custom_configs.json`.
 
 ## 16. Rischi aperti
 
