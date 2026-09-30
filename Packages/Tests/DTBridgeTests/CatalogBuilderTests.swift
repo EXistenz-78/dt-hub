@@ -12,7 +12,8 @@ struct CatalogBuilderTests {
   let specs = ["flux_2_klein_9b_f16.ckpt": ModelSpecInfo(name: "FLUX.2 [klein] 9B", family: "flux2_9b")]
   let loraJSON = Data(
     """
-    [{"file": "sun_direction_lora_f16.ckpt", "name": "Sun direction", "version": "flux2_9b"},
+    [{"file": "sun_direction_lora_f16.ckpt", "name": "Sun direction", "version": "flux2_9b",
+      "prefix": "match the sun direction ", "weight": 0.8},
      {"file": "not_installed_lora_f16.ckpt", "name": "Gone", "version": "flux2_9b"},
      {"name": "No file"}]
     """.utf8)
@@ -29,7 +30,9 @@ struct CatalogBuilderTests {
       files: [klein, vae, describedLoRA, bareLoRA], modelSpecs: specs, loraMetadata: loraJSON)
     #expect(
       catalog.loras == [
-        CatalogLoRA(file: describedLoRA, name: "Sun direction", family: "flux2_9b"),
+        CatalogLoRA(
+          file: describedLoRA, name: "Sun direction", family: "flux2_9b",
+          trigger: "match the sun direction", defaultWeight: 0.8),
         CatalogLoRA(file: bareLoRA, name: bareLoRA, family: nil),
       ])
   }

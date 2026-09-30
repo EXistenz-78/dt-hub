@@ -29,6 +29,26 @@ struct JobMapperTests {
     #expect(!configuration.resolutionDependentShift)
   }
 
+  @Test func sendsTheNegativePromptAndTheLoRAs() {
+    let parameters = GenerationParameters(loras: [
+      LoRASelection(file: "style.safetensors", weight: 0.75, mode: .base), LoRASelection(file: "detail.safetensors"),
+    ])
+    let request = JobMapper.request(
+      for: GenerationJob(prompt: "a fox", negativePrompt: "blurry", model: "m.ckpt", parameters: parameters))
+    #expect(request.prompt == "a fox")
+    #expect(request.negativePrompt == "blurry")
+    #expect(request.configuration.loras == [
+      LoRAConfig(file: "style.safetensors", weight: 0.75, mode: .base),
+      LoRAConfig(file: "detail.safetensors", weight: 1, mode: .all),
+    ])
+  }
+
+  @Test func triggerWordsArePutInFrontOfThePrompt() {
+    let parameters = GenerationParameters(loras: [LoRASelection(file: "tarot.safetensors", trigger: "vintage tarot style")])
+    let request = JobMapper.request(for: GenerationJob(prompt: "a fox", model: "m.ckpt", parameters: parameters))
+    #expect(request.prompt == "vintage tarot style a fox")
+  }
+
   @Test func clampsOutOfRangeValuesBeforeSending() {
     let parameters = GenerationParameters(width: 1000, height: 5000, steps: 0, batchSize: 9)
     let configuration = JobMapper.request(
