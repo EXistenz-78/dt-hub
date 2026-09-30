@@ -99,7 +99,7 @@ La configurazione di DT (`GenerationConfiguration`) ha 97 campi. Un campo si mos
 - Seed, con modalità del seed e pulsante casuale.
 - Shift e "shift in base alla risoluzione", solo per le famiglie che li usano.
 - Batch: numero di immagini per batch e numero di batch.
-- Prompt negativo, solo per le famiglie che lo usano.
+- Prompt negativo, solo per le famiglie che lo usano, dentro la card Prompt.
 - Strength: compare solo quando c'è un'immagine di partenza (nella v1 può arrivare solo da un plug-in).
 
 **Livello 2 — Avanzate, in card richiudibili:**
@@ -147,10 +147,11 @@ Il file va portato in HubKit, così i plug-in lo usano.
 ├──────────────────────────────────────────────────────────────┤
 │ [ Generazione ]  (+ un tab per ogni plug-in attivo)           │
 ├──────────────────────────────────────────────────────────────┤
-│  PROMPT              card grande, sempre in cima              │
-│  NEGATIVO            tinta arancio, solo se la famiglia lo usa│
+│  PROMPT  a tutta larghezza; sotto il prompt, il NEGATIVO      │
+│          (tinta arancio, solo se la famiglia lo usa)          │
 │  CONTRIBUTI PLUG-IN  solo se un plug-in ha contribuito        │
-│  ▾ LoRA  ▾ Dimensioni  ▸ Sampling  ▸ Seed e batch  ▸ …         │
+│  [ Dimensioni      ] [ Seed e batch   ]  due card per riga,    │
+│  [ Campionamento   ] [ …              ]  alte come la più alta │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -162,8 +163,9 @@ Il file va portato in HubKit, così i plug-in lo usano.
 - *RUN*: grigio se DT non è collegato o manca il modello; durante la generazione diventa "Stop" e mostra l'avanzamento.
 
 **Tab "Generazione":** l'unico incluso nell'app.
-- Card del prompt grande e card del negativo.
-- Parametri in card richiudibili; lo stato aperto/chiuso viene ricordato.
+- Card Prompt a tutta larghezza; il prompt negativo sta **dentro la stessa card**, sotto il prompt, e compare solo per le famiglie che lo usano (deciso con l'utente, 30 settembre 2026).
+- Parametri in card richiudibili, **due per riga**; le card della stessa riga hanno esattamente l'altezza della più alta. Lo stato aperto/chiuso viene ricordato.
+- Ogni valore numerico si scrive oppure si cambia con le frecce; le caselle che modificano un valore stanno sulla sua stessa riga.
 - Le card si costruiscono una alla volta, partendo da quelle di base.
 
 **Finestra risultati (separata):**
