@@ -1,8 +1,9 @@
 import SwiftUI
 
-/// Preferences window (⌘,): Draw Things, LLM, Output (spec §7). LLM and Output arrive later.
+/// Preferences window (⌘,): Draw Things, LLM, Output (spec §7). LLM arrives in M6.
 struct PreferencesView: View {
   let connection: DrawThingsConnection
+  let generation: GenerationController
 
   var body: some View {
     TabView {
@@ -13,7 +14,7 @@ struct PreferencesView: View {
         PreferencesPlaceholder()
       }
       Tab("prefs.tab.output", systemImage: "folder") {
-        PreferencesPlaceholder()
+        OutputPreferencesView(controller: generation)
       }
     }
     .frame(width: 560, height: 420)

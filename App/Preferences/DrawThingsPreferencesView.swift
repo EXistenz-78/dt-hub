@@ -56,6 +56,7 @@ struct DrawThingsPreferencesView: View {
             }
           }
           .buttonStyle(DSPillButtonStyle(prominent: true))
+          .keyboardShortcut(.defaultAction)
           .disabled(draft.validationError != nil || isApplying)
         }
         if connection.secretSaveFailed {

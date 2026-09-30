@@ -1,13 +1,26 @@
 import HubKit
 import SwiftUI
 
-/// The built-in Generation tab. Empty in M1: the prompt and parameter cards
-/// are added one by one from M3 (spec §15).
+/// The built-in Generation tab: the prompt card across the whole width, then the parameter
+/// cards two per row, cards in a row as tall as the tallest (spec §7).
 struct GenerationTabView: View {
+  let controller: GenerationController
+
   var body: some View {
-    ContentUnavailableView(
-      "generation.empty.title",
-      systemImage: "slider.horizontal.3",
-      description: Text("generation.empty.message"))
+    ScrollView {
+      VStack(spacing: DS.groupGap) {
+        PromptCard(controller: controller)
+        DSCardRow {
+          DimensionsCard(controller: controller)
+          SeedBatchCard(controller: controller)
+        }
+        DSCardRow {
+          SamplingCard(controller: controller)
+          Color.clear
+        }
+      }
+      .padding(.bottom, DS.groupGap)
+    }
+    .scrollIndicators(.automatic)
   }
 }

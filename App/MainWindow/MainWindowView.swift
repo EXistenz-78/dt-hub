@@ -6,10 +6,11 @@ import SwiftUI
 struct MainWindowView: View {
   let workspace: WorkspaceState
   let connection: DrawThingsConnection
+  let generation: GenerationController
 
   var body: some View {
     VStack(spacing: DS.panelPadding) {
-      HeaderBar(connection: connection)
+      HeaderBar(connection: connection, generation: generation)
       WorkspaceTabBar(workspace: workspace)
       tabContent
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -23,7 +24,7 @@ struct MainWindowView: View {
 
   @ViewBuilder private var tabContent: some View {
     if workspace.selectedTabID == WorkspaceTab.generationID {
-      GenerationTabView()
+      GenerationTabView(controller: generation)
     } else {
       // Plug-in tabs arrive with the plug-in contract (M7).
       EmptyView()
