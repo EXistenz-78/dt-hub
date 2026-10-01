@@ -43,6 +43,9 @@ let package = Package(
         .product(name: "HuggingFace", package: "swift-huggingface"),
         .product(name: "Tokenizers", package: "swift-transformers"),
       ]),
+    // Live tests: need a model on disk or the network, and the Metal library, so they run with
+    // `xcodebuild test` (`swift test` skips them: spec §13, "LLMBridge: test a mano").
+    .testTarget(name: "LLMBridgeTests", dependencies: ["LLMBridge", "HubKit"]),
     .testTarget(name: "HubKitTests", dependencies: ["HubKit"]),
     .testTarget(name: "HubCoreTests", dependencies: ["HubCore", "HubKit"]),
     .testTarget(name: "DTBridgeTests", dependencies: ["DTBridge", "HubKit"]),
