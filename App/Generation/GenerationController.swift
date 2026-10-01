@@ -1,3 +1,4 @@
+import DTBridge
 import CoreGraphics
 import Foundation
 import HubCore
@@ -50,6 +51,58 @@ final class GenerationController {
     }
     pendingSave?.cancel()
     pendingSave = nil
+  }
+
+  /// The saved presets (spec §6).
+  let presets = PresetStore(fileURL: PresetStore.defaultFileURL)
+  /// Reads and writes the Draw Things configuration JSON (spec §6, level 3).
+  @ObservationIgnored let codec: any ConfigurationCodec = DrawThingsConfigurationCodec()
+
+  /// The model and parameters on the tab, as the JSON editor sees them.
+  func configurationState(in connection: DrawThingsConnection) -> ConfigurationState {
+    ConfigurationState(model: connection.selection.selectedFile ?? "", parameters: parameters)
+  }
+
+  func exportJSON(in connection: DrawThingsConnection) -> String {
+    codec.exportJSON(configurationState(in: connection))
+  }
+
+  /// Applies a complete or partial Draw Things JSON to the tab: parameters, extra settings
+  /// and, when the text names one, the model. Throws the reason when the text is not valid.
+  func applyJSON(_ json: String, with connection: DrawThingsConnection) throws(ConfigurationError) {
+    let result = try codec.apply(json: json, to: configurationState(in: connection))
+    parameters = result.parameters.fillingTriggers(from: connection.monitor.catalog)
+    if lockRatio { lockedRatio = currentRatio }
+    if !result.model.isEmpty, result.model != connection.selection.selectedFile {
+      connection.selection.select(result.model)
+    }
+  }
+
+  /// Saves the tab as a preset (parameters, model, negative prompt; never the prompt).
+  /// False when the name is empty.
+  @discardableResult
+  func savePreset(named name: String, with connection: DrawThingsConnection) -> Bool {
+    presets.save(
+      Preset(
+        name: name, model: connection.selection.selectedFile ?? "", negativePrompt: negativePrompt,
+        parameters: parameters))
+  }
+
+  /// Puts a preset on the tab; the prompt stays.
+  func load(_ preset: Preset, with connection: DrawThingsConnection) {
+    let load = PresetLoad.of(preset, currentNegativePrompt: negativePrompt, catalog: connection.monitor.catalog)
+    parameters = load.parameters
+    negativePrompt = load.negativePrompt
+    if lockRatio { lockedRatio = currentRatio }
+    if let model = load.model { connection.selection.select(model) }
+  }
+
+  /// Adds the presets of a file (a JSON list of `{name, configuration}`).
+  func importPresets(from url: URL) -> PresetImportResult {
+    guard let data = try? Data(contentsOf: url) else { return PresetImportResult(presets: [], skipped: 1) }
+    let result = PresetImport.read(data, codec: codec)
+    presets.add(imported: result.presets)
+    return result
   }
 
   /// The chosen model as the server describes it; nil while the catalog is not loaded.
