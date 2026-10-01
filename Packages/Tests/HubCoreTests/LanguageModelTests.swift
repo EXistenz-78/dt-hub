@@ -97,10 +97,15 @@ actor FakeLanguageModelService: LanguageModelService {
   private(set) var questions: [(String, [URL])] = []
   var loadError: LanguageModelError?
   var answer = "an answer"
+  private var loadGate: Gate?
+
+  /// Makes every load wait until the gate opens (a model that takes its time to load).
+  func holdLoads(until gate: Gate) { loadGate = gate }
 
   func fail(with error: LanguageModelError?) { loadError = error }
 
   func load(_ model: LanguageModelDescriptor) async throws {
+    if let loadGate { await loadGate.wait() }
     if let loadError { throw loadError }
     loads.append(model.name)
   }
@@ -129,12 +134,14 @@ struct LanguageModelManagerTests {
 
   func manager(
     _ service: FakeLanguageModelService, root: URL, selected: String = "text-model", available: Int64 = 1_000_000,
-    idle: Int = 10, freeAtRun: Bool = false, freeImage: Bool = false, release: @escaping @MainActor () async -> Void = {}
+    idle: Int = 10, freeAtRun: Bool = false, freeImage: Bool = false, release: @escaping @MainActor () async -> Void = {},
+    busy: @escaping @MainActor () -> Bool = { false }
   ) -> LanguageModelManager {
     let defaults = UserDefaults(suiteName: "LanguageModelManagerTests-\(UUID())")!
     let store = LanguageModelSettingsStore(defaults: defaults, physicalMemory: 64 * 1_073_741_824)
     let manager = LanguageModelManager(
-      service: service, store: store, memory: MemoryProbe { available }, minute: .milliseconds(40), releaseImageModel: release)
+      service: service, store: store, memory: MemoryProbe { available }, minute: .milliseconds(40), releaseImageModel: release,
+      isImageModelBusy: busy)
     manager.settings = LanguageModelSettings(
       folder: root.path, selectedModel: root.appendingPathComponent(selected).standardizedFileURL.path,
       freeAtRun: freeAtRun, freeImageModelForLanguageModel: freeImage, idleMinutes: idle)
@@ -259,6 +266,57 @@ struct LanguageModelManagerTests {
     #expect(released.count == 1)
   }
 
+  @Test func theImageModelIsLeftAloneWhileAnImageIsBeingGenerated() async throws {
+    let service = FakeLanguageModelService()
+    let released = Counter()
+    let manager = manager(service, root: try folder(), freeImage: true, release: { released.add() }, busy: { true })
+    _ = try await manager.respond(to: "hi")
+    #expect(released.count == 0)
+    #expect(manager.isLoaded)
+  }
+
+  /// Waits (up to 5 s) for the manager to show `state`.
+  func waitFor(_ state: LanguageModelManager.State, in manager: LanguageModelManager) async throws {
+    for _ in 0..<100 where manager.state != state { try await Task.sleep(for: .milliseconds(50)) }
+    #expect(manager.state == state)
+  }
+
+  @Test func pressingRunWhileTheModelLoadsFreesItWhenItArrives() async throws {
+    let service = FakeLanguageModelService()
+    let gate = Gate()
+    await service.holdLoads(until: gate)
+    let manager = manager(service, root: try folder(), freeAtRun: true)
+    let asking = Task { () -> LanguageModelError? in
+      do throws(LanguageModelError) { _ = try await manager.respond(to: "hi") } catch { return error }
+      return nil
+    }
+    try await waitFor(.loading("text-model"), in: manager)
+    let running = Task { await manager.prepareForRun() }
+    try await Task.sleep(for: .milliseconds(100))
+    await gate.open()
+    await running.value
+    #expect(await asking.value == .interrupted)
+    #expect(!manager.isLoaded)
+    #expect(manager.state == .unloaded)
+    #expect(await service.unloads >= 1)
+  }
+
+  @Test func pressingRunWhileTheImageModelLeavesStopsTheLoad() async throws {
+    let service = FakeLanguageModelService()
+    let gate = Gate()
+    let manager = manager(service, root: try folder(), freeAtRun: true, freeImage: true, release: { await gate.wait() })
+    let asking = Task { () -> LanguageModelError? in
+      do throws(LanguageModelError) { _ = try await manager.respond(to: "hi") } catch { return error }
+      return nil
+    }
+    try await Task.sleep(for: .milliseconds(100))
+    await manager.prepareForRun()
+    await gate.open()
+    #expect(await asking.value == .interrupted)
+    #expect(await service.loads.isEmpty)
+    #expect(!manager.isLoaded)
+  }
+
   @Test func theMemoryIsMeasuredAfterTheImageModelLeft() async throws {
     let service = FakeLanguageModelService()
     let probe = MutableMemory(1000)
@@ -272,6 +330,23 @@ struct LanguageModelManagerTests {
       freeAtRun: false, freeImageModelForLanguageModel: true, idleMinutes: 10)
     _ = try await manager.respond(to: "needs the room")
     #expect(manager.isLoaded)
+  }
+}
+
+/// Holds callers until it is opened.
+actor Gate {
+  private var isOpen = false
+  private var waiting: [CheckedContinuation<Void, Never>] = []
+
+  func wait() async {
+    if isOpen { return }
+    await withCheckedContinuation { waiting.append($0) }
+  }
+
+  func open() {
+    isOpen = true
+    waiting.forEach { $0.resume() }
+    waiting = []
   }
 }
 

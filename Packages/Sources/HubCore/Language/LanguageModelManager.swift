@@ -27,26 +27,35 @@ public final class LanguageModelManager {
   @ObservationIgnored private let store: LanguageModelSettingsStore
   @ObservationIgnored private let memory: MemoryProbe
   @ObservationIgnored private let releaseImageModel: @MainActor () async -> Void
+  @ObservationIgnored private let isImageModelBusy: @MainActor () -> Bool
   @ObservationIgnored private let minute: Duration
   @ObservationIgnored private var loaded: LanguageModelDescriptor?
   @ObservationIgnored private var idleTask: Task<Void, Never>?
   /// Bumped by every request, so an idle timer that started before it gives up.
   @ObservationIgnored private var activity = 0
+  /// Bumped by every `unload`, so a load that was under way when memory was asked back knows.
+  @ObservationIgnored private var epoch = 0
+  /// The load that is under way, so `unload` can wait for the model to arrive and free it.
+  @ObservationIgnored private var loading: Task<Void, any Error>?
 
   /// - Parameters:
   ///   - releaseImageModel: stops the image model's server to make room; used before the
   ///     language model loads, when the settings ask for it.
+  ///   - isImageModelBusy: true while an image is being made (or about to be): the image
+  ///     model is not released then, whatever the settings say.
   ///   - minute: how long a minute of idle time lasts (shortened in tests).
   public init(
     service: any LanguageModelService, store: LanguageModelSettingsStore = LanguageModelSettingsStore(),
     memory: MemoryProbe = .live, minute: Duration = .seconds(60),
-    releaseImageModel: @escaping @MainActor () async -> Void = {}
+    releaseImageModel: @escaping @MainActor () async -> Void = {},
+    isImageModelBusy: @escaping @MainActor () -> Bool = { false }
   ) {
     self.service = service
     self.store = store
     self.memory = memory
     self.minute = minute
     self.releaseImageModel = releaseImageModel
+    self.isImageModelBusy = isImageModelBusy
     settings = store.load()
   }
 
@@ -88,7 +97,14 @@ public final class LanguageModelManager {
 
   /// Frees the model from memory now.
   public func unload() async {
+    epoch += 1
     idleTask?.cancel()
+    // A model that is still loading is freed as soon as it has arrived.
+    if let loading {
+      _ = try? await loading.value
+      await service.unload()
+      if loaded == nil { state = .unloaded }
+    }
     guard loaded != nil else {
       if case .failed = state { state = .unloaded }
       return
@@ -109,9 +125,13 @@ public final class LanguageModelManager {
   private func ensureLoaded(_ model: LanguageModelDescriptor) async throws(LanguageModelError) {
     if let loaded, loaded.path == model.path { return }
     if loaded != nil { await unload() }
-    // Room first: the image model's server is stopped when the settings ask for it, then the
-    // free memory is measured, so what it gave back counts.
-    if settings.freeImageModelForLanguageModel { await releaseImageModel() }
+    let ticket = epoch
+    // Room first: the image model's server is stopped when the settings ask for it (never
+    // while an image is being made), then the free memory is measured, so what it gave back
+    // counts.
+    if settings.freeImageModelForLanguageModel, !isImageModelBusy() { await releaseImageModel() }
+    // RUN was pressed meanwhile: the memory is wanted for the image.
+    guard epoch == ticket else { throw .interrupted }
     let needed = Int64(Double(model.sizeBytes) * Self.memoryMargin)
     let available = memory.availableBytes()
     guard needed <= available else {
@@ -120,14 +140,21 @@ public final class LanguageModelManager {
       throw error
     }
     state = .loading(model.name)
+    let service = service
+    let load = Task { try await service.load(model) }
+    loading = load
+    defer { if epoch == ticket { loading = nil } }
     do {
-      try await service.load(model)
+      try await load.value
+      // RUN was pressed while the model loaded: `unload` frees it, nobody uses it.
+      guard epoch == ticket else { throw LanguageModelError.interrupted }
       loaded = model
       state = .ready(model.name)
     } catch let error as LanguageModelError {
-      state = .failed(error)
+      if error != .interrupted { state = .failed(error) }
       throw error
     } catch {
+      if epoch != ticket { throw LanguageModelError.interrupted }
       let failure = LanguageModelError.loadFailed(error.localizedDescription)
       state = .failed(failure)
       throw failure

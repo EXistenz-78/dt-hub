@@ -28,6 +28,8 @@ public enum LanguageModelError: Error, Equatable, Sendable {
   /// The model does not fit in the memory that is free now.
   case notEnoughMemory(neededBytes: Int64, availableBytes: Int64)
   case imagesNotSupported
+  /// The model was freed while it was loading, because RUN needed the memory.
+  case interrupted
   case loadFailed(String)
   case generationFailed(String)
   case downloadFailed(String)
