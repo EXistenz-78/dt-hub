@@ -4,12 +4,20 @@ import HubKit
 /// Translates DT Hub's `GenerationJob` and the library's events (spec §5).
 enum JobMapper {
   static func request(for job: GenerationJob) -> GenerationRequest {
-    let parameters = job.parameters.clamped()
+    GenerationRequest(
+      prompt: job.promptWithTriggers, negativePrompt: job.negativePrompt,
+      configuration: configuration(model: job.model, parameters: job.parameters))
+  }
+
+  /// The Draw Things configuration for a model and parameters: clamped, the Advanced cards
+  /// applied, then the JSON editor's extra settings on top.
+  static func configuration(model: String, parameters unclamped: GenerationParameters) -> DrawThingsConfiguration {
+    let parameters = unclamped.clamped()
     var configuration = DrawThingsConfiguration(
       width: Int32(parameters.width),
       height: Int32(parameters.height),
       steps: Int32(parameters.steps),
-      model: job.model,
+      model: model,
       sampler: SamplerType(rawValue: Int8(parameters.sampler.rawValue)) ?? .unipctrailing,
       guidanceScale: Float(parameters.guidanceScale),
       seed: parameters.seed,
@@ -26,7 +34,10 @@ enum JobMapper {
         mode: DrawThingsClient.LoRAMode(rawValue: Int8($0.mode.rawValue)) ?? .all)
     }
     apply(parameters.advanced, to: &configuration)
-    return GenerationRequest(prompt: job.promptWithTriggers, negativePrompt: job.negativePrompt, configuration: configuration)
+    // The extra settings are keys of the configuration JSON the cards do not cover; a text
+    // the library cannot take is left out rather than stopping the RUN.
+    if let extra = JSONValue.text(of: parameters.extra) { try? configuration.mergeJSON(extra) }
+    return configuration
   }
 
   /// The Advanced cards' values; "" names become nil ("none"), a separate text is sent only
