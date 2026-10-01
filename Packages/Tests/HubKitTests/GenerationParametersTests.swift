@@ -151,3 +151,81 @@ struct LenientDecodingTests {
     #expect(job.parameters == .default)
   }
 }
+
+struct AdvancedParametersTests {
+  @Test func defaultsAreDrawThings() {
+    let advanced = AdvancedParameters.default
+    #expect(advanced.refinerStart == 0.85)
+    #expect(advanced.hiresFixStrength == 0.7)
+    #expect(advanced.guidanceEmbed == 3.5)
+    #expect(advanced.speedUpWithGuidanceEmbed)
+    #expect(advanced.stochasticSamplingGamma == 0.3)
+    #expect(advanced.aestheticScore == 6)
+    #expect(advanced.negativeAestheticScore == 2.5)
+    #expect(advanced.decodingTileWidth == 640)
+    #expect(advanced.diffusionTileWidth == 1024)
+    #expect(advanced.teaCacheEnd == -1)
+    #expect(advanced.compressionQuality == 43.1)
+    #expect(GenerationParameters.default.advanced == advanced)
+  }
+
+  @Test func clampsIntoTheAllowedRanges() {
+    var wild = AdvancedParameters()
+    wild.refinerStart = 3
+    wild.hiresFixWidth = 700
+    wild.hiresFixHeight = -5
+    wild.upscalerScaleFactor = 3
+    wild.clipSkip = 40
+    wild.decodingTileWidth = 700
+    wild.teaCacheEnd = -9
+    wild.compressionQuality = 400
+    let clamped = GenerationParameters(advanced: wild).clamped().advanced
+    #expect(clamped.refinerStart == 1)
+    #expect(clamped.hiresFixWidth == 704)
+    #expect(clamped.hiresFixHeight == 0)
+    #expect(clamped.upscalerScaleFactor == 0)
+    #expect(clamped.clipSkip == 23)
+    #expect(clamped.decodingTileWidth == 704)
+    #expect(clamped.teaCacheEnd == -1)
+    #expect(clamped.compressionQuality == 100)
+  }
+
+  @Test func advancedValuesLoadLeniently() throws {
+    let json = #"{"advanced": {"hiresFix": true, "clipSkip": "two", "compressionArtifacts": 9}}"#
+    let decoded = try JSONDecoder().decode(GenerationParameters.self, from: Data(json.utf8))
+    #expect(decoded.advanced.hiresFix)
+    #expect(decoded.advanced.clipSkip == 1)
+    #expect(decoded.advanced.compressionArtifacts == .none)
+    let old = try JSONDecoder().decode(GenerationParameters.self, from: Data(#"{"steps": 4}"#.utf8))
+    #expect(old.advanced == .default)
+  }
+
+  @Test func advancedValuesSurviveARoundTrip() throws {
+    var advanced = AdvancedParameters()
+    advanced.refinerModel = "r.ckpt"
+    advanced.separateT5 = true
+    advanced.t5Text = "a long description"
+    advanced.compressionArtifacts = .jpeg
+    let parameters = GenerationParameters(advanced: advanced)
+    let decoded = try JSONDecoder().decode(GenerationParameters.self, from: JSONEncoder().encode(parameters))
+    #expect(decoded == parameters)
+  }
+
+  @Test func conditioningSizesSnapTo64UpTo8192AndZeroStaysAutomatic() {
+    #expect(AdvancedParameters.conditioningSize(4096) == 4096)
+    #expect(AdvancedParameters.conditioningSize(1000) == 1024)
+    #expect(AdvancedParameters.conditioningSize(9000) == 8192)
+    #expect(AdvancedParameters.conditioningSize(0) == 0)
+    #expect(AdvancedParameters.conditioningSize(20) == 0)
+  }
+
+  @Test func cropKeepsTheTypedPixels() {
+    #expect(AdvancedParameters.crop(16) == 16)
+    #expect(AdvancedParameters.crop(9000) == 8192)
+    #expect(AdvancedParameters.crop(-3) == 0)
+  }
+
+  @Test func compressionMatchesDrawThingsRawValues() {
+    #expect(CompressionArtifacts.allCases.map(\.rawValue) == [0, 1, 2, 3])
+  }
+}

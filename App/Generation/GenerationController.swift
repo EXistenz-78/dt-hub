@@ -52,9 +52,14 @@ final class GenerationController {
     pendingSave = nil
   }
 
+  /// The chosen model as the server describes it; nil while the catalog is not loaded.
+  func selectedModel(in connection: DrawThingsConnection) -> CatalogModel? {
+    connection.selection.selectedModel(in: connection.monitor.catalog)
+  }
+
   /// The family of the chosen model, nil when unknown or while the catalog is not loaded.
   func family(in connection: DrawThingsConnection) -> String? {
-    connection.selection.selectedModel(in: connection.monitor.catalog)?.family
+    selectedModel(in: connection)?.family
   }
 
   /// Which base fields the chosen model's family uses.

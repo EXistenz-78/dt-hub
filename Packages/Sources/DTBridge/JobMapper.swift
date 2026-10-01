@@ -25,7 +25,62 @@ enum JobMapper {
         file: $0.file, weight: Float($0.weight),
         mode: DrawThingsClient.LoRAMode(rawValue: Int8($0.mode.rawValue)) ?? .all)
     }
+    apply(parameters.advanced, to: &configuration)
     return GenerationRequest(prompt: job.promptWithTriggers, negativePrompt: job.negativePrompt, configuration: configuration)
+  }
+
+  /// The Advanced cards' values; "" names become nil ("none"), a separate text is sent only
+  /// with its switch on.
+  static func apply(_ advanced: AdvancedParameters, to configuration: inout DrawThingsConfiguration) {
+    func name(_ file: String) -> String? { file.isEmpty ? nil : file }
+    configuration.refinerModel = name(advanced.refinerModel)
+    configuration.refinerStart = Float(advanced.refinerStart)
+    configuration.hiresFix = advanced.hiresFix
+    configuration.hiresFixWidth = Int32(advanced.hiresFixWidth)
+    configuration.hiresFixHeight = Int32(advanced.hiresFixHeight)
+    configuration.hiresFixStrength = Float(advanced.hiresFixStrength)
+    configuration.upscaler = name(advanced.upscaler)
+    configuration.upscalerScaleFactor = Int32(advanced.upscalerScaleFactor)
+    configuration.faceRestoration = name(advanced.faceRestoration)
+    configuration.guidanceEmbed = Float(advanced.guidanceEmbed)
+    configuration.speedUpWithGuidanceEmbed = advanced.speedUpWithGuidanceEmbed
+    configuration.sharpness = Float(advanced.sharpness)
+    configuration.stochasticSamplingGamma = Float(advanced.stochasticSamplingGamma)
+    configuration.clipSkip = Int32(advanced.clipSkip)
+    configuration.t5TextEncoder = advanced.t5TextEncoder
+    configuration.separateClipL = advanced.separateClipL
+    configuration.clipLText = advanced.separateClipL ? advanced.clipLText : nil
+    configuration.separateOpenClipG = advanced.separateOpenClipG
+    configuration.openClipGText = advanced.separateOpenClipG ? advanced.openClipGText : nil
+    configuration.separateT5 = advanced.separateT5
+    configuration.t5Text = advanced.separateT5 ? advanced.t5Text : nil
+    configuration.zeroNegativePrompt = advanced.zeroNegativePrompt
+    configuration.aestheticScore = Float(advanced.aestheticScore)
+    configuration.negativeAestheticScore = Float(advanced.negativeAestheticScore)
+    configuration.cropTop = Int32(advanced.cropTop)
+    configuration.cropLeft = Int32(advanced.cropLeft)
+    configuration.originalImageWidth = Int32(advanced.originalWidth)
+    configuration.originalImageHeight = Int32(advanced.originalHeight)
+    configuration.targetImageWidth = Int32(advanced.targetWidth)
+    configuration.targetImageHeight = Int32(advanced.targetHeight)
+    configuration.negativeOriginalImageWidth = Int32(advanced.negativeOriginalWidth)
+    configuration.negativeOriginalImageHeight = Int32(advanced.negativeOriginalHeight)
+    configuration.tiledDecoding = advanced.tiledDecoding
+    configuration.decodingTileWidth = Int32(advanced.decodingTileWidth)
+    configuration.decodingTileHeight = Int32(advanced.decodingTileHeight)
+    configuration.decodingTileOverlap = Int32(advanced.decodingTileOverlap)
+    configuration.tiledDiffusion = advanced.tiledDiffusion
+    configuration.diffusionTileWidth = Int32(advanced.diffusionTileWidth)
+    configuration.diffusionTileHeight = Int32(advanced.diffusionTileHeight)
+    configuration.diffusionTileOverlap = Int32(advanced.diffusionTileOverlap)
+    configuration.teaCache = advanced.teaCache
+    configuration.teaCacheStart = Int32(advanced.teaCacheStart)
+    configuration.teaCacheEnd = Int32(advanced.teaCacheEnd)
+    configuration.teaCacheThreshold = Float(advanced.teaCacheThreshold)
+    configuration.teaCacheMaxSkipSteps = Int32(advanced.teaCacheMaxSkipSteps)
+    configuration.colorCalibration = advanced.colorCalibration ? .lab : .disabled
+    configuration.compressionArtifacts = CompressionMethod(rawValue: Int8(advanced.compressionArtifacts.rawValue)) ?? .disabled
+    configuration.compressionArtifactsQuality = Float(advanced.compressionQuality)
   }
 
   /// The update for a library event; nil for events DT Hub does not show (audio, downloads,

@@ -19,6 +19,7 @@ struct GenerationTabView: View {
           SamplingCard(controller: controller, connection: connection)
           LoRACard(controller: controller, connection: connection)
         }
+        AdvancedSection(controller: controller, connection: connection)
       }
       .padding(.bottom, DS.groupGap)
     }
