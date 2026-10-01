@@ -18,11 +18,11 @@ struct GenerationCommands: View {
     .disabled(!generation.canRun(with: connection))
 
     Button {
-      generation.session.cancel()
+      generation.stop()
     } label: {
       Text("header.stop")
     }
     .keyboardShortcut(".", modifiers: .command)
-    .disabled(!generation.session.isRunning)
+    .disabled(!generation.session.isRunning && !generation.isPreparing)
   }
 }

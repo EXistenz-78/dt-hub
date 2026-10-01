@@ -23,6 +23,9 @@ final class DrawThingsConnection {
   @ObservationIgnored private let managedStore = ManagedServerSettingsStore()
   @ObservationIgnored private let secretStore: any SecretStore = KeychainSecretStore()
   @ObservationIgnored private var loop: Task<Void, Never>?
+  /// True while an image is being made or about to be (set by the app): the image model is
+  /// never released then, whatever the language model asks.
+  @ObservationIgnored var isImageWorkActive: @MainActor () -> Bool = { false }
 
   init() {
     settings = settingsStore.load()
@@ -51,6 +54,7 @@ final class DrawThingsConnection {
   /// until it answers: spec §7), whatever the monitor says meanwhile; after that a server that
   /// does not answer is red, with the reason.
   var indicator: ConnectionStatus {
+    if releasedForLanguageModel { return .connecting }
     if managed.mode == .managed, managedServer.isStarting, monitor.status != .connected { return .connecting }
     return monitor.indicator
   }
@@ -63,9 +67,52 @@ final class DrawThingsConnection {
       ? String(localized: "server.noModels") : String(localized: "header.model.browsingDisabled")
   }
 
+  /// True while the managed server is stopped on purpose, to leave the memory to the language
+  /// model (spec §9): the next RUN starts it again.
+  private(set) var releasedForLanguageModel = false
+
+  /// Why RUN cannot start now; nil when it can. A server parked for the language model is no
+  /// reason: RUN brings it back.
+  var runBlocker: RunBlocker? {
+    if releasedForLanguageModel, selection.selectedFile != nil { return nil }
+    return RunAvailability.blocker(
+      connection: monitor.status, selectedModel: selection.selectedFile, catalog: monitor.catalog)
+  }
+
+  /// Stops the managed server so the language model has the room. Only the server DT Hub
+  /// started can be stopped: Draw Things has no call to unload a model from another one.
+  func releaseImageModel() async {
+    guard managed.mode == .managed, managedServer.isRunning, !isImageWorkActive() else { return }
+    // Marked first: a RUN pressed while the server is leaving must wait for it to come back.
+    releasedForLanguageModel = true
+    await managedServer.stopAndWait()
+  }
+
+  /// Brings the managed server back when it was released, and waits until it answers (the
+  /// image model loads again, which takes time). It gives up when the server cannot start
+  /// (the banner says why) or when the wait is cancelled (Stop).
+  func ensureServerForRun() async {
+    guard releasedForLanguageModel else { return }
+    defer { releasedForLanguageModel = false }
+    // The mode was changed while the server was parked: there is nothing to bring back.
+    guard managed.mode == .managed else { return }
+    await managedServer.start(managed)
+    for _ in 0..<300 {
+      if Task.isCancelled { return }
+      switch managedServer.state {
+      case .failedToStart, .exitedUnexpectedly: return
+      case .stopped, .running: break
+      }
+      await monitor.refresh()
+      if monitor.status == .connected { return }
+      try? await Task.sleep(for: .seconds(1))
+    }
+  }
+
   /// Starts the managed server again (after it ended or failed).
   func restartManagedServer() async {
     guard managed.mode == .managed else { return }
+    releasedForLanguageModel = false
     await managedServer.start(managed)
   }
 
@@ -73,6 +120,8 @@ final class DrawThingsConnection {
   func apply(_ newSettings: ConnectionSettings, secret: String, managed newManaged: ManagedServerSettings) async {
     settings = newSettings
     settingsStore.save(newSettings)
+    // Applying starts or stops the server itself: nothing stays parked.
+    releasedForLanguageModel = false
     managed = newManaged
     managedStore.save(newManaged)
     if newManaged.mode == .managed {

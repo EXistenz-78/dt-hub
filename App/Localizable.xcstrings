@@ -2092,6 +2092,108 @@
         }
       }
     },
+    "llm.error.generation": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The model could not answer: %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il modello non ha risposto: %@"
+          }
+        }
+      }
+    },
+    "llm.error.interrupted": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stopped: the memory was needed for an image."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Interrotto: la memoria serviva per un'immagine."
+          }
+        }
+      }
+    },
+    "llm.error.load": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The model could not be loaded: %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il modello non si è caricato: %@"
+          }
+        }
+      }
+    },
+    "llm.error.memory": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not enough free memory: the model needs about %@ and %@ are free."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Memoria libera insufficiente: il modello ne richiede circa %@ e ne sono liberi %@."
+          }
+        }
+      }
+    },
+    "llm.error.noImages": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This model cannot look at images: choose one with “images”."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo modello non guarda le immagini: scegline uno con “immagini”."
+          }
+        }
+      }
+    },
+    "llm.error.noModel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a model first."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scegli prima un modello."
+          }
+        }
+      }
+    },
     "prefs.dt.connect": {
       "extractionState": "manual",
       "localizations": {
@@ -2296,36 +2398,478 @@
         }
       }
     },
-    "prefs.empty.message": {
+    "prefs.llm.download.button": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "These settings arrive in a next milestone."
+            "value": "Download the recommended model (%@)…"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Queste impostazioni arriveranno in una prossima tappa."
+            "value": "Scarica il modello consigliato (%@)…"
           }
         }
       }
     },
-    "prefs.empty.title": {
+    "prefs.llm.download.cancel": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Coming soon"
+            "value": "Cancel"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "In arrivo"
+            "value": "Annulla"
+          }
+        }
+      }
+    },
+    "prefs.llm.download.confirm.button": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Download"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scarica"
+          }
+        }
+      }
+    },
+    "prefs.llm.download.confirm.message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ from huggingface.co, about %@, into %@. It can be removed by deleting its folder."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ da huggingface.co, circa %@, in %@. Si toglie cancellando la sua cartella."
+          }
+        }
+      }
+    },
+    "prefs.llm.download.confirm.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Download the recommended model?"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scaricare il modello consigliato?"
+          }
+        }
+      }
+    },
+    "prefs.llm.download.error": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The download failed: %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lo scaricamento non è riuscito: %@"
+          }
+        }
+      }
+    },
+    "prefs.llm.folder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Models folder"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cartella dei modelli"
+          }
+        }
+      }
+    },
+    "prefs.llm.folder.note": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A model is a folder in Hugging Face format (config.json and .safetensors files), as MLX loads them: for instance from mlx-community, or from LM Studio. Draw Things' own .ckpt files cannot be used."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un modello è una cartella in formato Hugging Face (config.json e file .safetensors), come li carica MLX: per esempio da mlx-community o da LM Studio. I file .ckpt di Draw Things non si possono usare."
+          }
+        }
+      }
+    },
+    "prefs.llm.freeAtRun": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Free the language model when I press Run"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Libera l'LLM quando premo Run"
+          }
+        }
+      }
+    },
+    "prefs.llm.freeImageModel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Free the image model when the language model is used"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Libera il modello immagine quando uso l'LLM"
+          }
+        }
+      }
+    },
+    "prefs.llm.freeImageModel.cost": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The image model loads again at the next Run, which can take a while."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il modello immagine si ricarica al prossimo Run, e può richiedere del tempo."
+          }
+        }
+      }
+    },
+    "prefs.llm.freeImageModel.unavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only with the server DT Hub starts: Draw Things has no call to unload a model from another server."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo con il server avviato da DT Hub: Draw Things non ha una chiamata per scaricare un modello da un altro server."
+          }
+        }
+      }
+    },
+    "prefs.llm.idle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Free the language model after %lld minutes without use"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Libera l'LLM dopo %lld minuti senza usarlo"
+          }
+        }
+      }
+    },
+    "prefs.llm.idle.never": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Never free the language model when idle"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non liberare mai l'LLM per inattività"
+          }
+        }
+      }
+    },
+    "prefs.llm.memory": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Memory"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Memoria"
+          }
+        }
+      }
+    },
+    "prefs.llm.model": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Model"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modello"
+          }
+        }
+      }
+    },
+    "prefs.llm.model.none": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "None"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessuno"
+          }
+        }
+      }
+    },
+    "prefs.llm.model.vision": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · %@ · images"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · %@ · immagini"
+          }
+        }
+      }
+    },
+    "prefs.llm.noModels": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No model found in %@."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessun modello trovato in %@."
+          }
+        }
+      }
+    },
+    "prefs.llm.state.loading": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading %@…"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caricamento di %@…"
+          }
+        }
+      }
+    },
+    "prefs.llm.state.ready": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ready: %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pronto: %@"
+          }
+        }
+      }
+    },
+    "prefs.llm.state.unloaded": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No model loaded"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessun modello caricato"
+          }
+        }
+      }
+    },
+    "prefs.llm.test": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Test"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prova"
+          }
+        }
+      }
+    },
+    "prefs.llm.test.ask": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ask"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chiedi"
+          }
+        }
+      }
+    },
+    "prefs.llm.test.image": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose an image…"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scegli un'immagine…"
+          }
+        }
+      }
+    },
+    "prefs.llm.test.question": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ask the model something"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fai una domanda al modello"
+          }
+        }
+      }
+    },
+    "prefs.llm.test.removeImage": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove the image"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Togli l'immagine"
+          }
+        }
+      }
+    },
+    "prefs.llm.test.sample": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reply with a short greeting."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rispondi con un breve saluto."
           }
         }
       }
@@ -2993,6 +3537,23 @@
         }
       }
     },
+    "results.preparingMemory": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Freeing memory…"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Libero la memoria…"
+          }
+        }
+      }
+    },
     "results.progress.batch": {
       "extractionState": "manual",
       "localizations": {
@@ -3482,6 +4043,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Draw Things non raggiungibile"
+          }
+        }
+      }
+    },
+    "status.imageModelParked": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The image model was freed for the language model; Run loads it again."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il modello immagine è stato liberato per l'LLM; Run lo ricarica."
           }
         }
       }

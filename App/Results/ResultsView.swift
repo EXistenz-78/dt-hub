@@ -102,7 +102,12 @@ struct ResultsView: View {
           .buttonStyle(DSPillButtonStyle())
       }
     case .idle:
-      EmptyView()
+      if controller.isPreparing {
+        HStack(spacing: DS.controlGap) {
+          ProgressView().controlSize(.small)
+          Text("results.preparingMemory").font(.caption).foregroundStyle(.secondary)
+        }
+      }
     }
   }
 

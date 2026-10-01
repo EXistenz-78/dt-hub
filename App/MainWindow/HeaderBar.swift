@@ -12,10 +12,7 @@ struct HeaderBar: View {
   private var selection: ModelSelection { connection.selection }
   private var selectedModel: CatalogModel? { selection.selectedModel(in: monitor.catalog) }
 
-  private var runBlocker: RunBlocker? {
-    RunAvailability.blocker(
-      connection: monitor.status, selectedModel: selection.selectedFile, catalog: monitor.catalog)
-  }
+  private var runBlocker: RunBlocker? { connection.runBlocker }
 
   var body: some View {
     HStack(spacing: DS.controlGap) {
@@ -100,19 +97,26 @@ struct HeaderBar: View {
     return nil
   }
 
+  /// The step shown beside Stop; nil while the memory is being prepared.
+  private var runningProgress: (step: Int?, total: Int)? {
+    if case .running(let step, let total) = generation.session.phase { return (step, total) }
+    return nil
+  }
+
   /// RUN, or Stop with the progress while a generation runs (spec §7). ⌘↩ and ⌘. are in the
   /// Generation menu (`GenerationCommands`), so they work from every window.
   @ViewBuilder private var runButton: some View {
-    if case .running(let step, let total) = generation.session.phase {
+    if generation.session.isRunning || generation.isPreparing {
+      let progress = runningProgress
       Button {
-        generation.session.cancel()
+        generation.stop()
       } label: {
         HStack(spacing: DS.pillIconGap) {
           Image(systemName: "stop.fill")
             .font(.system(size: 14, weight: .semibold))
             .accessibilityHidden(true)
           Text("header.stop")
-          if let step {
+          if let step = progress?.step, let total = progress?.total {
             Text(verbatim: "\(step)/\(total)")
               .monospacedDigit()
           }
@@ -132,7 +136,7 @@ struct HeaderBar: View {
         }
       }
       .buttonStyle(DSPillButtonStyle(prominent: true))
-      .disabled(runBlocker != nil)
+      .disabled(runBlocker != nil || generation.isPreparing)
       .help(runHelp)
     }
   }
@@ -148,6 +152,7 @@ struct HeaderBar: View {
   }
 
   private var statusText: String {
+    if connection.releasedForLanguageModel { return String(localized: "status.imageModelParked") }
     if connection.managed.mode == .managed, connection.managedServer.isStarting, monitor.status != .connected {
       return String(localized: "status.serverStarting")
     }
