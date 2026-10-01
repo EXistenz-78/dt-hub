@@ -1,0 +1,154 @@
+# DT Hub — Design del tab Control (immagine, Moodboard, inpaint)
+
+Data: 1 ottobre 2026 · Stato: bozza da approvare · Estende `2026-09-29-dt-hub-core-design.md`
+
+## 1. Scopo
+
+Un tab del cuore dell'app, **Control**, collocato **prima** di Generazione, dove si preparano gli ingressi immagine di una generazione: l'**immagine di partenza** (I2I), il **Moodboard** e la **maschera di inpaint**. Alimenta il normale RUN.
+
+Nasce da un difetto dell'interfaccia di Draw Things: le immagini di controllo sono scomode da gestire, difficili da togliere e non si vede cosa è stato caricato in quale campo. DT Hub deve farlo meglio, e permettere di **trascinare le miniature della finestra Risultati** direttamente negli ingressi.
+
+Decisioni dell'utente (1 ottobre 2026):
+- il tab è del cuore e precede la v1 dei plug-in; anticipa le voci "Riferimenti" ed "Espandi e maschera" della spec principale (§2) e va **prima di M7 Plug-in** (che diventa M8);
+- prima versione: immagine di partenza, Moodboard con pesi, inpaint con pennello semplice;
+- l'**outpaint** si aggiunge quando l'inpaint funziona; comporta ridimensionare l'immagine di partenza nel canvas (il modo "Contieni", sezione 5);
+- Depth, Pose, Scribble, Color Palette, Custom e i ControlNet restano **fuori**: i ControlNet disponibili per DT sono per modelli vecchi (SD, Flux.1) e l'utente non ha modo di convertirne per modelli recenti;
+- il Tiled Diffusion con dimensioni fino a 8192×8192 si fa **prima dell'outpaint** (voce del backlog).
+
+## 2. Perimetro
+
+**Dentro:**
+- immagine di partenza con forza (strength) e inquadratura nel canvas;
+- Moodboard: più immagini, ognuna con peso, interruttore acceso/spento, rimozione e riordino;
+- maschera di inpaint con pennello e gomma, annulla/ripeti, inverti, svuota; sfumatura, margine, "conserva l'originale";
+- striscia "Con Run parte", gestione unificata di ciò che è caricato;
+- trascinamento da Risultati, dal Finder, incolla da appunti; menu "Usa come immagine" / "Aggiungi al Moodboard" in Risultati;
+- ripristino all'avvio e annulla delle rimozioni.
+
+**Fuori:** ControlNet e hint di Depth, Pose, Scribble, Color Palette, Custom; outpaint (arriva dopo, ma il modello dati lo prevede); selezioni (rettangolo, ellisse), riempimento, livelli; modifica dei pixel dell'immagine (non è un editor).
+
+**Modelli Edit (Flux Kontext, Qwen Image Edit e simili):** verificato su documentazione di Draw Things e sul catalogo (campo `modifier`: `kontext`, `kontext_kv`, `qwenimage_edit_plus`, `editing`, `inpainting`). Non richiedono un tipo di ingresso nuovo: il **canvas** è l'immagine da modificare (forza 100%) e il **Moodboard** porta le reference aggiuntive; per una reference sola si usa il Moodboard con **canvas vuoto**. Ogni reference in più aumenta il tempo di render più che linearmente.
+
+## 3. Interfaccia
+
+**Posizione.** Il tab Control precede Generazione nella barra dei tab. All'avvio si apre l'ultimo tab usato. Il design system è quello dell'app (turchese come accento, arancio per ciò che si toglie, pannelli con raggio 19, titoli di gruppo in monospaziato maiuscolo).
+
+**Striscia "Con Run parte"** (in alto). Un chip per ogni ingresso attivo: Immagine (con dimensioni), Maschera (con la percentuale coperta), Moodboard (con il numero). Ogni chip ha una ✕ che toglie l'ingresso; "Svuota tutto" in arancio ripulisce tutto. Qui compaiono gli avvisi (maschera senza immagine, ritaglio forte, famiglia che non usa il Moodboard, copia mancante). Cliccare un chip porta alla sua scheda.
+
+**Scheda Immagine** (sinistra):
+- miniatura con ✕ sempre visibile, nome, dimensioni, provenienza ("da Risultati", "dal Finder", "da <plug-in>");
+- pulsanti "Sostituisci" e "Usa le dimensioni" (vedi §5);
+- cursore **Forza** 0–100% con campo numerico; con i modelli Edit la scheda dice "Modello Edit: l'immagine viene modificata, forza al 100%";
+- zona di rilascio: trascinare un'immagine la imposta; se ce n'era una, la sostituisce con annulla.
+
+**Scheda Moodboard** (sinistra, sotto):
+- griglia di miniature; ognuna ha ✕ sempre visibile, **occhio** (spegne senza cancellare: la miniatura si attenua), cursore del **peso** con valore digitabile;
+- riordino trascinando le miniature;
+- **regola di rilascio** (deciso con l'utente): rilasciare un'immagine **su una miniatura già inserita la sostituisce**; rilasciarla **in qualsiasi altro punto della scheda aggiunge**. Vale per le immagini dal Finder, da Risultati e per quelle trascinate dalla scheda Immagine;
+- avviso quando le reference sono più di tre (tempo di render);
+- per le famiglie che non gestiscono il Moodboard senza ControlNet o IP-Adapter la scheda è grigia con la spiegazione.
+
+**Pannello Maschera** (destra):
+- anteprima del **canvas così come parte a Draw Things** (ritaglio compreso), con la maschera sovrapposta in arancio (area dipinta = area che verrà rigenerata);
+- strumenti: Pennello, Gomma, Annulla, Ripeti, Inverti, Svuota; cursori Dimensione e Morbidezza;
+- parametri di Draw Things: Sfumatura (`maskBlur`), Margine (`maskBlurOutset`), casella "Conserva l'originale fuori dalla maschera" (`preserveOriginalAfterInpaint`);
+- senza immagine il pannello è vuoto con "Carica un'immagine per disegnare la maschera".
+
+**Annulla.** Ogni rimozione, sostituzione o svuotamento si annulla con ⌘Z e con un avviso "Rimossa · Annulla" che dura qualche secondo.
+
+**Finestra Risultati.** Le miniature della striscia diventano trascinabili (come file e come tipo interno dell'app) e hanno nel menu contestuale "Usa come immagine" e "Aggiungi al Moodboard". Il dettaglio resta com'è.
+
+## 4. Modello dei dati
+
+**HubKit** (tipi `Sendable`; i salvati sono `Codable` con lettura permissiva, come `GenerationParameters`):
+- `ReferenceImage`: `id`, `source` (file, risultato, appunti, plug-in), nome, dimensioni in pixel, nome del file della copia.
+- `Framing`: modo (`fill`; `contain` in seguito) e spostamento normalizzato dentro il canvas.
+- `MaskSettings`: sfumatura, margine, conserva l'originale.
+- `MoodboardEntry`: `id`, `ReferenceImage`, peso 0…1, acceso/spento.
+- `ControlInputs`: immagine opzionale con `Framing` e forza, maschera opzionale (riferimento al file) con `MaskSettings`, lista di `MoodboardEntry`.
+- `GenerationInputs` (non `Codable`, non finisce nei PNG): immagine già inquadrata alla dimensione esatta del canvas, maschera (pixel **trasparenti = da rigenerare**, come vuole il client), lista di hint con tipo e peso.
+- Il protocollo backend diventa `generate(_ job: GenerationJob, inputs: GenerationInputs)`; `GenerationJob` non cambia, e gli ingressi vuoti riproducono il T2I di oggi.
+
+**Copie su disco.** Ogni immagine aggiunta viene **copiata** in `~/Library/Application Support/DT Hub/Control/<uuid>.<estensione>`. Così togliere o spostare l'originale, o l'immagine di Risultati, non rompe l'ingresso. La copia si cancella quando l'ingresso viene tolto o svuotato e le orfane si spazzano all'avvio. La maschera è un PNG a 8 bit **in coordinate dell'immagine**, nella stessa cartella: segue il ritaglio se lo si sposta.
+
+**Persistenza.** `control.json` nella cartella di supporto, separato da `session.json`, ripristinato all'avvio come il prompt (spec principale §11). Una copia mancante fa scartare la voce con un avviso nella striscia.
+
+**Memoria.** I pixel stanno su disco; le immagini si decodificano con ImageIO alla dimensione necessaria (miniature al volo, ritaglio al momento del RUN), perché una foto da 50 megapixel non deve stare intera in memoria. L'annulla/ripeti della maschera usa istantanee limitate a 20; quello delle voci usa copie del valore `ControlInputs` (leggero: contiene riferimenti, non pixel).
+
+## 5. Inquadratura: rapporto diverso dal canvas
+
+Il canvas è dato dalle Dimensioni di Generazione. Tre modi di inquadrare l'immagine:
+1. **Riempi (predefinito).** Il canvas resta com'è, l'immagine lo riempie e si ritaglia. La miniatura mostra il ritaglio (parti perse oscurate) e il dettaglio ("immagine 1:1 → canvas 4:3, si perde il 25% sopra e sotto"); trascinando l'immagine nel riquadro si sceglie quale parte tenere. Un ritaglio forte (oltre un terzo dell'immagine) produce un avviso nella striscia.
+2. **Adatta le dimensioni.** Un pulsante esplicito, sempre disponibile: porta le Dimensioni di Generazione al rapporto dell'immagine, con **area simile** a quella corrente, multipli di 64 e nei limiti del momento (2048; 8192 con il Tiled Diffusion). È un'azione con annulla e **non si ripete da sola**.
+3. **Contieni (arriva con l'outpaint).** L'immagine sta tutta nel canvas e i margini sono area da rigenerare: è la stessa cosa dell'outpaint. Il modello dati lo prevede (`Framing`); l'interfaccia lo abilita con l'outpaint.
+
+Se il rapporto delle Dimensioni cambia dopo il caricamento, il ritaglio si ricalcola al volo. Il **Moodboard** non ha il problema: le reference non entrano nel canvas. Come Draw Things le tratta con un rapporto diverso si verifica dal vivo (sezione 9).
+
+## 6. Dal tab al RUN
+
+- **`InputComposer`** (HubCore): funzione pura da `ControlInputs` e dimensioni del canvas a `GenerationInputs`: ritaglia e scala l'immagine alla dimensione esatta, rende la maschera nello stesso riquadro (alfa 0 dove si rigenera), prepara gli hint dei Moodboard accesi con il loro peso. Si prova con immagini generate nei test.
+- **DTBridge** (`JobMapper`): riempie `image`, `mask`, hint (`HintBuilder`, tipo `shuffle` per il Moodboard) e imposta `strength`, `maskBlur`, `maskBlurOutset`, `preserveOriginalAfterInpaint`, e `enableInpainting` quando serve (da verificare, §9). `HintBuilder` e `ImageHelpers` della libreria si usano **solo** in DTBridge.
+- **Più batch:** tutti riusano gli stessi ingressi.
+- **Nel PNG salvato** finiscono forza, sfumatura, margine, e numero e pesi delle reference (non le immagini). "Riprendi parametri" da Risultati ripristina questi numeri.
+- **Blocchi in RUN:** una maschera senza immagine. Il resto sono avvisi.
+- **Visibilità per famiglia** (come le card avanzate, dalla tabella del catalogo): il tab ricava dal `modifier` del modello cosa è sensato (forza 100% per i modelli Edit, Moodboard utilizzabile o no, `enableInpainting`). Una famiglia sconosciuta mostra tutto e non blocca nulla.
+
+## 7. Plug-in (M8)
+
+Le immagini che i plug-in propongono (in particolare Prompt Master e Sphere Light) **arrivano in queste stesse schede**, con la provenienza del plug-in; la card "Contributi" della spec principale (§8) perde la parte immagini. Se due plug-in vogliono lo stesso ingresso (l'immagine, o la maschera) c'è conflitto e RUN si blocca con un messaggio che li nomina, come già previsto.
+
+## 8. Errori
+
+Tutti i messaggi sono localizzati (it, en), senza testo tecnico grezzo.
+- Immagine illeggibile o formato non supportato: non entra; avviso con il nome del file.
+- Disco pieno o cartella non scrivibile nella copia: errore chiaro, nessuna voce a metà.
+- Copia sparita all'avvio: voce scartata con avviso.
+- Maschera senza immagine: RUN bloccato con il motivo.
+- Il server rifiuta gli ingressi: passano dagli errori della spec principale (§10).
+
+## 9. Test e verifiche
+
+**Unitari (HubCore):**
+- inquadratura: 1:1 in 4:3, 3:4 in 4:3, stesso rapporto, "Adatta le dimensioni" con arrotondamento a 64 e limiti;
+- compositore: misura dei pixel reali (ritaglio giusto, maschera trasparente dove va, hint dei soli Moodboard accesi);
+- maschera: pennello, gomma, morbidezza, inverti, svuota; annulla/ripeti con limite di memoria;
+- store: aggiunta e copia, rimozione e pulizia, ripristino, copie mancanti, annulla delle rimozioni;
+- regola di rilascio del Moodboard (sostituisce o aggiunge).
+
+**DTBridge:** mappatura di forza, maschera, hint e `enableInpainting` nel `JobMapper`.
+
+**Dal vivo con un server vero**, con un modello leggero, tre verifiche aperte:
+1. come Draw Things tratta un Moodboard con rapporto diverso dal canvas;
+2. quando serve `enableInpainting` (modelli senza `modifier` inpainting);
+3. quali famiglie usano il Moodboard senza ControlNet.
+
+**A mano (utente):** trascinamenti, pennello, ripristino all'avvio.
+
+## 10. Moduli e confini
+
+| Modulo | Cosa riceve |
+|---|---|
+| HubKit | I tipi della sezione 4; il protocollo backend con gli ingressi |
+| HubCore | `ControlStore` (stato, annulla/ripeti, persistenza), `ReferenceStorage` (copie su disco, finto nei test), `FramingMath`, `InputComposer`, `MaskBitmap` (buffer a 8 bit con pennello, gomma, morbidezza, inverti), le regole per famiglia, la regola di rilascio |
+| DTBridge | `JobMapper` esteso; l'unico che usa `HintBuilder` |
+| App | `ControlTabView`, striscia, schede Immagine e Moodboard, `MaskStage` (SwiftUI `Canvas` con gesto di disegno), trascinamento (`Transferable`), modifiche a Risultati, `WorkspaceState` con due tab del cuore |
+
+Le regole di dipendenza della spec principale (§4) non cambiano.
+
+## 11. Tappe
+
+Ognuna con piano, revisione indipendente e merge, come M4.
+
+| Tappa | Contenuto | Esito |
+|---|---|---|
+| **M7a** | Tab Control davanti a Generazione, striscia, scheda Immagine (Riempi, Adatta le dimensioni, forza), copie e ripristino, trascinamento da Risultati, dal Finder e incolla, "Usa come immagine" in Risultati, RUN con I2I | **l'I2I funziona** |
+| **M7b** | Scheda Moodboard (pesi, interruttore, regole di rilascio, riordino), "Aggiungi al Moodboard", visibilità per famiglia | **Moodboard e modelli Edit** |
+| **M7c** | Pannello maschera con pennello semplice, parametri di maschera, `enableInpainting` | **l'inpaint funziona** |
+| Poi | Tiled Diffusion fino a 8192; outpaint (modo Contieni e margini); **M8 Plug-in** (l'attuale M7) | |
+
+## 12. Rischi aperti
+
+- **Comportamento di Draw Things da verificare** (sezione 9): rapporto del Moodboard, `enableInpainting`, famiglie senza Moodboard.
+- **Prestazioni del pennello** su canvas grandi (fino a 2048×2048 oggi, 8192 con il Tiled Diffusion): il buffer e il disegno devono restare fluidi; si misura in M7c e, se serve, si disegna su una versione ridotta con rendering finale alla dimensione piena.
+- **Moodboard su modelli senza supporto nativo:** su famiglie vecchie richiede un controllo (IP-Adapter/ControlNet) che DT Hub non gestisce; la scheda lo dice e non invia hint inutili.
+- **Spazio su disco delle copie:** nessun limite nella prima versione; "Svuota tutto" e la rimozione liberano lo spazio.
