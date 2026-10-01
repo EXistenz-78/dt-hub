@@ -14,6 +14,19 @@ public struct HubLanguageModelDownloader: LanguageModelDownloader {
     self.patterns = patterns
   }
 
+  /// The hidden folders of downloads that were cut short (the app quit or crashed): they hold
+  /// part of a model, nothing lists them, and each new download uses a fresh name. Only one
+  /// download runs at a time, so everything with the prefix in `parent` is a leftover.
+  public static func removeLeftoverStaging(in parent: URL) {
+    let fileManager = FileManager.default
+    guard let names = try? fileManager.contentsOfDirectory(atPath: parent.path) else { return }
+    for name in names where name.hasPrefix(stagingPrefix) {
+      try? fileManager.removeItem(at: parent.appendingPathComponent(name))
+    }
+  }
+
+  static let stagingPrefix = ".dthub-download-"
+
   public func download(
     repository: String, to folder: URL, progress: @escaping @Sendable (Double) -> Void
   ) async throws {
@@ -22,7 +35,8 @@ public struct HubLanguageModelDownloader: LanguageModelDownloader {
     }
     let fileManager = FileManager.default
     let parent = folder.deletingLastPathComponent()
-    let staging = parent.appendingPathComponent(".dthub-download-\(UUID().uuidString)", isDirectory: true)
+    Self.removeLeftoverStaging(in: parent)
+    let staging = parent.appendingPathComponent("\(Self.stagingPrefix)\(UUID().uuidString)", isDirectory: true)
     defer { try? fileManager.removeItem(at: staging) }
     do {
       try fileManager.createDirectory(at: staging, withIntermediateDirectories: true)
