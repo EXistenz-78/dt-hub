@@ -23,13 +23,17 @@ public struct GenerationParameters: Equatable, Codable, Sendable {
   public var loras: [LoRASelection]
   /// The Advanced cards (spec §6, level 2).
   public var advanced: AdvancedParameters
+  /// Draw Things settings DT Hub has no card for, from the JSON editor (spec §6, level 3):
+  /// kept as they are, sent with every RUN, saved with the session and in the PNG.
+  public var extra: [String: JSONValue]
 
   public init(
     width: Int = 1024, height: Int = 1024, steps: Int = 8, guidanceScale: Double = 1,
     cfgZeroStar: Bool = false, cfgZeroInitSteps: Int = 0,
     sampler: Sampler = .uniPCTrailing, shift: Double = 3, resolutionDependentShift: Bool = true,
     seed: UInt32 = 0, randomSeed: Bool = true, batchSize: Int = 1, batchCount: Int = 1,
-    loras: [LoRASelection] = [], advanced: AdvancedParameters = .default
+    loras: [LoRASelection] = [], advanced: AdvancedParameters = .default,
+    extra: [String: JSONValue] = [:]
   ) {
     self.width = width
     self.height = height
@@ -46,6 +50,7 @@ public struct GenerationParameters: Equatable, Codable, Sendable {
     self.batchCount = batchCount
     self.loras = loras
     self.advanced = advanced
+    self.extra = extra
   }
 
   /// Reads saved parameters leniently: a missing or unreadable field takes its default, so
@@ -71,6 +76,7 @@ public struct GenerationParameters: Equatable, Codable, Sendable {
     batchCount = value(.batchCount, fallback.batchCount)
     loras = value(.loras, fallback.loras)
     advanced = value(.advanced, fallback.advanced)
+    extra = value(.extra, fallback.extra)
   }
 
   public static let `default` = GenerationParameters()
@@ -98,7 +104,7 @@ public struct GenerationParameters: Equatable, Codable, Sendable {
   public static let sizeRange = 64...2048
   public static let stepsRange = 1...150
   public static let guidanceRange = 0.0...50.0
-  public static let shiftRange = 0.0...10.0
+  public static let shiftRange = 0.0...20.0
   public static let batchSizeRange = 1...4
   public static let batchCountRange = 1...100
 

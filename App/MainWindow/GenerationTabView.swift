@@ -10,6 +10,8 @@ struct GenerationTabView: View {
   var body: some View {
     ScrollView {
       VStack(spacing: DS.groupGap) {
+        PresetBar(controller: controller, connection: connection)
+          .padding(.horizontal, DS.panelPadding)
         PromptCard(controller: controller, connection: connection)
         DSCardRow {
           DimensionsCard(controller: controller)
