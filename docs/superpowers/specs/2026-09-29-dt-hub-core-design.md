@@ -214,11 +214,15 @@ La v1 include un **plug-in di prova**, solo nei test e in build Debug, per verif
 ## 9. Servizio LLM (LLMBridge)
 
 - **Motore:** mlx-swift-lm (`MLXLLM`, `MLXVLM`) dentro l'app; supporta la visione.
-- **Modello predefinito:** Qwen3-VL 8B Instruct a 4 bit (circa 5–6 GB). L'identificativo esatto del repository MLX va verificato al momento dell'implementazione.
-- **Cartella dei modelli:** impostabile nelle Preferenze, predefinita `/Volumes/LLM-VLM/MLX`. Lo scaricamento avviene solo su richiesta esplicita dell'utente.
-- **Memoria:** l'LLM viene **scaricato prima di ogni generazione DT** e ricaricato al primo uso successivo.
+- **Modello predefinito:** `mlx-community/Qwen3-VL-8B-Instruct-4bit` (Qwen3-VL 8B Instruct a 4 bit, 17 file, circa 5,78 GB, Apache-2.0; verificato su Hugging Face il 1 ottobre 2026).
+- **Cartella dei modelli:** impostabile nelle Preferenze, predefinita `/Volumes/LLM-VLM/MLX`. Un modello è una cartella in formato Hugging Face (`config.json` e `.safetensors`), fino a due livelli sotto la cartella (anche quelle di LM Studio); i file `.ckpt` di Draw Things e di Local Code, in formato proprio, non sono utilizzabili. Lo scaricamento avviene solo su richiesta esplicita dell'utente, con un dialogo che nomina repository, dimensione e destinazione.
+- **Memoria** (decisa con l'utente, 1 ottobre 2026): il modello immagine e l'LLM possono non stare insieme nella memoria di un Mac. Tre impostazioni nelle Preferenze › LLM:
+  - *Libera l'LLM quando premo Run* (attiva di default sotto i 64 GB): l'LLM si ricarica al primo uso successivo;
+  - *Libera il modello immagine quando uso l'LLM* (attiva di default sotto i 64 GB): solo con il server avviato da DT Hub, che si ferma prima di caricare l'LLM e riparte al Run (Draw Things non ha una chiamata per scaricare un modello da un altro server; il ricaricamento costa tempo e le scelte non si basano su dischi lenti);
+  - *Libera l'LLM dopo N minuti senza usarlo* (10 di default, 0 = mai).
+  Prima di caricare l'LLM, DT Hub confronta la dimensione del modello (× 1,2) con la memoria libera e, se non basta, lo dice invece di far andare il Mac in swap.
 - **v1:** il servizio esiste e ha una prova nelle Preferenze (una domanda di testo, e una di visione con un'immagine scelta). Il miglioramento del prompt arriva col plug-in PM2.
-- **Generazione strutturata:** lo schema JSON di MLXGuidedGeneration è disponibile per i plug-in che vogliono risposte strutturate.
+- **Generazione strutturata:** lo schema JSON di MLXGuidedGeneration è disponibile per i plug-in che vogliono risposte strutturate (arriva con il contratto dei plug-in, M7).
 - **Un solo compito, un modello alla volta:** tutti i modelli LLM servono allo stesso scopo, cioè migliorare i prompt, e **non ne serve mai più di uno contemporaneamente**. I plug-in non scelgono il modello: chiedono al servizio di "migliorare il prompt", e il servizio decide quale modello usare.
 - **Regola di scelta del modello:**
   - **predefinito:** un modello generico, valido per tutte le famiglie, usato soprattutto da PM2;
