@@ -20,13 +20,13 @@ Non è un editor su canvas: canvas infinito e livelli restano compito dell'app D
 - finestra risultati con anteprima in diretta e salvataggio automatico;
 - contratto dei plug-in e menu dei plug-in (vuoto).
 
+**Tab Control (anticipato, prima di M7; deciso con l'utente il 1 ottobre 2026):** immagine di partenza (I2I), Moodboard e inpaint con pennello semplice, in un tab del cuore davanti a Generazione. Design in `2026-10-01-tab-control-design.md`. L'outpaint lo segue quando l'inpaint funziona.
+
 **Dopo la v1, in quest'ordine:**
 1. Plug-in Prompt Master.
 2. Plug-in Sphere Light.
-3. Tab / plug-in Riferimenti: immagine di partenza (I2I), moodboard, altre reference.
-4. Plug-in "Espandi e maschera": outpaint con margini, inpaint con pennello semplice.
-5. Plug-in Qwen Image 2.1.
-6. Galleria completa con storico e ricerca.
+3. Plug-in Qwen Image 2.1.
+4. Galleria completa con storico e ricerca.
 
 **Fuori dal progetto:** canvas infinito e livelli; ComfyUI; DeepL; gli script JS di DT.
 **Fuori dalla v1:** il video (Wan, LTX, Hunyuan, MiniMax). I suoi campi restano raggiungibili dall'editor JSON.
@@ -145,7 +145,7 @@ Il file va portato in HubKit, così i plug-in lo usano.
 ┌──────────────────────────────────────────────────────────────┐
 │ [Plug-in ▾]  [Modello ▾ · famiglia]       ● DT   [⚙︎]  [▶ RUN] │
 ├──────────────────────────────────────────────────────────────┤
-│ [ Generazione ]  (+ un tab per ogni plug-in attivo)           │
+│ [ Control ] [ Generazione ]  (+ un tab per ogni plug-in attivo) │
 ├──────────────────────────────────────────────────────────────┤
 │  PROMPT  a tutta larghezza; sotto il prompt, il NEGATIVO      │
 │          (tinta arancio, solo se la famiglia lo usa)          │
@@ -172,7 +172,8 @@ Il file va portato in HubKit, così i plug-in lo usano.
 - si apre al primo RUN;
 - mostra l'anteprima in diretta durante gli step, poi l'immagine finale;
 - sotto, una striscia con le immagini della sessione. Per ognuna: aprire, salvare, mostrare nel Finder, **riprendere i parametri**;
-- ogni immagine è salvata automaticamente come PNG con prompt e configurazione incorporati.
+- ogni immagine è salvata automaticamente come PNG con prompt e configurazione incorporati;
+- le miniature si trascinano nel tab Control (immagine di partenza, Moodboard) e hanno nel menu "Usa come immagine" e "Aggiungi al Moodboard".
 
 **Preferenze:**
 - *Draw Things*: modalità server, indirizzo e porta, TLS, shared secret, percorso di `gRPCServerCLI`, cartella modelli.
@@ -195,7 +196,7 @@ Riceve dal cuore dell'app:
 **I contributi sono sempre visibili prima di RUN.** Un plug-in può:
 - impostare uno o più parametri: compaiono nelle rispettive card, con un segno che indica quale plug-in li ha impostati;
 - scrivere il prompt o il negativo;
-- inserire immagine di partenza, immagini di moodboard o altre reference: nella v1 non c'è ancora il tab Riferimenti, quindi compaiono nella card **Contributi plug-in**, con miniatura, provenienza e pulsante per toglierle;
+- inserire immagine di partenza, immagini di moodboard o la maschera: compaiono **nelle schede del tab Control**, con la provenienza del plug-in, e l'utente le toglie o le cambia come le altre (design in `2026-10-01-tab-control-design.md`, §7); la card **Contributi plug-in** resta per parametri, prompt e pipeline;
 - fornire una **pipeline** a più passaggi, anch'essa elencata nella card Contributi.
 
 L'utente può modificare o rimuovere ogni contributo prima di RUN. Un plug-in **non cambia mai il modello** e non lancia generazioni da solo.
@@ -222,7 +223,7 @@ La v1 include un **plug-in di prova**, solo nei test e in build Debug, per verif
   - *Libera l'LLM dopo N minuti senza usarlo* (10 di default, 0 = mai).
   Prima di caricare l'LLM, DT Hub confronta la dimensione del modello (× 1,2) con la memoria libera e, se non basta, lo dice invece di far andare il Mac in swap.
 - **v1:** il servizio esiste e ha una prova nelle Preferenze (una domanda di testo, e una di visione con un'immagine scelta). Il miglioramento del prompt arriva col plug-in PM2.
-- **Generazione strutturata:** lo schema JSON di MLXGuidedGeneration è disponibile per i plug-in che vogliono risposte strutturate (arriva con il contratto dei plug-in, M7).
+- **Generazione strutturata:** lo schema JSON di MLXGuidedGeneration è disponibile per i plug-in che vogliono risposte strutturate (arriva con il contratto dei plug-in, M8).
 - **Un solo compito, un modello alla volta:** tutti i modelli LLM servono allo stesso scopo, cioè migliorare i prompt, e **non ne serve mai più di uno contemporaneamente**. I plug-in non scelgono il modello: chiedono al servizio di "migliorare il prompt", e il servizio decide quale modello usare.
 - **Regola di scelta del modello:**
   - **predefinito:** un modello generico, valido per tutte le famiglie, usato soprattutto da PM2;
@@ -280,8 +281,9 @@ Ogni tappa termina con qualcosa di utilizzabile.
 | M4 Card complete | LoRA, negativo, card Avanzate, visibilità per famiglia, editor JSON, preset e import `custom_configs.json`, ripristino sessione | parità con il pannello di DT per il T2I |
 | M5 Server gestito | Modalità "avvia gRPCServerCLI", arresti inattesi e riavvio | DT Hub funziona senza l'app DT aperta |
 | M6 LLM | LLMBridge, scaricamento nella cartella scelta, politica di memoria, prova nelle Preferenze | l'LLM risponde, anche su immagini |
-| M7 Plug-in | Contratto HubKit, menu plug-in, card Contributi, pipeline, conflitti, plug-in di prova | la v1 è completa |
-| Dopo | PM2 → SLR → Riferimenti (I2I) → Espandi e maschera → Qwen Image 2.1 → Galleria | una spec breve per ciascuno |
+| M7 Tab Control | **M7a** immagine di partenza e I2I; **M7b** Moodboard e modelli Edit; **M7c** inpaint con pennello (design in `2026-10-01-tab-control-design.md`) | I2I, Moodboard e inpaint funzionano |
+| M8 Plug-in | Contratto HubKit, menu plug-in, card Contributi, pipeline, conflitti, plug-in di prova | la v1 è completa |
+| Dopo | Tiled Diffusion fino a 8192 → outpaint → PM2 → SLR → Qwen Image 2.1 → Galleria | una spec breve per ciascuno |
 
 M4 si svolge in tre tappe, ognuna con revisione e merge (deciso con l'utente, 30 settembre 2026): **M4a** negativo, LoRA, visibilità per famiglia, ripristino sessione; **M4b** card Avanzate e avviso "valori nascosti attivi"; **M4c** editor JSON, preset, import di `custom_configs.json`.
 
