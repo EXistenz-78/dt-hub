@@ -229,3 +229,39 @@ struct AdvancedParametersTests {
     #expect(CompressionArtifacts.allCases.map(\.rawValue) == [0, 1, 2, 3])
   }
 }
+
+struct JSONValueTests {
+  @Test func readsAndWritesEveryKindOfValue() throws {
+    let json = #"{"a": null, "b": true, "c": 3, "d": 0.5, "e": "x", "f": [1, "y"], "g": {"h": 2}}"#
+    let object = try JSONDecoder().decode([String: JSONValue].self, from: Data(json.utf8))
+    #expect(object["a"] == .null)
+    #expect(object["b"] == .bool(true))
+    #expect(object["c"] == .int(3))
+    #expect(object["d"] == .double(0.5))
+    #expect(object["e"] == .string("x"))
+    #expect(object["f"] == .array([.int(1), .string("y")]))
+    #expect(object["g"] == .object(["h": .int(2)]))
+    let again = try JSONDecoder().decode([String: JSONValue].self, from: JSONEncoder().encode(object))
+    #expect(again == object)
+  }
+
+  @Test func integersStayIntegersInTheText() {
+    #expect(JSONValue.text(of: ["fps": .int(24), "tau": .double(0.5)]) == #"{"fps":24,"tau":0.5}"#)
+    #expect(JSONValue.text(of: [:]) == nil)
+  }
+
+  @Test func extraSettingsSurviveARoundTripAndOldFilesLoad() throws {
+    let parameters = GenerationParameters(extra: ["fps": .int(24)])
+    let decoded = try JSONDecoder().decode(GenerationParameters.self, from: JSONEncoder().encode(parameters))
+    #expect(decoded.extra == ["fps": .int(24)])
+    let old = try JSONDecoder().decode(GenerationParameters.self, from: Data(#"{"steps": 4}"#.utf8))
+    #expect(old.extra.isEmpty)
+  }
+
+  @Test func aPresetLoadsLeniently() throws {
+    let preset = try JSONDecoder().decode(Preset.self, from: Data(#"{"name": "Fast"}"#.utf8))
+    #expect(preset.name == "Fast")
+    #expect(preset.model == "" && preset.negativePrompt == "")
+    #expect(preset.parameters == .default)
+  }
+}
