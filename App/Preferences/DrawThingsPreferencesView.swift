@@ -45,7 +45,7 @@ struct DrawThingsPreferencesView: View {
           DSStatusDot(status: connection.indicator)
           VStack(alignment: .leading, spacing: 2) {
             Text(statusLine)
-            if case .unreachable(let detail)? = monitor.lastError, !isManaged {
+            if case .unreachable(let detail)? = monitor.lastError, connection.indicator != .connecting {
               Text(verbatim: detail)
                 .font(.caption)
                 .foregroundStyle(.secondary)

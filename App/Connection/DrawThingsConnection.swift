@@ -1,3 +1,4 @@
+import AppKit
 import DTBridge
 import HubCore
 import HubKit
@@ -26,6 +27,13 @@ final class DrawThingsConnection {
   init() {
     settings = settingsStore.load()
     managed = managedStore.load()
+    // Quitting stops the managed server whichever windows are open: this object lives as long
+    // as the app, a window's view does not.
+    NotificationCenter.default.addObserver(
+      forName: NSApplication.willTerminateNotification, object: nil, queue: .main
+    ) { [managedServer] _ in
+      MainActor.assumeIsolated { managedServer.terminateNow() }
+    }
     loop = Task {
       // Managed mode: the server starts with the app (spec §5).
       if managed.mode == .managed { await managedServer.start(managed) }
@@ -39,10 +47,11 @@ final class DrawThingsConnection {
     secretStore.read() ?? ""
   }
 
-  /// What the header dot shows: yellow while the managed server is starting, until it answers
-  /// (spec §7), whatever the monitor says meanwhile.
+  /// What the header dot shows: yellow while the managed server is starting (its first moments,
+  /// until it answers: spec §7), whatever the monitor says meanwhile; after that a server that
+  /// does not answer is red, with the reason.
   var indicator: ConnectionStatus {
-    if managed.mode == .managed, managedServer.isRunning, monitor.status != .connected { return .connecting }
+    if managed.mode == .managed, managedServer.isStarting, monitor.status != .connected { return .connecting }
     return monitor.indicator
   }
 

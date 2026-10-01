@@ -22,8 +22,22 @@ public enum PortProbe {
   }
 }
 
-/// The process id of the server DT Hub started, kept in a file so that a server left running
-/// by a DT Hub that crashed or was killed can be recognized and closed at the next start.
+/// What the pid file holds: the process id of the server DT Hub started and the program the
+/// system says that process runs (its real path: a link such as `/usr/local/bin/gRPCServerCLI`
+/// is reported as its target).
+public struct ServerPidRecord: Equatable, Sendable {
+  public let pid: Int32
+  /// nil in a file written without it: the current program is compared instead.
+  public let executable: String?
+
+  public init(pid: Int32, executable: String?) {
+    self.pid = pid
+    self.executable = executable
+  }
+}
+
+/// The record of the server DT Hub started, kept in a file so that a server left running by a
+/// DT Hub that crashed or was killed can be recognized and closed at the next start.
 public struct ServerPidFile: Sendable {
   public let url: URL
 
@@ -38,13 +52,20 @@ public struct ServerPidFile: Sendable {
       .appendingPathComponent("managed-server.pid")
   }
 
-  public func read() -> Int32? {
-    (try? String(contentsOf: url, encoding: .utf8)).flatMap { Int32($0.trimmingCharacters(in: .whitespacesAndNewlines)) }
+  /// Two lines: the process id, then the program (the second may be missing).
+  public func read() -> ServerPidRecord? {
+    guard let text = try? String(contentsOf: url, encoding: .utf8) else { return nil }
+    let lines = text.split(separator: "\n", omittingEmptySubsequences: false).map { String($0) }
+    guard let first = lines.first, let pid = Int32(first.trimmingCharacters(in: .whitespacesAndNewlines)) else {
+      return nil
+    }
+    let program = lines.dropFirst().first?.trimmingCharacters(in: .whitespacesAndNewlines)
+    return ServerPidRecord(pid: pid, executable: (program?.isEmpty ?? true) ? nil : program)
   }
 
-  public func write(_ pid: Int32) {
+  public func write(pid: Int32, executable: String?) {
     try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-    try? String(pid).write(to: url, atomically: true, encoding: .utf8)
+    try? "\(pid)\n\(executable ?? "")".write(to: url, atomically: true, encoding: .utf8)
   }
 
   public func remove() {
@@ -56,29 +77,47 @@ public struct ServerPidFile: Sendable {
 public struct ProcessInspector: Sendable {
   /// Whether the process exists.
   public var isAlive: @Sendable (Int32) -> Bool
-  /// Whether the process runs this program: a recycled process id must never be closed.
+  /// Whether the process runs this program (compared by real path): a recycled process id
+  /// must never be closed.
   public var isRunning: @Sendable (_ pid: Int32, _ executable: String) -> Bool
+  /// The real path of the program a process runs.
+  public var executablePath: @Sendable (Int32) -> String?
   public var terminate: @Sendable (Int32) -> Void
   public var kill: @Sendable (Int32) -> Void
 
   public init(
     isAlive: @escaping @Sendable (Int32) -> Bool,
     isRunning: @escaping @Sendable (Int32, String) -> Bool,
+    executablePath: @escaping @Sendable (Int32) -> String?,
     terminate: @escaping @Sendable (Int32) -> Void, kill: @escaping @Sendable (Int32) -> Void
   ) {
     self.isAlive = isAlive
     self.isRunning = isRunning
+    self.executablePath = executablePath
     self.terminate = terminate
     self.kill = kill
+  }
+
+  /// `proc_pidpath` reports the real file, not the path (or link) the program was started
+  /// through, so both sides are resolved before they are compared.
+  private static func path(of pid: Int32) -> String? {
+    var buffer = [CChar](repeating: 0, count: 4096)
+    guard proc_pidpath(pid, &buffer, UInt32(buffer.count)) > 0 else { return nil }
+    let bytes = buffer.prefix { $0 != 0 }.map { UInt8(bitPattern: $0) }
+    return String(decoding: bytes, as: UTF8.self)
+  }
+
+  private static func resolved(_ path: String) -> String {
+    URL(fileURLWithPath: path).resolvingSymlinksInPath().path
   }
 
   public static let live = ProcessInspector(
     isAlive: { Darwin.kill($0, 0) == 0 },
     isRunning: { pid, executable in
-      var buffer = [CChar](repeating: 0, count: 4096)
-      guard proc_pidpath(pid, &buffer, UInt32(buffer.count)) > 0 else { return false }
-      return String(cString: buffer) == executable
+      guard let actual = path(of: pid) else { return false }
+      return resolved(actual) == resolved(executable)
     },
+    executablePath: { pid in path(of: pid).map(resolved) },
     terminate: { _ = Darwin.kill($0, SIGTERM) },
     kill: { _ = Darwin.kill($0, SIGKILL) })
 }

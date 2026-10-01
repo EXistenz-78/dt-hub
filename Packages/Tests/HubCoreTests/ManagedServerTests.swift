@@ -80,9 +80,16 @@ struct ManagedServerTests {
       url: FileManager.default.temporaryDirectory.appendingPathComponent("ManagedServerTests-\(UUID())/server.pid"))
   }
 
-  func inspector(alive: Set<Int32> = [], running: Set<Int32> = [], log: Log = Log()) -> ProcessInspector {
+  /// `running` are the process ids that run the program recorded as `executable` (any program
+  /// when nil); `ownPath` is what the system says a launched process runs.
+  func inspector(
+    alive: Set<Int32> = [], running: Set<Int32> = [], executable: String? = nil, ownPath: String? = "/real/cli",
+    log: Log = Log()
+  ) -> ProcessInspector {
     ProcessInspector(
-      isAlive: { log.alive($0, alive) }, isRunning: { pid, _ in running.contains(pid) },
+      isAlive: { log.alive($0, alive) },
+      isRunning: { pid, path in running.contains(pid) && (executable == nil || path == executable) },
+      executablePath: { _ in ownPath },
       terminate: { log.terminated($0) }, kill: { log.killed($0) })
   }
 
@@ -92,8 +99,17 @@ struct ManagedServerTests {
     private var gone: Set<Int32> = []
     private(set) var terminatedPIDs: [Int32] = []
     private(set) var killedPIDs: [Int32] = []
-    func alive(_ pid: Int32, _ alive: Set<Int32>) -> Bool { lock.withLock { alive.contains(pid) && !gone.contains(pid) } }
-    func terminated(_ pid: Int32) { lock.withLock { terminatedPIDs.append(pid); gone.insert(pid) } }
+    /// How long a process lingers after SIGTERM (0: gone at once).
+    var lingers: TimeInterval = 0
+    private var asked: [Int32: Date] = [:]
+    func alive(_ pid: Int32, _ alive: Set<Int32>) -> Bool {
+      lock.withLock {
+        guard alive.contains(pid), !gone.contains(pid) else { return false }
+        if let when = asked[pid], Date().timeIntervalSince(when) >= lingers { return false }
+        return true
+      }
+    }
+    func terminated(_ pid: Int32) { lock.withLock { terminatedPIDs.append(pid); asked[pid] = Date(); if lingers == 0 { gone.insert(pid) } } }
     func killed(_ pid: Int32) { lock.withLock { killedPIDs.append(pid); gone.insert(pid) } }
   }
 
@@ -182,11 +198,12 @@ struct ManagedServerTests {
     let file = pidFile()
     let server = server(launcher, pidFile: file)
     await server.start(settings)
-    #expect(file.read() == 1000)
+    #expect(file.read()?.pid == 1000)
     server.stop()
     await settle()
     #expect(server.state == .stopped)
     #expect(launcher.last.terminated)
+    await server.stopAndWait()
     #expect(file.read() == nil)
   }
 
@@ -207,10 +224,12 @@ struct ManagedServerTests {
   @Test func aServerThatIgnoresTheStopRequestIsKilled() async {
     let launcher = FakeLauncher()
     launcher.ignoresTerminate = true
-    let server = server(launcher)
+    let server = ManagedServer(
+      launcher: launcher, files: files, isPortFree: { _ in true }, pidFile: pidFile(), inspector: inspector(),
+      stopTimeout: .milliseconds(200))
     await server.start(settings)
     let first = launcher.last
-    await server.stopAndWait(timeout: .milliseconds(200))
+    await server.stopAndWait()
     #expect(first.terminated && first.killed)
     #expect(server.state == .stopped)
   }
@@ -228,25 +247,143 @@ struct ManagedServerTests {
   @Test func closesAServerLeftRunningByAPreviousRun() async {
     let launcher = FakeLauncher()
     let file = pidFile()
-    file.write(777)
+    file.write(pid: 777, executable: "/bin/cli")
     let log = Log()
     let server = server(launcher, pidFile: file, inspector: inspector(alive: [777], running: [777], log: log))
     await server.start(settings)
     #expect(log.terminatedPIDs == [777])
     #expect(server.state == .running(pid: 1000))
-    #expect(file.read() == 1000)
+    #expect(file.read()?.pid == 1000)
     #expect(server.logTail.contains { $0.contains("777") })
+  }
+
+  @Test func thePidFileRecordsTheProgramTheSystemSaysIsRunning() async {
+    let launcher = FakeLauncher()
+    let file = pidFile()
+    let server = server(launcher, pidFile: file, inspector: inspector(ownPath: "/real/cli"))
+    await server.start(settings)
+    #expect(file.read() == ServerPidRecord(pid: 1000, executable: "/real/cli"))
+  }
+
+  @Test func closesALeftServerStartedThroughAnotherPathToTheSameProgram() async {
+    // The binary was `/bin/cli` (a symbolic link) and the system reports its real path.
+    let launcher = FakeLauncher()
+    let file = pidFile()
+    file.write(pid: 777, executable: "/real/cli")
+    let log = Log()
+    let server = server(
+      launcher, pidFile: file, inspector: inspector(alive: [777], running: [777], executable: "/real/cli", log: log))
+    await server.start(settings)
+    #expect(log.terminatedPIDs == [777])
+  }
+
+  @Test func anOldPidFileWithoutAPathIsCheckedAgainstTheCurrentProgram() async throws {
+    let launcher = FakeLauncher()
+    let file = pidFile()
+    try FileManager.default.createDirectory(at: file.url.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try "777".write(to: file.url, atomically: true, encoding: .utf8)
+    #expect(file.read() == ServerPidRecord(pid: 777, executable: nil))
+    let log = Log()
+    let server = server(
+      launcher, pidFile: file, inspector: inspector(alive: [777], running: [777], executable: "/bin/cli", log: log))
+    await server.start(settings)
+    #expect(log.terminatedPIDs == [777])
   }
 
   @Test func neverClosesAnotherProgramThatReusedTheProcessID() async {
     let launcher = FakeLauncher()
     let file = pidFile()
-    file.write(777)
+    file.write(pid: 777, executable: "/bin/cli")
     let log = Log()
     let server = server(launcher, pidFile: file, inspector: inspector(alive: [777], running: [], log: log))
     await server.start(settings)
     #expect(log.terminatedPIDs.isEmpty && log.killedPIDs.isEmpty)
     #expect(server.state == .running(pid: 1000))
+  }
+}
+
+extension ManagedServerTests {
+  @Test func twoStartsAtOnceLaunchOneServer() async {
+    let launcher = FakeLauncher()
+    let file = pidFile()
+    file.write(pid: 777, executable: "/real/cli")
+    let log = Log()
+    log.lingers = 0.2
+    let server = server(
+      launcher, pidFile: file, inspector: inspector(alive: [777], running: [777], log: log))
+    async let first: Void = server.start(settings)
+    async let second: Void = server.start(settings)
+    _ = await (first, second)
+    #expect(launcher.launches.count == 1)
+    #expect(server.state == .running(pid: 1000))
+    #expect(file.read()?.pid == 1000)
+  }
+
+  @Test func aStartThatWaitsIsCancelledByAStop() async {
+    // Switching to "a server already running" while the start waits must not start one.
+    let launcher = FakeLauncher()
+    let file = pidFile()
+    file.write(pid: 777, executable: "/real/cli")
+    let log = Log()
+    log.lingers = 0.3
+    let server = server(launcher, pidFile: file, inspector: inspector(alive: [777], running: [777], log: log))
+    async let start: Void = server.start(settings)
+    try? await Task.sleep(for: .milliseconds(80))
+    await server.stopAndWait()
+    await start
+    #expect(launcher.launches.isEmpty)
+    #expect(server.state == .stopped)
+  }
+
+  @Test func startingRightAfterAStopWaitsForTheOldServerToLeave() async {
+    let launcher = FakeLauncher()
+    launcher.ignoresTerminate = true
+    let server = ManagedServer(
+      launcher: launcher, files: files, isPortFree: { _ in true }, pidFile: pidFile(), inspector: inspector(),
+      stopTimeout: .milliseconds(200))
+    await server.start(settings)
+    let first = launcher.last
+    server.stop()
+    await server.start(settings)
+    #expect(first.killed)
+    #expect(launcher.launches.count == 2)
+    #expect(server.state == .running(pid: 1001))
+  }
+
+  @Test func quittingRightAfterAStopStillClosesTheServer() async {
+    let launcher = FakeLauncher()
+    launcher.ignoresTerminate = true
+    let file = pidFile()
+    let server = server(launcher, pidFile: file)
+    await server.start(settings)
+    let first = launcher.last
+    server.stop()
+    server.terminateNow(timeout: 0.2)
+    #expect(first.killed)
+    #expect(file.read() == nil)
+  }
+
+  @Test func theServerCountsAsStartingOnlyForTheStartupPeriod() async {
+    let launcher = FakeLauncher()
+    let server = ManagedServer(
+      launcher: launcher, files: files, isPortFree: { _ in true }, pidFile: pidFile(), inspector: inspector(),
+      startingPeriod: .milliseconds(150))
+    #expect(!server.isStarting)
+    await server.start(settings)
+    #expect(server.isStarting)
+    // Other tests hold the main actor for moments: wait for the period to end, up to 2 s.
+    for _ in 0..<40 where server.isStarting { try? await Task.sleep(for: .milliseconds(50)) }
+    #expect(!server.isStarting)
+    #expect(server.isRunning)
+  }
+
+  @Test func aServerThatEndsIsNoLongerStarting() async {
+    let launcher = FakeLauncher()
+    let server = server(launcher)
+    await server.start(settings)
+    launcher.last.finish(ProcessExit(status: 1, bySignal: false))
+    await settle()
+    #expect(!server.isStarting)
   }
 }
 
@@ -281,8 +418,8 @@ struct ServerPidFileTests {
     let file = ServerPidFile(
       url: FileManager.default.temporaryDirectory.appendingPathComponent("ServerPidFileTests-\(UUID())/p.pid"))
     #expect(file.read() == nil)
-    file.write(4242)
-    #expect(file.read() == 4242)
+    file.write(pid: 4242, executable: "/real/cli")
+    #expect(file.read() == ServerPidRecord(pid: 4242, executable: "/real/cli"))
     file.remove()
     #expect(file.read() == nil)
   }
@@ -291,5 +428,26 @@ struct ServerPidFileTests {
     let url = FileManager.default.temporaryDirectory.appendingPathComponent("ServerPidFileTests-\(UUID()).pid")
     try "not a number".write(to: url, atomically: true, encoding: .utf8)
     #expect(ServerPidFile(url: url).read() == nil)
+  }
+}
+
+struct ProcessInspectorLiveTests {
+  /// `proc_pidpath` reports the real file, not the path a program was started through.
+  @Test func recognizesAProgramStartedThroughASymbolicLink() throws {
+    let folder = FileManager.default.temporaryDirectory.appendingPathComponent("ProcessInspectorLiveTests-\(UUID())")
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    let link = folder.appendingPathComponent("my-sleep")
+    try FileManager.default.createSymbolicLink(at: link, withDestinationURL: URL(fileURLWithPath: "/bin/sleep"))
+    let process = Process()
+    process.executableURL = link
+    process.arguments = ["20"]
+    try process.run()
+    defer { process.terminate() }
+    let inspector = ProcessInspector.live
+    #expect(inspector.isAlive(process.processIdentifier))
+    #expect(inspector.isRunning(process.processIdentifier, link.path))
+    #expect(inspector.isRunning(process.processIdentifier, "/bin/sleep"))
+    #expect(!inspector.isRunning(process.processIdentifier, "/bin/ls"))
+    #expect(inspector.executablePath(process.processIdentifier) == "/bin/sleep")
   }
 }

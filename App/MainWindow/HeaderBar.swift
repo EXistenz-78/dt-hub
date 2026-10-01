@@ -148,7 +148,7 @@ struct HeaderBar: View {
   }
 
   private var statusText: String {
-    if connection.managed.mode == .managed, connection.managedServer.isRunning, monitor.status != .connected {
+    if connection.managed.mode == .managed, connection.managedServer.isStarting, monitor.status != .connected {
       return String(localized: "status.serverStarting")
     }
     if monitor.status == .connected, monitor.catalog.isModelBrowsingDisabled {
