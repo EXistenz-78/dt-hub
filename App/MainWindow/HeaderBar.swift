@@ -22,7 +22,7 @@ struct HeaderBar: View {
       pluginsMenu
       modelMenu
       Spacer(minLength: DS.groupGap)
-      DSStatusDot(status: monitor.indicator)
+      DSStatusDot(status: connection.indicator)
         .padding(.horizontal, 6)
         .help(statusText)
         .accessibilityLabel(statusText)
@@ -62,7 +62,7 @@ struct HeaderBar: View {
     if monitor.status != .connected {
       Text("header.model.unavailable")
     } else if monitor.catalog.isModelBrowsingDisabled {
-      Text("header.model.browsingDisabled")
+      Text(verbatim: connection.noModelsText)
     } else if monitor.catalog.models.isEmpty {
       Text("header.model.empty")
     } else {
@@ -141,15 +141,18 @@ struct HeaderBar: View {
     switch runBlocker {
     case .notConnected: String(localized: "run.blocked.notConnected")
     case .noModelSelected: String(localized: "run.blocked.noModel")
-    case .modelBrowsingDisabled: String(localized: "header.model.browsingDisabled")
+    case .modelBrowsingDisabled: connection.noModelsText
     case .modelNotOnServer: String(localized: "run.blocked.modelMissing")
     case nil: String(localized: "header.run.help")
     }
   }
 
   private var statusText: String {
+    if connection.managed.mode == .managed, connection.managedServer.isRunning, monitor.status != .connected {
+      return String(localized: "status.serverStarting")
+    }
     if monitor.status == .connected, monitor.catalog.isModelBrowsingDisabled {
-      return String(localized: "header.model.browsingDisabled")
+      return connection.noModelsText
     }
     return ConnectionStatusText.headline(status: monitor.status, error: monitor.lastError)
   }

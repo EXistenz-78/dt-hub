@@ -18,6 +18,7 @@ struct DTHubApp: App {
       MainWindowView(workspace: workspace, connection: connection, generation: generation)
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
           generation.saveSessionNow()
+          connection.managedServer.terminateNow()
         }
     }
     .windowResizability(.contentMinSize)
