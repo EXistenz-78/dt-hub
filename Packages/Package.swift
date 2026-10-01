@@ -11,12 +11,18 @@ let package = Package(
     .library(name: "HubKit", targets: ["HubKit"]),
     .library(name: "HubCore", targets: ["HubCore"]),
     .library(name: "DTBridge", targets: ["DTBridge"]),
+    .library(name: "LLMBridge", targets: ["LLMBridge"]),
   ],
   dependencies: [
     // Single maintainer, frequent releases: accept patch updates only (spec §5, §16).
     .package(
       url: "https://github.com/euphoriacyberware-ai/DrawThings-Swift.git",
       .upToNextMinor(from: "2.2.0")),
+    // The language-model engine (spec §9). 3.x asks for a downloader and a tokenizer package.
+    .package(url: "https://github.com/ml-explore/mlx-swift-lm", .upToNextMajor(from: "3.31.3")),
+    .package(url: "https://github.com/ml-explore/mlx-swift", .upToNextMinor(from: "0.32.3")),
+    .package(url: "https://github.com/huggingface/swift-huggingface", from: "0.9.0"),
+    .package(url: "https://github.com/huggingface/swift-transformers", from: "1.3.0"),
   ],
   targets: [
     .target(name: "HubKit"),
@@ -25,6 +31,18 @@ let package = Package(
     .target(
       name: "DTBridge",
       dependencies: ["HubKit", .product(name: "DrawThingsClient", package: "DrawThings-Swift")]),
+    // The only module that knows MLX (spec §4).
+    .target(
+      name: "LLMBridge",
+      dependencies: [
+        "HubKit",
+        .product(name: "MLXLLM", package: "mlx-swift-lm"),
+        .product(name: "MLXVLM", package: "mlx-swift-lm"),
+        .product(name: "MLXLMCommon", package: "mlx-swift-lm"),
+        .product(name: "MLX", package: "mlx-swift"),
+        .product(name: "HuggingFace", package: "swift-huggingface"),
+        .product(name: "Tokenizers", package: "swift-transformers"),
+      ]),
     .testTarget(name: "HubKitTests", dependencies: ["HubKit"]),
     .testTarget(name: "HubCoreTests", dependencies: ["HubCore", "HubKit"]),
     .testTarget(name: "DTBridgeTests", dependencies: ["DTBridge", "HubKit"]),
