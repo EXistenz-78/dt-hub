@@ -11,6 +11,7 @@ struct MainWindowView: View {
   var body: some View {
     VStack(spacing: DS.panelPadding) {
       HeaderBar(connection: connection, generation: generation)
+      ManagedServerBanner(connection: connection)
       WorkspaceTabBar(workspace: workspace)
       tabContent
         .frame(maxWidth: .infinity, maxHeight: .infinity)
