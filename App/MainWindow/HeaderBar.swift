@@ -12,10 +12,7 @@ struct HeaderBar: View {
   private var selection: ModelSelection { connection.selection }
   private var selectedModel: CatalogModel? { selection.selectedModel(in: monitor.catalog) }
 
-  private var runBlocker: RunBlocker? {
-    RunAvailability.blocker(
-      connection: monitor.status, selectedModel: selection.selectedFile, catalog: monitor.catalog)
-  }
+  private var runBlocker: RunBlocker? { connection.runBlocker }
 
   var body: some View {
     HStack(spacing: DS.controlGap) {
@@ -132,7 +129,7 @@ struct HeaderBar: View {
         }
       }
       .buttonStyle(DSPillButtonStyle(prominent: true))
-      .disabled(runBlocker != nil)
+      .disabled(runBlocker != nil || generation.isPreparing)
       .help(runHelp)
     }
   }
@@ -148,6 +145,7 @@ struct HeaderBar: View {
   }
 
   private var statusText: String {
+    if connection.releasedForLanguageModel { return String(localized: "status.imageModelParked") }
     if connection.managed.mode == .managed, connection.managedServer.isStarting, monitor.status != .connected {
       return String(localized: "status.serverStarting")
     }

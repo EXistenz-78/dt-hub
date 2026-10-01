@@ -51,6 +51,7 @@ final class DrawThingsConnection {
   /// until it answers: spec §7), whatever the monitor says meanwhile; after that a server that
   /// does not answer is red, with the reason.
   var indicator: ConnectionStatus {
+    if releasedForLanguageModel { return .connecting }
     if managed.mode == .managed, managedServer.isStarting, monitor.status != .connected { return .connecting }
     return monitor.indicator
   }
@@ -61,6 +62,39 @@ final class DrawThingsConnection {
   var noModelsText: String {
     managed.mode == .managed
       ? String(localized: "server.noModels") : String(localized: "header.model.browsingDisabled")
+  }
+
+  /// True while the managed server is stopped on purpose, to leave the memory to the language
+  /// model (spec §9): the next RUN starts it again.
+  private(set) var releasedForLanguageModel = false
+
+  /// Why RUN cannot start now; nil when it can. A server parked for the language model is no
+  /// reason: RUN brings it back.
+  var runBlocker: RunBlocker? {
+    if releasedForLanguageModel, selection.selectedFile != nil { return nil }
+    return RunAvailability.blocker(
+      connection: monitor.status, selectedModel: selection.selectedFile, catalog: monitor.catalog)
+  }
+
+  /// Stops the managed server so the language model has the room. Only the server DT Hub
+  /// started can be stopped: Draw Things has no call to unload a model from another one.
+  func releaseImageModel() async {
+    guard managed.mode == .managed, managedServer.isRunning else { return }
+    await managedServer.stopAndWait()
+    releasedForLanguageModel = true
+  }
+
+  /// Brings the managed server back when it was released, and waits until it answers (the
+  /// image model loads again, which takes time).
+  func ensureServerForRun() async {
+    guard releasedForLanguageModel else { return }
+    await managedServer.start(managed)
+    for _ in 0..<300 {
+      await monitor.refresh()
+      if monitor.status == .connected { break }
+      try? await Task.sleep(for: .seconds(1))
+    }
+    releasedForLanguageModel = false
   }
 
   /// Starts the managed server again (after it ended or failed).

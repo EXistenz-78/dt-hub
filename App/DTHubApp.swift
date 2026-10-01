@@ -1,6 +1,7 @@
 import AppKit
 import HubCore
 import HubKit
+import LLMBridge
 import SwiftUI
 
 @main
@@ -10,8 +11,19 @@ struct DTHubApp: App {
       id: WorkspaceTab.generationID,
       title: String(localized: "tab.generation"),
       systemImage: "slider.horizontal.3"))
-  @State private var connection = DrawThingsConnection()
-  @State private var generation = GenerationController()
+  @State private var connection: DrawThingsConnection
+  @State private var languageModel: LanguageModelManager
+  @State private var generation: GenerationController
+
+  init() {
+    let connection = DrawThingsConnection()
+    // The language model frees the managed server's memory when the settings ask for it.
+    let languageModel = LanguageModelManager(
+      service: MLXLanguageModelService(), releaseImageModel: { await connection.releaseImageModel() })
+    _connection = State(initialValue: connection)
+    _languageModel = State(initialValue: languageModel)
+    _generation = State(initialValue: GenerationController(languageModel: languageModel))
+  }
 
   var body: some Scene {
     WindowGroup(String(localized: "app.title")) {
@@ -33,7 +45,7 @@ struct DTHubApp: App {
     .windowResizability(.contentMinSize)
 
     Settings {
-      PreferencesView(connection: connection, generation: generation)
+      PreferencesView(connection: connection, generation: generation, languageModel: languageModel)
     }
   }
 }

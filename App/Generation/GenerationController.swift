@@ -33,12 +33,22 @@ final class GenerationController {
   let cards = CardExpansionStore(fileURL: CardExpansionStore.defaultFileURL)
   private(set) var outputFolder: URL
 
+  /// The language model, freed when RUN is pressed if the settings say so (spec §9).
+  @ObservationIgnored let languageModel: LanguageModelManager
+  /// True between pressing RUN and the generation starting: the language model is being freed
+  /// and a parked server brought back.
+  private(set) var isPreparing = false
+
   @ObservationIgnored private let outputSettings = OutputSettingsStore()
   @ObservationIgnored private let sessionStore: SessionStore
   @ObservationIgnored private var pendingSave: Task<Void, Never>?
 
   /// Restores the last prompt and parameters (spec §11).
-  init(sessionStore: SessionStore = SessionStore(fileURL: SessionStore.defaultFileURL)) {
+  init(
+    languageModel: LanguageModelManager,
+    sessionStore: SessionStore = SessionStore(fileURL: SessionStore.defaultFileURL)
+  ) {
+    self.languageModel = languageModel
     self.sessionStore = sessionStore
     outputFolder = outputSettings.folder()
     if let snapshot = sessionStore.load() {
@@ -141,25 +151,38 @@ final class GenerationController {
 
   /// True when the server, the model and the session allow a RUN.
   func canRun(with connection: DrawThingsConnection) -> Bool {
-    let monitor = connection.monitor
-    return !session.isRunning && monitor.backend != nil
-      && RunAvailability.blocker(
-        connection: monitor.status, selectedModel: connection.selection.selectedFile, catalog: monitor.catalog) == nil
+    !session.isRunning && !isPreparing && connection.monitor.backend != nil && connection.runBlocker == nil
   }
 
   /// Starts a RUN, split into its batches (`batchesForRun`). With a random seed, the seed
   /// drawn for the first batch is shown in the Seed field.
   @discardableResult
   func run(with connection: DrawThingsConnection) -> Bool {
-    guard canRun(with: connection), let backend = connection.monitor.backend,
-      let model = connection.selection.selectedFile
-    else { return false }
+    guard canRun(with: connection) else { return false }
+    isPreparing = true
+    Task {
+      // Memory first: the language model leaves, a server parked for it comes back.
+      await languageModel.prepareForRun()
+      await connection.ensureServerForRun()
+      isPreparing = false
+      start(with: connection)
+    }
+    return true
+  }
+
+  /// The generation itself, once the memory is ready. The job is composed now, not at the
+  /// click: a parked server has no catalog until it is back.
+  private func start(with connection: DrawThingsConnection) {
+    guard !session.isRunning, let backend = connection.monitor.backend,
+      let model = connection.selection.selectedFile,
+      RunAvailability.blocker(
+        connection: connection.monitor.status, selectedModel: model, catalog: connection.monitor.catalog) == nil
+    else { return }
     let batches = JobComposer.batches(
       prompt: prompt, negativePrompt: negativePrompt, model: model, family: family(in: connection),
       parameters: parameters, catalog: connection.monitor.catalog)
     if parameters.randomSeed, let first = batches.first { parameters.seed = first.parameters.seed }
     session.start(batches, backend: backend, monitor: connection.monitor)
-    return true
   }
 
   /// "Resume parameters": puts back the prompt, negative prompt, model and parameters of the

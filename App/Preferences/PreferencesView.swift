@@ -1,9 +1,11 @@
+import HubCore
 import SwiftUI
 
-/// Preferences window (⌘,): Draw Things, LLM, Output (spec §7). LLM arrives in M6.
+/// Preferences window (⌘,): Draw Things, LLM, Output (spec §7).
 struct PreferencesView: View {
   let connection: DrawThingsConnection
   let generation: GenerationController
+  let languageModel: LanguageModelManager
 
   var body: some View {
     TabView {
@@ -11,21 +13,12 @@ struct PreferencesView: View {
         DrawThingsPreferencesView(connection: connection)
       }
       Tab("prefs.tab.llm", systemImage: "text.bubble") {
-        PreferencesPlaceholder()
+        LanguagePreferencesView(manager: languageModel, connection: connection)
       }
       Tab("prefs.tab.output", systemImage: "folder") {
         OutputPreferencesView(controller: generation)
       }
     }
     .frame(width: 560, height: 420)
-  }
-}
-
-private struct PreferencesPlaceholder: View {
-  var body: some View {
-    ContentUnavailableView(
-      "prefs.empty.title",
-      systemImage: "hammer",
-      description: Text("prefs.empty.message"))
   }
 }

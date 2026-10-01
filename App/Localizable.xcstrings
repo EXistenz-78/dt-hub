@@ -2381,40 +2381,6 @@
         }
       }
     },
-    "prefs.empty.message": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "These settings arrive in a next milestone."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Queste impostazioni arriveranno in una prossima tappa."
-          }
-        }
-      }
-    },
-    "prefs.empty.title": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Coming soon"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "In arrivo"
-          }
-        }
-      }
-    },
     "prefs.llm.download.button": {
       "extractionState": "manual",
       "localizations": {
