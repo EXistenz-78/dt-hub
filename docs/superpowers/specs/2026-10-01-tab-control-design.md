@@ -46,7 +46,8 @@ Decisioni dell'utente (1 ottobre 2026):
 - riordino trascinando le miniature;
 - **regola di rilascio** (deciso con l'utente): rilasciare un'immagine **su una miniatura già inserita la sostituisce**; rilasciarla **in qualsiasi altro punto della scheda aggiunge**. Vale per le immagini dal Finder, da Risultati e per quelle trascinate dalla scheda Immagine;
 - avviso quando le reference sono più di tre (tempo di render);
-- per le famiglie che non gestiscono il Moodboard senza ControlNet o IP-Adapter la scheda è grigia con la spiegazione.
+- le immagini del Moodboard sono riferimenti di stile e di contenuto, **non entrano nel canvas**: il loro rapporto non ha nessun legame con quello del canvas e non si ritagliano né si adattano mai (deciso con l'utente, 1 ottobre 2026);
+- il Moodboard è usabile con le famiglie moderne (Qwen Image 2.1, Flux.2 e simili hanno I2I intrinseco e un modello con visione che interpreta le reference da solo). La scheda è grigia, con la spiegazione, **solo per le famiglie vecchie note** che richiederebbero un IP-Adapter o un ControlNet (SD 1.x e 2.x, SDXL, SSD-1B): una famiglia moderna o sconosciuta la mostra attiva.
 
 **Pannello Maschera** (destra):
 - anteprima del **canvas così come parte a Draw Things** (ritaglio compreso), con la maschera sovrapposta in arancio (area dipinta = area che verrà rigenerata);
@@ -82,7 +83,7 @@ Il canvas è dato dalle Dimensioni di Generazione. Tre modi di inquadrare l'imma
 2. **Adatta le dimensioni.** Un pulsante esplicito, sempre disponibile: porta le Dimensioni di Generazione al rapporto dell'immagine, con **area simile** a quella corrente, multipli di 64 e nei limiti del momento (2048; 8192 con il Tiled Diffusion). È un'azione con annulla e **non si ripete da sola**.
 3. **Contieni (arriva con l'outpaint).** L'immagine sta tutta nel canvas e i margini sono area da rigenerare: è la stessa cosa dell'outpaint. Il modello dati lo prevede (`Framing`); l'interfaccia lo abilita con l'outpaint.
 
-Se il rapporto delle Dimensioni cambia dopo il caricamento, il ritaglio si ricalcola al volo. Il **Moodboard** non ha il problema: le reference non entrano nel canvas. Come Draw Things le tratta con un rapporto diverso si verifica dal vivo (sezione 9).
+Se il rapporto delle Dimensioni cambia dopo il caricamento, il ritaglio si ricalcola al volo. Il **Moodboard** non ha il problema: le reference sono riferimenti di stile e non entrano nel canvas, quindi il loro rapporto è ininfluente.
 
 ## 6. Dal tab al RUN
 
@@ -91,7 +92,7 @@ Se il rapporto delle Dimensioni cambia dopo il caricamento, il ritaglio si rical
 - **Più batch:** tutti riusano gli stessi ingressi.
 - **Nel PNG salvato** finiscono forza, sfumatura, margine, e numero e pesi delle reference (non le immagini). "Riprendi parametri" da Risultati ripristina questi numeri.
 - **Blocchi in RUN:** una maschera senza immagine. Il resto sono avvisi.
-- **Visibilità per famiglia** (come le card avanzate, dalla tabella del catalogo): il tab ricava dal `modifier` del modello cosa è sensato (forza 100% per i modelli Edit, Moodboard utilizzabile o no, `enableInpainting`). Una famiglia sconosciuta mostra tutto e non blocca nulla.
+- **Visibilità per famiglia** (come le card avanzate, dalla tabella del catalogo): il tab ricava dal `modifier` e dalla famiglia del modello cosa è sensato (forza 100% per i modelli Edit, Moodboard grigio solo per le famiglie vecchie note, `enableInpainting`). Una famiglia sconosciuta mostra tutto e non blocca nulla.
 
 ## 7. Plug-in (M8)
 
@@ -117,10 +118,7 @@ Tutti i messaggi sono localizzati (it, en), senza testo tecnico grezzo.
 
 **DTBridge:** mappatura di forza, maschera, hint e `enableInpainting` nel `JobMapper`.
 
-**Dal vivo con un server vero**, con un modello leggero, tre verifiche aperte:
-1. come Draw Things tratta un Moodboard con rapporto diverso dal canvas;
-2. quando serve `enableInpainting` (modelli senza `modifier` inpainting);
-3. quali famiglie usano il Moodboard senza ControlNet.
+**Dal vivo con un server vero**, con un modello leggero: una I2I, un inpaint e un Moodboard. Una sola verifica aperta, da risolvere nel piano di M7c leggendo il client e provando: **quando serve `enableInpainting`** (modelli senza `modifier` inpainting). Le altre due domande (rapporto del Moodboard, famiglie che lo usano) hanno già risposta dall'utente e dalla documentazione di Draw Things.
 
 **A mano (utente):** trascinamenti, pennello, ripristino all'avvio.
 
@@ -148,7 +146,7 @@ Ognuna con piano, revisione indipendente e merge, come M4.
 
 ## 12. Rischi aperti
 
-- **Comportamento di Draw Things da verificare** (sezione 9): rapporto del Moodboard, `enableInpainting`, famiglie senza Moodboard.
+- **Comportamento di Draw Things da verificare** (sezione 9): quando serve `enableInpainting`.
 - **Prestazioni del pennello** su canvas grandi (fino a 2048×2048 oggi, 8192 con il Tiled Diffusion): il buffer e il disegno devono restare fluidi; si misura in M7c e, se serve, si disegna su una versione ridotta con rendering finale alla dimensione piena.
-- **Moodboard su modelli senza supporto nativo:** su famiglie vecchie richiede un controllo (IP-Adapter/ControlNet) che DT Hub non gestisce; la scheda lo dice e non invia hint inutili.
+- **Moodboard su famiglie vecchie:** richiede un controllo (IP-Adapter/ControlNet) che DT Hub non gestisce; la scheda è grigia e non invia hint inutili. L'elenco delle famiglie vecchie è una tabella nel catalogo, aggiornabile senza toccare il resto; una famiglia nuova non elencata mostra il Moodboard attivo.
 - **Spazio su disco delle copie:** nessun limite nella prima versione; "Svuota tutto" e la rimozione liberano lo spazio.
