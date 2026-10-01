@@ -42,6 +42,7 @@ final class GenerationController {
   @ObservationIgnored private let outputSettings = OutputSettingsStore()
   @ObservationIgnored private let sessionStore: SessionStore
   @ObservationIgnored private var pendingSave: Task<Void, Never>?
+  @ObservationIgnored private var preparation: Task<Void, Never>?
 
   /// Restores the last prompt and parameters (spec §11).
   init(
@@ -160,14 +161,22 @@ final class GenerationController {
   func run(with connection: DrawThingsConnection) -> Bool {
     guard canRun(with: connection) else { return false }
     isPreparing = true
-    Task {
+    preparation = Task {
       // Memory first: the language model leaves, a server parked for it comes back.
       await languageModel.prepareForRun()
       await connection.ensureServerForRun()
       isPreparing = false
+      preparation = nil
+      guard !Task.isCancelled else { return }
       start(with: connection)
     }
     return true
+  }
+
+  /// Stop (button and ⌘.): ends the preparation that is under way, or the generation.
+  func stop() {
+    preparation?.cancel()
+    session.cancel()
   }
 
   /// The generation itself, once the memory is ready. The job is composed now, not at the

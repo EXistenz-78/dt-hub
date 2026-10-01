@@ -97,19 +97,26 @@ struct HeaderBar: View {
     return nil
   }
 
+  /// The step shown beside Stop; nil while the memory is being prepared.
+  private var runningProgress: (step: Int?, total: Int)? {
+    if case .running(let step, let total) = generation.session.phase { return (step, total) }
+    return nil
+  }
+
   /// RUN, or Stop with the progress while a generation runs (spec §7). ⌘↩ and ⌘. are in the
   /// Generation menu (`GenerationCommands`), so they work from every window.
   @ViewBuilder private var runButton: some View {
-    if case .running(let step, let total) = generation.session.phase {
+    if generation.session.isRunning || generation.isPreparing {
+      let progress = runningProgress
       Button {
-        generation.session.cancel()
+        generation.stop()
       } label: {
         HStack(spacing: DS.pillIconGap) {
           Image(systemName: "stop.fill")
             .font(.system(size: 14, weight: .semibold))
             .accessibilityHidden(true)
           Text("header.stop")
-          if let step {
+          if let step = progress?.step, let total = progress?.total {
             Text(verbatim: "\(step)/\(total)")
               .monospacedDigit()
           }

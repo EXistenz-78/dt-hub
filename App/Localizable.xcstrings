@@ -2109,6 +2109,23 @@
         }
       }
     },
+    "llm.error.interrupted": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stopped: the memory was needed for an image."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Interrotto: la memoria serviva per un'immagine."
+          }
+        }
+      }
+    },
     "llm.error.load": {
       "extractionState": "manual",
       "localizations": {

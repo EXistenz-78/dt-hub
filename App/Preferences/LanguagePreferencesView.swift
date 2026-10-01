@@ -10,13 +10,11 @@ import UniformTypeIdentifiers
 /// without an image.
 struct LanguagePreferencesView: View {
   @Bindable var manager: LanguageModelManager
+  let download: LanguageModelDownloadController
   let connection: DrawThingsConnection
 
   @State private var models: [LanguageModelDescriptor] = []
   @State private var confirmingDownload = false
-  @State private var downloadProgress: Double?
-  @State private var downloadTask: Task<Void, Never>?
-  @State private var downloadError: String?
   /// A sample question, so the test can be tried at once.
   @State private var question = String(localized: "prefs.llm.test.sample")
   @State private var imageURL: URL?
@@ -37,6 +35,7 @@ struct LanguagePreferencesView: View {
     }
     .formStyle(.grouped)
     .onAppear(perform: refresh)
+    .onChange(of: download.completed) { refresh() }
     .confirmationDialog(
       String(localized: "prefs.llm.download.confirm.title"), isPresented: $confirmingDownload, titleVisibility: .visible
     ) {
@@ -78,10 +77,10 @@ struct LanguagePreferencesView: View {
   }
 
   @ViewBuilder private var downloadRow: some View {
-    if let downloadProgress {
+    if let progress = download.progress {
       HStack(spacing: DS.controlGap) {
-        ProgressView(value: downloadProgress)
-        Button("prefs.llm.download.cancel") { downloadTask?.cancel() }
+        ProgressView(value: progress)
+        Button("prefs.llm.download.cancel") { download.cancel() }
       }
     } else if !hasRecommended {
       Button {
@@ -93,8 +92,8 @@ struct LanguagePreferencesView: View {
             ByteCountFormatter.string(fromByteCount: RecommendedLanguageModel.approximateBytes, countStyle: .file)))
       }
     }
-    if let downloadError {
-      Text(String(format: String(localized: "prefs.llm.download.error"), downloadError))
+    if let failure = download.failure {
+      Text(String(format: String(localized: "prefs.llm.download.error"), LanguageModelErrorText.message(failure)))
         .foregroundStyle(DS.remove)
         .font(.caption)
     }
@@ -127,24 +126,12 @@ struct LanguagePreferencesView: View {
   }
 
   /// Downloads the recommended model into `<folder>/mlx-community/…` (only after the user
-  /// confirmed the dialog that names it, its size and where it goes).
+  /// confirmed the dialog that names it, its size and where it goes). The download belongs to
+  /// the app: it goes on if this window is closed.
   private func startDownload() {
-    downloadError = nil
-    downloadProgress = 0
-    let destination = folderURL.appendingPathComponent(RecommendedLanguageModel.folderName, isDirectory: true)
-    downloadTask = Task {
-      do {
-        try await HubLanguageModelDownloader().download(
-          repository: RecommendedLanguageModel.repository, to: destination,
-          progress: { fraction in Task { @MainActor in downloadProgress = fraction } })
-      } catch is CancellationError {
-      } catch {
-        if !Task.isCancelled { downloadError = LanguageModelErrorText.message(error) }
-      }
-      downloadProgress = nil
-      downloadTask = nil
-      refresh()
-    }
+    download.start(
+      repository: RecommendedLanguageModel.repository,
+      to: folderURL.appendingPathComponent(RecommendedLanguageModel.folderName, isDirectory: true))
   }
 
   // MARK: Memory
@@ -257,6 +244,7 @@ enum LanguageModelErrorText {
     switch error {
     case .noModelSelected: return String(localized: "llm.error.noModel")
     case .imagesNotSupported: return String(localized: "llm.error.noImages")
+    case .interrupted: return String(localized: "llm.error.interrupted")
     case .notEnoughMemory(let needed, let available):
       return String(
         format: String(localized: "llm.error.memory"), ByteCountFormatter.string(fromByteCount: needed, countStyle: .memory),

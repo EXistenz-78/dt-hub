@@ -6,6 +6,7 @@ struct PreferencesView: View {
   let connection: DrawThingsConnection
   let generation: GenerationController
   let languageModel: LanguageModelManager
+  let download: LanguageModelDownloadController
 
   var body: some View {
     TabView {
@@ -13,7 +14,7 @@ struct PreferencesView: View {
         DrawThingsPreferencesView(connection: connection)
       }
       Tab("prefs.tab.llm", systemImage: "text.bubble") {
-        LanguagePreferencesView(manager: languageModel, connection: connection)
+        LanguagePreferencesView(manager: languageModel, download: download, connection: connection)
       }
       Tab("prefs.tab.output", systemImage: "folder") {
         OutputPreferencesView(controller: generation)
