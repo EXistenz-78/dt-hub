@@ -24,8 +24,9 @@ public struct ConfigurationError: Error, Equatable, Sendable {
 public protocol ConfigurationCodec: Sendable {
   /// The complete configuration as pretty-printed JSON, sorted keys; a random seed is -1.
   func exportJSON(_ state: ConfigurationState) -> String
-  /// nil when the text is a valid complete or partial configuration, else what is wrong.
-  func validate(_ json: String) -> String?
+  /// nil when applying the text to `state` would work: a valid complete or partial
+  /// configuration whose values are in range. Else what is wrong.
+  func validate(_ json: String, for state: ConfigurationState) -> String?
   /// The top-level keys of `json` that are not Draw Things settings (typos, newer versions):
   /// applying the text ignores them.
   func unknownKeys(in json: String) -> [String]

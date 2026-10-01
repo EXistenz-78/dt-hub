@@ -105,13 +105,86 @@ struct ConfigurationCodecTests {
   }
 
   @Test func aBadTextIsRejectedWithAReason() {
-    #expect(codec.validate("not json") != nil)
-    #expect(codec.validate("[1, 2]") != nil)
-    #expect(codec.validate(#"{"steps": "many"}"#) != nil)
-    #expect(codec.validate(#"{"width": 10}"#) != nil)
-    #expect(codec.validate(#"{"steps": 8}"#) == nil)
-    #expect(codec.validate("  ") == nil)
+    #expect(codec.validate("not json", for: state) != nil)
+    #expect(codec.validate("[1, 2]", for: state) != nil)
+    #expect(codec.validate(#"{"steps": "many"}"#, for: state) != nil)
+    #expect(codec.validate(#"{"width": 10}"#, for: state) != nil)
+    #expect(codec.validate(#"{"steps": 8}"#, for: state) == nil)
+    #expect(codec.validate("  ", for: state) == nil)
     #expect(throws: ConfigurationError.self) { try codec.apply(json: "not json", to: state) }
+  }
+
+  @Test func anAutomaticHiresFixSizeIsAValidTabState() throws {
+    var automatic = state
+    automatic.parameters.advanced.hiresFix = true
+    #expect(codec.validate(codec.exportJSON(automatic), for: automatic) == nil)
+    #expect(codec.validate(#"{"steps": 20}"#, for: automatic) == nil)
+    let result = try codec.apply(json: #"{"steps": 20}"#, to: automatic)
+    #expect(result.parameters.advanced.hiresFix)
+    #expect(result.parameters.advanced.hiresFixWidth == 0 && result.parameters.advanced.hiresFixHeight == 0)
+    // Switching it on from the text keeps the sizes automatic too.
+    let switched = try codec.apply(json: #"{"hiresFix": true}"#, to: state)
+    #expect(switched.parameters.advanced.hiresFix && switched.parameters.advanced.hiresFixWidth == 0)
+  }
+
+  @Test func anExplicitHiresFixSizeBelow64IsRejected() {
+    #expect(codec.validate(#"{"hiresFix": true, "hiresFixWidth": 10, "hiresFixHeight": 512}"#, for: state) != nil)
+  }
+
+  @Test func aTabWithoutAModelIsAValidState() throws {
+    let none = ConfigurationState(model: "", parameters: GenerationParameters())
+    #expect(codec.validate(codec.exportJSON(none), for: none) == nil)
+    #expect(codec.validate(#"{"steps": 20}"#, for: none) == nil)
+    let result = try codec.apply(json: #"{"steps": 20}"#, to: none)
+    #expect(result.model == "")
+    #expect(result.parameters.steps == 20)
+    #expect(try codec.apply(json: #"{"model": "a.ckpt"}"#, to: none).model == "a.ckpt")
+  }
+
+  @Test func aSeparateTextSurvivesWhileItsSwitchIsOff() throws {
+    var kept = state
+    kept.parameters.advanced.t5Text = "long text"
+    kept.parameters.advanced.clipLText = "clip text"
+    kept.parameters.advanced.separateT5 = false
+    kept.parameters.advanced.separateClipL = false
+    let result = try codec.apply(json: #"{"steps": 20}"#, to: kept)
+    #expect(result.parameters.advanced.t5Text == "long text")
+    #expect(result.parameters.advanced.clipLText == "clip text")
+    #expect(try codec.apply(json: "{}", to: kept) == kept)
+  }
+
+  @Test(arguments: [
+    (#"{"steps": 500}"#, "steps"), (#"{"width": 4096}"#, "width"), (#"{"guidanceScale": 80}"#, "guidanceScale"),
+    (#"{"loras": [{"file": "a", "weight": 5}]}"#, "weight"), (#"{"upscalerScaleFactor": 3}"#, "upscalerScaleFactor"),
+    (#"{"batchSize": 9}"#, "batchSize"),
+  ])
+  func anOutOfRangeValueIsRejectedNotClamped(json: String, key: String) throws {
+    let message = try #require(codec.validate(json, for: state))
+    #expect(message.contains(key))
+    #expect(throws: ConfigurationError.self) { try codec.apply(json: json, to: state) }
+  }
+
+  @Test func theShiftOfDrawThingsOwnPresetsIsAccepted() throws {
+    // Two of Draw Things' official MiniMax H3 presets use a shift of 12.
+    #expect(codec.validate(#"{"shift": 12}"#, for: state) == nil)
+    #expect(try codec.apply(json: #"{"shift": 12}"#, to: state).parameters.shift == 12)
+    #expect(codec.validate(#"{"shift": 50}"#, for: state) != nil)
+  }
+
+  @Test func aSizeThatIsNotAMultipleOf64IsAcceptedAndRounded() throws {
+    #expect(codec.validate(#"{"width": 1000}"#, for: state) == nil)
+    #expect(try codec.apply(json: #"{"width": 1000}"#, to: state).parameters.width == 1024)
+  }
+
+  @Test func curlyQuotesFromTypingAreAccepted() throws {
+    let typed = "{\u{201C}steps\u{201D}: 12}"
+    #expect(codec.validate(typed, for: state) == nil)
+    #expect(try codec.apply(json: typed, to: state).parameters.steps == 12)
+  }
+
+  @Test func aSyntaxErrorSaysSo() throws {
+    let message = try #require(codec.validate(#"{"steps": 8"#, for: state))
+    #expect(!message.contains("must be a JSON object"))
   }
 
   @Test func unknownKeysAreListedAndIgnored() throws {

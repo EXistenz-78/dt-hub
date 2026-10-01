@@ -7,7 +7,7 @@ import Testing
 /// A codec that reads only `model` and `steps`, enough to test what the preset code does with it.
 struct FakeCodec: ConfigurationCodec {
   func exportJSON(_ state: ConfigurationState) -> String { "{}" }
-  func validate(_ json: String) -> String? { nil }
+  func validate(_ json: String, for state: ConfigurationState) -> String? { nil }
   func unknownKeys(in json: String) -> [String] { [] }
   func apply(json: String, to state: ConfigurationState) throws(ConfigurationError) -> ConfigurationState {
     guard let object = (try? JSONSerialization.jsonObject(with: Data(json.utf8))) as? [String: Any] else {

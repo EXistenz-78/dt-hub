@@ -104,7 +104,7 @@ public struct GenerationParameters: Equatable, Codable, Sendable {
   public static let sizeRange = 64...2048
   public static let stepsRange = 1...150
   public static let guidanceRange = 0.0...50.0
-  public static let shiftRange = 0.0...10.0
+  public static let shiftRange = 0.0...20.0
   public static let batchSizeRange = 1...4
   public static let batchCountRange = 1...100
 

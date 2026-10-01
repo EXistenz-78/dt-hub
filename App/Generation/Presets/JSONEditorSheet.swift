@@ -94,7 +94,7 @@ struct JSONEditorSheet: View {
 
   private func check() {
     applyError = nil
-    error = controller.codec.validate(text)
+    error = controller.codec.validate(text, for: controller.configurationState(in: connection))
     unknown = error == nil ? controller.codec.unknownKeys(in: text) : []
   }
 

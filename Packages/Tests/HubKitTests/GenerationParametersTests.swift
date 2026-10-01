@@ -6,13 +6,13 @@ import Testing
 struct GenerationParametersTests {
   @Test func clampsIntoTheAllowedRanges() {
     let wild = GenerationParameters(
-      width: 10, height: 9999, steps: 500, guidanceScale: -1, shift: 20, batchSize: 0, batchCount: 1000)
+      width: 10, height: 9999, steps: 500, guidanceScale: -1, shift: 99, batchSize: 0, batchCount: 1000)
     let clamped = wild.clamped()
     #expect(clamped.width == 64)
     #expect(clamped.height == 2048)
     #expect(clamped.steps == 150)
     #expect(clamped.guidanceScale == 0)
-    #expect(clamped.shift == 10)
+    #expect(clamped.shift == 20)
     #expect(clamped.batchSize == 1)
     #expect(clamped.batchCount == 100)
   }

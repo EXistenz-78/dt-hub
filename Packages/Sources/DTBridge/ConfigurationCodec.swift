@@ -15,46 +15,136 @@ public struct DrawThingsConfigurationCodec: ConfigurationCodec {
 
   /// The message is the library's (or ours), in English: a technical detail the interface
   /// shows under its own localized headline.
-  public func validate(_ json: String) -> String? {
-    let trimmed = json.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard let object = try? JSONSerialization.jsonObject(with: Data(trimmed.utf8)), object is [String: Any] || trimmed.isEmpty else {
-      return trimmed.isEmpty ? nil : "The text must be a JSON object, like {\"steps\": 8}"
+  public func validate(_ json: String, for state: ConfigurationState) -> String? {
+    do {
+      _ = try resolve(json, state)
+      return nil
+    } catch {
+      return error.message
     }
-    return DrawThingsConfiguration.validateJSON(json).error
   }
 
   /// The top-level keys of `json` that are not Draw Things settings (typos, newer versions):
   /// they are ignored.
   public func unknownKeys(in json: String) -> [String] {
-    guard let object = try? JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any] else { return [] }
+    guard let object = try? JSONSerialization.jsonObject(with: Data(Self.normalized(json).utf8)) as? [String: Any]
+    else { return [] }
     return object.keys.filter { !Self.knownKeys.contains($0) }.sorted()
   }
 
   public func apply(json: String, to state: ConfigurationState) throws(ConfigurationError) -> ConfigurationState {
-    if let error = validate(json) { throw ConfigurationError(error) }
-    var configuration = JobMapper.configuration(model: state.model, parameters: state.parameters)
+    try resolve(json, state)
+  }
+
+  /// A neutral model name for a tab with none chosen: the library wants one, DT Hub does not.
+  private static let noModel = "-"
+
+  /// Straight quotes for the curly ones the Mac types when "smart quotes" is on.
+  static func normalized(_ json: String) -> String {
+    json.replacingOccurrences(of: "\u{201C}", with: "\"").replacingOccurrences(of: "\u{201D}", with: "\"")
+      .replacingOccurrences(of: "\u{2018}", with: "'").replacingOccurrences(of: "\u{2019}", with: "'")
+  }
+
+  /// The text applied to the state, or why it cannot be: syntax, the library's own checks
+  /// (a Hires fix size of 0 and no model are DT Hub's "automatic" and "none", not errors),
+  /// then the ranges DT Hub allows, which must not be quietly clamped.
+  private func resolve(_ text: String, _ state: ConfigurationState) throws(ConfigurationError) -> ConfigurationState {
+    let json = Self.normalized(text)
+    let trimmed = json.trimmingCharacters(in: .whitespacesAndNewlines)
+    var overlay: [String: Any] = [:]
+    if !trimmed.isEmpty {
+      let parsed: Any
+      do {
+        parsed = try JSONSerialization.jsonObject(with: Data(trimmed.utf8))
+      } catch {
+        throw ConfigurationError("Invalid JSON: \((error as NSError).localizedDescription)")
+      }
+      guard let object = parsed as? [String: Any] else {
+        throw ConfigurationError("The text must be a JSON object, like {\"steps\": 8}")
+      }
+      overlay = object
+    }
+    var configuration = JobMapper.configuration(
+      model: state.model.isEmpty ? Self.noModel : state.model, parameters: state.parameters)
     configuration.seed = state.parameters.randomSeed ? nil : state.parameters.seed
     do {
-      try configuration.mergeJSON(json)
-      try configuration.validate()
+      // An empty model is DT Hub's "none" (an export of a tab with no model has one).
+      var mergeable = overlay
+      if (mergeable["model"] as? String)?.isEmpty == true { mergeable["model"] = nil }
+      if mergeable.isEmpty {
+        try configuration.mergeJSON("{}")
+      } else {
+        try configuration.mergeJSON(String(decoding: try JSONSerialization.data(withJSONObject: mergeable), as: UTF8.self))
+      }
+      var checked = configuration
+      if checked.hiresFix {
+        if checked.hiresFixWidth == 0 { checked.hiresFixWidth = 64 }
+        if checked.hiresFixHeight == 0 { checked.hiresFixHeight = 64 }
+      }
+      try checked.validate()
     } catch {
       throw ConfigurationError(error.localizedDescription)
     }
     var parameters = Self.parameters(from: configuration, base: state.parameters)
-    if let overlay = (try? JSONSerialization.jsonObject(with: Data(json.utf8))) as? [String: Any] {
-      for (key, value) in overlay where Self.extraKeys.contains(key) {
-        // A value equal to Draw Things' default is no setting at all: a complete export
-        // would otherwise fill `extra` with every default.
-        if let standard = Self.defaults[key], (standard as AnyObject).isEqual(value) {
-          parameters.extra[key] = nil
-        } else if let data = try? JSONSerialization.data(withJSONObject: value, options: [.fragmentsAllowed]),
-          let decoded = try? JSONDecoder().decode(JSONValue.self, from: data)
-        {
-          parameters.extra[key] = decoded
-        }
+    if let problem = Self.rangeProblem(parameters) { throw ConfigurationError(problem) }
+    for (key, value) in overlay where Self.extraKeys.contains(key) {
+      // A value equal to Draw Things' default is no setting at all: a complete export
+      // would otherwise fill `extra` with every default.
+      if let standard = Self.defaults[key], (standard as AnyObject).isEqual(value) {
+        parameters.extra[key] = nil
+      } else if let data = try? JSONSerialization.data(withJSONObject: value, options: [.fragmentsAllowed]),
+        let decoded = try? JSONDecoder().decode(JSONValue.self, from: data)
+      {
+        parameters.extra[key] = decoded
       }
     }
-    return ConfigurationState(model: configuration.model, parameters: parameters.clamped())
+    let model = configuration.model == Self.noModel ? "" : configuration.model
+    return ConfigurationState(model: model, parameters: parameters.clamped())
+  }
+
+  /// The first value that DT Hub would clamp: out of its range, not just off the 64 grid.
+  /// Sizes within half a step of a multiple of 64 are only rounded later.
+  static func rangeProblem(_ parameters: GenerationParameters) -> String? {
+    guard let before = try? encode(parameters), let after = try? encode(parameters.clamped()) else { return nil }
+    return firstDifference(before, after, path: "")
+  }
+
+  private static func encode(_ parameters: GenerationParameters) throws -> JSONValue {
+    try JSONDecoder().decode(JSONValue.self, from: JSONEncoder().encode(parameters))
+  }
+
+  private static func firstDifference(_ a: JSONValue, _ b: JSONValue, path: String) -> String? {
+    switch (a, b) {
+    case (.object(let x), .object(let y)):
+      for key in x.keys.sorted() {
+        let child = path.isEmpty ? key : "\(path).\(key)"
+        if let found = firstDifference(x[key] ?? .null, y[key] ?? .null, path: child) { return found }
+      }
+      return nil
+    case (.array(let x), .array(let y)) where x.count == y.count:
+      for index in x.indices {
+        if let found = firstDifference(x[index], y[index], path: "\(path)[\(index)]") { return found }
+      }
+      return nil
+    default:
+      guard a != b else { return nil }
+      guard let x = number(a), let y = number(b) else { return "\(path) is not valid" }
+      let name = path.split(separator: ".").last.map(String.init)?.lowercased() ?? path
+      if name.hasSuffix("width") || name.hasSuffix("height"), abs(x - y) < 32 { return nil }
+      return "\(path) is out of range (got \(format(x)); the nearest allowed value is \(format(y)))"
+    }
+  }
+
+  private static func number(_ value: JSONValue) -> Double? {
+    switch value {
+    case .int(let n): Double(n)
+    case .double(let n): n
+    default: nil
+    }
+  }
+
+  private static func format(_ value: Double) -> String {
+    value == value.rounded() ? String(Int(value)) : String(value)
   }
 
   // MARK: Keys
@@ -133,11 +223,14 @@ public struct DrawThingsConfigurationCodec: ConfigurationCodec {
     a.clipSkip = Int(c.clipSkip)
     a.t5TextEncoder = c.t5TextEncoder
     a.separateClipL = c.separateClipL
-    a.clipLText = c.clipLText ?? ""
+    // A text is sent only with its switch on: with it off the card's text is kept.
+    a.clipLText = c.clipLText ?? (c.separateClipL ? "" : base.advanced.clipLText)
     a.separateOpenClipG = c.separateOpenClipG
-    a.openClipGText = c.openClipGText ?? ""
+    // A text is sent only with its switch on: with it off the card's text is kept.
+    a.openClipGText = c.openClipGText ?? (c.separateOpenClipG ? "" : base.advanced.openClipGText)
     a.separateT5 = c.separateT5
-    a.t5Text = c.t5Text ?? ""
+    // A text is sent only with its switch on: with it off the card's text is kept.
+    a.t5Text = c.t5Text ?? (c.separateT5 ? "" : base.advanced.t5Text)
     a.zeroNegativePrompt = c.zeroNegativePrompt
     a.aestheticScore = d(c.aestheticScore)
     a.negativeAestheticScore = d(c.negativeAestheticScore)
