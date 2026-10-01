@@ -123,7 +123,7 @@ La configurazione di DT (`GenerationConfiguration`) ha 97 campi. Un campo si mos
 
 **Preset:**
 - salvataggio e caricamento di configurazioni con un nome;
-- import una tantum da `custom_configs.json` di DT.
+- import da file: un elenco JSON di `{name, configuration}` (la forma di `custom_configs.json` e della lista pubblica di Draw Things), scelto con il pannello di apertura. `custom_configs.json` non esiste nelle versioni recenti di Draw Things, che tengono le configurazioni dell'utente in un database interno: i preset personali si portano con "Copy Configuration" incollato nell'editor JSON (verificato il 1 ottobre 2026).
 
 **Regole di visibilità:** una tabella famiglia → campi pertinenti vive in HubCore. Se un campo nascosto ha un valore diverso dal predefinito (es. importato da JSON), la card mostra un avviso "valori nascosti attivi".
 
