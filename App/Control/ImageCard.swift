@@ -106,7 +106,8 @@ struct ImageCard: View {
 
   private var strengthRow: some View {
     let edit = generation.isEditModel(in: connection)
-    let value = control.inputs.effectiveStrength(editModel: edit)
+    let margins = control.hasMargins(canvasWidth: generation.parameters.width, canvasHeight: generation.parameters.height)
+    let value = control.inputs.effectiveStrength(editModel: edit, hasMargins: margins)
     return VStack(alignment: .leading, spacing: 4) {
       CardRow(label: String(localized: "control.strength")) {
         Slider(
@@ -122,7 +123,7 @@ struct ImageCard: View {
       HStack(spacing: DS.controlGap) {
         if edit {
           Text("control.strength.edit").font(.caption).foregroundStyle(.secondary)
-        } else if control.inputs.mask != nil, control.inputs.strength == nil {
+        } else if control.inputs.mask != nil || margins, control.inputs.strength == nil {
           Text("control.strength.mask").font(.caption).foregroundStyle(.secondary)
         }
         if control.inputs.strength != nil {
