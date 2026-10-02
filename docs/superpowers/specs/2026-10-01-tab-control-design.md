@@ -44,17 +44,19 @@ Decisioni dell'utente (1 ottobre 2026):
 **Scheda Moodboard** (sinistra, sotto):
 - griglia di miniature; ognuna ha ✕ sempre visibile e **occhio** (spegne senza cancellare: la miniatura si attenua e l'immagine non parte);
 - **tutte le immagini accese contano allo stesso modo**, e la scheda lo dice ("Ogni immagine accesa conta allo stesso modo"). Niente cursori, percentuali, barra a fette o "Equilibra": misurato il 2 ottobre 2026 (in Draw Things dall'utente e dal vivo da DT Hub) su FLUX.2 klein e Qwen Image Edit 2511, **qualsiasi valore sopra lo 0 dà lo stesso risultato** (lo 0 equivale a ignorare l'immagine). Le quote della torta (§4.1) sono rimandate finché un modello non le rispetta;
-- riordino trascinando le miniature;
+- niente riordino: con pesi uguali l'ordine non conta e il gesto non funzionava (tolto il 3 ottobre 2026; `moveMoodboardImage` resta nello store se un modello userà l'ordine);
 - **regola di rilascio** (deciso con l'utente): rilasciare un'immagine **su una miniatura già inserita la sostituisce**; rilasciarla **in qualsiasi altro punto della scheda aggiunge**. Vale per le immagini dal Finder, da Risultati e per quelle trascinate dalla scheda Immagine;
 - avviso quando le reference sono più di tre (tempo di render);
 - le immagini del Moodboard sono riferimenti di stile e di contenuto, **non entrano nel canvas**: il loro rapporto non ha nessun legame con quello del canvas e non si ritagliano né si adattano mai (deciso con l'utente, 1 ottobre 2026);
 - **quando il Moodboard è attivo:** i modelli recenti che fanno insieme T2I e I2I (FLUX.2, Qwen Image 2.1, in futuro Ideogram 4.5) leggono le reference da soli, senza suffissi o modifier che li distinguano: per questo la scheda **non** usa il `modifier` del catalogo. È grigia, con la spiegazione, solo per le famiglie di una **lista di dati** (`FamilyTraits.withoutMoodboard`) che non lo leggono: SD 1.x e 2.x, SDXL, SSD-1B (servirebbe un IP-Adapter o un ControlNet) e Z Image (misurata: il risultato è identico con e senza reference). Una famiglia nuova o sconosciuta la mostra attiva: nascondere ciò che un modello usa è peggio che mostrare ciò che ignora. La lista si aggiorna man mano che si provano le famiglie;
 
-**Pannello Maschera** (destra):
-- anteprima del **canvas così come parte a Draw Things** (ritaglio compreso), con la maschera sovrapposta in arancio (area dipinta = area che verrà rigenerata);
-- strumenti: Pennello, Gomma, Annulla, Ripeti, Inverti, Svuota; cursori Dimensione e Morbidezza;
-- parametri di Draw Things: Sfumatura (`maskBlur`), Margine (`maskBlurOutset`), casella "Conserva l'originale fuori dalla maschera" (`preserveOriginalAfterInpaint`);
-- senza immagine il pannello è vuoto con "Carica un'immagine per disegnare la maschera".
+**Scheda Maschera** (destra, sotto il Canvas):
+- anteprima del **canvas così come parte a Draw Things** (ritaglio compreso), con la maschera sovrapposta in arancio (area dipinta = area che verrà rigenerata); il cerchio del pennello segue il puntatore;
+- strumenti: Pennello e Gomma (interruttore), Annulla, Ripeti, Inverti, Svuota; cursore Dimensione (diametro in pixel del canvas). **Niente Morbidezza** (deciso il 3 ottobre 2026): Draw Things riceve una maschera senza sfumature (un pixel è da rigenerare o no), quindi la morbidezza del pennello non cambierebbe nulla; il bordo si ammorbidisce con la Sfumatura;
+- parametri di Draw Things: Sfumatura (`maskBlur`, 0–30, predefinita 1,5), Margine (`maskBlurOutset`, 0–100, predefinito 0), casella "Conserva l'originale fuori dalla maschera" (`preserveOriginalAfterInpaint`, predefinita accesa);
+- **forza automatica 100% con la maschera** (misurato il 3 ottobre 2026: a 70% l'area mascherata resta quasi com'era), come per i modelli Edit; una scelta dell'utente vince;
+- senza immagine la scheda è vuota con "Carica un'immagine per disegnare la maschera";
+- cambiare o togliere l'immagine di partenza toglie la maschera (disegnata su un'altra immagine); si annulla.
 
 **Annulla.** Ogni rimozione, sostituzione o svuotamento si annulla con ⌘Z e con un avviso "Rimossa · Annulla" che dura qualche secondo.
 
@@ -65,17 +67,18 @@ Decisioni dell'utente (1 ottobre 2026):
 **HubKit** (tipi `Sendable`; i salvati sono `Codable` con lettura permissiva, come `GenerationParameters`):
 - `ReferenceImage`: `id`, `source` (file, risultato, appunti, plug-in), nome, dimensioni in pixel, nome del file della copia.
 - `Framing`: modo (`fill`; `contain` in seguito) e spostamento normalizzato dentro il canvas.
-- `MaskSettings`: sfumatura, margine, conserva l'originale.
+- `MaskSettings`: sfumatura, margine, conserva l'originale (con i limiti sopra).
+- `MaskReference`: il file PNG della maschera e quanta parte dell'immagine copre (per il chip della striscia).
 - `MoodboardEntry`: `id` (quello dell'immagine), `ReferenceImage` e acceso/spento. Il peso arriverà con le quote (§4.1). Gli ingressi del RUN portano un `GenerationHint` per ogni immagine accesa, con peso 1.
 - `ControlInputs`: immagine opzionale con `Framing` e forza (nil = automatica), maschera opzionale (riferimento al file) con `MaskSettings`, lista di `MoodboardEntry`.
 - `GenerationInputs` (non `Codable`, non finisce nei PNG): immagine già inquadrata alla dimensione esatta del canvas, maschera (pixel **trasparenti = da rigenerare**, come vuole il client), lista di hint con tipo e peso.
 - Il protocollo backend diventa `generate(_ job: GenerationJob, inputs: GenerationInputs)`; `GenerationJob` non cambia, e gli ingressi vuoti riproducono il T2I di oggi.
 
-**Copie su disco.** Ogni immagine aggiunta viene **copiata** in `~/Library/Application Support/DT Hub/Control/<uuid>.<estensione>`. Così togliere o spostare l'originale, o l'immagine di Risultati, non rompe l'ingresso. La copia si cancella quando l'ingresso viene tolto o svuotato e le orfane si spazzano all'avvio. La maschera è un PNG a 8 bit **in coordinate dell'immagine**, nella stessa cartella: segue il ritaglio se lo si sposta.
+**Copie su disco.** Ogni immagine aggiunta viene **copiata** in `~/Library/Application Support/DT Hub/Control/<uuid>.<estensione>`. Così togliere o spostare l'originale, o l'immagine di Risultati, non rompe l'ingresso. La copia si cancella quando l'ingresso viene tolto o svuotato e le orfane si spazzano all'avvio. La maschera è un PNG a 8 bit **in coordinate dell'immagine**, nella stessa cartella: segue il ritaglio se lo si sposta. Si disegna a una **dimensione di lavoro** (il rapporto dell'immagine, lato lungo al massimo 1024 pixel) così il pennello resta fluido su qualunque immagine; al RUN si scala al canvas con la stessa interpolazione dell'immagine e si taglia a metà (maschera netta).
 
 **Persistenza.** `control.json` nella cartella di supporto, separato da `session.json`, ripristinato all'avvio come il prompt (spec principale §11). Una copia mancante fa scartare la voce con un avviso nella striscia.
 
-**Memoria.** I pixel stanno su disco; le immagini si decodificano con ImageIO alla dimensione necessaria (miniature al volo, ritaglio al momento del RUN), perché una foto da 50 megapixel non deve stare intera in memoria. L'annulla/ripeti della maschera usa istantanee limitate a 20; quello delle voci usa copie del valore `ControlInputs` (leggero: contiene riferimenti, non pixel).
+**Memoria.** I pixel stanno su disco; le immagini si decodificano con ImageIO alla dimensione necessaria (miniature al volo, ritaglio al momento del RUN), perché una foto da 50 megapixel non deve stare intera in memoria. **Ogni tratto di pennello (o inverti, svuota) è un passo della stessa cronologia del tab** (20 passi, ⌘Z): ogni passo scrive un nuovo PNG della maschera e lo stato ne tiene il riferimento; le copie non più referenziate si spazzano. La cronologia usa copie del valore `ControlInputs` (leggero: contiene riferimenti, non pixel).
 
 ### 4.1 Quote del Moodboard (rimandate)
 
@@ -93,10 +96,10 @@ Se il rapporto delle Dimensioni cambia dopo il caricamento, il ritaglio si rical
 ## 6. Dal tab al RUN
 
 - **`InputComposer`** (HubCore): funzione pura da `ControlInputs` e dimensioni del canvas a `GenerationInputs`: ritaglia e scala l'immagine alla dimensione esatta, rende la maschera nello stesso riquadro (alfa 0 dove si rigenera), prepara gli hint dei Moodboard accesi (immagini ridotte a 1024 px e codificate in PNG, peso 1 per tutte). Si prova con immagini generate nei test.
-- **DTBridge** (`JobMapper`): riempie `image`, `mask`, hint (`HintBuilder`, tipo `shuffle` per il Moodboard) e imposta `strength`, `maskBlur`, `maskBlurOutset`, `preserveOriginalAfterInpaint`, e `enableInpainting` quando serve (da verificare, §9). `HintBuilder` e `ImageHelpers` della libreria si usano **solo** in DTBridge.
+- **DTBridge** (`JobMapper`): riempie `image`, `mask`, hint (`HintBuilder`, tipo `shuffle` per il Moodboard) e imposta `strength`, `maskBlur`, `maskBlurOutset`, `preserveOriginalAfterInpaint`, e `enableInpainting` **solo per i modelli con `modifier` `inpainting`** (misurato il 3 ottobre 2026: su SD 1.5 e FLUX.2 klein la maschera funziona uguale con e senza; il client lo documenta «per i modelli che ne hanno bisogno», e quelli con `modifier` `inpainting` non sono installati qui, quindi per loro la regola segue il client, non è provata). `HintBuilder` e `ImageHelpers` della libreria si usano **solo** in DTBridge.
 - **Più batch:** tutti riusano gli stessi ingressi.
 - **Nel PNG salvato** finiscono forza, sfumatura, margine, e il numero delle reference del Moodboard (non le immagini). "Riprendi parametri" da Risultati ripristina questi numeri.
-- **Blocchi in RUN:** una maschera senza immagine. Il resto sono avvisi.
+- **Blocchi in RUN:** nessuno. Una maschera senza immagine non può esistere (la maschera va con l'immagine); il resto sono avvisi.
 - **Visibilità per famiglia** (come le card avanzate, dalla tabella del catalogo): il tab ricava dal `modifier` del modello la forza automatica (100% per i modelli Edit) e `enableInpainting`; il Moodboard si decide dalla **famiglia**, con una lista di dati (§3), non dal `modifier`. Una famiglia sconosciuta mostra tutto e non blocca nulla.
 
 ## 7. Plug-in (M8)
@@ -124,7 +127,7 @@ Tutti i messaggi sono localizzati (it, en), senza testo tecnico grezzo.
 
 **DTBridge:** mappatura di forza, maschera, hint e `enableInpainting` nel `JobMapper`.
 
-**Dal vivo con un server vero**, con un modello leggero: una I2I, un inpaint e un Moodboard. Una sola verifica aperta, da risolvere nel piano di M7c leggendo il client e provando: **quando serve `enableInpainting`** (modelli senza `modifier` inpainting). Le altre due domande (rapporto del Moodboard, famiglie che lo usano) hanno già risposta dall'utente e dalla documentazione di Draw Things.
+**Dal vivo con un server vero**, con un modello leggero: una I2I, un inpaint e un Moodboard. `enableInpainting` è risolto (§6). Misurato il 3 ottobre 2026 su SD 1.5 (Juggernaut Reborn) e FLUX.2 klein: con la maschera sulla metà destra di un'immagine blu, la metà sinistra resta identica e la destra si rigenera (quota di rosso 0,58 e 0,54) a forza 100%; a forza 70% la parte mascherata resta blu; `enableInpainting` acceso o spento non cambia nulla.
 
 **A mano (utente):** trascinamenti, pennello, ripristino all'avvio.
 
