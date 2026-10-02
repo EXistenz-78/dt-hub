@@ -1,7 +1,9 @@
 import CoreGraphics
 import Foundation
 import HubKit
+import ImageIO
 import Testing
+import UniformTypeIdentifiers
 
 @testable import DTBridge
 
@@ -92,6 +94,50 @@ struct LiveServerTests {
     await backend.shutdown()
     print("LIVE normal model: green share plain \(greenShare(plain)) guided \(greenShare(guided))")
     #expect(greenShare(guided) > greenShare(plain) + 0.05)
+  }
+
+  /// FLUX.2 [klein] reads Moodboard pictures as references: with no start image, a reference
+  /// (left half black, right half white) shapes the result. (Its weight does not matter: any value
+  /// above 0 gives the same result, measured in Draw Things and here.)
+  @Test(.enabled(if: address != nil))
+  func anEditModelReadsAMoodboardPicture() async throws {
+    let backend = try await liveBackend()
+    let model = try #require(
+      try await backend.fetchCatalog().models.first { $0.family == "flux2_9b" }?.file,
+      "needs a FLUX.2 [klein] model on the server")
+    let job = GenerationJob(
+      prompt: "the same picture", model: model,
+      parameters: GenerationParameters(width: 512, height: 512, steps: 4, sampler: .ddimTrailing, seed: 7, randomSeed: false))
+    let data = NSMutableData()
+    let destination = try #require(CGImageDestinationCreateWithData(data, UTType.png.identifier as CFString, 1, nil))
+    CGImageDestinationAddImage(destination, splitImage(size: 512), nil)
+    CGImageDestinationFinalize(destination)
+    let full = try await run(backend, job, GenerationInputs(hints: [GenerationHint(imageData: data as Data)]))
+    await backend.shutdown()
+    print("LIVE moodboard: right minus left luminance \(rightMinusLeft(full))")
+    #expect(full.width == 512)
+    #expect(rightMinusLeft(full) > 0.15)
+  }
+
+  /// Z Image Turbo has no Edit modifier: does it read a Moodboard picture at all? (Measured, and
+  /// the answer decides which families the Moodboard card is active for.)
+  @Test(.enabled(if: address != nil))
+  func aModernModelWithoutAnEditModifierAndTheMoodboard() async throws {
+    let backend = try await liveBackend()
+    let model = try #require(
+      try await backend.fetchCatalog().models.first { $0.file.hasPrefix("z_image_turbo") }?.file,
+      "needs Z Image Turbo on the server")
+    let job = GenerationJob(
+      prompt: "a photograph of a wall", model: model,
+      parameters: GenerationParameters(width: 512, height: 512, steps: 8, sampler: .ddimTrailing, seed: 7, randomSeed: false))
+    let data = NSMutableData()
+    let destination = try #require(CGImageDestinationCreateWithData(data, UTType.png.identifier as CFString, 1, nil))
+    CGImageDestinationAddImage(destination, splitImage(size: 512), nil)
+    CGImageDestinationFinalize(destination)
+    let plain = try await run(backend, job, .none)
+    let guided = try await run(backend, job, GenerationInputs(hints: [GenerationHint(imageData: data as Data)]))
+    await backend.shutdown()
+    print("LIVE z-image moodboard: right minus left plain \(rightMinusLeft(plain)) guided \(rightMinusLeft(guided))")
   }
 
   private func liveBackend() async throws -> DrawThingsBackend {
