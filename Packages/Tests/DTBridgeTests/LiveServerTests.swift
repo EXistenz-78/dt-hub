@@ -53,4 +53,106 @@ struct LiveServerTests {
     #expect(images.count == 1)
     #expect(images.first?.width == 512)
   }
+
+  /// FLUX.2 [klein] is an Edit model: the start image (left half black, right half white) is a
+  /// reference at strength 100 %, and the result keeps the layout: the right side is brighter.
+  @Test(.enabled(if: address != nil))
+  func anEditModelKeepsTheLayoutOfTheStartImage() async throws {
+    let backend = try await liveBackend()
+    let model = try #require(
+      try await backend.fetchCatalog().models.first { $0.family == "flux2_9b" }?.file,
+      "needs a FLUX.2 [klein] model on the server")
+    var job = GenerationJob(
+      prompt: "the same picture", model: model,
+      parameters: GenerationParameters(width: 512, height: 512, steps: 4, sampler: .ddimTrailing, seed: 7, randomSeed: false))
+    job.imageStrength = 1.0
+    let guided = try await run(backend, job, GenerationInputs(image: splitImage(size: 512)))
+    await backend.shutdown()
+    let difference = rightMinusLeft(guided)
+    print("LIVE edit model: right minus left luminance \(difference)")
+    #expect(guided.width == 512)
+    #expect(difference > 0.15)
+  }
+
+  /// A normal model (Juggernaut Reborn, SD 1.5) does image-to-image: at strength 50 % a solid
+  /// green start image pulls the result toward green compared with the same RUN without it.
+  @Test(.enabled(if: address != nil))
+  func aNormalModelFollowsTheStartImageAtMidStrength() async throws {
+    let backend = try await liveBackend()
+    let model = try #require(
+      try await backend.fetchCatalog().models.first { $0.file.hasPrefix("juggernaut_reborn") }?.file,
+      "needs Juggernaut Reborn on the server")
+    var job = GenerationJob(
+      prompt: "a red apple", model: model,
+      parameters: GenerationParameters(
+        width: 512, height: 512, steps: 12, guidanceScale: 4, sampler: .ddimTrailing, seed: 7, randomSeed: false))
+    let plain = try await run(backend, job, .none)
+    job.imageStrength = 0.5
+    let guided = try await run(backend, job, GenerationInputs(image: solid(red: 0, green: 255, blue: 0, size: 512)))
+    await backend.shutdown()
+    print("LIVE normal model: green share plain \(greenShare(plain)) guided \(greenShare(guided))")
+    #expect(greenShare(guided) > greenShare(plain) + 0.05)
+  }
+
+  private func liveBackend() async throws -> DrawThingsBackend {
+    let parts = try #require(Self.address?.split(separator: ":"))
+    return DrawThingsBackend(host: String(parts[0]), port: Int(parts[1]) ?? 7859, useTLS: true, sharedSecret: nil)
+  }
+
+  private func run(_ backend: DrawThingsBackend, _ job: GenerationJob, _ inputs: GenerationInputs) async throws -> CGImage {
+    var final: [CGImage] = []
+    for try await update in backend.generate(job, inputs: inputs) {
+      if case .finished(let images) = update { final = images }
+    }
+    return try #require(final.first)
+  }
+
+  private func splitImage(size: Int) -> CGImage {
+    let context = CGContext(
+      data: nil, width: size, height: size, bitsPerComponent: 8, bytesPerRow: 0,
+      space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
+    context.setFillColor(CGColor(red: 0, green: 0, blue: 0, alpha: 1))
+    context.fill(CGRect(x: 0, y: 0, width: size / 2, height: size))
+    context.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: 1))
+    context.fill(CGRect(x: size / 2, y: 0, width: size / 2, height: size))
+    return context.makeImage()!
+  }
+
+  /// Average luminance of the right half minus the left half, 0…1.
+  private func rightMinusLeft(_ image: CGImage) -> Double {
+    func luminance(of rect: CGRect) -> Double {
+      guard let part = image.cropping(to: rect) else { return 0 }
+      var bytes = [UInt8](repeating: 0, count: 4)
+      let context = CGContext(
+        data: &bytes, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+        space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+      context.interpolationQuality = .medium
+      context.draw(part, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+      return (0.299 * Double(bytes[0]) + 0.587 * Double(bytes[1]) + 0.114 * Double(bytes[2])) / 255
+    }
+    let half = image.width / 2
+    return luminance(of: CGRect(x: half, y: 0, width: half, height: image.height))
+      - luminance(of: CGRect(x: 0, y: 0, width: half, height: image.height))
+  }
+
+  private func solid(red: Double, green: Double, blue: Double, size: Int) -> CGImage? {
+    let context = CGContext(
+      data: nil, width: size, height: size, bitsPerComponent: 8, bytesPerRow: 0,
+      space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)
+    context?.setFillColor(CGColor(red: red / 255, green: green / 255, blue: blue / 255, alpha: 1))
+    context?.fill(CGRect(x: 0, y: 0, width: size, height: size))
+    return context?.makeImage()
+  }
+
+  /// Green's share of the average colour, 0…1.
+  private func greenShare(_ image: CGImage) -> Double {
+    var bytes = [UInt8](repeating: 0, count: 4)
+    let context = CGContext(
+      data: &bytes, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+      space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+    context.interpolationQuality = .medium
+    context.draw(image, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+    let total = Double(Int(bytes[0]) + Int(bytes[1]) + Int(bytes[2]))
+    return total == 0 ? 0 : Double(bytes[1]) / total
+  }
 }
