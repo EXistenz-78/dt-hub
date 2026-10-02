@@ -22,6 +22,15 @@ Cose decise o chieste e non ancora fatte. Si cancella una voce quando entra in u
 - **Quote del Moodboard** (spec Control §4.1, 2 ottobre 2026): fette di una torta da 100 con barra, cursori ed Equilibra. Non fatte perché sui modelli che leggono il Moodboard Draw Things le ignora (FLUX.2 klein, Qwen Image Edit 2511: ogni valore sopra 0 dà lo stesso risultato; provato in Draw Things dall'utente e dal vivo da DT Hub). Da riprovare con Qwen Image 2.1 (encoder con visione) e con i ControlNet della voce D.
 - **Famiglie che leggono il Moodboard:** Z Image no (misurato); Qwen Image 2.1, Ideogram 4/4.5 e altre da provare; si aggiorna `FamilyTraits.withoutMoodboard`.
 
+## Rimandi di M7b (revisione indipendente, tutti Minor)
+
+- Trascinare la miniatura dell'immagine di partenza nel Moodboard la chiama col nome UUID della copia e mostra il percorso della copia come origine (`take`/`takeMoodboard` devono riconoscere gli URL delle copie dell'app); rilasciarla sulla propria scheda sostituisce l'immagine con se stessa.
+- Più file rilasciati su una miniatura: il primo la sostituisce, gli altri sono scartati senza avviso; una sostituzione il cui bersaglio sparisce durante la lettura cade in silenzio.
+- Il chip "Moodboard N" della striscia compare anche con tutte le immagini spente o con una famiglia che ignora il Moodboard.
+- Annulla/ripeti riportano ancora forza e inquadratura dell'immagine di partenza dallo snapshot (comportamento di M7a); solo interruttori e ordine del Moodboard sono mantenuti.
+- **Riordino per trascinamento tolto** (3 ottobre 2026): non funzionava (rilasci annidati) e con pesi uguali non serve. `ControlStore.moveMoodboardImage` e i suoi test restano; se un modello userà l'ordine, va ricollegato con un unico `Transferable` enum.
+- Non provati da automazione, provati a mano dall'utente: rilasci dal Finder e da Risultati sulla scheda e sulle miniature.
+
 ## Rimandi di M7a (revisione indipendente, tutti Minor)
 
 - La notifica del tab Control che sparisce dopo 8 secondi cancella anche la successiva (`ControlTabView`: la cancellazione di `Task.sleep` è ignorata).
