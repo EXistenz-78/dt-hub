@@ -19,6 +19,10 @@ public enum ControlNotice: Equatable, Sendable {
 public enum ControlWarning: Hashable, Sendable {
   /// The framing cuts off this much of the image (more than a third).
   case strongCrop(percent: Int)
+  /// More than three Moodboard pictures are on: each one adds render time more than linearly.
+  case manyReferences(count: Int)
+  /// The chosen model does not use the Moodboard, and pictures are on.
+  case moodboardIgnored
 }
 
 /// The Control tab's inputs, kept and saved (tab Control spec §4): the start image with its
@@ -51,6 +55,10 @@ public final class ControlStore {
       loaded.framing = Framing()
       notice = .missingAtLaunch(name: image.name)
     }
+    for entry in loaded.moodboard where !storage.exists(entry.image.fileName) {
+      loaded.moodboard.removeAll { $0.id == entry.id }
+      notice = .missingAtLaunch(name: entry.image.name)
+    }
     inputs = loaded
     save()
     collectGarbage()
@@ -78,10 +86,7 @@ public final class ControlStore {
   /// Takes a picture from its bytes: copies it, describes it, and makes it the start image
   /// (the one there was, if any, can be brought back with `undo`). The framing starts centered.
   public func setImage(data: Data, name: String, source: ReferenceImage.Source) throws(ControlError) {
-    let stored = try storage.save(data, name: name)
-    let image = ReferenceImage(
-      id: UUID(), name: name, pixelWidth: stored.pixelWidth, pixelHeight: stored.pixelHeight, source: source,
-      fileName: stored.fileName)
+    let image = try reference(from: data, name: name, source: source)
     var next = inputs
     next.image = image
     next.framing = Framing()
@@ -92,12 +97,8 @@ public final class ControlStore {
 
   /// A picture that only exists in memory (a result that could not be saved): stored as PNG.
   public func setImage(_ image: CGImage, name: String, source: ReferenceImage.Source) throws(ControlError) {
-    let data = NSMutableData()
-    guard let destination = CGImageDestinationCreateWithData(data, UTType.png.identifier as CFString, 1, nil)
-    else { throw .cannotSave(name) }
-    CGImageDestinationAddImage(destination, image, nil)
-    guard CGImageDestinationFinalize(destination) else { throw .cannotSave(name) }
-    try setImage(data: data as Data, name: name, source: source)
+    guard let data = Self.pngData(of: image) else { throw .cannotSave(name) }
+    try setImage(data: data, name: name, source: source)
   }
 
   /// Takes a file (from the Finder, or an image the Results window saved); reads it away from
@@ -123,6 +124,88 @@ public final class ControlStore {
     guard inputs != ControlInputs() else { return }
     commit(ControlInputs())
     notice = .cleared
+  }
+
+  // MARK: Moodboard
+
+  /// Adds a picture to the Moodboard (on, at the end).
+  public func addMoodboardImage(data: Data, name: String, source: ReferenceImage.Source) throws(ControlError) {
+    let image = try reference(from: data, name: name, source: source)
+    var next = inputs
+    next.moodboard.append(MoodboardEntry(image: image))
+    commit(next)
+  }
+
+  public func addMoodboardImage(_ image: CGImage, name: String, source: ReferenceImage.Source) throws(ControlError) {
+    guard let data = Self.pngData(of: image) else { throw .cannotSave(name) }
+    try addMoodboardImage(data: data, name: name, source: source)
+  }
+
+  public func addMoodboardImage(fileURL url: URL, source: ReferenceImage.Source? = nil) async throws(ControlError) {
+    let name = url.lastPathComponent
+    let data = await Task.detached { try? Data(contentsOf: url) }.value
+    guard let data else { throw .unreadable(name) }
+    try addMoodboardImage(data: data, name: name, source: source ?? .file(path: url.path))
+  }
+
+  /// A picture dropped on one that is there takes its place: the same position and switch.
+  public func replaceMoodboardImage(
+    id: UUID, data: Data, name: String, source: ReferenceImage.Source
+  ) throws(ControlError) {
+    guard let index = inputs.moodboard.firstIndex(where: { $0.id == id }) else { return }
+    let old = inputs.moodboard[index]
+    let image = try reference(from: data, name: name, source: source)
+    var next = inputs
+    next.moodboard[index] = MoodboardEntry(image: image, isOn: old.isOn)
+    commit(next)
+    notice = .replaced(name: old.image.name)
+  }
+
+  public func replaceMoodboardImage(
+    id: UUID, fileURL url: URL, source: ReferenceImage.Source? = nil
+  ) async throws(ControlError) {
+    let name = url.lastPathComponent
+    let data = await Task.detached { try? Data(contentsOf: url) }.value
+    guard let data else { throw .unreadable(name) }
+    try replaceMoodboardImage(id: id, data: data, name: name, source: source ?? .file(path: url.path))
+  }
+
+  public func removeMoodboardImage(id: UUID) {
+    guard let entry = inputs.moodboard.first(where: { $0.id == id }) else { return }
+    var next = inputs
+    next.moodboard.removeAll { $0.id == id }
+    commit(next)
+    notice = .removed(name: entry.image.name)
+  }
+
+  /// Takes the whole Moodboard out (the start image stays).
+  public func clearMoodboard() {
+    guard !inputs.moodboard.isEmpty else { return }
+    var next = inputs
+    next.moodboard = []
+    commit(next)
+    notice = .cleared
+  }
+
+  /// A picture that is off is not sent but is not lost (not part of the history).
+  public func setMoodboardOn(id: UUID, isOn: Bool) {
+    guard let index = inputs.moodboard.firstIndex(where: { $0.id == id }) else { return }
+    inputs.moodboard[index].isOn = isOn
+    save()
+  }
+
+  /// Moves a picture before another one, or to the end when `before` is nil.
+  public func moveMoodboardImage(id: UUID, before target: UUID?) {
+    guard id != target, let from = inputs.moodboard.firstIndex(where: { $0.id == id }) else { return }
+    var entries = inputs.moodboard
+    let moved = entries.remove(at: from)
+    if let target, let to = entries.firstIndex(where: { $0.id == target }) {
+      entries.insert(moved, at: to)
+    } else {
+      entries.append(moved)
+    }
+    inputs.moodboard = entries
+    save()
   }
 
   // MARK: Strength and framing (not part of the history)
@@ -176,23 +259,65 @@ public final class ControlStore {
     return PreviewRequest(storage: storage, fileName: image.fileName, maxPixel: maxPixel)
   }
 
-  // MARK: Warnings and RUN
-
-  public func warnings(canvasWidth: Int, canvasHeight: Int) -> [ControlWarning] {
-    guard let image = inputs.image else { return [] }
-    let loss = FramingMath.loss(
-      imageWidth: image.pixelWidth, imageHeight: image.pixelHeight, canvasWidth: canvasWidth, canvasHeight: canvasHeight)
-    return loss.fraction > 1.0 / 3.0 ? [.strongCrop(percent: Int((loss.fraction * 100).rounded()))] : []
+  /// The preview of a Moodboard picture, to be decoded away from the main actor.
+  public func previewRequest(ofMoodboard id: UUID, maxPixel: Int) -> PreviewRequest? {
+    guard let entry = inputs.moodboard.first(where: { $0.id == id }) else { return nil }
+    return PreviewRequest(storage: storage, fileName: entry.image.fileName, maxPixel: maxPixel)
   }
 
-  /// What a RUN needs to prepare its inputs, to be rendered away from the main actor.
-  public func pendingInputs(canvasWidth: Int, canvasHeight: Int) -> PendingInputs {
-    PendingInputs(
+  /// Where the copy of a picture lives, to drag it out (to another card, or another app).
+  public func copyURL(of image: ReferenceImage) -> URL? {
+    storage.exists(image.fileName) ? storage.url(for: image.fileName) : nil
+  }
+
+  // MARK: Warnings and RUN
+
+  /// What to look at before RUN. `usesMoodboard` is false for a model that ignores the Moodboard.
+  public func warnings(canvasWidth: Int, canvasHeight: Int, usesMoodboard: Bool = true) -> [ControlWarning] {
+    var warnings: [ControlWarning] = []
+    if let image = inputs.image {
+      let loss = FramingMath.loss(
+        imageWidth: image.pixelWidth, imageHeight: image.pixelHeight, canvasWidth: canvasWidth,
+        canvasHeight: canvasHeight)
+      if loss.fraction > 1.0 / 3.0 { warnings.append(.strongCrop(percent: Int((loss.fraction * 100).rounded()))) }
+    }
+    let on = inputs.moodboard.filter(\.isOn).count
+    if on > 0, !usesMoodboard {
+      warnings.append(.moodboardIgnored)
+    } else if on > 3 {
+      warnings.append(.manyReferences(count: on))
+    }
+    return warnings
+  }
+
+  /// What a RUN needs to prepare its inputs, to be rendered away from the main actor. The Moodboard
+  /// goes only when `includeMoodboard` (the model uses it).
+  public func pendingInputs(canvasWidth: Int, canvasHeight: Int, includeMoodboard: Bool = true) -> PendingInputs {
+    let sent = inputs.moodboard.filter(\.isOn).map { (image: $0.image, weight: 1.0) }
+    return PendingInputs(
       storage: storage, image: inputs.image, framing: inputs.framing, canvasWidth: canvasWidth,
-      canvasHeight: canvasHeight)
+      canvasHeight: canvasHeight, moodboard: includeMoodboard ? sent : [])
   }
 
   // MARK: Private
+
+  /// Copies the bytes into the Control folder and describes the picture.
+  private func reference(
+    from data: Data, name: String, source: ReferenceImage.Source
+  ) throws(ControlError) -> ReferenceImage {
+    let stored = try storage.save(data, name: name)
+    return ReferenceImage(
+      id: UUID(), name: name, pixelWidth: stored.pixelWidth, pixelHeight: stored.pixelHeight, source: source,
+      fileName: stored.fileName)
+  }
+
+  nonisolated static func pngData(of image: CGImage) -> Data? {
+    let data = NSMutableData()
+    guard let destination = CGImageDestinationCreateWithData(data, UTType.png.identifier as CFString, 1, nil)
+    else { return nil }
+    CGImageDestinationAddImage(destination, image, nil)
+    return CGImageDestinationFinalize(destination) ? data as Data : nil
+  }
 
   private func commit(_ next: ControlInputs) {
     undoStack.append(inputs)
@@ -220,6 +345,7 @@ public final class ControlStore {
     var referenced = Set<String>()
     for state in undoStack + redoStack + [inputs] {
       if let image = state.image { referenced.insert(image.fileName) }
+      for entry in state.moodboard { referenced.insert(entry.image.fileName) }
     }
     for name in storage.allFileNames() where !referenced.contains(name) { storage.remove(name) }
   }
@@ -232,18 +358,31 @@ public struct PendingInputs: Sendable {
   let framing: Framing
   let canvasWidth: Int
   let canvasHeight: Int
+  /// The Moodboard pictures that are on, all with the same weight.
+  let moodboard: [(image: ReferenceImage, weight: Double)]
 
-  /// Decodes the copy at the size the canvas needs (a 50-megapixel photo is not decoded whole)
-  /// and frames it. No image: the RUN is text-to-image.
+  /// Longest side of a Moodboard picture when it is sent.
+  static let moodboardPixels = 1024
+
+  /// Decodes the start image at the size the canvas needs (a 50-megapixel photo is not decoded
+  /// whole) and frames it; reduces and encodes the Moodboard pictures. Nothing: the RUN is
+  /// text-to-image.
   public func render() throws(ControlError) -> GenerationInputs {
-    guard let image else { return .none }
+    var hints: [GenerationHint] = []
+    for entry in moodboard {
+      guard let decoded = storage.image(named: entry.image.fileName, maxPixel: Self.moodboardPixels),
+        let data = ControlStore.pngData(of: decoded)
+      else { throw .unreadable(entry.image.name) }
+      hints.append(GenerationHint(imageData: data, weight: entry.weight))
+    }
+    guard let image else { return GenerationInputs(hints: hints) }
     let scale = max(Double(canvasWidth) / Double(image.pixelWidth), Double(canvasHeight) / Double(image.pixelHeight))
     let longest = max(image.pixelWidth, image.pixelHeight)
     let maxPixel = scale < 1 ? Int((Double(longest) * scale).rounded(.up)) + 1 : longest
     guard let decoded = storage.image(named: image.fileName, maxPixel: maxPixel),
       let framed = InputComposer.frame(decoded, toWidth: canvasWidth, height: canvasHeight, framing: framing)
     else { throw .unreadable(image.name) }
-    return GenerationInputs(image: framed)
+    return GenerationInputs(image: framed, hints: hints)
   }
 }
 
