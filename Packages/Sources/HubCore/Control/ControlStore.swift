@@ -11,12 +11,8 @@ public enum ControlNotice: Equatable, Sendable {
   case removed(name: String)
   case replaced(name: String)
   case cleared
-  /// The mask was emptied.
-  case maskCleared
   /// At launch the copy of the saved mask was gone.
   case maskMissingAtLaunch
-  /// The Brush drawing was emptied.
-  case paintCleared
   /// At launch the copy of the saved drawing was gone.
   case paintMissingAtLaunch
   /// At launch the copy of the saved image was gone.
@@ -189,7 +185,6 @@ public final class ControlStore {
     var next = inputs
     next.mask = nil
     commit(next)
-    notice = .maskCleared
   }
 
   /// How Draw Things treats the mask; not part of the history.
@@ -228,7 +223,6 @@ public final class ControlStore {
     var next = inputs
     next.paint = nil
     commit(next)
-    notice = .paintCleared
   }
 
   // MARK: Moodboard

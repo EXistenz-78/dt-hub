@@ -2177,23 +2177,6 @@
         }
       }
     },
-    "control.notice.maskCleared": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Mask cleared."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Maschera svuotata."
-          }
-        }
-      }
-    },
     "control.notice.maskMissing": {
       "extractionState": "manual",
       "localizations": {
@@ -2224,23 +2207,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "L'immagine %@ non è stata trovata."
-          }
-        }
-      }
-    },
-    "control.notice.paintCleared": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Drawing cleared."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Disegno svuotato."
           }
         }
       }
@@ -2615,142 +2581,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Con la maschera la forza è al 100%: l'area dipinta viene rigenerata per intero."
-          }
-        }
-      }
-    },
-    "control.strip.clear": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Clear all"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Svuota tutto"
-          }
-        }
-      }
-    },
-    "control.strip.empty": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nothing: Run generates from scratch."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Niente: Run genera da zero."
-          }
-        }
-      }
-    },
-    "control.strip.image": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Image"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Immagine"
-          }
-        }
-      }
-    },
-    "control.strip.mask": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Mask"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Maschera"
-          }
-        }
-      }
-    },
-    "control.strip.moodboard": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Moodboard"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Moodboard"
-          }
-        }
-      }
-    },
-    "control.strip.paint": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Drawing"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Disegno"
-          }
-        }
-      }
-    },
-    "control.strip.remove": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Remove"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Togli"
-          }
-        }
-      }
-    },
-    "control.strip.title": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sent with Run"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Con Run parte"
           }
         }
       }

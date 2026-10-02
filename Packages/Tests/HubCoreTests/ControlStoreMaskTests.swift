@@ -103,7 +103,7 @@ struct ControlStoreMaskTests {
     let reference = store.inputs.mask
     store.clearMask()
     #expect(store.inputs.mask == nil)
-    #expect(store.notice == .maskCleared)
+    #expect(store.notice == nil)  // no message: the arrows undo it, and a message moves the cards
     store.undo()
     #expect(store.inputs.mask == reference)
   }
@@ -268,7 +268,7 @@ struct ControlStoreMaskTests {
     let reference = store.inputs.paint
     store.clearPaint()
     #expect(store.inputs.paint == nil)
-    #expect(store.notice == .paintCleared)
+    #expect(store.notice == nil)
     store.undo()
     #expect(store.inputs.paint == reference)
   }

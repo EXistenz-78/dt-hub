@@ -13,6 +13,13 @@ struct MoodboardCard: View {
 
   private var control: ControlStore { generation.control }
   private var entries: [MoodboardEntry] { control.inputs.moodboard }
+  /// How many pictures are on when there are too many for the render time (the store decides).
+  private var manyReferences: Int? {
+    let warnings = control.warnings(
+      canvasWidth: generation.parameters.width, canvasHeight: generation.parameters.height, usesMoodboard: usable)
+    for warning in warnings { if case .manyReferences(let count) = warning { return count } }
+    return nil
+  }
   private var usable: Bool { FamilyTraits.of(generation.family(in: connection)).usesMoodboard }
 
   var body: some View {
@@ -24,6 +31,10 @@ struct MoodboardCard: View {
         if !usable {
           Label(String(localized: "control.moodboard.unsupported"), systemImage: "info.circle")
             .font(.caption).foregroundStyle(.secondary)
+        }
+        if let many = manyReferences {
+          Label(ControlText.warning(.manyReferences(count: many)), systemImage: "exclamationmark.triangle.fill")
+            .font(.caption).foregroundStyle(DS.remove)
         }
         if !entries.isEmpty {
           HStack(spacing: DS.controlGap) {
