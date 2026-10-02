@@ -320,6 +320,27 @@ public final class ControlStore {
     save()
   }
 
+  /// The zoom of the image in the canvas (−100…+100; below 0 the margins are regenerated).
+  public func setZoom(_ value: Double) {
+    inputs.framing = Framing(zoom: value, offsetX: inputs.framing.offsetX, offsetY: inputs.framing.offsetY).clamped()
+    save()
+  }
+
+  /// Back to the fill, centred.
+  public func resetFraming() {
+    inputs.framing = Framing()
+    save()
+  }
+
+  /// Whether the image leaves margins in the canvas (they are regenerated).
+  public func hasMargins(canvasWidth: Int, canvasHeight: Int) -> Bool {
+    guard let image = inputs.image else { return false }
+    return !FramingMath.margins(
+      imageWidth: image.pixelWidth, imageHeight: image.pixelHeight, canvasWidth: canvasWidth,
+      canvasHeight: canvasHeight, framing: inputs.framing
+    ).isEmpty
+  }
+
   // MARK: History
 
   public func undo() {
@@ -379,10 +400,11 @@ public final class ControlStore {
   public func warnings(canvasWidth: Int, canvasHeight: Int, usesMoodboard: Bool = true) -> [ControlWarning] {
     var warnings: [ControlWarning] = []
     if let image = inputs.image {
+      // With a zoom above 0 the cut is the user's choice: no warning.
       let loss = FramingMath.loss(
         imageWidth: image.pixelWidth, imageHeight: image.pixelHeight, canvasWidth: canvasWidth,
-        canvasHeight: canvasHeight)
-      if loss.fraction > 1.0 / 3.0 { warnings.append(.strongCrop(percent: Int((loss.fraction * 100).rounded()))) }
+        canvasHeight: canvasHeight, zoom: min(0, inputs.framing.zoom))
+      if inputs.framing.zoom <= 0, loss.fraction > 1.0 / 3.0 { warnings.append(.strongCrop(percent: Int((loss.fraction * 100).rounded()))) }
     }
     let on = inputs.moodboard.filter(\.isOn).count
     if on > 0, !usesMoodboard {
@@ -511,7 +533,10 @@ public struct PendingInputs: Sendable {
       hints.append(GenerationHint(imageData: data, weight: entry.weight))
     }
     guard let image else { return GenerationInputs(hints: hints) }
-    let scale = max(Double(canvasWidth) / Double(image.pixelWidth), Double(canvasHeight) / Double(image.pixelHeight))
+    let crop = FramingMath.cropRect(
+      imageWidth: image.pixelWidth, imageHeight: image.pixelHeight, canvasWidth: canvasWidth,
+      canvasHeight: canvasHeight, framing: framing)
+    let scale = Double(canvasWidth) / crop.width
     let longest = max(image.pixelWidth, image.pixelHeight)
     let maxPixel = scale < 1 ? Int((Double(longest) * scale).rounded(.up)) + 1 : longest
     var layer: PaintBitmap?
@@ -525,9 +550,19 @@ public struct PendingInputs: Sendable {
       let framed = InputComposer.frame(
         decoded, toWidth: canvasWidth, height: canvasHeight, framing: framing, paint: layer)
     else { throw .unreadable(image.name) }
-    guard let mask else { return GenerationInputs(image: framed, hints: hints) }
-    guard let stored = storage.image(named: mask.fileName, maxPixel: MaskBitmap.maxSide),
-      let bitmap = MaskBitmap(image: stored),
+    let margins = !FramingMath.margins(
+      imageWidth: image.pixelWidth, imageHeight: image.pixelHeight, canvasWidth: canvasWidth,
+      canvasHeight: canvasHeight, framing: framing
+    ).isEmpty
+    if mask == nil, !margins { return GenerationInputs(image: framed, hints: hints) }
+    var bitmap: MaskBitmap?
+    if let mask {
+      guard let stored = storage.image(named: mask.fileName, maxPixel: MaskBitmap.maxSide),
+        let decodedMask = MaskBitmap(image: stored)
+      else { throw .unreadable(image.name) }
+      bitmap = decodedMask
+    }
+    guard
       let scaled = InputComposer.mask(
         bitmap, imageWidth: image.pixelWidth, imageHeight: image.pixelHeight, toWidth: canvasWidth,
         height: canvasHeight, framing: framing)

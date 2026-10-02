@@ -197,7 +197,9 @@ final class GenerationController {
     let batches = JobComposer.batches(
       prompt: prompt, negativePrompt: negativePrompt, model: model, family: family(in: connection),
       parameters: parameters, catalog: connection.monitor.catalog,
-      imageStrength: inputs.image == nil ? nil : control.inputs.effectiveStrength(editModel: isEditModel(in: connection)),
+      imageStrength: inputs.image == nil ? nil : control.inputs.effectiveStrength(
+        editModel: isEditModel(in: connection),
+        hasMargins: control.hasMargins(canvasWidth: parameters.width, canvasHeight: parameters.height)),
       moodboardCount: inputs.hints.count,
       maskSettings: inputs.mask == nil ? nil : control.inputs.maskSettings)
     if parameters.randomSeed, let first = batches.first { parameters.seed = first.parameters.seed }
