@@ -192,7 +192,7 @@ struct CanvasStage: View {
             format: String(localized: axis == .vertical ? "control.stage.loss.vertical" : "control.stage.loss.horizontal"),
             Int((loss.fraction * 100).rounded()))
         )
-        .font(.caption).foregroundStyle(.secondary)
+        .font(.caption).foregroundStyle(loss.fraction > 1.0 / 3.0 ? DS.remove : .secondary)
         Text("control.stage.drag").font(.caption).foregroundStyle(.secondary)
       }
     }
