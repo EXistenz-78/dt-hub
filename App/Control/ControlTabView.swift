@@ -2,8 +2,8 @@ import HubCore
 import HubKit
 import SwiftUI
 
-/// The Control tab (spec: tab Control): what goes into a RUN besides the prompt. In this first
-/// step the start image; the Moodboard and the mask come next.
+/// The Control tab (spec: tab Control): what goes into a RUN besides the prompt: the start image,
+/// the Moodboard and the inpaint mask.
 struct ControlTabView: View {
   let generation: GenerationController
   let connection: DrawThingsConnection
@@ -14,6 +14,13 @@ struct ControlTabView: View {
   private var control: ControlStore { generation.control }
 
   var body: some View {
+    // The window's height goes down to the cards, so the pictures can grow with it.
+    GeometryReader { proxy in
+      content.environment(\.controlViewportHeight, proxy.size.height)
+    }
+  }
+
+  private var content: some View {
     ScrollView {
       VStack(spacing: DS.groupGap) {
         ControlStrip(generation: generation, connection: connection)
@@ -23,7 +30,7 @@ struct ControlTabView: View {
             ImageCard(generation: generation, connection: connection) { message = $0 }
             MoodboardCard(generation: generation, connection: connection) { message = $0 }
           }
-          CanvasStage(generation: generation)
+          CanvasStage(generation: generation) { message = $0 }
         }
       }
       .padding(.bottom, DS.groupGap)
@@ -92,5 +99,17 @@ struct ControlTabView: View {
     .padding(DS.panelPadding)
     .frame(maxWidth: .infinity)
     .dsPanel()
+  }
+}
+
+private struct ControlViewportHeightKey: EnvironmentKey {
+  static let defaultValue: Double = 700
+}
+
+extension EnvironmentValues {
+  /// The height of the Control tab's window.
+  var controlViewportHeight: Double {
+    get { self[ControlViewportHeightKey.self] }
+    set { self[ControlViewportHeightKey.self] = newValue }
   }
 }

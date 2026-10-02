@@ -198,7 +198,8 @@ final class GenerationController {
       prompt: prompt, negativePrompt: negativePrompt, model: model, family: family(in: connection),
       parameters: parameters, catalog: connection.monitor.catalog,
       imageStrength: inputs.image == nil ? nil : control.inputs.effectiveStrength(editModel: isEditModel(in: connection)),
-      moodboardCount: inputs.hints.count)
+      moodboardCount: inputs.hints.count,
+      maskSettings: inputs.mask == nil ? nil : control.inputs.maskSettings)
     if parameters.randomSeed, let first = batches.first { parameters.seed = first.parameters.seed }
     session.start(batches, inputs: inputs, backend: backend, monitor: connection.monitor)
   }
@@ -211,7 +212,9 @@ final class GenerationController {
       canvasWidth: parameters.width, canvasHeight: parameters.height,
       includeMoodboard: FamilyTraits.of(family(in: connection)).usesMoodboard)
     do {
-      return try await Task.detached { try pending.render() }.value
+      var inputs = try await Task.detached { try pending.render() }.value
+      inputs.enableInpainting = selectedModel(in: connection)?.capabilities.needsInpaintControl ?? false
+      return inputs
     } catch {
       let text = (error as? ControlError).map(ControlText.error) ?? error.localizedDescription
       session.fail(with: .generationFailed(text))
@@ -252,6 +255,7 @@ final class GenerationController {
     parameters = result.job.parameters
     if lockRatio { lockedRatio = currentRatio }
     if let strength = result.job.imageStrength { control.setStrength(strength) }
+    if let settings = result.job.maskSettings { control.setMaskSettings(settings) }
     connection.selection.select(result.job.model)
   }
 
