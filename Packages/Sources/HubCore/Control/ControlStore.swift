@@ -224,8 +224,9 @@ public final class ControlStore {
   // MARK: History
 
   public func undo() {
-    guard let previous = undoStack.popLast() else { return }
+    guard var previous = undoStack.popLast() else { return }
     redoStack.append(inputs)
+    previous.moodboard = Self.keepingSwitchesAndOrder(of: inputs.moodboard, in: previous.moodboard)
     inputs = previous
     historyVersion += 1
     notice = nil
@@ -234,8 +235,9 @@ public final class ControlStore {
   }
 
   public func redo() {
-    guard let next = redoStack.popLast() else { return }
+    guard var next = redoStack.popLast() else { return }
     undoStack.append(inputs)
+    next.moodboard = Self.keepingSwitchesAndOrder(of: inputs.moodboard, in: next.moodboard)
     inputs = next
     historyVersion += 1
     notice = nil
@@ -309,6 +311,22 @@ public final class ControlStore {
     return ReferenceImage(
       id: UUID(), name: name, pixelWidth: stored.pixelWidth, pixelHeight: stored.pixelHeight, source: source,
       fileName: stored.fileName)
+  }
+
+  /// The Moodboard of a state brought back by undo or redo: the pictures that are in both states
+  /// keep the switch and the order they have now (neither is a step of the history); the ones that
+  /// come back, or go, are as the saved state had them.
+  private static func keepingSwitchesAndOrder(
+    of current: [MoodboardEntry], in restored: [MoodboardEntry]
+  ) -> [MoodboardEntry] {
+    let now = Dictionary(current.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+    let saved = Dictionary(restored.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+    var order = current.map(\.id).filter { saved[$0] != nil }[...]
+    return restored.map { entry in
+      guard now[entry.id] != nil, let id = order.popFirst(), var kept = saved[id] else { return entry }
+      kept.isOn = now[id]?.isOn ?? kept.isOn
+      return kept
+    }
   }
 
   nonisolated static func pngData(of image: CGImage) -> Data? {
