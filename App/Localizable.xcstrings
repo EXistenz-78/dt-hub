@@ -1667,6 +1667,23 @@
         }
       }
     },
+    "control.brush.color": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Colour"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Colore"
+          }
+        }
+      }
+    },
     "control.dismiss": {
       "extractionState": "manual",
       "localizations": {
@@ -1854,6 +1871,142 @@
         }
       }
     },
+    "control.mask.blur": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Blur"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sfumatura"
+          }
+        }
+      }
+    },
+    "control.mask.blur.help": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "How much the edge of the mask is softened."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quanto si ammorbidisce il bordo della maschera."
+          }
+        }
+      }
+    },
+    "control.mask.clear": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Svuota"
+          }
+        }
+      }
+    },
+    "control.mask.invert": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invert"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inverti"
+          }
+        }
+      }
+    },
+    "control.mask.outset": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Margin"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Margine"
+          }
+        }
+      }
+    },
+    "control.mask.outset.help": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "How far the area around the mask is taken into the render."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quanto dell'area intorno alla maschera entra nel render."
+          }
+        }
+      }
+    },
+    "control.mask.preserve": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep the original outside the mask"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conserva l'originale fuori dalla maschera"
+          }
+        }
+      }
+    },
+    "control.mask.size": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Size"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dimensione"
+          }
+        }
+      }
+    },
     "control.moodboard.add": {
       "extractionState": "manual",
       "localizations": {
@@ -2024,6 +2177,40 @@
         }
       }
     },
+    "control.notice.maskCleared": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mask cleared."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Maschera svuotata."
+          }
+        }
+      }
+    },
+    "control.notice.maskMissing": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The saved mask was gone and was dropped."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La maschera salvata non c'era più ed è stata scartata."
+          }
+        }
+      }
+    },
     "control.notice.missing": {
       "extractionState": "manual",
       "localizations": {
@@ -2037,6 +2224,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "L'immagine %@ non è stata trovata."
+          }
+        }
+      }
+    },
+    "control.notice.paintCleared": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drawing cleared."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disegno svuotato."
+          }
+        }
+      }
+    },
+    "control.notice.paintMissing": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The saved drawing was gone and was dropped."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il disegno salvato non c'era più ed è stato scartato."
           }
         }
       }
@@ -2075,6 +2296,23 @@
         }
       }
     },
+    "control.paint.clear": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear drawing"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Svuota disegno"
+          }
+        }
+      }
+    },
     "control.pasted.name": {
       "extractionState": "manual",
       "localizations": {
@@ -2088,6 +2326,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Immagine incollata"
+          }
+        }
+      }
+    },
+    "control.redo": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Redo"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ripeti"
           }
         }
       }
@@ -2228,6 +2483,40 @@
         }
       }
     },
+    "control.stage.mode.canvas": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Canvas"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Canvas"
+          }
+        }
+      }
+    },
+    "control.stage.mode.draw": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Draw"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disegno"
+          }
+        }
+      }
+    },
     "control.stage.size": {
       "extractionState": "manual",
       "localizations": {
@@ -2313,6 +2602,23 @@
         }
       }
     },
+    "control.strength.mask": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "With a mask the strength is 100%: the painted area is regenerated whole."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Con la maschera la forza è al 100%: l'area dipinta viene rigenerata per intero."
+          }
+        }
+      }
+    },
     "control.strip.clear": {
       "extractionState": "manual",
       "localizations": {
@@ -2364,6 +2670,23 @@
         }
       }
     },
+    "control.strip.mask": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mask"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Maschera"
+          }
+        }
+      }
+    },
     "control.strip.moodboard": {
       "extractionState": "manual",
       "localizations": {
@@ -2377,6 +2700,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Moodboard"
+          }
+        }
+      }
+    },
+    "control.strip.paint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drawing"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disegno"
           }
         }
       }
@@ -2411,6 +2751,57 @@
           "stringUnit": {
             "state": "translated",
             "value": "Con Run parte"
+          }
+        }
+      }
+    },
+    "control.tool.brush": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brush"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pennello"
+          }
+        }
+      }
+    },
+    "control.tool.maskAdd": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mask +"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Maschera +"
+          }
+        }
+      }
+    },
+    "control.tool.maskRemove": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mask −"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Maschera −"
           }
         }
       }
