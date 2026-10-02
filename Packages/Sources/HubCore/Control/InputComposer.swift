@@ -20,26 +20,64 @@ public enum InputComposer {
         space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)
     else { return nil }
     context.interpolationQuality = .high
+    // Neutral grey under the image: it shows where the image leaves margins (the mask regenerates them).
+    context.setFillColorSpace(CGColorSpaceCreateDeviceRGB())
+    context.setFillColor([0.5, 0.5, 0.5, 1])
+    context.fill(CGRect(x: 0, y: 0, width: width, height: height))
     // The image drawn so that the cut fills the canvas (Core Graphics counts from the bottom-left).
     let scale = Double(width) / crop.width
     let drawn = CGRect(
       x: -crop.minX * scale, y: -(Double(image.height) - crop.maxY) * scale,
       width: Double(image.width) * scale, height: Double(image.height) * scale)
+    extendEdges(of: image, drawn: drawn, in: context, width: width, height: height)
     context.draw(image, in: drawn)
     if let layer = paint?.cgImage() { context.draw(layer, in: drawn) }
     return context.makeImage()
   }
 
+  /// Fills what the image leaves uncovered with its own edge pixels stretched outwards (and the corner
+  /// pixels in the corners). The mask regenerates it anyway; this way the edge Draw Things blends
+  /// back ("keep the original") carries the colours of the picture, not a stripe of grey.
+  private static func extendEdges(of image: CGImage, drawn: CGRect, in context: CGContext, width: Int, height: Int) {
+    let canvas = CGRect(x: 0, y: 0, width: width, height: height)
+    guard !drawn.contains(canvas), image.width > 0, image.height > 0 else { return }
+    let right = Double(width) - drawn.maxX
+    let top = Double(height) - drawn.maxY
+    let w = image.width
+    let h = image.height
+    func strip(_ x: Int, _ y: Int, _ cropWidth: Int, _ cropHeight: Int, into rect: CGRect) {
+      guard rect.width > 0, rect.height > 0,
+        let part = image.cropping(to: CGRect(x: x, y: y, width: cropWidth, height: cropHeight))
+      else { return }
+      context.draw(part, in: rect)
+    }
+    // Core Graphics counts from the bottom-left; the crops count from the top-left.
+    strip(0, 0, 1, h, into: CGRect(x: 0, y: drawn.minY, width: drawn.minX, height: drawn.height))
+    strip(w - 1, 0, 1, h, into: CGRect(x: drawn.maxX, y: drawn.minY, width: right, height: drawn.height))
+    strip(0, 0, w, 1, into: CGRect(x: drawn.minX, y: drawn.maxY, width: drawn.width, height: top))
+    strip(0, h - 1, w, 1, into: CGRect(x: drawn.minX, y: 0, width: drawn.width, height: drawn.minY))
+    strip(0, 0, 1, 1, into: CGRect(x: 0, y: drawn.maxY, width: drawn.minX, height: top))
+    strip(w - 1, 0, 1, 1, into: CGRect(x: drawn.maxX, y: drawn.maxY, width: right, height: top))
+    strip(0, h - 1, 1, 1, into: CGRect(x: 0, y: 0, width: drawn.minX, height: drawn.minY))
+    strip(w - 1, h - 1, 1, 1, into: CGRect(x: drawn.maxX, y: 0, width: right, height: drawn.minY))
+  }
+
   /// The mask for the canvas, in the same cut as the start image: transparent where the picture is
   /// regenerated, opaque where it is kept (what the client wants). The mask is scaled with the same
-  /// smoothing as the image and then cut at half, so its edge is clean at any scale.
+  /// smoothing as the image and then cut at half, so its edge is clean at any scale. What the image
+  /// does not cover (its margins in the canvas) is always regenerated; with no `mask` that is all.
   public static func mask(
-    _ mask: MaskBitmap, imageWidth: Int, imageHeight: Int, toWidth width: Int, height: Int, framing: Framing
+    _ mask: MaskBitmap?, imageWidth: Int, imageHeight: Int, toWidth width: Int, height: Int, framing: Framing
   ) -> CGImage? {
-    guard width > 0, height > 0, imageWidth > 0, imageHeight > 0, let gray = mask.grayImage() else { return nil }
+    guard width > 0, height > 0, imageWidth > 0, imageHeight > 0 else { return nil }
+    var gray: CGImage?
+    if let mask {
+      gray = mask.grayImage()
+      if gray == nil { return nil }
+    }
     let crop = FramingMath.cropRect(
       imageWidth: imageWidth, imageHeight: imageHeight, canvasWidth: width, canvasHeight: height, framing: framing)
-    var bytes = [UInt8](repeating: 0, count: width * height)
+    var bytes = [UInt8](repeating: 255, count: width * height)
     let drawn = bytes.withUnsafeMutableBytes { buffer -> Bool in
       guard
         let context = CGContext(
@@ -48,11 +86,13 @@ public enum InputComposer {
       else { return false }
       context.interpolationQuality = .high
       let scale = Double(width) / crop.width
-      context.draw(
-        gray,
-        in: CGRect(
-          x: -crop.minX * scale, y: -(Double(imageHeight) - crop.maxY) * scale, width: Double(imageWidth) * scale,
-          height: Double(imageHeight) * scale))
+      // Where the image is: kept, unless the mask says otherwise.
+      let drawn = CGRect(
+        x: -crop.minX * scale, y: -(Double(imageHeight) - crop.maxY) * scale, width: Double(imageWidth) * scale,
+        height: Double(imageHeight) * scale)
+      context.setFillColor(gray: 0, alpha: 1)
+      context.fill(drawn)
+      if let gray { context.draw(gray, in: drawn) }
       return true
     }
     guard drawn else { return nil }
