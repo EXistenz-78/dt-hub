@@ -91,6 +91,15 @@ struct JobComposerTests {
     #expect(compose(family: nil, .default).allSatisfy { $0.moodboardCount == 0 })
   }
 
+  @Test func everyBatchRecordsTheMaskSettings() {
+    let settings = MaskSettings(blur: 4, outset: 6, preserveOriginal: false)
+    let jobs = JobComposer.batches(
+      prompt: "fox", negativePrompt: "", model: "m.ckpt", family: nil, parameters: GenerationParameters(batchCount: 2),
+      catalog: catalog, maskSettings: settings) { 7 }
+    #expect(jobs.count == 2 && jobs.allSatisfy { $0.maskSettings == settings })
+    #expect(compose(family: nil, .default).allSatisfy { $0.maskSettings == nil })
+  }
+
   @Test func everyBatchRecordsTheStrengthOfTheStartImage() {
     let parameters = GenerationParameters(batchCount: 2)
     let withImage = JobComposer.batches(

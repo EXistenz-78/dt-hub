@@ -11,6 +11,14 @@ public enum ControlNotice: Equatable, Sendable {
   case removed(name: String)
   case replaced(name: String)
   case cleared
+  /// The mask was emptied.
+  case maskCleared
+  /// At launch the copy of the saved mask was gone.
+  case maskMissingAtLaunch
+  /// The Brush drawing was emptied.
+  case paintCleared
+  /// At launch the copy of the saved drawing was gone.
+  case paintMissingAtLaunch
   /// At launch the copy of the saved image was gone.
   case missingAtLaunch(name: String)
 }
@@ -55,6 +63,14 @@ public final class ControlStore {
       loaded.framing = Framing()
       notice = .missingAtLaunch(name: image.name)
     }
+    if let mask = loaded.mask, !storage.exists(mask.fileName) {
+      loaded.mask = nil
+      notice = .maskMissingAtLaunch
+    }
+    if let paint = loaded.paint, !storage.exists(paint.fileName) {
+      loaded.paint = nil
+      notice = .paintMissingAtLaunch
+    }
     for entry in loaded.moodboard where !storage.exists(entry.image.fileName) {
       loaded.moodboard.removeAll { $0.id == entry.id }
       notice = .missingAtLaunch(name: entry.image.name)
@@ -90,6 +106,8 @@ public final class ControlStore {
     var next = inputs
     next.image = image
     next.framing = Framing()
+    next.mask = nil  // drawn over the other picture
+    next.paint = nil
     let replaced = inputs.image
     commit(next)
     notice = replaced.map { .replaced(name: $0.name) }
@@ -115,6 +133,8 @@ public final class ControlStore {
     var next = inputs
     next.image = nil
     next.framing = Framing()
+    next.mask = nil
+    next.paint = nil
     commit(next)
     notice = .removed(name: image.name)
   }
@@ -124,6 +144,91 @@ public final class ControlStore {
     guard inputs != ControlInputs() else { return }
     commit(ControlInputs())
     notice = .cleared
+  }
+
+  // MARK: Mask
+
+  /// The mask as it is drawn, nil when there is none.
+  public func maskBitmap() -> MaskBitmap? {
+    guard let mask = inputs.mask, let image = storage.image(named: mask.fileName, maxPixel: MaskBitmap.maxSide)
+    else { return nil }
+    return MaskBitmap(image: image)
+  }
+
+  /// The size a mask over the start image is drawn at; nil without an image.
+  public var maskSize: (width: Int, height: Int)? {
+    inputs.image.map { MaskBitmap.workingSize(imageWidth: $0.pixelWidth, imageHeight: $0.pixelHeight) }
+  }
+
+  /// Takes the mask as drawn (one step of the history). An empty mask is no mask. Nothing without
+  /// a start image.
+  public func commitMask(_ bitmap: MaskBitmap) throws(ControlError) {
+    guard inputs.image != nil else { return }
+    var next = inputs
+    if bitmap.isEmpty {
+      guard inputs.mask != nil else { return }
+      next.mask = nil
+    } else {
+      guard let data = bitmap.pngData() else { throw .cannotSave("mask") }
+      let stored = try storage.save(data, name: "mask.png")
+      next.mask = MaskReference(fileName: stored.fileName, coverage: bitmap.coverage)
+    }
+    commit(next)
+  }
+
+  /// Paints what was clear and clears what was painted (a mask not drawn yet becomes everything).
+  public func invertMask() throws(ControlError) {
+    guard let size = maskSize else { return }
+    var bitmap = maskBitmap() ?? MaskBitmap(width: size.width, height: size.height)
+    bitmap.invert()
+    try commitMask(bitmap)
+  }
+
+  public func clearMask() {
+    guard inputs.mask != nil else { return }
+    var next = inputs
+    next.mask = nil
+    commit(next)
+    notice = .maskCleared
+  }
+
+  /// How Draw Things treats the mask; not part of the history.
+  public func setMaskSettings(_ settings: MaskSettings) {
+    inputs.maskSettings = settings.clamped()
+    save()
+  }
+
+  // MARK: Drawing (the Brush)
+
+  /// The drawing as it is, nil when there is none.
+  public func paintBitmap() -> PaintBitmap? {
+    guard let paint = inputs.paint, let image = storage.image(named: paint.fileName, maxPixel: MaskBitmap.maxSide)
+    else { return nil }
+    return PaintBitmap(image: image)
+  }
+
+  /// Takes the drawing as it is (one step of the history). An empty drawing is no drawing. Nothing
+  /// without a start image.
+  public func commitPaint(_ bitmap: PaintBitmap) throws(ControlError) {
+    guard inputs.image != nil else { return }
+    var next = inputs
+    if bitmap.isEmpty {
+      guard inputs.paint != nil else { return }
+      next.paint = nil
+    } else {
+      guard let data = bitmap.pngData() else { throw .cannotSave("drawing") }
+      let stored = try storage.save(data, name: "drawing.png")
+      next.paint = PaintReference(fileName: stored.fileName)
+    }
+    commit(next)
+  }
+
+  public func clearPaint() {
+    guard inputs.paint != nil else { return }
+    var next = inputs
+    next.paint = nil
+    commit(next)
+    notice = .paintCleared
   }
 
   // MARK: Moodboard
@@ -297,8 +402,9 @@ public final class ControlStore {
   public func pendingInputs(canvasWidth: Int, canvasHeight: Int, includeMoodboard: Bool = true) -> PendingInputs {
     let sent = inputs.moodboard.filter(\.isOn).map { (image: $0.image, weight: 1.0) }
     return PendingInputs(
-      storage: storage, image: inputs.image, framing: inputs.framing, canvasWidth: canvasWidth,
-      canvasHeight: canvasHeight, moodboard: includeMoodboard ? sent : [])
+      storage: storage, image: inputs.image, mask: inputs.image == nil ? nil : inputs.mask,
+      paint: inputs.image == nil ? nil : inputs.paint, framing: inputs.framing,
+      canvasWidth: canvasWidth, canvasHeight: canvasHeight, moodboard: includeMoodboard ? sent : [])
   }
 
   // MARK: Private
@@ -363,6 +469,8 @@ public final class ControlStore {
     var referenced = Set<String>()
     for state in undoStack + redoStack + [inputs] {
       if let image = state.image { referenced.insert(image.fileName) }
+      if let mask = state.mask { referenced.insert(mask.fileName) }
+      if let paint = state.paint { referenced.insert(paint.fileName) }
       for entry in state.moodboard { referenced.insert(entry.image.fileName) }
     }
     for name in storage.allFileNames() where !referenced.contains(name) { storage.remove(name) }
@@ -373,6 +481,8 @@ public final class ControlStore {
 public struct PendingInputs: Sendable {
   let storage: any ReferenceStorage
   let image: ReferenceImage?
+  let mask: MaskReference?
+  let paint: PaintReference?
   let framing: Framing
   let canvasWidth: Int
   let canvasHeight: Int
@@ -397,10 +507,25 @@ public struct PendingInputs: Sendable {
     let scale = max(Double(canvasWidth) / Double(image.pixelWidth), Double(canvasHeight) / Double(image.pixelHeight))
     let longest = max(image.pixelWidth, image.pixelHeight)
     let maxPixel = scale < 1 ? Int((Double(longest) * scale).rounded(.up)) + 1 : longest
+    var layer: PaintBitmap?
+    if let paint {
+      guard let stored = storage.image(named: paint.fileName, maxPixel: MaskBitmap.maxSide),
+        let bitmap = PaintBitmap(image: stored)
+      else { throw .unreadable(image.name) }
+      layer = bitmap
+    }
     guard let decoded = storage.image(named: image.fileName, maxPixel: maxPixel),
-      let framed = InputComposer.frame(decoded, toWidth: canvasWidth, height: canvasHeight, framing: framing)
+      let framed = InputComposer.frame(
+        decoded, toWidth: canvasWidth, height: canvasHeight, framing: framing, paint: layer)
     else { throw .unreadable(image.name) }
-    return GenerationInputs(image: framed, hints: hints)
+    guard let mask else { return GenerationInputs(image: framed, hints: hints) }
+    guard let stored = storage.image(named: mask.fileName, maxPixel: MaskBitmap.maxSide),
+      let bitmap = MaskBitmap(image: stored),
+      let scaled = InputComposer.mask(
+        bitmap, imageWidth: image.pixelWidth, imageHeight: image.pixelHeight, toWidth: canvasWidth,
+        height: canvasHeight, framing: framing)
+    else { throw .unreadable(image.name) }
+    return GenerationInputs(image: framed, hints: hints, mask: scaled)
   }
 }
 
