@@ -32,34 +32,38 @@ public struct ReferenceImage: Identifiable, Equatable, Codable, Sendable {
   }
 }
 
-/// How the start image sits in the canvas (spec §5). Only "fill" exists for now; "contain" comes
-/// with the outpaint.
+/// How the start image sits in the canvas (spec: outpaint §3). `zoom` 0 is "fill" (the image fills the
+/// canvas and is cut); below 0 the image is smaller and leaves margins to regenerate (outpaint); above
+/// 0 it is larger and only a part of it is used.
 public struct Framing: Equatable, Codable, Sendable {
-  public enum Mode: String, Codable, Sendable {
-    case fill
-  }
+  public static let zoomRange = -100.0...100.0
 
-  public var mode: Mode
-  /// Where the cut falls on the axis that is cropped: -1 shows the start (left or top) of the
-  /// image, 0 is centered, 1 shows the end.
+  /// −100…+100; 0 fills the canvas.
+  public var zoom: Double
+  /// Where the cut falls on the axis where the image and the canvas do not coincide: -1 puts the
+  /// image against the start (left or top) of the canvas, 0 centres it, 1 against the end.
   public var offsetX: Double
   public var offsetY: Double
 
-  public init(mode: Mode = .fill, offsetX: Double = 0, offsetY: Double = 0) {
-    self.mode = mode
+  public init(zoom: Double = 0, offsetX: Double = 0, offsetY: Double = 0) {
+    self.zoom = zoom
     self.offsetX = offsetX
     self.offsetY = offsetY
   }
 
   public func clamped() -> Framing {
-    Framing(mode: mode, offsetX: min(1, max(-1, offsetX)), offsetY: min(1, max(-1, offsetY)))
+    Framing(
+      zoom: min(Self.zoomRange.upperBound, max(Self.zoomRange.lowerBound, zoom)),
+      offsetX: min(1, max(-1, offsetX)), offsetY: min(1, max(-1, offsetY)))
   }
 
+  /// Lenient: a missing field takes its default and an old `mode` is ignored.
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
-    mode = (try? container.decodeIfPresent(Mode.self, forKey: .mode)) ?? .fill
+    zoom = (try? container.decodeIfPresent(Double.self, forKey: .zoom)) ?? 0
     offsetX = (try? container.decodeIfPresent(Double.self, forKey: .offsetX)) ?? 0
     offsetY = (try? container.decodeIfPresent(Double.self, forKey: .offsetY)) ?? 0
+    self = clamped()
   }
 }
 
@@ -173,9 +177,10 @@ public struct ControlInputs: Equatable, Codable, Sendable {
     self.moodboard = moodboard
   }
 
-  /// The strength that is sent and shown, within 0…1.
-  public func effectiveStrength(editModel: Bool) -> Double {
-    min(1, max(0, strength ?? (editModel || mask != nil ? 1.0 : 0.7)))
+  /// The strength that is sent and shown, within 0…1. A mask, or margins to regenerate, make the
+  /// automatic strength 100%.
+  public func effectiveStrength(editModel: Bool, hasMargins: Bool = false) -> Double {
+    min(1, max(0, strength ?? (editModel || mask != nil || hasMargins ? 1.0 : 0.7)))
   }
 
   /// Lenient, like the other saved files: a missing or unreadable field takes its default.
