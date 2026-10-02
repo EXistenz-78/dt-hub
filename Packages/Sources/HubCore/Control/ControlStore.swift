@@ -316,7 +316,7 @@ public final class ControlStore {
   }
 
   public func setOffset(x: Double, y: Double) {
-    inputs.framing = Framing(mode: inputs.framing.mode, offsetX: x, offsetY: y).clamped()
+    inputs.framing = Framing(zoom: inputs.framing.zoom, offsetX: x, offsetY: y).clamped()
     save()
   }
 
