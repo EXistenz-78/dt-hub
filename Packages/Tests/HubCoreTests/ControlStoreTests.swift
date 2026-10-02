@@ -374,6 +374,42 @@ struct ControlStoreTests {
     #expect(store.inputs.moodboard.count == 2)
   }
 
+  @Test func undoingAnAddKeepsTheSwitchesTheUserSet() throws {
+    let store = store(in: folder())
+    try addPictures(store, 2)
+    let first = store.inputs.moodboard[0].id
+    store.setMoodboardOn(id: first, isOn: false)
+    store.undo()
+    #expect(store.inputs.moodboard.map(\.image.name) == ["m1.png"])
+    #expect(store.inputs.moodboard[0].isOn == false)
+    store.setMoodboardOn(id: first, isOn: true)
+    store.redo()
+    #expect(store.inputs.moodboard.map(\.image.name) == ["m1.png", "m2.png"])
+    #expect(store.inputs.moodboard[0].isOn == true)
+  }
+
+  @Test func undoKeepsTheOrderTheUserGave() throws {
+    let store = store(in: folder())
+    try addPictures(store, 3)
+    let ids = store.inputs.moodboard.map(\.id)
+    try store.addMoodboardImage(data: pictureData(width: 50, height: 30), name: "m4.png", source: .pasteboard)
+    store.moveMoodboardImage(id: ids[2], before: ids[0])
+    #expect(store.inputs.moodboard.map(\.image.name) == ["m3.png", "m1.png", "m2.png", "m4.png"])
+    store.undo()
+    #expect(store.inputs.moodboard.map(\.image.name) == ["m3.png", "m1.png", "m2.png"])
+  }
+
+  @Test func aRemovedPictureComesBackWhereItWasWithItsSwitch() throws {
+    let store = store(in: folder())
+    try addPictures(store, 3)
+    let second = store.inputs.moodboard[1].id
+    store.setMoodboardOn(id: second, isOn: false)
+    store.removeMoodboardImage(id: second)
+    store.undo()
+    #expect(store.inputs.moodboard.map(\.image.name) == ["m1.png", "m2.png", "m3.png"])
+    #expect(store.inputs.moodboard.map(\.isOn) == [true, false, true])
+  }
+
   @Test func clearingTakesTheMoodboardOutToo() throws {
     let root = folder()
     let store = store(in: root)
