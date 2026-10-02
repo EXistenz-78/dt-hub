@@ -10,7 +10,7 @@ Nasce da un difetto dell'interfaccia di Draw Things: le immagini di controllo so
 
 Decisioni dell'utente (1 ottobre 2026):
 - il tab è del cuore e precede la v1 dei plug-in; anticipa le voci "Riferimenti" ed "Espandi e maschera" della spec principale (§2) e va **prima di M7 Plug-in** (che diventa M8);
-- prima versione: immagine di partenza, Moodboard con pesi, inpaint con pennello semplice;
+- prima versione: immagine di partenza, Moodboard (acceso/spento), inpaint con pennello semplice;
 - l'**outpaint** si aggiunge quando l'inpaint funziona; comporta ridimensionare l'immagine di partenza nel canvas (il modo "Contieni", sezione 5);
 - Depth, Pose, Scribble, Color Palette, Custom e i ControlNet restano **fuori**: i ControlNet disponibili per DT sono per modelli vecchi (SD, Flux.1) e l'utente non ha modo di convertirne per modelli recenti;
 - il Tiled Diffusion con dimensioni fino a 8192×8192 si fa **prima dell'outpaint** (voce del backlog).
@@ -19,7 +19,7 @@ Decisioni dell'utente (1 ottobre 2026):
 
 **Dentro:**
 - immagine di partenza con forza (strength) e inquadratura nel canvas;
-- Moodboard: più immagini, ognuna con peso, interruttore acceso/spento, rimozione e riordino;
+- Moodboard: più immagini, ognuna con interruttore acceso/spento, rimozione e riordino; tutte contano allo stesso modo (nessun peso, vedi §4.1);
 - maschera di inpaint con pennello e gomma, annulla/ripeti, inverti, svuota; sfumatura, margine, "conserva l'originale";
 - striscia "Con Run parte", gestione unificata di ciò che è caricato;
 - trascinamento da Risultati, dal Finder, incolla da appunti; menu "Usa come immagine" / "Aggiungi al Moodboard" in Risultati;
@@ -42,15 +42,13 @@ Decisioni dell'utente (1 ottobre 2026):
 - zona di rilascio: trascinare un'immagine la imposta; se ce n'era una, la sostituisce con annulla.
 
 **Scheda Moodboard** (sinistra, sotto):
-- griglia di miniature; ognuna ha ✕ sempre visibile, **occhio** (spegne senza cancellare: la miniatura si attenua), cursore della **quota** con valore digitabile;
-- **le quote sono fette di una torta da 100%, non valori indipendenti** (deciso con l'utente, 2 ottobre 2026): la somma delle immagini accese fa sempre 100%. Una sola immagine vale 100%, due 50–50, tre 33–33–33 (34–33–33 con l'arrotondamento), e ogni quota resta modificabile per dare a un'immagine più peso delle altre;
-- una **barra a fette** sotto il titolo della scheda mostra la torta (una fetta per immagine, nell'ordine delle miniature); i cursori e la barra si muovono insieme;
-- un pulsante **Equilibra** riporta tutte le quote uguali;
+- griglia di miniature; ognuna ha ✕ sempre visibile e **occhio** (spegne senza cancellare: la miniatura si attenua e l'immagine non parte);
+- **tutte le immagini accese contano allo stesso modo**, e la scheda lo dice ("Ogni immagine accesa conta allo stesso modo"). Niente cursori, percentuali, barra a fette o "Equilibra": misurato il 2 ottobre 2026 (in Draw Things dall'utente e dal vivo da DT Hub) su FLUX.2 klein e Qwen Image Edit 2511, **qualsiasi valore sopra lo 0 dà lo stesso risultato** (lo 0 equivale a ignorare l'immagine). Le quote della torta (§4.1) sono rimandate finché un modello non le rispetta;
 - riordino trascinando le miniature;
 - **regola di rilascio** (deciso con l'utente): rilasciare un'immagine **su una miniatura già inserita la sostituisce**; rilasciarla **in qualsiasi altro punto della scheda aggiunge**. Vale per le immagini dal Finder, da Risultati e per quelle trascinate dalla scheda Immagine;
 - avviso quando le reference sono più di tre (tempo di render);
 - le immagini del Moodboard sono riferimenti di stile e di contenuto, **non entrano nel canvas**: il loro rapporto non ha nessun legame con quello del canvas e non si ritagliano né si adattano mai (deciso con l'utente, 1 ottobre 2026);
-- il Moodboard è usabile con le famiglie moderne (Qwen Image 2.1, Flux.2 e simili hanno I2I intrinseco e un modello con visione che interpreta le reference da solo). La scheda è grigia, con la spiegazione, **solo per le famiglie vecchie note** che richiederebbero un IP-Adapter o un ControlNet (SD 1.x e 2.x, SDXL, SSD-1B): una famiglia moderna o sconosciuta la mostra attiva.
+- **quando il Moodboard è attivo:** i modelli recenti che fanno insieme T2I e I2I (FLUX.2, Qwen Image 2.1, in futuro Ideogram 4.5) leggono le reference da soli, senza suffissi o modifier che li distinguano: per questo la scheda **non** usa il `modifier` del catalogo. È grigia, con la spiegazione, solo per le famiglie di una **lista di dati** (`FamilyTraits.withoutMoodboard`) che non lo leggono: SD 1.x e 2.x, SDXL, SSD-1B (servirebbe un IP-Adapter o un ControlNet) e Z Image (misurata: il risultato è identico con e senza reference). Una famiglia nuova o sconosciuta la mostra attiva: nascondere ciò che un modello usa è peggio che mostrare ciò che ignora. La lista si aggiorna man mano che si provano le famiglie;
 
 **Pannello Maschera** (destra):
 - anteprima del **canvas così come parte a Draw Things** (ritaglio compreso), con la maschera sovrapposta in arancio (area dipinta = area che verrà rigenerata);
@@ -68,7 +66,7 @@ Decisioni dell'utente (1 ottobre 2026):
 - `ReferenceImage`: `id`, `source` (file, risultato, appunti, plug-in), nome, dimensioni in pixel, nome del file della copia.
 - `Framing`: modo (`fill`; `contain` in seguito) e spostamento normalizzato dentro il canvas.
 - `MaskSettings`: sfumatura, margine, conserva l'originale.
-- `MoodboardEntry`: `id`, `ReferenceImage`, **peso grezzo** (≥ 0, il rapporto relativo che l'utente ha dato) e acceso/spento. Le **quote** mostrate e inviate non si salvano: si calcolano dal peso grezzo delle sole voci accese (§4.1).
+- `MoodboardEntry`: `id` (quello dell'immagine), `ReferenceImage` e acceso/spento. Il peso arriverà con le quote (§4.1). Gli ingressi del RUN portano un `GenerationHint` per ogni immagine accesa, con peso 1.
 - `ControlInputs`: immagine opzionale con `Framing` e forza (nil = automatica), maschera opzionale (riferimento al file) con `MaskSettings`, lista di `MoodboardEntry`.
 - `GenerationInputs` (non `Codable`, non finisce nei PNG): immagine già inquadrata alla dimensione esatta del canvas, maschera (pixel **trasparenti = da rigenerare**, come vuole il client), lista di hint con tipo e peso.
 - Il protocollo backend diventa `generate(_ job: GenerationJob, inputs: GenerationInputs)`; `GenerationJob` non cambia, e gli ingressi vuoti riproducono il T2I di oggi.
@@ -79,18 +77,9 @@ Decisioni dell'utente (1 ottobre 2026):
 
 **Memoria.** I pixel stanno su disco; le immagini si decodificano con ImageIO alla dimensione necessaria (miniature al volo, ritaglio al momento del RUN), perché una foto da 50 megapixel non deve stare intera in memoria. L'annulla/ripeti della maschera usa istantanee limitate a 20; quello delle voci usa copie del valore `ControlInputs` (leggero: contiene riferimenti, non pixel).
 
-### 4.1 Quote del Moodboard
+### 4.1 Quote del Moodboard (rimandate)
 
-Le immagini del Moodboard sono **fette di una torta da 100**. Si salva per ognuna un peso grezzo ≥ 0; la **quota** è il peso grezzo diviso la somma dei pesi grezzi delle sole immagini **accese**, in percentuale (`MoodboardShares`, funzione pura in HubCore):
-- **Numeri interi, somma esatta 100:** si arrotonda col metodo del resto più grande, quindi tre immagini uguali sono 34–33–33 (la prima di cui il resto è maggiore, a parità l'ordine delle miniature).
-- **Immagine aggiunta:** prende la quota di una fetta uguale (100 ÷ numero di immagini accese); le altre si riducono **in proporzione**, conservando il loro rapporto. Da 50–50 a tre immagini: 33–33–33; da 70–30 a tre (l'ultima è la nuova): 47–20–33.
-- **Immagine tolta:** le altre crescono in proporzione fino a riempire 100.
-- **Quota modificata** (cursore o campo): l'immagine prende il valore scelto (0–100) e le altre si ridistribuiscono in proporzione sul resto (100 − valore). Se tutte le altre sono a zero, si dividono il resto in parti uguali. A 100 le altre vanno a 0.
-- **Occhio spento:** l'immagine esce dalla torta (non conta nella somma) e le altre si ricalcolano; riaccesa, rientra con il suo peso grezzo. La sua quota mostrata è "—".
-- **Tutti i pesi grezzi a zero:** quote uguali.
-- **Equilibra:** imposta tutti i pesi grezzi a 1.
-- **Cosa parte:** per ogni immagine accesa, un hint `shuffle` con peso = quota ÷ 100 (una sola immagine: 1,0). Che Draw Things usi i pesi così come sono, o li normalizzi a sua volta, si controlla dal vivo nel piano di M7b, senza cambiare il comportamento visibile.
-- **La forza dell'immagine di partenza** (scheda Immagine) è un'altra cosa: non fa parte della torta.
+Progettate il 2 ottobre 2026 e **non realizzate**: le immagini del Moodboard sarebbero fette di una torta da 100 (una sola immagine 100, due 50–50, tre 34–33–33; quota modificabile con le altre che si ridistribuiscono in proporzione; l'immagine spenta esce dalla torta; "Equilibra"; barra a fette), con un peso grezzo salvato per immagine e un hint `shuffle` con peso = quota ÷ 100. Non si fanno perché sui modelli che leggono il Moodboard Draw Things le ignora: tutte le immagini con peso sopra 0 contano uguale. Si riprendono se un modello o un adattatore le rispetterà (per esempio Qwen Image 2.1, da provare, o i ControlNet della voce D). Il progetto è in questa sezione della storia di git (commit del 2 ottobre 2026).
 
 ## 5. Inquadratura: rapporto diverso dal canvas
 
@@ -103,12 +92,12 @@ Se il rapporto delle Dimensioni cambia dopo il caricamento, il ritaglio si rical
 
 ## 6. Dal tab al RUN
 
-- **`InputComposer`** (HubCore): funzione pura da `ControlInputs` e dimensioni del canvas a `GenerationInputs`: ritaglia e scala l'immagine alla dimensione esatta, rende la maschera nello stesso riquadro (alfa 0 dove si rigenera), prepara gli hint dei Moodboard accesi, ciascuno con la propria quota (somma 1) come peso. Si prova con immagini generate nei test.
+- **`InputComposer`** (HubCore): funzione pura da `ControlInputs` e dimensioni del canvas a `GenerationInputs`: ritaglia e scala l'immagine alla dimensione esatta, rende la maschera nello stesso riquadro (alfa 0 dove si rigenera), prepara gli hint dei Moodboard accesi (immagini ridotte a 1024 px e codificate in PNG, peso 1 per tutte). Si prova con immagini generate nei test.
 - **DTBridge** (`JobMapper`): riempie `image`, `mask`, hint (`HintBuilder`, tipo `shuffle` per il Moodboard) e imposta `strength`, `maskBlur`, `maskBlurOutset`, `preserveOriginalAfterInpaint`, e `enableInpainting` quando serve (da verificare, §9). `HintBuilder` e `ImageHelpers` della libreria si usano **solo** in DTBridge.
 - **Più batch:** tutti riusano gli stessi ingressi.
-- **Nel PNG salvato** finiscono forza, sfumatura, margine, e numero e quote delle reference (non le immagini). "Riprendi parametri" da Risultati ripristina questi numeri.
+- **Nel PNG salvato** finiscono forza, sfumatura, margine, e il numero delle reference del Moodboard (non le immagini). "Riprendi parametri" da Risultati ripristina questi numeri.
 - **Blocchi in RUN:** una maschera senza immagine. Il resto sono avvisi.
-- **Visibilità per famiglia** (come le card avanzate, dalla tabella del catalogo): il tab ricava dal `modifier` e dalla famiglia del modello cosa è sensato (forza 100% per i modelli Edit, Moodboard grigio solo per le famiglie vecchie note, `enableInpainting`). Una famiglia sconosciuta mostra tutto e non blocca nulla.
+- **Visibilità per famiglia** (come le card avanzate, dalla tabella del catalogo): il tab ricava dal `modifier` del modello la forza automatica (100% per i modelli Edit) e `enableInpainting`; il Moodboard si decide dalla **famiglia**, con una lista di dati (§3), non dal `modifier`. Una famiglia sconosciuta mostra tutto e non blocca nulla.
 
 ## 7. Plug-in (M8)
 
@@ -131,7 +120,7 @@ Tutti i messaggi sono localizzati (it, en), senza testo tecnico grezzo.
 - maschera: pennello, gomma, morbidezza, inverti, svuota; annulla/ripeti con limite di memoria;
 - store: aggiunta e copia, rimozione e pulizia, ripristino, copie mancanti, annulla delle rimozioni;
 - regola di rilascio del Moodboard (sostituisce o aggiunge);
-- quote del Moodboard (§4.1): somma sempre 100 con numeri interi, uno/due/tre/sette immagini, aggiunta e rimozione che conservano i rapporti, modifica di una quota, immagine spenta e riaccesa, tutte a zero, un'immagine al 100%.
+- Moodboard: aggiunta, sostituzione, rimozione e annulla, interruttore, riordino, persistenza, copie mancanti, avvisi (più di tre immagini, famiglia che lo ignora), ingressi del RUN (hint delle sole immagini accese, ridotte a 1024 px).
 
 **DTBridge:** mappatura di forza, maschera, hint e `enableInpainting` nel `JobMapper`.
 
@@ -144,7 +133,7 @@ Tutti i messaggi sono localizzati (it, en), senza testo tecnico grezzo.
 | Modulo | Cosa riceve |
 |---|---|
 | HubKit | I tipi della sezione 4; il protocollo backend con gli ingressi |
-| HubCore | `ControlStore` (stato, annulla/ripeti, persistenza), `ReferenceStorage` (copie su disco, finto nei test), `FramingMath`, `InputComposer`, `MaskBitmap` (buffer a 8 bit con pennello, gomma, morbidezza, inverti), le regole per famiglia, la regola di rilascio, `MoodboardShares` (la matematica delle quote, §4.1) |
+| HubCore | `ControlStore` (stato, annulla/ripeti, persistenza), `ReferenceStorage` (copie su disco, finto nei test), `FramingMath`, `InputComposer`, `MaskBitmap` (buffer a 8 bit con pennello, gomma, morbidezza, inverti), le regole per famiglia, la regola di rilascio, la lista delle famiglie che ignorano il Moodboard (`FamilyTraits`) |
 | DTBridge | `JobMapper` esteso; l'unico che usa `HintBuilder` |
 | App | `ControlTabView`, striscia, schede Immagine e Moodboard, `MaskStage` (SwiftUI `Canvas` con gesto di disegno), trascinamento (`Transferable`), modifiche a Risultati, `WorkspaceState` con due tab del cuore |
 
@@ -157,7 +146,7 @@ Ognuna con piano, revisione indipendente e merge, come M4.
 | Tappa | Contenuto | Esito |
 |---|---|---|
 | **M7a** | Tab Control davanti a Generazione, striscia, scheda Immagine (Riempi, Adatta le dimensioni, forza), copie e ripristino, trascinamento da Risultati, dal Finder e incolla, "Usa come immagine" in Risultati, RUN con I2I | **l'I2I funziona** |
-| **M7b** | Scheda Moodboard (pesi, interruttore, regole di rilascio, riordino), "Aggiungi al Moodboard", visibilità per famiglia | **Moodboard e modelli Edit** |
+| **M7b** | Scheda Moodboard (interruttore, regole di rilascio, riordino), "Aggiungi al Moodboard", visibilità per famiglia | **Moodboard** |
 | **M7c** | Pannello maschera con pennello semplice, parametri di maschera, `enableInpainting` | **l'inpaint funziona** |
 | Poi | Tiled Diffusion fino a 8192; outpaint (modo Contieni e margini); **M8 Plug-in** (l'attuale M7) | |
 
@@ -165,5 +154,5 @@ Ognuna con piano, revisione indipendente e merge, come M4.
 
 - **Comportamento di Draw Things da verificare** (sezione 9): quando serve `enableInpainting`.
 - **Prestazioni del pennello** su canvas grandi (fino a 2048×2048 oggi, 8192 con il Tiled Diffusion): il buffer e il disegno devono restare fluidi; si misura in M7c e, se serve, si disegna su una versione ridotta con rendering finale alla dimensione piena.
-- **Moodboard su famiglie vecchie:** richiede un controllo (IP-Adapter/ControlNet) che DT Hub non gestisce; la scheda è grigia e non invia hint inutili. L'elenco delle famiglie vecchie è una tabella nel catalogo, aggiornabile senza toccare il resto; una famiglia nuova non elencata mostra il Moodboard attivo.
+- **Moodboard e famiglie:** quali famiglie lo leggono si scopre provandole (FLUX.2 klein, Qwen Image Edit 2511 sì; Z Image no; Qwen Image 2.1 e i futuri da provare). La lista delle famiglie che lo ignorano è dati, aggiornabile senza toccare il resto; una famiglia nuova non elencata mostra il Moodboard attivo.
 - **Spazio su disco delle copie:** nessun limite nella prima versione; "Svuota tutto" e la rimozione liberano lo spazio.
