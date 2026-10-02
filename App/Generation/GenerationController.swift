@@ -35,6 +35,8 @@ final class GenerationController {
 
   /// The language model, freed when RUN is pressed if the settings say so (spec §9).
   @ObservationIgnored let languageModel: LanguageModelManager
+  /// The Control tab's images (tab Control spec): the start image goes with every RUN.
+  @ObservationIgnored let control: ControlStore
   /// True between pressing RUN and the generation starting: the language model is being freed
   /// and a parked server brought back.
   private(set) var isPreparing = false
@@ -46,10 +48,11 @@ final class GenerationController {
 
   /// Restores the last prompt and parameters (spec §11).
   init(
-    languageModel: LanguageModelManager,
+    languageModel: LanguageModelManager, control: ControlStore,
     sessionStore: SessionStore = SessionStore(fileURL: SessionStore.defaultFileURL)
   ) {
     self.languageModel = languageModel
+    self.control = control
     self.sessionStore = sessionStore
     outputFolder = outputSettings.folder()
     if let snapshot = sessionStore.load() {
@@ -165,10 +168,11 @@ final class GenerationController {
       // Memory first: the language model leaves, a server parked for it comes back.
       await languageModel.prepareForRun()
       await connection.ensureServerForRun()
+      let inputs = await renderInputs()
       isPreparing = false
       preparation = nil
-      guard !Task.isCancelled else { return }
-      start(with: connection)
+      guard !Task.isCancelled, let inputs else { return }
+      start(with: connection, inputs: inputs)
     }
     return true
   }
@@ -181,7 +185,7 @@ final class GenerationController {
 
   /// The generation itself, once the memory is ready. The job is composed now, not at the
   /// click: a parked server has no catalog until it is back.
-  private func start(with connection: DrawThingsConnection) {
+  private func start(with connection: DrawThingsConnection, inputs: GenerationInputs) {
     guard !session.isRunning, let backend = connection.monitor.backend,
       let model = connection.selection.selectedFile,
       RunAvailability.blocker(
@@ -189,9 +193,47 @@ final class GenerationController {
     else { return }
     let batches = JobComposer.batches(
       prompt: prompt, negativePrompt: negativePrompt, model: model, family: family(in: connection),
-      parameters: parameters, catalog: connection.monitor.catalog)
+      parameters: parameters, catalog: connection.monitor.catalog,
+      imageStrength: inputs.isEmpty ? nil : control.inputs.effectiveStrength(editModel: isEditModel(in: connection)))
     if parameters.randomSeed, let first = batches.first { parameters.seed = first.parameters.seed }
-    session.start(batches, backend: backend, monitor: connection.monitor)
+    session.start(batches, inputs: inputs, backend: backend, monitor: connection.monitor)
+  }
+
+  /// The Control tab's images framed to the canvas, decoded away from the main actor. A failure
+  /// is shown as the RUN's failure, and nothing starts.
+  private func renderInputs() async -> GenerationInputs? {
+    let pending = control.pendingInputs(canvasWidth: parameters.width, canvasHeight: parameters.height)
+    do {
+      return try await Task.detached { try pending.render() }.value
+    } catch {
+      let text = (error as? ControlError).map(ControlText.error) ?? error.localizedDescription
+      session.fail(with: .generationFailed(text))
+      return nil
+    }
+  }
+
+  /// True when the chosen model is an Edit model (the canvas image is the one to modify).
+  func isEditModel(in connection: DrawThingsConnection) -> Bool {
+    selectedModel(in: connection)?.capabilities.isEditModel ?? false
+  }
+
+  /// "Adapt the dimensions": the canvas takes the start image's ratio, with a similar area.
+  /// Returns the dimensions it had, to put back.
+  @discardableResult
+  func adaptDimensionsToImage() -> Size? {
+    guard let image = control.inputs.image else { return nil }
+    let previous = Size(width: parameters.width, height: parameters.height)
+    let adapted = FramingMath.adaptedSize(
+      imageWidth: image.pixelWidth, imageHeight: image.pixelHeight, currentWidth: previous.width,
+      currentHeight: previous.height)
+    restoreDimensions(adapted)
+    return previous
+  }
+
+  func restoreDimensions(_ size: Size) {
+    parameters.width = size.width
+    parameters.height = size.height
+    if lockRatio { lockedRatio = currentRatio }
   }
 
   /// "Resume parameters": puts back the prompt, negative prompt, model and parameters of the
@@ -202,6 +244,7 @@ final class GenerationController {
     negativePrompt = result.job.negativePrompt
     parameters = result.job.parameters
     if lockRatio { lockedRatio = currentRatio }
+    if let strength = result.job.imageStrength { control.setStrength(strength) }
     connection.selection.select(result.job.model)
   }
 
