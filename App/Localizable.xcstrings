@@ -2387,13 +2387,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Drag to choose which part to keep."
+            "value": "Drag to move the image in the canvas."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Trascina per scegliere quale parte tenere."
+            "value": "Trascina per spostare l'immagine nel canvas."
           }
         }
       }
@@ -2445,6 +2445,91 @@
           "stringUnit": {
             "state": "translated",
             "value": "Si perde il %lld%% dell'immagine, sopra e sotto."
+          }
+        }
+      }
+    },
+    "control.stage.margin.bottom": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "below %lld%%"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sotto %lld%%"
+          }
+        }
+      }
+    },
+    "control.stage.margin.left": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "left %lld%%"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sinistra %lld%%"
+          }
+        }
+      }
+    },
+    "control.stage.margin.right": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "right %lld%%"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "destra %lld%%"
+          }
+        }
+      }
+    },
+    "control.stage.margin.top": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "above %lld%%"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sopra %lld%%"
+          }
+        }
+      }
+    },
+    "control.stage.margins": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Margins to regenerate: %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Margini da rigenerare: %@"
           }
         }
       }
@@ -2517,6 +2602,57 @@
         }
       }
     },
+    "control.stage.used": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld%% of the image is used."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Si usa il %lld%% dell'immagine."
+          }
+        }
+      }
+    },
+    "control.stage.zoom": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zoom"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zoom"
+          }
+        }
+      }
+    },
+    "control.stage.zoom.reset": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reset zoom and position"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ripristina zoom e posizione"
+          }
+        }
+      }
+    },
     "control.strength": {
       "extractionState": "manual",
       "localizations": {
@@ -2574,13 +2710,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "With a mask the strength is 100%: the painted area is regenerated whole."
+            "value": "With a mask or margins the strength is 100%: the area to regenerate is made whole."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Con la maschera la forza è al 100%: l'area dipinta viene rigenerata per intero."
+            "value": "Con la maschera o i margini la forza è al 100%: l'area da rigenerare viene rifatta per intero."
           }
         }
       }
