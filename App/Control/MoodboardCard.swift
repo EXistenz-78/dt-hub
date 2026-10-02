@@ -1,16 +1,6 @@
 import HubCore
 import HubKit
 import SwiftUI
-import UniformTypeIdentifiers
-
-/// What is dragged when a Moodboard picture is moved inside the card (tab Control spec §3).
-struct MoodboardDragToken: Codable, Transferable {
-  let id: UUID
-
-  static var transferRepresentation: some TransferRepresentation {
-    CodableRepresentation(contentType: .json)
-  }
-}
 
 /// The Moodboard (spec: tab Control §3): the pictures with a switch and a ✕ on each, and the drop
 /// rule: on a picture replaces it, anywhere else in the card adds. Every picture that is on
@@ -60,10 +50,6 @@ struct MoodboardCard: View {
         Task { if let message = await ControlImport.takeMoodboard(urls: urls, into: control) { report(.error(message)) } }
         return true
       } isTargeted: { isTargeted = $0 }
-      .dropDestination(for: MoodboardDragToken.self) { tokens, _ in
-        if let token = tokens.first { control.moveMoodboardImage(id: token.id, before: nil) }
-        return true
-      }
     }
   }
 
@@ -85,7 +71,7 @@ struct MoodboardCard: View {
 }
 
 /// A picture of the Moodboard: thumbnail with the switch and the ✕. A picture dropped on it
-/// replaces it; another tile dropped on it moves before it.
+/// replaces it.
 private struct MoodboardTile: View {
   let entry: MoodboardEntry
   let control: ControlStore
@@ -125,7 +111,6 @@ private struct MoodboardTile: View {
         .padding(4)
       }
       .frame(width: 124, height: 124)
-      .draggable(MoodboardDragToken(id: entry.id))
     }
     .dropDestination(for: URL.self) { urls, _ in
       Task {
@@ -135,10 +120,6 @@ private struct MoodboardTile: View {
       }
       return true
     } isTargeted: { isTargeted = $0 }
-    .dropDestination(for: MoodboardDragToken.self) { tokens, _ in
-      if let token = tokens.first { control.moveMoodboardImage(id: token.id, before: entry.id) }
-      return true
-    }
     .task(id: entry.id) {
       guard let request = control.previewRequest(ofMoodboard: entry.id, maxPixel: 280) else { return thumbnail = nil }
       thumbnail = await Task.detached { request.render() }.value
