@@ -8,12 +8,18 @@ public struct GenerationJob: Equatable, Codable, Sendable {
   public let negativePrompt: String
   public let model: String
   public let parameters: GenerationParameters
+  /// The strength of the start image; nil when the RUN has no start image.
+  public var imageStrength: Double?
 
-  public init(prompt: String, negativePrompt: String = "", model: String, parameters: GenerationParameters) {
+  public init(
+    prompt: String, negativePrompt: String = "", model: String, parameters: GenerationParameters,
+    imageStrength: Double? = nil
+  ) {
     self.prompt = prompt
     self.negativePrompt = negativePrompt
     self.model = model
     self.parameters = parameters
+    self.imageStrength = imageStrength
   }
 
   /// What Draw Things receives: the trigger words of the job's LoRAs, in order, then the
@@ -31,6 +37,7 @@ public struct GenerationJob: Equatable, Codable, Sendable {
     negativePrompt = (try? container.decodeIfPresent(String.self, forKey: .negativePrompt)) ?? ""
     model = try container.decode(String.self, forKey: .model)
     parameters = try container.decode(GenerationParameters.self, forKey: .parameters)
+    imageStrength = try? container.decodeIfPresent(Double.self, forKey: .imageStrength)
   }
 }
 

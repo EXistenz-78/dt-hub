@@ -54,12 +54,12 @@ public actor DrawThingsBackend: GenerationBackend {
     return CatalogBuilder.build(files: reply.files, modelSpecs: specs, loraMetadata: reply.override.loras)
   }
 
-  public nonisolated func generate(_ job: GenerationJob) -> AsyncThrowingStream<GenerationUpdate, any Error> {
+  public nonisolated func generate(_ job: GenerationJob, inputs: GenerationInputs) -> AsyncThrowingStream<GenerationUpdate, any Error> {
     AsyncThrowingStream { continuation in
       let task = Task {
         do {
           let service = await self.currentService()
-          for try await event in service.stream(JobMapper.request(for: job)) {
+          for try await event in service.stream(JobMapper.request(for: job, inputs: inputs)) {
             if let update = try JobMapper.update(for: event) { continuation.yield(update) }
           }
           continuation.finish()
