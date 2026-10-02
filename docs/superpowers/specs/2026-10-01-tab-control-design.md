@@ -21,7 +21,7 @@ Decisioni dell'utente (1 ottobre 2026):
 - immagine di partenza con forza (strength) e inquadratura nel canvas;
 - Moodboard: più immagini, ognuna con interruttore acceso/spento, rimozione e riordino; tutte contano allo stesso modo (nessun peso, vedi §4.1);
 - maschera di inpaint (Maschera +, Maschera −), Pennello a colori sull'immagine (strato a parte), annulla/ripeti, inverti, svuota; sfumatura, margine, "conserva l'originale";
-- striscia "Con Run parte", gestione unificata di ciò che è caricato;
+- (la striscia "Con Run parte" prevista all'inizio è stata tolta il 3 ottobre 2026: nel tab è già tutto in vista;)
 - trascinamento da Risultati, dal Finder, incolla da appunti; menu "Usa come immagine" / "Aggiungi al Moodboard" in Risultati;
 - ripristino all'avvio e annulla delle rimozioni.
 
@@ -33,7 +33,7 @@ Decisioni dell'utente (1 ottobre 2026):
 
 **Posizione.** Il tab Control precede Generazione nella barra dei tab. All'avvio si apre l'ultimo tab usato. Il design system è quello dell'app (turchese come accento, arancio per ciò che si toglie, pannelli con raggio 19, titoli di gruppo in monospaziato maiuscolo).
 
-**Striscia "Con Run parte"** (in alto). Un chip per ogni ingresso attivo: Immagine (con dimensioni), Disegno, Maschera (con la percentuale coperta), Moodboard (con il numero). Ogni chip ha una ✕ che toglie l'ingresso; "Svuota tutto" in arancio ripulisce tutto. Qui compaiono gli avvisi (maschera senza immagine, ritaglio forte, famiglia che non usa il Moodboard, copia mancante). Cliccare un chip porta alla sua scheda.
+**Niente striscia di riepilogo** (deciso con l'utente il 3 ottobre 2026, dopo averla provata): nel tab è già tutto a portata di sguardo. Gli avvisi stanno nella card di cui parlano: più di tre immagini accese nel Moodboard (riga arancione nella card), ritaglio forte (la riga "si perde il N%" della card Canvas diventa arancione sopra un terzo), famiglia che non usa il Moodboard (la card è grigia con la spiegazione). Non c'è più "Svuota tutto": ogni card si svuota da sola.
 
 **Scheda Immagine** (sinistra):
 - miniatura con ✕ sempre visibile, nome, dimensioni, provenienza ("da Risultati", "dal Finder", "da <plug-in>");
@@ -62,7 +62,7 @@ Decisioni dell'utente (1 ottobre 2026):
 - **tratto fluido:** il tratto passa per i punti medi dei segmenti tra i punti del mouse e si piega verso i punti intermedi (curva quadratica), così pochi eventi non fanno spigoli; è un po' dietro il puntatore e al rilascio arriva all'ultimo punto;
 - senza immagine la card mostra solo il riquadro vuoto con il suo testo; cambiare o togliere l'immagine di partenza toglie maschera e disegno (disegnati su un'altra immagine); si annulla.
 
-**Annulla.** Ogni rimozione, sostituzione o svuotamento si annulla con ⌘Z e con un avviso "Rimossa · Annulla" che dura qualche secondo.
+**Annulla.** Ogni rimozione, sostituzione o svuotamento di immagini e Moodboard si annulla con ⌘Z e con un avviso "Rimossa · Annulla" che dura qualche secondo. **I messaggi galleggiano sopra le card** (con un'ombra) invece di stare nella colonna, così quando compaiono o spariscono non spostano nulla (un canvas che si muove sotto il cursore mentre si disegna è inaccettabile). Maschera e disegno svuotati non hanno messaggio: bastano le frecce Annulla/Ripeti della toolbar.
 
 **Finestra Risultati.** Le miniature della striscia diventano trascinabili (come file e come tipo interno dell'app) e hanno nel menu contestuale "Usa come immagine" e "Aggiungi al Moodboard". Il dettaglio resta com'è.
 
@@ -72,7 +72,7 @@ Decisioni dell'utente (1 ottobre 2026):
 - `ReferenceImage`: `id`, `source` (file, risultato, appunti, plug-in), nome, dimensioni in pixel, nome del file della copia.
 - `Framing`: modo (`fill`; `contain` in seguito) e spostamento normalizzato dentro il canvas.
 - `MaskSettings`: sfumatura, margine, conserva l'originale (con i limiti sopra).
-- `MaskReference`: il file PNG della maschera e quanta parte dell'immagine copre (per il chip della striscia).
+- `MaskReference`: il file PNG della maschera e quanta parte dell'immagine copre (per mostrarla nella card).
 - `PaintReference`: il file PNG del disegno del Pennello.
 - `MoodboardEntry`: `id` (quello dell'immagine), `ReferenceImage` e acceso/spento. Il peso arriverà con le quote (§4.1). Gli ingressi del RUN portano un `GenerationHint` per ogni immagine accesa, con peso 1.
 - `ControlInputs`: immagine opzionale con `Framing` e forza (nil = automatica), maschera opzionale (riferimento al file) con `MaskSettings`, lista di `MoodboardEntry`.
@@ -81,7 +81,7 @@ Decisioni dell'utente (1 ottobre 2026):
 
 **Copie su disco.** Ogni immagine aggiunta viene **copiata** in `~/Library/Application Support/DT Hub/Control/<uuid>.<estensione>`. Così togliere o spostare l'originale, o l'immagine di Risultati, non rompe l'ingresso. La copia si cancella quando l'ingresso viene tolto o svuotato e le orfane si spazzano all'avvio. La maschera è un PNG a 8 bit **in coordinate dell'immagine**, nella stessa cartella: segue il ritaglio se lo si sposta. Si disegna a una **dimensione di lavoro** (il rapporto dell'immagine, lato lungo al massimo 1024 pixel) così il pennello resta fluido su qualunque immagine; al RUN si scala al canvas con la stessa interpolazione dell'immagine e si taglia a metà (maschera netta).
 
-**Persistenza.** `control.json` nella cartella di supporto, separato da `session.json`, ripristinato all'avvio come il prompt (spec principale §11). Una copia mancante fa scartare la voce con un avviso nella striscia.
+**Persistenza.** `control.json` nella cartella di supporto, separato da `session.json`, ripristinato all'avvio come il prompt (spec principale §11). Una copia mancante fa scartare la voce con un avviso.
 
 **Memoria.** I pixel stanno su disco; le immagini si decodificano con ImageIO alla dimensione necessaria (miniature al volo, ritaglio al momento del RUN), perché una foto da 50 megapixel non deve stare intera in memoria. **Ogni tratto di pennello (o inverti, svuota) è un passo della stessa cronologia del tab** (20 passi, ⌘Z): ogni passo scrive un nuovo PNG della maschera e lo stato ne tiene il riferimento; le copie non più referenziate si spazzano. La cronologia usa copie del valore `ControlInputs` (leggero: contiene riferimenti, non pixel).
 
@@ -92,7 +92,7 @@ Progettate il 2 ottobre 2026 e **non realizzate**: le immagini del Moodboard sar
 ## 5. Inquadratura: rapporto diverso dal canvas
 
 Il canvas è dato dalle Dimensioni di Generazione. Tre modi di inquadrare l'immagine:
-1. **Riempi (predefinito).** Il canvas resta com'è, l'immagine lo riempie e si ritaglia. La miniatura mostra il ritaglio (parti perse oscurate) e il dettaglio ("immagine 1:1 → canvas 4:3, si perde il 25% sopra e sotto"); trascinando l'immagine nel riquadro si sceglie quale parte tenere. Un ritaglio forte (oltre un terzo dell'immagine) produce un avviso nella striscia.
+1. **Riempi (predefinito).** Il canvas resta com'è, l'immagine lo riempie e si ritaglia. La miniatura mostra il ritaglio (parti perse oscurate) e il dettaglio ("immagine 1:1 → canvas 4:3, si perde il 25% sopra e sotto"); trascinando l'immagine nel riquadro si sceglie quale parte tenere. Un ritaglio forte (oltre un terzo dell'immagine) produce l'avviso arancione della card Canvas.
 2. **Adatta le dimensioni.** Un pulsante esplicito, sempre disponibile: porta le Dimensioni di Generazione al rapporto dell'immagine, con **area simile** a quella corrente, multipli di 64 e nei limiti del momento (2048; 8192 con il Tiled Diffusion). È un'azione con annulla e **non si ripete da sola**.
 3. **Contieni (arriva con l'outpaint).** L'immagine sta tutta nel canvas e i margini sono area da rigenerare: è la stessa cosa dell'outpaint. Il modello dati lo prevede (`Framing`); l'interfaccia lo abilita con l'outpaint.
 
@@ -143,7 +143,7 @@ Tutti i messaggi sono localizzati (it, en), senza testo tecnico grezzo.
 | HubKit | I tipi della sezione 4; il protocollo backend con gli ingressi |
 | HubCore | `ControlStore` (stato, annulla/ripeti, persistenza), `ReferenceStorage` (copie su disco, finto nei test), `FramingMath`, `InputComposer`, `MaskBitmap` (buffer a 8 bit con pennello, gomma, inverti; restituisce il rettangolo toccato), `MaskOverlay` e `PaintOverlay` (l'immagine per lo schermo, aggiornata solo nel rettangolo toccato), `PaintBitmap` (strato RGBA del Pennello), `StrokeSmoother` (il tratto curvo), `CanvasDrawing` (maschera e disegno mentre si disegna: tratti, immagini per lo schermo, consegna allo store), le regole per famiglia, la regola di rilascio, la lista delle famiglie che ignorano il Moodboard (`FamilyTraits`) |
 | DTBridge | `JobMapper` esteso; l'unico che usa `HintBuilder` |
-| App | `ControlTabView`, striscia, schede Immagine e Moodboard, `CanvasStage` (la card unica con le due modalità; immagine, disegno e maschera sono strati separati con il gesto di disegno), trascinamento (`Transferable`), modifiche a Risultati, `WorkspaceState` con due tab del cuore |
+| App | `ControlTabView` (con i messaggi che galleggiano), schede Immagine e Moodboard, `CanvasStage` (la card unica con le due modalità; immagine, disegno e maschera sono strati separati con il gesto di disegno), trascinamento (`Transferable`), modifiche a Risultati, `WorkspaceState` con due tab del cuore |
 
 Le regole di dipendenza della spec principale (§4) non cambiano.
 
@@ -153,7 +153,7 @@ Ognuna con piano, revisione indipendente e merge, come M4.
 
 | Tappa | Contenuto | Esito |
 |---|---|---|
-| **M7a** | Tab Control davanti a Generazione, striscia, scheda Immagine (Riempi, Adatta le dimensioni, forza), copie e ripristino, trascinamento da Risultati, dal Finder e incolla, "Usa come immagine" in Risultati, RUN con I2I | **l'I2I funziona** |
+| **M7a** | Tab Control davanti a Generazione, (striscia, poi tolta,) scheda Immagine (Riempi, Adatta le dimensioni, forza), copie e ripristino, trascinamento da Risultati, dal Finder e incolla, "Usa come immagine" in Risultati, RUN con I2I | **l'I2I funziona** |
 | **M7b** | Scheda Moodboard (interruttore, regole di rilascio, riordino), "Aggiungi al Moodboard", visibilità per famiglia | **Moodboard** |
 | **M7c** | Pannello maschera con pennello semplice, parametri di maschera, `enableInpainting` | **l'inpaint funziona** |
 | Poi | Tiled Diffusion fino a 8192; outpaint (modo Contieni e margini); **M8 Plug-in** (l'attuale M7) | |

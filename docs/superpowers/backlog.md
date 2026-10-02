@@ -22,6 +22,22 @@ Cose decise o chieste e non ancora fatte. Si cancella una voce quando entra in u
 - **Quote del Moodboard** (spec Control §4.1, 2 ottobre 2026): fette di una torta da 100 con barra, cursori ed Equilibra. Non fatte perché sui modelli che leggono il Moodboard Draw Things le ignora (FLUX.2 klein, Qwen Image Edit 2511: ogni valore sopra 0 dà lo stesso risultato; provato in Draw Things dall'utente e dal vivo da DT Hub). Da riprovare con Qwen Image 2.1 (encoder con visione) e con i ControlNet della voce D.
 - **Famiglie che leggono il Moodboard:** Z Image no (misurato); Qwen Image 2.1, Ideogram 4/4.5 e altre da provare; si aggiorna `FamilyTraits.withoutMoodboard`.
 
+## Rimandi di M7c (revisione indipendente, tutti Minor)
+
+- All'avvio, se manca la copia dell'immagine, maschera e disegno restano (`ControlStore.init`): vanno scartati con l'immagine; e l'avviso "immagine mancante" può essere coperto da quello della maschera.
+- Un PNG di maschera o disegno che esiste ma non si legge fa dire al RUN che l'immagine di partenza è illeggibile (`PendingInputs.render`): nominare la maschera o il disegno, o scartarli con un avviso.
+- ⌘Z o ⌘V a metà tratto: se `onEnded` non arriva, lo `StrokeSmoother` resta attivo e il tratto dopo parte con un segmento dritto, strumento e colore vecchi (azzerarlo in `CanvasDrawing.sync`).
+- I tratti che non cambiano nulla (Maschera − su zona vuota, Maschera + su zona già dipinta) diventano passi della cronologia e scrivono un PNG uguale.
+- Dopo Maschera − i valori 1–127 al bordo non contano ma `MaskOverlay` li mostra (fino a circa il 27% di arancio): possono restare anelli tenui.
+- Il cerchio del pennello può restare sull'ultimo punto se il tratto finisce fuori dalla vista (ordine degli eventi hover di SwiftUI non verificato).
+- Una maschera dipinta e poi spostata fuori dal ritaglio (spostando il ritaglio) manda una maschera parziale o vuota: avviso da aggiungere. Un tratto che esce dalla vista, invece, si ferma al bordo del ritaglio.
+- `enableInpainting` per i modelli con `modifier` `inpainting` segue la regola del client ma non è provato (nessun modello inpainting installato): da provare quando ce n'è uno; se il server rifiuta il controllo, spegnerlo.
+- Gomma per il disegno del Pennello (oggi: Annulla o "Svuota disegno").
+- Rimisurare la fluidità del pennello con il Tiled Diffusion a 8192 (la dimensione di lavoro resta 1024).
+- Una card chiusa lascia nella colonna uno spazio vuoto alto (`DSCardRow` dà a ogni card l'altezza della riga).
+- Test dell'M3 `GenerationSessionTests.reportsProgressAndPreviewWhileRunning`: a volte fallisce sotto carico (dorme 380 ms contro un passo finto di 150 ms): attendere lo stato invece di dormire.
+- Non provato dal vivo nell'app: un Run con il disegno del Pennello acceso (coperto da test: `aRunGetsTheImageWithTheDrawingOnIt`).
+
 ## Rimandi di M7b (revisione indipendente, tutti Minor)
 
 - Trascinare la miniatura dell'immagine di partenza nel Moodboard la chiama col nome UUID della copia e mostra il percorso della copia come origine (`take`/`takeMoodboard` devono riconoscere gli URL delle copie dell'app); rilasciarla sulla propria scheda sostituisce l'immagine con se stessa.
