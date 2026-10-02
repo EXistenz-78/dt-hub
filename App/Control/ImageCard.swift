@@ -33,7 +33,11 @@ struct ImageCard: View {
         return true
       } isTargeted: { isTargeted = $0 }
     }
-    .task(id: control.inputs.image?.id) { thumbnail = control.preview(maxPixel: 240) }
+    .task(id: control.inputs.image?.id) {
+      // Decoded away from the main actor: a big PNG would stall the window.
+      guard let request = control.previewRequest(maxPixel: 240) else { return thumbnail = nil }
+      thumbnail = await Task.detached { request.render() }.value
+    }
   }
 
   private func loaded(_ image: ReferenceImage) -> some View {

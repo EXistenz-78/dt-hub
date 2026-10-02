@@ -50,6 +50,18 @@ public struct FileReferenceStorage: ReferenceStorage {
       let width = properties[kCGImagePropertyPixelWidth] as? Int,
       let height = properties[kCGImagePropertyPixelHeight] as? Int, width > 0, height > 0
     else { throw .unreadable(name) }
+    // A file with a readable header and a damaged body is refused now, not at RUN: the picture
+    // must be complete and decode (a small version is enough to know).
+    let probe: [CFString: Any] = [
+      kCGImageSourceCreateThumbnailFromImageAlways: true, kCGImageSourceThumbnailMaxPixelSize: 64,
+    ]
+    guard CGImageSourceCreateThumbnailAtIndex(source, 0, probe as CFDictionary) != nil
+    else { throw .unreadable(name) }
+    // ImageIO decodes a truncated picture as far as it goes and calls it done; a PNG that lost
+    // its end (a cut download) is told by the missing IEND chunk. Other formats are not checked.
+    if CGImageSourceGetType(source) as String? == UTType.png.identifier, data.range(of: Data("IEND".utf8)) == nil {
+      throw .unreadable(name)
+    }
     // EXIF orientations 5…8 turn the picture on its side: the size shown is the turned one.
     let turned = (5...8).contains(properties[kCGImagePropertyOrientation] as? Int ?? 1)
     let type = CGImageSourceGetType(source).flatMap { UTType($0 as String) }

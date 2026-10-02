@@ -10,7 +10,11 @@ import UniformTypeIdentifiers
 enum ControlImport {
   /// The first usable file of a drop. nil when it worked, the message when it did not.
   static func take(urls: [URL], into control: ControlStore) async -> String? {
-    guard let url = urls.first(where: { $0.isFileURL }) else { return nil }
+    // A link from a browser is not a file: say so instead of doing nothing.
+    guard let url = urls.first(where: { $0.isFileURL }) else {
+      guard let link = urls.first else { return nil }
+      return ControlText.error(.unreadable(link.lastPathComponent.isEmpty ? (link.host ?? link.absoluteString) : link.lastPathComponent))
+    }
     do throws(ControlError) {
       try await control.setImage(fileURL: url)
       return nil
@@ -25,7 +29,9 @@ enum ControlImport {
       let url = await withCheckedContinuation { (continuation: CheckedContinuation<URL?, Never>) in
         _ = provider.loadObject(ofClass: URL.self) { url, _ in continuation.resume(returning: url) }
       }
-      if let url { return await take(urls: [url], into: control) }
+      // A copied image of a web page carries its link too: only a file is taken from the link,
+      // the picture itself is read below otherwise.
+      if let url, url.isFileURL { return await take(urls: [url], into: control) }
     }
     if let provider = providers.first(where: { $0.hasItemConformingToTypeIdentifier(UTType.image.identifier) }) {
       let data = await withCheckedContinuation { (continuation: CheckedContinuation<Data?, Never>) in

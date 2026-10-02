@@ -8,6 +8,8 @@ struct ControlTabView: View {
   let generation: GenerationController
   let connection: DrawThingsConnection
   @State private var message: ControlMessage?
+  /// The tab itself holds focus, so Edit ▸ Paste (⌘V) reaches `onPasteCommand`.
+  @FocusState private var hasFocus: Bool
 
   private var control: ControlStore { generation.control }
 
@@ -24,6 +26,11 @@ struct ControlTabView: View {
       .padding(.bottom, DS.groupGap)
     }
     .scrollIndicators(.automatic)
+    .focusable()
+    .focusEffectDisabled()
+    .focused($hasFocus)
+    .onAppear { hasFocus = true }
+    .simultaneousGesture(TapGesture().onEnded { hasFocus = true })
     .onPasteCommand(of: [.fileURL, .image]) { providers in
       Task { if let text = await ControlImport.take(providers: providers, into: control) { message = .error(text) } }
     }
