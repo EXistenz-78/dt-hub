@@ -9,7 +9,7 @@ public enum JobComposer {
   public static func batches(
     prompt: String, negativePrompt: String, model: String, family: String?,
     parameters: GenerationParameters, catalog: ModelCatalog, imageStrength: Double? = nil,
-    randomSeed draw: () -> UInt32 = { UInt32.random(in: .min ... .max) }
+    moodboardCount: Int = 0, randomSeed draw: () -> UInt32 = { UInt32.random(in: .min ... .max) }
   ) -> [GenerationJob] {
     let traits = FamilyTraits.of(family)
     var sent = parameters
@@ -19,7 +19,8 @@ public enum JobComposer {
     let negative = traits.usesNegativePrompt ? negativePrompt : ""
     return sent.batchesForRun(randomSeed: draw).map {
       GenerationJob(
-        prompt: prompt, negativePrompt: negative, model: model, parameters: $0, imageStrength: imageStrength)
+        prompt: prompt, negativePrompt: negative, model: model, parameters: $0, imageStrength: imageStrength,
+        moodboardCount: moodboardCount)
     }
   }
 
