@@ -28,6 +28,9 @@ public enum ControlWarning: Hashable, Sendable {
 public final class ControlStore {
   public private(set) var inputs: ControlInputs
   public private(set) var notice: ControlNotice?
+  /// Changes with every step of the history, so `canUndo` and `canRedo` can be observed (the
+  /// stacks themselves are not).
+  private var historyVersion = 0
 
   @ObservationIgnored private let storage: any ReferenceStorage
   @ObservationIgnored private let fileURL: URL
@@ -60,8 +63,15 @@ public final class ControlStore {
       .appendingPathComponent("control.json")
   }
 
-  public var canUndo: Bool { !undoStack.isEmpty }
-  public var canRedo: Bool { !redoStack.isEmpty }
+  public var canUndo: Bool {
+    _ = historyVersion
+    return !undoStack.isEmpty
+  }
+
+  public var canRedo: Bool {
+    _ = historyVersion
+    return !redoStack.isEmpty
+  }
 
   // MARK: Image
 
@@ -134,6 +144,7 @@ public final class ControlStore {
     guard let previous = undoStack.popLast() else { return }
     redoStack.append(inputs)
     inputs = previous
+    historyVersion += 1
     notice = nil
     save()
     collectGarbage()
@@ -143,6 +154,7 @@ public final class ControlStore {
     guard let next = redoStack.popLast() else { return }
     undoStack.append(inputs)
     inputs = next
+    historyVersion += 1
     notice = nil
     save()
     collectGarbage()
@@ -156,6 +168,12 @@ public final class ControlStore {
   public func preview(maxPixel: Int) -> CGImage? {
     guard let image = inputs.image else { return nil }
     return storage.image(named: image.fileName, maxPixel: maxPixel)
+  }
+
+  /// The same picture as `preview`, to be decoded away from the main actor.
+  public func previewRequest(maxPixel: Int) -> PreviewRequest? {
+    guard let image = inputs.image else { return nil }
+    return PreviewRequest(storage: storage, fileName: image.fileName, maxPixel: maxPixel)
   }
 
   // MARK: Warnings and RUN
@@ -181,6 +199,7 @@ public final class ControlStore {
     if undoStack.count > undoLimit { undoStack.removeFirst(undoStack.count - undoLimit) }
     redoStack = []
     inputs = next
+    historyVersion += 1
     notice = nil
     save()
     collectGarbage()
@@ -225,5 +244,16 @@ public struct PendingInputs: Sendable {
       let framed = InputComposer.frame(decoded, toWidth: canvasWidth, height: canvasHeight, framing: framing)
     else { throw .unreadable(image.name) }
     return GenerationInputs(image: framed)
+  }
+}
+
+/// A preview to decode on a background thread.
+public struct PreviewRequest: Sendable {
+  let storage: any ReferenceStorage
+  let fileName: String
+  let maxPixel: Int
+
+  public func render() -> CGImage? {
+    storage.image(named: fileName, maxPixel: maxPixel)
   }
 }

@@ -27,7 +27,10 @@ struct CanvasStage: View {
         }
       }
     }
-    .task(id: control.inputs.image?.id) { picture = control.preview(maxPixel: 1400) }
+    .task(id: control.inputs.image?.id) {
+      guard let request = control.previewRequest(maxPixel: 1400) else { return picture = nil }
+      picture = await Task.detached { request.render() }.value
+    }
   }
 
   private var empty: some View {

@@ -210,6 +210,54 @@ struct ControlStoreTests {
     #expect(try empty.pendingInputs(canvasWidth: 64, canvasHeight: 64).render().isEmpty)
   }
 
+  @Test func undoAndRedoAvailabilityCanBeObserved() throws {
+    let store = store(in: folder())
+    let changes = Counter()
+    func watch(_ read: @escaping @Sendable () -> Bool) {
+      withObservationTracking { _ = read() } onChange: { changes.add() }
+    }
+    watch { MainActor.assumeIsolated { store.canUndo } }
+    try store.setImage(data: pictureData(width: 64, height: 64), name: "a.png", source: .pasteboard)
+    #expect(changes.count == 1)
+    store.removeImage()
+    watch { MainActor.assumeIsolated { store.canRedo } }
+    store.undo()
+    #expect(changes.count == 2)
+    watch { MainActor.assumeIsolated { store.canUndo } }
+    store.redo()
+    #expect(changes.count == 3)
+  }
+
+  @Test func aTruncatedPictureIsRefusedAtImport() throws {
+    let root = folder()
+    let store = store(in: root)
+    // Noise does not compress: cutting the file falls in the middle of the picture data.
+    var noise = [UInt8](repeating: 0, count: 300 * 300 * 4)
+    for index in noise.indices { noise[index] = UInt8.random(in: 0...255) }
+    let context = CGContext(
+      data: &noise, width: 300, height: 300, bitsPerComponent: 8, bytesPerRow: 1200,
+      space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
+    let data = NSMutableData()
+    let destination = CGImageDestinationCreateWithData(data, UTType.png.identifier as CFString, 1, nil)!
+    CGImageDestinationAddImage(destination, context.makeImage()!, nil)
+    CGImageDestinationFinalize(destination)
+    let cut = (data as Data).prefix(data.length / 2)
+    #expect(throws: ControlError.unreadable("cut.png")) {
+      try store.setImage(data: Data(cut), name: "cut.png", source: .pasteboard)
+    }
+    #expect(store.inputs.image == nil)
+    #expect(copies(in: root).isEmpty)
+  }
+
+  @Test func thePreviewCanBeRenderedAwayFromTheMainActor() async throws {
+    let store = store(in: folder())
+    #expect(store.previewRequest(maxPixel: 100) == nil)
+    try store.setImage(data: pictureData(width: 800, height: 400), name: "a.png", source: .pasteboard)
+    let request = try #require(store.previewRequest(maxPixel: 100))
+    let preview = await Task.detached { request.render() }.value
+    #expect(preview?.width == 100 && preview?.height == 50)
+  }
+
   @Test func aBigPhotoAndATinyPictureBothFillTheCanvas() throws {
     let store = store(in: folder())
     try store.setImage(data: pictureData(width: 3000, height: 2000), name: "big.png", source: .pasteboard)
