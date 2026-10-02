@@ -140,6 +140,73 @@ struct LiveServerTests {
     print("LIVE z-image moodboard: right minus left plain \(rightMinusLeft(plain)) guided \(rightMinusLeft(guided))")
   }
 
+  /// Inpainting, measured on SD 1.5 (Juggernaut Reborn) and FLUX.2 klein: a solid blue picture whose
+  /// right half is masked is asked to become red poppies. The left half stays as it was and the
+  /// right half is regenerated, at strength 100 % and without the inpaint control (which changed
+  /// nothing on these models: measured with it on and off). At strength 70 % the masked half
+  /// stayed blue, so the tab's automatic strength with a mask is 100 %.
+  @Test(.enabled(if: address != nil))
+  func aMaskKeepsTheOutsideAndRegeneratesTheInside() async throws {
+    let backend = try await liveBackend()
+    let models = try await backend.fetchCatalog().models
+    let cases: [(label: String, file: String, steps: Int, guidance: Double)] = [
+      ("sd15", models.first { $0.file.hasPrefix("juggernaut_reborn") }?.file ?? "", 12, 4),
+      ("klein", models.first { $0.family == "flux2_9b" }?.file ?? "", 4, 1),
+    ]
+    let source = try #require(solid(red: 0, green: 0, blue: 255, size: 512))
+    let sourceLeft = blueShare(try #require(source.cropping(to: CGRect(x: 0, y: 0, width: 256, height: 512))))
+    let mask = halfMask(size: 512)
+    var ran = 0
+    for item in cases where !item.file.isEmpty {
+      var job = GenerationJob(
+        prompt: "a field of bright red poppies", model: item.file,
+        parameters: GenerationParameters(
+          width: 512, height: 512, steps: item.steps, guidanceScale: item.guidance, sampler: .ddimTrailing, seed: 7,
+          randomSeed: false))
+      job.imageStrength = 1.0
+      job.maskSettings = MaskSettings()
+      let out = try await run(backend, job, GenerationInputs(image: source, mask: mask))
+      let left = try #require(out.cropping(to: CGRect(x: 0, y: 0, width: 256, height: 512)))
+      let right = try #require(out.cropping(to: CGRect(x: 256, y: 0, width: 256, height: 512)))
+      print("LIVE inpaint \(item.label): left blue \(blueShare(left)) (source \(sourceLeft)) right red \(redShare(right))")
+      #expect(abs(blueShare(left) - sourceLeft) < 0.03)
+      #expect(redShare(right) > 0.3)
+      ran += 1
+    }
+    await backend.shutdown()
+    #expect(ran > 0, "needs Juggernaut Reborn or a FLUX.2 klein model on the server")
+  }
+
+  /// 512×512, the right half transparent (to regenerate), the left half opaque (to keep).
+  private func halfMask(size: Int) -> CGImage {
+    let context = CGContext(
+      data: nil, width: size, height: size, bitsPerComponent: 8, bytesPerRow: 0,
+      space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+    context.setFillColor(CGColor(red: 0, green: 0, blue: 0, alpha: 1))
+    context.fill(CGRect(x: 0, y: 0, width: size / 2, height: size))
+    return context.makeImage()!
+  }
+
+  private func averageColor(_ image: CGImage) -> (r: Double, g: Double, b: Double) {
+    var bytes = [UInt8](repeating: 0, count: 4)
+    let context = CGContext(
+      data: &bytes, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+      space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+    context.interpolationQuality = .medium
+    context.draw(image, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+    return (Double(bytes[0]) / 255, Double(bytes[1]) / 255, Double(bytes[2]) / 255)
+  }
+
+  private func redShare(_ image: CGImage) -> Double {
+    let c = averageColor(image)
+    return c.r / max(c.r + c.g + c.b, 0.001)
+  }
+
+  private func blueShare(_ image: CGImage) -> Double {
+    let c = averageColor(image)
+    return c.b / max(c.r + c.g + c.b, 0.001)
+  }
+
   private func liveBackend() async throws -> DrawThingsBackend {
     let parts = try #require(Self.address?.split(separator: ":"))
     return DrawThingsBackend(host: String(parts[0]), port: Int(parts[1]) ?? 7859, useTLS: true, sharedSecret: nil)

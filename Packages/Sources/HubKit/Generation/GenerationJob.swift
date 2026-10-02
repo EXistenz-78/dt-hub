@@ -12,10 +12,12 @@ public struct GenerationJob: Equatable, Codable, Sendable {
   public var imageStrength: Double?
   /// How many Moodboard pictures went with this RUN (0 without a Moodboard).
   public var moodboardCount: Int
+  /// What Draw Things does with the mask; nil when the RUN has no mask.
+  public var maskSettings: MaskSettings?
 
   public init(
     prompt: String, negativePrompt: String = "", model: String, parameters: GenerationParameters,
-    imageStrength: Double? = nil, moodboardCount: Int = 0
+    imageStrength: Double? = nil, moodboardCount: Int = 0, maskSettings: MaskSettings? = nil
   ) {
     self.prompt = prompt
     self.negativePrompt = negativePrompt
@@ -23,6 +25,7 @@ public struct GenerationJob: Equatable, Codable, Sendable {
     self.parameters = parameters
     self.imageStrength = imageStrength
     self.moodboardCount = moodboardCount
+    self.maskSettings = maskSettings
   }
 
   /// What Draw Things receives: the trigger words of the job's LoRAs, in order, then the
@@ -42,6 +45,7 @@ public struct GenerationJob: Equatable, Codable, Sendable {
     parameters = try container.decode(GenerationParameters.self, forKey: .parameters)
     imageStrength = try? container.decodeIfPresent(Double.self, forKey: .imageStrength)
     moodboardCount = (try? container.decodeIfPresent(Int.self, forKey: .moodboardCount)) ?? 0
+    maskSettings = try? container.decodeIfPresent(MaskSettings.self, forKey: .maskSettings)
   }
 }
 

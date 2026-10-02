@@ -1,3 +1,4 @@
+import CoreGraphics
 import DrawThingsClient
 import HubKit
 
@@ -18,6 +19,16 @@ enum JobMapper {
     // The start image and its strength come from the Control tab, after the JSON editor's
     // extra settings: they win. Without an image the RUN stays text-to-image.
     if inputs.image != nil, let strength = job.imageStrength { configuration.strength = Float(strength) }
+    // The mask needs an image under it; Draw Things regenerates the transparent pixels.
+    var mask: CGImage?
+    if let drawn = inputs.mask, inputs.image != nil {
+      let settings = (job.maskSettings ?? MaskSettings()).clamped()
+      configuration.maskBlur = Float(settings.blur)
+      configuration.maskBlurOutset = Int32(settings.outset)
+      configuration.preserveOriginalAfterInpaint = settings.preserveOriginal
+      configuration.enableInpainting = inputs.enableInpainting
+      mask = drawn
+    }
     var hints = HintBuilder()
     for hint in inputs.hints { hints.addMoodboardImage(hint.imageData, weight: Float(hint.weight)) }
     let built: [HintProto]
@@ -28,7 +39,7 @@ enum JobMapper {
     }
     return GenerationRequest(
       prompt: job.promptWithTriggers, negativePrompt: job.negativePrompt,
-      configuration: configuration, image: inputs.image, hints: built)
+      configuration: configuration, image: inputs.image, mask: mask, hints: built)
   }
 
   /// The Draw Things configuration for a model and parameters: clamped, the Advanced cards
