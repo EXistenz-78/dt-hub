@@ -24,7 +24,9 @@ struct MainWindowView: View {
   }
 
   @ViewBuilder private var tabContent: some View {
-    if workspace.selectedTabID == WorkspaceTab.generationID {
+    if workspace.selectedTabID == WorkspaceTab.controlID {
+      ControlTabView(generation: generation, connection: connection)
+    } else if workspace.selectedTabID == WorkspaceTab.generationID {
       GenerationTabView(controller: generation, connection: connection)
     } else {
       // Plug-in tabs arrive with the plug-in contract (M7).

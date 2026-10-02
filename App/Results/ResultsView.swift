@@ -9,6 +9,8 @@ struct ResultsView: View {
   let controller: GenerationController
   let connection: DrawThingsConnection
   @State private var selectedID: GeneratedImage.ID?
+  /// Why "Use as image" did not work.
+  @State private var useError: String?
 
   private var session: GenerationSession { controller.session }
   private var selected: GeneratedImage? {
@@ -115,25 +117,54 @@ struct ResultsView: View {
     ScrollView(.horizontal) {
       HStack(spacing: DS.controlGap) {
         ForEach(session.results) { result in
-          Button {
-            selectedID = result.id
-          } label: {
-            Image(decorative: result.image, scale: 1)
-              .resizable()
-              .scaledToFill()
-              .frame(width: 72, height: 72)
-              .clipShape(RoundedRectangle(cornerRadius: DS.boxRadius, style: .continuous))
-              .overlay(
-                RoundedRectangle(cornerRadius: DS.boxRadius, style: .continuous)
-                  .strokeBorder(result.id == selected?.id ? DS.accent : Color.clear, lineWidth: 2))
-          }
-          .buttonStyle(.plain)
-          .accessibilityLabel(result.job.prompt)
+          thumbnail(of: result)
         }
       }
       .padding(2)
     }
     .frame(height: 80)
+  }
+
+  /// One picture of the strip: it can be dragged into the Control tab (or any app) as its file,
+  /// and the menu uses it as the start image.
+  @ViewBuilder private func thumbnail(of result: GeneratedImage) -> some View {
+    let button = Button {
+      selectedID = result.id
+    } label: {
+      Image(decorative: result.image, scale: 1)
+        .resizable()
+        .scaledToFill()
+        .frame(width: 72, height: 72)
+        .clipShape(RoundedRectangle(cornerRadius: DS.boxRadius, style: .continuous))
+        .overlay(
+          RoundedRectangle(cornerRadius: DS.boxRadius, style: .continuous)
+            .strokeBorder(result.id == selected?.id ? DS.accent : Color.clear, lineWidth: 2))
+    }
+    .buttonStyle(.plain)
+    .accessibilityLabel(result.job.prompt)
+    .contextMenu {
+      Button("results.useAsImage") { useAsImage(result) }
+    }
+    if let url = result.fileURL {
+      button.draggable(url)
+    } else {
+      button
+    }
+  }
+
+  private func useAsImage(_ result: GeneratedImage) {
+    useError = nil
+    Task {
+      do throws(ControlError) {
+        if let url = result.fileURL {
+          try await controller.control.setImage(fileURL: url, source: .result)
+        } else {
+          try controller.control.setImage(result.image, name: String(localized: "results.unsaved.name"), source: .result)
+        }
+      } catch {
+        useError = ControlText.error(error)
+      }
+    }
   }
 
   private func actions(for result: GeneratedImage) -> some View {
@@ -145,7 +176,12 @@ struct ResultsView: View {
       if let error = result.saveError {
         Text("results.notSaved").font(.caption).foregroundStyle(DS.remove).help(error)
       }
+      if let useError {
+        Text(verbatim: useError).font(.caption).foregroundStyle(DS.remove).lineLimit(2)
+      }
       Spacer(minLength: 0)
+      Button("results.useAsImage") { useAsImage(result) }
+        .buttonStyle(DSPillButtonStyle())
       if let url = result.fileURL {
         Button("results.showInFinder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
           .buttonStyle(DSPillButtonStyle())
