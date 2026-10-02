@@ -26,6 +26,10 @@ enum ControlText {
     case .replaced(let name): String(format: String(localized: "control.notice.replaced"), name)
     case .cleared: String(localized: "control.notice.cleared")
     case .missingAtLaunch(let name): String(format: String(localized: "control.notice.missing"), name)
+    case .maskCleared: String(localized: "control.notice.maskCleared")
+    case .maskMissingAtLaunch: String(localized: "control.notice.maskMissing")
+    case .paintCleared: String(localized: "control.notice.paintCleared")
+    case .paintMissingAtLaunch: String(localized: "control.notice.paintMissing")
     }
   }
 

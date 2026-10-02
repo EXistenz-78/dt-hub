@@ -22,6 +22,16 @@ struct ControlStrip: View {
             detail: "\(image.pixelWidth)×\(image.pixelHeight)",
             remove: { control.removeImage() })
         }
+        if control.inputs.paint != nil {
+          chip(
+            systemImage: "paintbrush", title: String(localized: "control.strip.paint"), detail: "",
+            remove: { control.clearPaint() })
+        }
+        if let mask = control.inputs.mask {
+          chip(
+            systemImage: "paintbrush.pointed", title: String(localized: "control.strip.mask"),
+            detail: "\(max(1, Int((mask.coverage * 100).rounded())))%", remove: { control.clearMask() })
+        }
         if !control.inputs.moodboard.isEmpty {
           chip(
             systemImage: "square.grid.2x2", title: String(localized: "control.strip.moodboard"),
