@@ -20,7 +20,7 @@ Decisioni dell'utente (1 ottobre 2026):
 **Dentro:**
 - immagine di partenza con forza (strength) e inquadratura nel canvas;
 - Moodboard: più immagini, ognuna con interruttore acceso/spento, rimozione e riordino; tutte contano allo stesso modo (nessun peso, vedi §4.1);
-- maschera di inpaint con pennello e gomma, annulla/ripeti, inverti, svuota; sfumatura, margine, "conserva l'originale";
+- maschera di inpaint (Maschera +, Maschera −), Pennello a colori sull'immagine (strato a parte), annulla/ripeti, inverti, svuota; sfumatura, margine, "conserva l'originale";
 - striscia "Con Run parte", gestione unificata di ciò che è caricato;
 - trascinamento da Risultati, dal Finder, incolla da appunti; menu "Usa come immagine" / "Aggiungi al Moodboard" in Risultati;
 - ripristino all'avvio e annulla delle rimozioni.
