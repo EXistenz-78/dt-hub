@@ -1854,6 +1854,159 @@
         }
       }
     },
+    "control.moodboard.add": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add…"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aggiungi…"
+          }
+        }
+      }
+    },
+    "control.moodboard.drop": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drop images here from Results or the Finder."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trascina qui immagini da Risultati o dal Finder."
+          }
+        }
+      }
+    },
+    "control.moodboard.equal": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Every picture that is on counts the same."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ogni immagine accesa conta allo stesso modo."
+          }
+        }
+      }
+    },
+    "control.moodboard.hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drop on a picture to replace it, anywhere else to add."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rilascia su un'immagine per sostituirla, altrove per aggiungere."
+          }
+        }
+      }
+    },
+    "control.moodboard.remove": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove from the Moodboard"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Togli dal Moodboard"
+          }
+        }
+      }
+    },
+    "control.moodboard.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moodboard"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moodboard"
+          }
+        }
+      }
+    },
+    "control.moodboard.turnOff": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turn off"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spegni"
+          }
+        }
+      }
+    },
+    "control.moodboard.turnOn": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turn on"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accendi"
+          }
+        }
+      }
+    },
+    "control.moodboard.unsupported": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This model does not use the Moodboard: it would need an adapter. The pictures are kept and not sent."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo modello non usa il Moodboard: servirebbe un adattatore. Le immagini restano e non vengono inviate."
+          }
+        }
+      }
+    },
     "control.notice.cleared": {
       "extractionState": "manual",
       "localizations": {
@@ -2211,6 +2364,23 @@
         }
       }
     },
+    "control.strip.moodboard": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moodboard"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moodboard"
+          }
+        }
+      }
+    },
     "control.strip.remove": {
       "extractionState": "manual",
       "localizations": {
@@ -2275,6 +2445,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ritaglio forte: si perde il %lld%% dell'immagine."
+          }
+        }
+      }
+    },
+    "control.warning.ignored": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The chosen model does not use the Moodboard."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il modello scelto non usa il Moodboard."
+          }
+        }
+      }
+    },
+    "control.warning.many": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld Moodboard pictures: every extra one makes the render much slower."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld immagini nel Moodboard: ognuna in più rallenta molto il render."
           }
         }
       }
@@ -4094,6 +4298,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Salva come preset…"
+          }
+        }
+      }
+    },
+    "results.addToMoodboard": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add to the Moodboard"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aggiungi al Moodboard"
           }
         }
       }
