@@ -40,30 +40,41 @@ public struct MaskBitmap: Equatable, Sendable {
   // MARK: Drawing
 
   /// Paints (or erases) a round brush of `radius` pixels along the segment from `start` to `end`,
-  /// in mask pixels. The edge has one pixel of antialiasing. Returns the rectangle of pixels that
-  /// may have changed (empty when the segment is outside the mask), so a view can update only that.
+  /// in mask pixels. The edge has one pixel of antialiasing. With a `clip` (in mask pixels) only the
+  /// pixels whose centre is inside it are touched: the brush stops at the edge of what is shown.
+  /// Returns the rectangle of pixels that may have changed, or nil when nothing could (the segment is
+  /// outside the mask or the clip), so a view can update only that.
   @discardableResult
-  public mutating func stroke(from start: CGPoint, to end: CGPoint, radius: Double, erase: Bool) -> CGRect {
+  public mutating func stroke(
+    from start: CGPoint, to end: CGPoint, radius: Double, erase: Bool, clip: CGRect? = nil
+  ) -> CGRect? {
     let radius = max(radius, 0.5)
     let length = hypot(end.x - start.x, end.y - start.y)
     let steps = max(1, Int((length / max(radius / 3, 0.5)).rounded(.up)))
-    var dirty = CGRect.null
+    var dirty: CGRect?
     for step in 0...steps {
       let t = Double(step) / Double(steps)
       let area = stamp(
         at: CGPoint(x: start.x + (end.x - start.x) * t, y: start.y + (end.y - start.y) * t), radius: radius,
-        erase: erase)
-      dirty = dirty.union(area)
+        erase: erase, clip: clip)
+      if let area { dirty = dirty.map { $0.union(area) } ?? area }
     }
-    return dirty.isNull ? .zero : dirty
+    return dirty
   }
 
-  private mutating func stamp(at center: CGPoint, radius: Double, erase: Bool) -> CGRect {
-    let minX = max(0, Int((center.x - radius - 1).rounded(.down)))
-    let maxX = min(width - 1, Int((center.x + radius + 1).rounded(.up)))
-    let minY = max(0, Int((center.y - radius - 1).rounded(.down)))
-    let maxY = min(height - 1, Int((center.y + radius + 1).rounded(.up)))
-    guard minX <= maxX, minY <= maxY else { return .null }
+  private mutating func stamp(at center: CGPoint, radius: Double, erase: Bool, clip: CGRect?) -> CGRect? {
+    var minX = max(0, Int((center.x - radius - 1).rounded(.down)))
+    var maxX = min(width - 1, Int((center.x + radius + 1).rounded(.up)))
+    var minY = max(0, Int((center.y - radius - 1).rounded(.down)))
+    var maxY = min(height - 1, Int((center.y + radius + 1).rounded(.up)))
+    if let clip {
+      // A pixel is inside when its centre is.
+      minX = max(minX, Int((clip.minX - 0.5).rounded(.up)))
+      maxX = min(maxX, Int((clip.maxX - 0.5).rounded(.up)) - 1)
+      minY = max(minY, Int((clip.minY - 0.5).rounded(.up)))
+      maxY = min(maxY, Int((clip.maxY - 0.5).rounded(.up)) - 1)
+    }
+    guard minX <= maxX, minY <= maxY else { return nil }
     for y in minY...maxY {
       for x in minX...maxX {
         // The pixel's centre against the circle; one pixel of edge is partly covered.

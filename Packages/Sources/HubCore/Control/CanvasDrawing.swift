@@ -33,6 +33,8 @@ public final class CanvasDrawing {
   @ObservationIgnored private var smoother = StrokeSmoother()
   @ObservationIgnored private var strokeTool = DrawingTool.maskAdd
   @ObservationIgnored private var strokeRadius = 1.0
+  /// Where the brush may draw, in mask pixels: the cut that is shown.
+  @ObservationIgnored private var strokeClip = CGRect.zero
   @ObservationIgnored private var strokeColor: (red: UInt8, green: UInt8, blue: UInt8) = (255, 0, 0)
 
   private struct Key: Equatable {
@@ -94,6 +96,10 @@ public final class CanvasDrawing {
       strokeTool = tool
       strokeColor = color
       strokeRadius = reference.brushRadius(diameter: diameter, canvasWidth: canvasWidth, crop: crop, imageWidth: imageWidth)
+      // A stroke that goes past the edge of the view stops at the edge of the cut: what is not shown is
+      // not drawn on.
+      let toMask = Double(reference.width) / Double(imageWidth)
+      strokeClip = CGRect(x: crop.minX * toMask, y: crop.minY * toMask, width: crop.width * toMask, height: crop.height * toMask)
     }
     let target = reference.point(forViewPoint: point, viewSize: viewSize, crop: crop, imageWidth: imageWidth)
     draw(smoother.add(target, spacing: max(strokeRadius / 2, 1)))
@@ -116,7 +122,7 @@ public final class CanvasDrawing {
   /// Strokes along the points, then refreshes the picture of the layer that changed.
   private func draw(_ points: [CGPoint]) {
     guard let first = points.first else { return }
-    var dirty = CGRect.null
+    var dirty: CGRect?
     // A single point is a dot: stroked from itself to itself.
     let rest = points.count > 1 ? Array(points.dropFirst()) : [first]
     switch strokeTool {
@@ -125,25 +131,31 @@ public final class CanvasDrawing {
       mask = nil  // the one reference, so the buffer is changed in place
       var from = first
       for to in rest {
-        dirty = dirty.union(bitmap.stroke(from: from, to: to, radius: strokeRadius, erase: strokeTool == .maskRemove))
+        if let area = bitmap.stroke(
+          from: from, to: to, radius: strokeRadius, erase: strokeTool == .maskRemove, clip: strokeClip)
+        {
+          dirty = dirty.map { $0.union(area) } ?? area
+        }
         from = to
       }
       mask = bitmap
-      maskOverlay?.update(from: bitmap, rect: dirty)
+      if let dirty { maskOverlay?.update(from: bitmap, rect: dirty) }
       maskImage = maskOverlay?.image()
     case .brush:
       guard var layer = paint else { return }
       paint = nil
       var from = first
       for to in rest {
-        dirty = dirty.union(
-          layer.stroke(
-            from: from, to: to, radius: strokeRadius, red: strokeColor.red, green: strokeColor.green,
-            blue: strokeColor.blue))
+        if let area = layer.stroke(
+          from: from, to: to, radius: strokeRadius, red: strokeColor.red, green: strokeColor.green,
+          blue: strokeColor.blue, clip: strokeClip)
+        {
+          dirty = dirty.map { $0.union(area) } ?? area
+        }
         from = to
       }
       paint = layer
-      paintOverlay?.update(from: layer, rect: dirty)
+      if let dirty { paintOverlay?.update(from: layer, rect: dirty) }
       paintImage = paintOverlay?.image()
     }
   }

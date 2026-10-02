@@ -127,6 +127,24 @@ struct CanvasDrawingTests {
     #expect(layer.alpha(x: 177, y: 75) == 255)
   }
 
+  @Test func aStrokeThatLeavesTheViewDoesNotPaintTheCutOffPart() throws {
+    let control = try store()  // 400×300 image
+    let drawing = CanvasDrawing()
+    drawing.sync(with: control)
+    // A square canvas shows the middle of the image: x from 50 to 350. The view is 300×300.
+    let cut = CGRect(x: 50, y: 0, width: 300, height: 300)
+    let square = CGSize(width: 300, height: 300)
+    for point in [CGPoint(x: 20, y: 150), CGPoint(x: -30, y: 150), CGPoint(x: -45, y: 150)] {
+      drawing.stroke(tool: .maskAdd, to: point, viewSize: square, crop: cut, imageWidth: 400, canvasWidth: 300, diameter: 20, color: (0, 0, 0))
+    }
+    try drawing.endStroke(into: control)
+    let bitmap = try #require(control.maskBitmap())
+    // Inside the cut it painted (view x 20 is image x 70); out of it (image x < 50) it did not.
+    #expect(bitmap.pixels[150 * bitmap.width + 70] >= 128)
+    #expect(bitmap.pixels[150 * bitmap.width + 30] == 0)
+    #expect(bitmap.pixels[150 * bitmap.width + 10] == 0)
+  }
+
   @Test func aNewImageStartsClean() throws {
     let control = try store()
     let drawing = CanvasDrawing()

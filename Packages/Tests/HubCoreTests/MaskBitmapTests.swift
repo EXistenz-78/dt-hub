@@ -91,13 +91,28 @@ struct MaskBitmapTests {
     #expect(back.width == 64 && back.height == 48)
     #expect(back == mask)
   }
-  @Test func aStrokeReportsTheRectangleItTouched() {
+  @Test func aClipStopsTheBrushAtItsEdge() throws {
     var mask = MaskBitmap(width: 100, height: 100)
-    let dirty = mask.stroke(from: CGPoint(x: 30, y: 40), to: CGPoint(x: 60, y: 40), radius: 5, erase: false)
+    // Only the pixels whose centre is inside the clip (x 40…80, y 20…60) are painted.
+    let dirty = mask.stroke(
+      from: CGPoint(x: 10, y: 40), to: CGPoint(x: 90, y: 40), radius: 8, erase: false,
+      clip: CGRect(x: 40, y: 20, width: 40, height: 40))
+    #expect(painted(mask, 60, 40))
+    #expect(!painted(mask, 30, 40) && !painted(mask, 85, 40) && !painted(mask, 60, 15))
+    let touched = try #require(dirty)
+    #expect(touched.minX >= 40 && touched.maxX <= 80 && touched.minY >= 20 && touched.maxY <= 60)
+    // A stroke wholly outside the clip touches nothing.
+    #expect(mask.stroke(from: CGPoint(x: 5, y: 90), to: CGPoint(x: 20, y: 90), radius: 3, erase: false, clip: CGRect(x: 40, y: 20, width: 40, height: 40)) == nil)
+  }
+
+  @Test func aStrokeReportsTheRectangleItTouched() throws {
+    var mask = MaskBitmap(width: 100, height: 100)
+    let dirtyResult = mask.stroke(from: CGPoint(x: 30, y: 40), to: CGPoint(x: 60, y: 40), radius: 5, erase: false)
+    let dirty = try #require(dirtyResult)
     #expect(dirty.minX <= 25 && dirty.maxX >= 65 && dirty.minY <= 35 && dirty.maxY >= 45)
     #expect(dirty.width < 60 && dirty.height < 20)
     // A segment out of the mask touches nothing.
-    #expect(mask.stroke(from: CGPoint(x: 500, y: 500), to: CGPoint(x: 600, y: 600), radius: 5, erase: false) == .zero)
+    #expect(mask.stroke(from: CGPoint(x: 500, y: 500), to: CGPoint(x: 600, y: 600), radius: 5, erase: false) == nil)
   }
 }
 
@@ -126,7 +141,8 @@ struct MaskOverlayTests {
     let incremental = try #require(MaskOverlay(width: 120, height: 80, red: 255, green: 140, blue: 0, opacity: 0.55))
     for step in 0..<8 {
       let start = CGPoint(x: 10 + Double(step) * 12, y: 20 + Double(step) * 5)
-      let dirty = mask.stroke(from: start, to: CGPoint(x: start.x + 20, y: start.y + 3), radius: 6, erase: step % 3 == 2)
+      let dirtyResult = mask.stroke(from: start, to: CGPoint(x: start.x + 20, y: start.y + 3), radius: 6, erase: step % 3 == 2)
+      let dirty = try #require(dirtyResult)
       incremental.update(from: mask, rect: dirty)
     }
     let whole = try #require(MaskOverlay(width: 120, height: 80, red: 255, green: 140, blue: 0, opacity: 0.55))

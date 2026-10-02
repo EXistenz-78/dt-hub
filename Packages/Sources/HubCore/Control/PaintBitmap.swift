@@ -34,32 +34,42 @@ public struct PaintBitmap: Equatable, Sendable {
 
   /// Draws a round, hard brush of `radius` pixels along the segment, in layer pixels. The edge has
   /// one pixel of antialiasing; a pixel keeps the strongest cover it got, so going over the same
-  /// place again does not thicken the edge. Returns the rectangle of pixels that may have changed
-  /// (empty when the segment is outside the layer).
+  /// place again does not thicken the edge. With a `clip` (in layer pixels) only the pixels whose
+  /// centre is inside it are touched. Returns the rectangle of pixels that may have changed, or nil
+  /// when nothing could (the segment is outside the layer or the clip).
   @discardableResult
   public mutating func stroke(
-    from start: CGPoint, to end: CGPoint, radius: Double, red: UInt8, green: UInt8, blue: UInt8
-  ) -> CGRect {
+    from start: CGPoint, to end: CGPoint, radius: Double, red: UInt8, green: UInt8, blue: UInt8,
+    clip: CGRect? = nil
+  ) -> CGRect? {
     let radius = max(radius, 0.5)
     let length = hypot(end.x - start.x, end.y - start.y)
     let steps = max(1, Int((length / max(radius / 3, 0.5)).rounded(.up)))
-    var dirty = CGRect.null
+    var dirty: CGRect?
     for step in 0...steps {
       let t = Double(step) / Double(steps)
       let area = stamp(
         at: CGPoint(x: start.x + (end.x - start.x) * t, y: start.y + (end.y - start.y) * t), radius: radius,
-        red: red, green: green, blue: blue)
-      dirty = dirty.union(area)
+        red: red, green: green, blue: blue, clip: clip)
+      if let area { dirty = dirty.map { $0.union(area) } ?? area }
     }
-    return dirty.isNull ? .zero : dirty
+    return dirty
   }
 
-  private mutating func stamp(at center: CGPoint, radius: Double, red: UInt8, green: UInt8, blue: UInt8) -> CGRect {
-    let minX = max(0, Int((center.x - radius - 1).rounded(.down)))
-    let maxX = min(width - 1, Int((center.x + radius + 1).rounded(.up)))
-    let minY = max(0, Int((center.y - radius - 1).rounded(.down)))
-    let maxY = min(height - 1, Int((center.y + radius + 1).rounded(.up)))
-    guard minX <= maxX, minY <= maxY else { return .null }
+  private mutating func stamp(
+    at center: CGPoint, radius: Double, red: UInt8, green: UInt8, blue: UInt8, clip: CGRect?
+  ) -> CGRect? {
+    var minX = max(0, Int((center.x - radius - 1).rounded(.down)))
+    var maxX = min(width - 1, Int((center.x + radius + 1).rounded(.up)))
+    var minY = max(0, Int((center.y - radius - 1).rounded(.down)))
+    var maxY = min(height - 1, Int((center.y + radius + 1).rounded(.up)))
+    if let clip {
+      minX = max(minX, Int((clip.minX - 0.5).rounded(.up)))
+      maxX = min(maxX, Int((clip.maxX - 0.5).rounded(.up)) - 1)
+      minY = max(minY, Int((clip.minY - 0.5).rounded(.up)))
+      maxY = min(maxY, Int((clip.maxY - 0.5).rounded(.up)) - 1)
+    }
+    guard minX <= maxX, minY <= maxY else { return nil }
     for y in minY...maxY {
       for x in minX...maxX {
         let distance = hypot(Double(x) + 0.5 - center.x, Double(y) + 0.5 - center.y)
