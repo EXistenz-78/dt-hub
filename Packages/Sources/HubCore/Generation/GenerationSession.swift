@@ -60,8 +60,12 @@ public final class GenerationSession {
   }
 
   /// Starts a RUN made of batches, run one after the other (see `batchesForRun`); ignored
-  /// while one is running. The monitor's checks pause meanwhile.
-  public func start(_ batches: [GenerationJob], backend: any GenerationBackend, monitor: ConnectionMonitor) {
+  /// while one is running. The monitor's checks pause meanwhile. Every batch gets the same
+  /// `inputs` (the Control tab's images).
+  public func start(
+    _ batches: [GenerationJob], inputs: GenerationInputs = .none, backend: any GenerationBackend,
+    monitor: ConnectionMonitor
+  ) {
     guard !isRunning, let first = batches.first else { return }
     phase = .running(step: nil, totalSteps: first.parameters.steps)
     batch = Batch(index: 1, count: batches.count)
@@ -75,7 +79,7 @@ public final class GenerationSession {
           try Task.checkCancellation()
           batch = Batch(index: number + 1, count: batches.count)
           phase = .running(step: nil, totalSteps: job.parameters.steps)
-          for try await update in backend.generate(job) {
+          for try await update in backend.generate(job, inputs: inputs) {
             switch update {
             case .progress(let step, let total):
               phase = .running(step: step, totalSteps: total)
@@ -106,6 +110,12 @@ public final class GenerationSession {
   /// Waits for the current RUN to end (tests).
   public func waitUntilFinished() async {
     await task?.value
+  }
+
+  /// Shows a failure for a RUN that could not start (its inputs could not be prepared).
+  public func fail(with error: BackendError) {
+    guard !isRunning else { return }
+    phase = .failed(error)
   }
 
   /// Hides a failure message.
