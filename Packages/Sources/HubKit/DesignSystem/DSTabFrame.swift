@@ -39,6 +39,10 @@ public struct DSTabFrame<Bar: View, Content: View>: View {
             topLeadingRadius: 0, bottomLeadingRadius: DS.panelRadius,
             bottomTrailingRadius: DS.panelRadius, topTrailingRadius: 0, style: .continuous))
     }
+    // A light teal wash over the translucent material: the backdrop still shows through.
+    .background(
+      RoundedRectangle(cornerRadius: DS.panelRadius, style: .continuous).fill(DS.accent.opacity(0.07))
+    )
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .dsPanel()
   }
