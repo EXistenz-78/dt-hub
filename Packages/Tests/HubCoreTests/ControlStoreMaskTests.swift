@@ -168,6 +168,23 @@ struct ControlStoreMaskTests {
     #expect(copies(in: root).contains(image))
   }
 
+  @Test func undoAndRedoLeaveTheSettingsAndTheCutAsTheUserSetThem() throws {
+    let store = try withImage(folder())
+    try store.commitMask(spot(store, at: CGPoint(x: 50, y: 50)))
+    store.setMaskSettings(MaskSettings(blur: 8, outset: 20, preserveOriginal: false))
+    store.setStrength(0.4)
+    store.setOffset(x: 1, y: 0)
+    store.undo()  // takes the stroke away; the snapshot it brings back has the settings of before
+    #expect(store.inputs.mask == nil)
+    #expect(store.inputs.maskSettings == MaskSettings(blur: 8, outset: 20, preserveOriginal: false))
+    #expect(store.inputs.strength == 0.4)
+    #expect(store.inputs.framing.offsetX == 1)
+    store.redo()
+    #expect(store.inputs.maskSettings == MaskSettings(blur: 8, outset: 20, preserveOriginal: false))
+    #expect(store.inputs.strength == 0.4)
+    #expect(store.inputs.framing.offsetX == 1)
+  }
+
   @Test func theMaskSettingsAreClamped() throws {
     let store = try withImage(folder())
     store.setMaskSettings(MaskSettings(blur: 500, outset: -4, preserveOriginal: true))

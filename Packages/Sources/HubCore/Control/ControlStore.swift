@@ -332,6 +332,7 @@ public final class ControlStore {
     guard var previous = undoStack.popLast() else { return }
     redoStack.append(inputs)
     previous.moodboard = Self.keepingSwitchesAndOrder(of: inputs.moodboard, in: previous.moodboard)
+    Self.keepingSettings(of: inputs, in: &previous)
     inputs = previous
     historyVersion += 1
     notice = nil
@@ -343,6 +344,7 @@ public final class ControlStore {
     guard var next = redoStack.popLast() else { return }
     undoStack.append(inputs)
     next.moodboard = Self.keepingSwitchesAndOrder(of: inputs.moodboard, in: next.moodboard)
+    Self.keepingSettings(of: inputs, in: &next)
     inputs = next
     historyVersion += 1
     notice = nil
@@ -433,6 +435,17 @@ public final class ControlStore {
       kept.isOn = now[id]?.isOn ?? kept.isOn
       return kept
     }
+  }
+
+  /// What undo and redo do not touch while the start image stays the same: the settings of the mask,
+  /// the strength and the cut. None of them is a step of the history, so going back a stroke must not
+  /// bring back what the user had set before it. When the step changes the image (a new picture, a
+  /// removal, Clear all) the snapshot comes back whole, with the values it had.
+  private static func keepingSettings(of current: ControlInputs, in restored: inout ControlInputs) {
+    guard restored.image?.id == current.image?.id else { return }
+    restored.maskSettings = current.maskSettings
+    restored.strength = current.strength
+    restored.framing = current.framing
   }
 
   nonisolated static func pngData(of image: CGImage) -> Data? {

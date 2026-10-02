@@ -71,8 +71,9 @@ struct PaintBitmapTests {
     let incremental = try #require(PaintOverlay(width: 120, height: 80))
     for step in 0..<6 {
       let start = CGPoint(x: 10 + Double(step) * 15, y: 15 + Double(step) * 8)
-      let dirty = paint.stroke(
+      let dirtyResult = paint.stroke(
         from: start, to: CGPoint(x: start.x + 25, y: start.y + 4), radius: 6, red: UInt8(40 * step), green: 90, blue: 200)
+      let dirty = try #require(dirtyResult)
       incremental.update(from: paint, rect: dirty)
     }
     let whole = try #require(PaintOverlay(width: 120, height: 80))
@@ -83,10 +84,20 @@ struct PaintBitmapTests {
     #expect(try bytes(incremental) == bytes(whole))
   }
 
-  @Test func aStrokeReportsTheRectangleItTouched() {
+  @Test func aClipStopsTheBrushAtItsEdge() {
     var paint = PaintBitmap(width: 100, height: 100)
-    let dirty = paint.stroke(from: CGPoint(x: 30, y: 40), to: CGPoint(x: 60, y: 40), radius: 5, red: 1, green: 2, blue: 3)
+    paint.stroke(
+      from: CGPoint(x: 10, y: 40), to: CGPoint(x: 90, y: 40), radius: 8, red: 9, green: 9, blue: 9,
+      clip: CGRect(x: 40, y: 20, width: 40, height: 40))
+    #expect(paint.alpha(x: 60, y: 40) == 255)
+    #expect(paint.alpha(x: 30, y: 40) == 0 && paint.alpha(x: 85, y: 40) == 0 && paint.alpha(x: 60, y: 15) == 0)
+  }
+
+  @Test func aStrokeReportsTheRectangleItTouched() throws {
+    var paint = PaintBitmap(width: 100, height: 100)
+    let dirtyResult = paint.stroke(from: CGPoint(x: 30, y: 40), to: CGPoint(x: 60, y: 40), radius: 5, red: 1, green: 2, blue: 3)
+    let dirty = try #require(dirtyResult)
     #expect(dirty.minX <= 25 && dirty.maxX >= 65 && dirty.width < 60 && dirty.height < 20)
-    #expect(paint.stroke(from: CGPoint(x: 500, y: 500), to: CGPoint(x: 600, y: 600), radius: 5, red: 1, green: 2, blue: 3) == .zero)
+    #expect(paint.stroke(from: CGPoint(x: 500, y: 500), to: CGPoint(x: 600, y: 600), radius: 5, red: 1, green: 2, blue: 3) == nil)
   }
 }
