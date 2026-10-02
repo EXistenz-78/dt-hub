@@ -68,6 +68,16 @@ struct JobComposerTests {
       parameters: parameters, catalog: catalog) { 7 }
   }
 
+  @Test func everyBatchRecordsTheStrengthOfTheStartImage() {
+    let parameters = GenerationParameters(batchCount: 2)
+    let withImage = JobComposer.batches(
+      prompt: "fox", negativePrompt: "", model: "m.ckpt", family: nil, parameters: parameters,
+      catalog: catalog, imageStrength: 0.6) { 7 }
+    #expect(withImage.count == 2)
+    #expect(withImage.allSatisfy { $0.imageStrength == 0.6 })
+    #expect(compose(family: nil, parameters).allSatisfy { $0.imageStrength == nil })
+  }
+
   @Test func sendsOnlyTheUsableLoRAs() {
     let parameters = GenerationParameters(loras: [
       LoRASelection(file: "a.safetensors", weight: 0.8), LoRASelection(file: "q.safetensors"),
