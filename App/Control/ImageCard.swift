@@ -52,6 +52,7 @@ struct ImageCard: View {
         }
         .frame(width: 104, height: 104)
         .clipShape(RoundedRectangle(cornerRadius: DS.boxRadius, style: .continuous))
+        .modifier(DragOut(url: control.copyURL(of: image)))
         Button {
           control.removeImage()
         } label: {
@@ -136,4 +137,13 @@ enum ControlMessage: Equatable {
   case error(String)
   /// The dimensions were adapted; the previous ones can be put back.
   case adapted(Size)
+}
+
+/// The thumbnail can be dragged out as the file of its copy (into the Moodboard, or another app).
+private struct DragOut: ViewModifier {
+  let url: URL?
+
+  func body(content: Content) -> some View {
+    if let url { content.draggable(url) } else { content }
+  }
 }

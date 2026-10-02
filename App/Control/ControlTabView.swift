@@ -16,10 +16,13 @@ struct ControlTabView: View {
   var body: some View {
     ScrollView {
       VStack(spacing: DS.groupGap) {
-        ControlStrip(generation: generation)
+        ControlStrip(generation: generation, connection: connection)
         messageBar
         DSCardRow {
-          ImageCard(generation: generation, connection: connection) { message = $0 }
+          VStack(spacing: DS.groupGap) {
+            ImageCard(generation: generation, connection: connection) { message = $0 }
+            MoodboardCard(generation: generation, connection: connection) { message = $0 }
+          }
           CanvasStage(generation: generation)
         }
       }

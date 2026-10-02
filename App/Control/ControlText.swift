@@ -32,6 +32,8 @@ enum ControlText {
   static func warning(_ warning: ControlWarning) -> String {
     switch warning {
     case .strongCrop(let percent): String(format: String(localized: "control.warning.crop"), percent)
+    case .manyReferences(let count): String(format: String(localized: "control.warning.many"), count)
+    case .moodboardIgnored: String(localized: "control.warning.ignored")
     }
   }
 }
