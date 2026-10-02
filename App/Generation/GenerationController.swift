@@ -29,7 +29,8 @@ final class GenerationController {
   }
   /// Width ÷ height kept while `lockRatio` is on.
   private(set) var lockedRatio: Double?
-  let session = GenerationSession(store: CurrentFolderImageStore())
+  let session = GenerationSession(
+    store: CurrentFolderImageStore(), history: ResultsHistoryStore(fileURL: ResultsHistoryStore.defaultFileURL))
   let cards = CardExpansionStore(fileURL: CardExpansionStore.defaultFileURL)
   private(set) var outputFolder: URL
 
@@ -53,6 +54,8 @@ final class GenerationController {
   ) {
     self.languageModel = languageModel
     self.control = control
+    // The strip of the Results window comes back from the last launches.
+    Task { [session] in await session.restoreHistory() }
     self.sessionStore = sessionStore
     outputFolder = outputSettings.folder()
     if let snapshot = sessionStore.load() {
