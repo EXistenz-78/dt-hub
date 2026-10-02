@@ -33,7 +33,7 @@ Decisioni dell'utente (1 ottobre 2026):
 
 **Posizione.** Il tab Control precede Generazione nella barra dei tab. All'avvio si apre l'ultimo tab usato. Il design system è quello dell'app (turchese come accento, arancio per ciò che si toglie, pannelli con raggio 19, titoli di gruppo in monospaziato maiuscolo).
 
-**Striscia "Con Run parte"** (in alto). Un chip per ogni ingresso attivo: Immagine (con dimensioni), Maschera (con la percentuale coperta), Moodboard (con il numero). Ogni chip ha una ✕ che toglie l'ingresso; "Svuota tutto" in arancio ripulisce tutto. Qui compaiono gli avvisi (maschera senza immagine, ritaglio forte, famiglia che non usa il Moodboard, copia mancante). Cliccare un chip porta alla sua scheda.
+**Striscia "Con Run parte"** (in alto). Un chip per ogni ingresso attivo: Immagine (con dimensioni), Disegno, Maschera (con la percentuale coperta), Moodboard (con il numero). Ogni chip ha una ✕ che toglie l'ingresso; "Svuota tutto" in arancio ripulisce tutto. Qui compaiono gli avvisi (maschera senza immagine, ritaglio forte, famiglia che non usa il Moodboard, copia mancante). Cliccare un chip porta alla sua scheda.
 
 **Scheda Immagine** (sinistra):
 - miniatura con ✕ sempre visibile, nome, dimensioni, provenienza ("da Risultati", "dal Finder", "da <plug-in>");
@@ -50,13 +50,17 @@ Decisioni dell'utente (1 ottobre 2026):
 - le immagini del Moodboard sono riferimenti di stile e di contenuto, **non entrano nel canvas**: il loro rapporto non ha nessun legame con quello del canvas e non si ritagliano né si adattano mai (deciso con l'utente, 1 ottobre 2026);
 - **quando il Moodboard è attivo:** i modelli recenti che fanno insieme T2I e I2I (FLUX.2, Qwen Image 2.1, in futuro Ideogram 4.5) leggono le reference da soli, senza suffissi o modifier che li distinguano: per questo la scheda **non** usa il `modifier` del catalogo. È grigia, con la spiegazione, solo per le famiglie di una **lista di dati** (`FamilyTraits.withoutMoodboard`) che non lo leggono: SD 1.x e 2.x, SDXL, SSD-1B (servirebbe un IP-Adapter o un ControlNet) e Z Image (misurata: il risultato è identico con e senza reference). Una famiglia nuova o sconosciuta la mostra attiva: nascondere ciò che un modello usa è peggio che mostrare ciò che ignora. La lista si aggiorna man mano che si provano le famiglie;
 
-**Scheda Maschera** (destra, sotto il Canvas):
-- anteprima del **canvas così come parte a Draw Things** (ritaglio compreso), con la maschera sovrapposta in arancio (area dipinta = area che verrà rigenerata); il cerchio del pennello segue il puntatore;
-- strumenti: Pennello e Gomma (interruttore), Annulla, Ripeti, Inverti, Svuota; cursore Dimensione (diametro in pixel del canvas). **Niente Morbidezza** (deciso il 3 ottobre 2026): Draw Things riceve una maschera senza sfumature (un pixel è da rigenerare o no), quindi la morbidezza del pennello non cambierebbe nulla; il bordo si ammorbidisce con la Sfumatura;
-- parametri di Draw Things: Sfumatura (`maskBlur`, 0–30, predefinita 1,5), Margine (`maskBlurOutset`, 0–100, predefinito 0), casella "Conserva l'originale fuori dalla maschera" (`preserveOriginalAfterInpaint`, predefinita accesa);
-- **forza automatica 100% con la maschera** (misurato il 3 ottobre 2026: a 70% l'area mascherata resta quasi com'era), come per i modelli Edit; una scelta dell'utente vince;
-- senza immagine la scheda è vuota con "Carica un'immagine per disegnare la maschera";
-- cambiare o togliere l'immagine di partenza toglie la maschera (disegnata su un'altra immagine); si annulla.
+**Card Canvas** (destra), una sola card con **due modalità**, scelte da un selettore largo quanto la card in cima (gerarchia visiva); immagine e selettore sono centrati:
+- **Canvas:** l'immagine intera con la parte che non parte oscurata e il riquadro del ritaglio; trascinando si sceglie quale parte tenere quando i rapporti sono diversi (§5), con le dimensioni e la perdita sotto. Vi si vedono, senza poterli modificare, la maschera (arancio) e il disegno;
+- **Disegno:** il **canvas così come parte a Draw Things** (ritaglio compreso). Una riga come una toolbar, solo icone (i nomi nei suggerimenti al passaggio del mouse): **Maschera +** e **Maschera −** (una gomma con un + o un − accanto), **Pennello**; poi ciò che appartiene allo strumento: per le maschere **Inverti** e **Svuota** (cestino arancio), per il Pennello il **selettore Colore** e il cestino che svuota il disegno; in fondo alla riga **Annulla** e **Ripeti** (frecce). Sotto, il cursore **Dimensione** (diametro in pixel del canvas, uguale per i tre strumenti). Il cerchio dello strumento segue il puntatore. Nessun testo esplicativo;
+- **nomi come in Draw Things** (deciso con l'utente il 3 ottobre 2026): in Draw Things la gomma è ciò che dipinge la maschera e il pennello disegna sull'immagine; quindi **Maschera +** dipinge l'area da rigenerare (arancio), **Maschera −** la toglie, **Pennello** disegna a colori sull'immagine;
+- **Pennello:** il disegno è uno **strato a parte** (PNG con trasparenza, nelle coordinate dell'immagine, alla stessa dimensione di lavoro della maschera): il file dell'immagine non si tocca; si annulla come il resto, torna all'avvio, va via con l'immagine; al RUN si sovrappone all'immagine nello stesso ritaglio. Pennello rotondo con bordo netto (un pixel di antialiasing), colore scelto dall'utente (rosso all'inizio). Per togliere un tratto: Annulla o "Svuota disegno";
+- **niente Morbidezza** (3 ottobre 2026): Draw Things riceve una maschera senza sfumature (un pixel è da rigenerare o no), quindi la morbidezza del pennello non cambierebbe nulla; il bordo si ammorbidisce con la Sfumatura;
+- parametri di Draw Things (sotto l'immagine, con gli strumenti maschera o quando c'è una maschera): Sfumatura (`maskBlur`, 0–30, predefinita 1,5), Margine (`maskBlurOutset`, 0–100, predefinito 0), casella "Conserva l'originale fuori dalla maschera" (`preserveOriginalAfterInpaint`, predefinita accesa);
+- **forza automatica 100% con la maschera** (misurato il 3 ottobre 2026: a 70% l'area mascherata resta quasi com'era), come per i modelli Edit; una scelta dell'utente vince. Con il solo disegno resta 70%;
+- **dimensione dell'immagine:** prende tutta la larghezza della card, fino a quanto l'altezza della finestra lascia per quel rapporto; cresce con la finestra;
+- **tratto fluido:** il tratto passa per i punti medi dei segmenti tra i punti del mouse e si piega verso i punti intermedi (curva quadratica), così pochi eventi non fanno spigoli; è un po' dietro il puntatore e al rilascio arriva all'ultimo punto;
+- senza immagine la card mostra solo il riquadro vuoto con il suo testo; cambiare o togliere l'immagine di partenza toglie maschera e disegno (disegnati su un'altra immagine); si annulla.
 
 **Annulla.** Ogni rimozione, sostituzione o svuotamento si annulla con ⌘Z e con un avviso "Rimossa · Annulla" che dura qualche secondo.
 
@@ -69,6 +73,7 @@ Decisioni dell'utente (1 ottobre 2026):
 - `Framing`: modo (`fill`; `contain` in seguito) e spostamento normalizzato dentro il canvas.
 - `MaskSettings`: sfumatura, margine, conserva l'originale (con i limiti sopra).
 - `MaskReference`: il file PNG della maschera e quanta parte dell'immagine copre (per il chip della striscia).
+- `PaintReference`: il file PNG del disegno del Pennello.
 - `MoodboardEntry`: `id` (quello dell'immagine), `ReferenceImage` e acceso/spento. Il peso arriverà con le quote (§4.1). Gli ingressi del RUN portano un `GenerationHint` per ogni immagine accesa, con peso 1.
 - `ControlInputs`: immagine opzionale con `Framing` e forza (nil = automatica), maschera opzionale (riferimento al file) con `MaskSettings`, lista di `MoodboardEntry`.
 - `GenerationInputs` (non `Codable`, non finisce nei PNG): immagine già inquadrata alla dimensione esatta del canvas, maschera (pixel **trasparenti = da rigenerare**, come vuole il client), lista di hint con tipo e peso.
@@ -136,9 +141,9 @@ Tutti i messaggi sono localizzati (it, en), senza testo tecnico grezzo.
 | Modulo | Cosa riceve |
 |---|---|
 | HubKit | I tipi della sezione 4; il protocollo backend con gli ingressi |
-| HubCore | `ControlStore` (stato, annulla/ripeti, persistenza), `ReferenceStorage` (copie su disco, finto nei test), `FramingMath`, `InputComposer`, `MaskBitmap` (buffer a 8 bit con pennello, gomma, morbidezza, inverti), le regole per famiglia, la regola di rilascio, la lista delle famiglie che ignorano il Moodboard (`FamilyTraits`) |
+| HubCore | `ControlStore` (stato, annulla/ripeti, persistenza), `ReferenceStorage` (copie su disco, finto nei test), `FramingMath`, `InputComposer`, `MaskBitmap` (buffer a 8 bit con pennello, gomma, inverti; restituisce il rettangolo toccato), `MaskOverlay` e `PaintOverlay` (l'immagine per lo schermo, aggiornata solo nel rettangolo toccato), `PaintBitmap` (strato RGBA del Pennello), `StrokeSmoother` (il tratto curvo), `CanvasDrawing` (maschera e disegno mentre si disegna: tratti, immagini per lo schermo, consegna allo store), le regole per famiglia, la regola di rilascio, la lista delle famiglie che ignorano il Moodboard (`FamilyTraits`) |
 | DTBridge | `JobMapper` esteso; l'unico che usa `HintBuilder` |
-| App | `ControlTabView`, striscia, schede Immagine e Moodboard, `MaskStage` (SwiftUI `Canvas` con gesto di disegno), trascinamento (`Transferable`), modifiche a Risultati, `WorkspaceState` con due tab del cuore |
+| App | `ControlTabView`, striscia, schede Immagine e Moodboard, `CanvasStage` (la card unica con le due modalità; immagine, disegno e maschera sono strati separati con il gesto di disegno), trascinamento (`Transferable`), modifiche a Risultati, `WorkspaceState` con due tab del cuore |
 
 Le regole di dipendenza della spec principale (§4) non cambiano.
 
@@ -156,6 +161,6 @@ Ognuna con piano, revisione indipendente e merge, come M4.
 ## 12. Rischi aperti
 
 - **Comportamento di Draw Things da verificare** (sezione 9): quando serve `enableInpainting`.
-- **Prestazioni del pennello** su canvas grandi (fino a 2048×2048 oggi, 8192 con il Tiled Diffusion): il buffer e il disegno devono restare fluidi; si misura in M7c e, se serve, si disegna su una versione ridotta con rendering finale alla dimensione piena.
+- **Prestazioni del pennello** (misurate il 3 ottobre 2026 nella build Debug): ricostruire tutta l'anteprima della maschera a ogni evento costava 94 ms; con l'aggiornamento del solo rettangolo toccato un evento costa circa 2 ms. Il disegno e la maschera stanno a una dimensione di lavoro di 1024 pixel e l'immagine, il disegno e la maschera sono strati separati (un tratto cambia solo il suo). Con il Tiled Diffusion a 8192 la dimensione di lavoro resta 1024: da rimisurare quando si farà.
 - **Moodboard e famiglie:** quali famiglie lo leggono si scopre provandole (FLUX.2 klein, Qwen Image Edit 2511 sì; Z Image no; Qwen Image 2.1 e i futuri da provare). La lista delle famiglie che lo ignorano è dati, aggiornabile senza toccare il resto; una famiglia nuova non elencata mostra il Moodboard attivo.
 - **Spazio su disco delle copie:** nessun limite nella prima versione; "Svuota tutto" e la rimozione liberano lo spazio.
