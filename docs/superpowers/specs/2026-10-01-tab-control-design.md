@@ -13,7 +13,7 @@ Decisioni dell'utente (1 ottobre 2026):
 - prima versione: immagine di partenza, Moodboard (acceso/spento), inpaint con pennello semplice;
 - l'**outpaint** si aggiunge quando l'inpaint funziona; comporta ridimensionare l'immagine di partenza nel canvas (il modo "Contieni", sezione 5);
 - Depth, Pose, Scribble, Color Palette, Custom e i ControlNet restano **fuori**: i ControlNet disponibili per DT sono per modelli vecchi (SD, Flux.1) e l'utente non ha modo di convertirne per modelli recenti;
-- il Tiled Diffusion con dimensioni fino a 8192×8192 si fa **prima dell'outpaint** (voce del backlog).
+- il Tiled Diffusion con dimensioni fino a 8192×8192 si faceva prima dell'outpaint; il 3 ottobre 2026 l'ordine si è invertito: **prima l'outpaint** (`2026-10-03-outpaint-design.md`).
 
 ## 2. Perimetro
 
@@ -94,7 +94,7 @@ Progettate il 2 ottobre 2026 e **non realizzate**: le immagini del Moodboard sar
 Il canvas è dato dalle Dimensioni di Generazione. Tre modi di inquadrare l'immagine:
 1. **Riempi (predefinito).** Il canvas resta com'è, l'immagine lo riempie e si ritaglia. La miniatura mostra il ritaglio (parti perse oscurate) e il dettaglio ("immagine 1:1 → canvas 4:3, si perde il 25% sopra e sotto"); trascinando l'immagine nel riquadro si sceglie quale parte tenere. Un ritaglio forte (oltre un terzo dell'immagine) produce l'avviso arancione della card Canvas.
 2. **Adatta le dimensioni.** Un pulsante esplicito, sempre disponibile: porta le Dimensioni di Generazione al rapporto dell'immagine, con **area simile** a quella corrente, multipli di 64 e nei limiti del momento (2048; 8192 con il Tiled Diffusion). È un'azione con annulla e **non si ripete da sola**.
-3. **Contieni (arriva con l'outpaint).** L'immagine sta tutta nel canvas e i margini sono area da rigenerare: è la stessa cosa dell'outpaint. Il modello dati lo prevede (`Framing`); l'interfaccia lo abilita con l'outpaint.
+3. **Zoom (outpaint).** Uno slider da −100 a +100 rimpicciolisce l'immagine (margini da rigenerare) o la ingrandisce; vedi `2026-10-03-outpaint-design.md`, che sostituisce il modo "Contieni" previsto qui.
 
 Se il rapporto delle Dimensioni cambia dopo il caricamento, il ritaglio si ricalcola al volo. Il **Moodboard** non ha il problema: le reference sono riferimenti di stile e non entrano nel canvas, quindi il loro rapporto è ininfluente.
 
@@ -156,7 +156,8 @@ Ognuna con piano, revisione indipendente e merge, come M4.
 | **M7a** | Tab Control davanti a Generazione, (striscia, poi tolta,) scheda Immagine (Riempi, Adatta le dimensioni, forza), copie e ripristino, trascinamento da Risultati, dal Finder e incolla, "Usa come immagine" in Risultati, RUN con I2I | **l'I2I funziona** |
 | **M7b** | Scheda Moodboard (interruttore, regole di rilascio, riordino), "Aggiungi al Moodboard", visibilità per famiglia | **Moodboard** |
 | **M7c** | Pannello maschera con pennello semplice, parametri di maschera, `enableInpainting` | **l'inpaint funziona** |
-| Poi | Tiled Diffusion fino a 8192; outpaint (modo Contieni e margini); **M8 Plug-in** (l'attuale M7) | |
+| **M7d** | Outpaint: slider Zoom nella card Canvas, margini come maschera (`2026-10-03-outpaint-design.md`) | **l'outpaint funziona** |
+| Poi | Tiled Diffusion fino a 8192; **M8 Plug-in** (l'attuale M7); Galleria | |
 
 ## 12. Rischi aperti
 
