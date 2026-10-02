@@ -51,6 +51,18 @@ public struct PNGImageStore: ImageStore {
     return url
   }
 
+  /// A saved picture decoded with its longest side at most `maxPixel` (the strip of the Results
+  /// window keeps small ones; the chosen image is loaded larger).
+  public static func image(at url: URL, maxPixel: Int) -> CGImage? {
+    guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
+    let options: [CFString: Any] = [
+      kCGImageSourceCreateThumbnailFromImageAlways: true,
+      kCGImageSourceCreateThumbnailWithTransform: true,
+      kCGImageSourceThumbnailMaxPixelSize: max(maxPixel, 1),
+    ]
+    return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
+  }
+
   /// The job saved inside a PNG written by this store, or nil.
   public static func job(in url: URL) -> GenerationJob? {
     guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),

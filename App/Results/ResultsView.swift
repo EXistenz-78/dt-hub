@@ -11,6 +11,8 @@ struct ResultsView: View {
   @State private var selectedID: GeneratedImage.ID?
   /// Why "Use as image" did not work.
   @State private var useError: String?
+  /// The chosen picture of a previous launch, read from its file at a larger size than the strip's.
+  @State private var restoredFull: (id: GeneratedImage.ID, image: CGImage)?
 
   private var session: GenerationSession { controller.session }
   private var selected: GeneratedImage? {
@@ -32,10 +34,17 @@ struct ResultsView: View {
     .background(DSWindowConfigurator())
     .tint(DS.accent)
     .onChange(of: session.results.first?.id) { selectedID = session.results.first?.id }
+    .task(id: selected?.id) {
+      // A picture read back at launch is a small one: the chosen one is loaded from its file.
+      guard let chosen = selected, chosen.isRestored, let url = chosen.fileURL else { return restoredFull = nil }
+      let image = await Task.detached { PNGImageStore.image(at: url, maxPixel: 2048) }.value
+      restoredFull = image.map { (chosen.id, $0) }
+    }
   }
 
   private var shownImage: CGImage? {
     if session.isRunning, let preview = session.preview { return preview }
+    if let restoredFull, restoredFull.id == selected?.id { return restoredFull.image }
     return selected?.image
   }
 
