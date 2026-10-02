@@ -2,8 +2,9 @@ import HubCore
 import HubKit
 import SwiftUI
 
-/// The Control tab (spec: tab Control): what goes into a RUN besides the prompt. In this first
-/// step the start image; the Moodboard and the mask come next.
+/// The Control tab (spec: tab Control): what goes into a RUN besides the prompt: the start image,
+/// the Moodboard and the canvas with the inpaint mask. Everything is on one screen, so there is no
+/// summary strip; the warnings are in the cards they are about.
 struct ControlTabView: View {
   let generation: GenerationController
   let connection: DrawThingsConnection
@@ -14,16 +15,30 @@ struct ControlTabView: View {
   private var control: ControlStore { generation.control }
 
   var body: some View {
+    // The window's height goes down to the cards, so the pictures can grow with it.
+    GeometryReader { proxy in
+      content
+        .environment(\.controlViewportHeight, proxy.size.height)
+        // Messages float over the cards: one that comes and goes must not move what is under the pointer.
+        .overlay(alignment: .top) {
+          VStack(spacing: DS.controlGap) { messageBar }
+            .padding(.horizontal, DS.groupGap)
+            .padding(.top, DS.controlGap)
+            .animation(.easeInOut(duration: 0.15), value: control.notice)
+            .animation(.easeInOut(duration: 0.15), value: message)
+        }
+    }
+  }
+
+  private var content: some View {
     ScrollView {
       VStack(spacing: DS.groupGap) {
-        ControlStrip(generation: generation, connection: connection)
-        messageBar
         DSCardRow {
           VStack(spacing: DS.groupGap) {
             ImageCard(generation: generation, connection: connection) { message = $0 }
             MoodboardCard(generation: generation, connection: connection) { message = $0 }
           }
-          CanvasStage(generation: generation)
+          CanvasStage(generation: generation) { message = $0 }
         }
       }
       .padding(.bottom, DS.groupGap)
@@ -92,5 +107,18 @@ struct ControlTabView: View {
     .padding(DS.panelPadding)
     .frame(maxWidth: .infinity)
     .dsPanel()
+    .shadow(color: .black.opacity(0.25), radius: 10, y: 3)
+  }
+}
+
+private struct ControlViewportHeightKey: EnvironmentKey {
+  static let defaultValue: Double = 700
+}
+
+extension EnvironmentValues {
+  /// The height of the Control tab's window.
+  var controlViewportHeight: Double {
+    get { self[ControlViewportHeightKey.self] }
+    set { self[ControlViewportHeightKey.self] = newValue }
   }
 }

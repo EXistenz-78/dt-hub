@@ -122,6 +122,8 @@ struct ImageCard: View {
       HStack(spacing: DS.controlGap) {
         if edit {
           Text("control.strength.edit").font(.caption).foregroundStyle(.secondary)
+        } else if control.inputs.mask != nil, control.inputs.strength == nil {
+          Text("control.strength.mask").font(.caption).foregroundStyle(.secondary)
         }
         if control.inputs.strength != nil {
           Button("control.strength.auto") { control.setStrength(nil) }

@@ -19,6 +19,10 @@ public struct ModelCapabilities: Equatable, Sendable {
   /// `inpainting`, `depth`… nil when the spec has none.
   public var modifier: String?
 
+  /// An inpainting model (SD inpainting, FLUX Fill...): Draw Things wants its inpaint control for
+  /// the mask. The other models take a mask without it (measured on SD 1.5 and FLUX.2 klein).
+  public var needsInpaintControl: Bool { modifier == "inpainting" }
+
   /// Edit and in-context models: the canvas image is the one to modify, and the Moodboard
   /// brings extra references (tab Control spec §2).
   public var isEditModel: Bool {
