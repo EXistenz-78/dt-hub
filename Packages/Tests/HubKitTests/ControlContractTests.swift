@@ -73,4 +73,37 @@ struct ControlContractTests {
       #expect(!caps(other).isEditModel)
     }
   }
+
+  @Test func moodboardEntriesSurviveEncodingAndOlderFilesHaveNone() throws {
+    let entry = MoodboardEntry(image: image(), isOn: false)
+    #expect(entry.id == entry.image.id)
+    var inputs = ControlInputs()
+    inputs.moodboard = [entry]
+    let decoded = try JSONDecoder().decode(ControlInputs.self, from: JSONEncoder().encode(inputs))
+    #expect(decoded == inputs)
+    let old = try JSONDecoder().decode(ControlInputs.self, from: Data(#"{"strength": 0.5}"#.utf8))
+    #expect(old.moodboard.isEmpty)
+    // A damaged entry does not take the others with it.
+    let mixed = try JSONDecoder().decode(
+      ControlInputs.self, from: Data(#"{"moodboard": [{"nope": 1}]}"#.utf8))
+    #expect(mixed.moodboard.isEmpty)
+  }
+
+  @Test func theHintsMakeTheInputsNonEmpty() {
+    var inputs = GenerationInputs.none
+    #expect(inputs.isEmpty)
+    inputs.hints = [GenerationHint(imageData: Data([1, 2, 3]), weight: 0.5)]
+    #expect(!inputs.isEmpty)
+  }
+
+  @Test func jobsRecordHowManyMoodboardPicturesWentAndOldOnesHaveNone() throws {
+    var job = GenerationJob(prompt: "p", model: "m.ckpt", parameters: .default)
+    #expect(job.moodboardCount == 0)
+    job.moodboardCount = 3
+    let round = try JSONDecoder().decode(GenerationJob.self, from: JSONEncoder().encode(job))
+    #expect(round.moodboardCount == 3)
+    let old = try JSONDecoder().decode(
+      GenerationJob.self, from: Data(#"{"prompt":"p","model":"m.ckpt","parameters":{}}"#.utf8))
+    #expect(old.moodboardCount == 0)
+  }
 }
