@@ -96,6 +96,53 @@ struct JobMapperTests {
     }
   }
 
+  @Test func sendsTheMaskWithItsSettings() throws {
+    let image = try #require(TestImages.make(width: 64, height: 48))
+    let mask = try #require(TestImages.make(width: 64, height: 48))
+    var job = GenerationJob(prompt: "a fox", model: "m.ckpt", parameters: GenerationParameters(width: 64, height: 48))
+    job.imageStrength = 1
+    job.maskSettings = MaskSettings(blur: 4, outset: 12, preserveOriginal: false)
+    let request = try JobMapper.request(for: job, inputs: GenerationInputs(image: image, mask: mask))
+    #expect(request.mask === mask)
+    #expect(request.configuration.maskBlur == 4)
+    #expect(request.configuration.maskBlurOutset == 12)
+    #expect(!request.configuration.preserveOriginalAfterInpaint)
+    // No inpaint control unless the model needs it.
+    #expect(!request.configuration.enableInpainting)
+    let control = try JobMapper.request(for: job, inputs: GenerationInputs(image: image, mask: mask, enableInpainting: true))
+    #expect(control.configuration.enableInpainting)
+  }
+
+  @Test func aMaskWithoutSettingsGetsDrawThingsDefaults() throws {
+    let image = try #require(TestImages.make(width: 32, height: 32))
+    let mask = try #require(TestImages.make(width: 32, height: 32))
+    let job = GenerationJob(prompt: "x", model: "m.ckpt", parameters: GenerationParameters(width: 64, height: 64))
+    let request = try JobMapper.request(for: job, inputs: GenerationInputs(image: image, mask: mask))
+    #expect(request.configuration.maskBlur == 1.5)
+    #expect(request.configuration.maskBlurOutset == 0)
+    #expect(request.configuration.preserveOriginalAfterInpaint)
+  }
+
+  @Test func aMaskWithoutAnImageIsNotSent() throws {
+    let mask = try #require(TestImages.make(width: 32, height: 32))
+    var job = GenerationJob(prompt: "x", model: "m.ckpt", parameters: .default)
+    job.maskSettings = MaskSettings(blur: 9, outset: 9, preserveOriginal: false)
+    let request = try JobMapper.request(for: job, inputs: GenerationInputs(mask: mask, enableInpainting: true))
+    #expect(request.mask == nil)
+    #expect(request.configuration.maskBlur != 9)
+    #expect(!request.configuration.enableInpainting)
+  }
+
+  @Test func theMaskSettingsAreClampedBeforeTheyAreSent() throws {
+    let image = try #require(TestImages.make(width: 32, height: 32))
+    let mask = try #require(TestImages.make(width: 32, height: 32))
+    var job = GenerationJob(prompt: "x", model: "m.ckpt", parameters: .default)
+    job.maskSettings = MaskSettings(blur: 900, outset: 900, preserveOriginal: true)
+    let request = try JobMapper.request(for: job, inputs: GenerationInputs(image: image, mask: mask))
+    #expect(request.configuration.maskBlur == Float(MaskSettings.blurRange.upperBound))
+    #expect(request.configuration.maskBlurOutset == Int32(MaskSettings.outsetRange.upperBound))
+  }
+
   @Test func sendsTheNegativePromptAndTheLoRAs() {
     let parameters = GenerationParameters(loras: [
       LoRASelection(file: "style.safetensors", weight: 0.75, mode: .base), LoRASelection(file: "detail.safetensors"),
