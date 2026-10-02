@@ -83,7 +83,7 @@ Decisioni dell'utente (1 ottobre 2026):
 
 Le immagini del Moodboard sono **fette di una torta da 100**. Si salva per ognuna un peso grezzo ≥ 0; la **quota** è il peso grezzo diviso la somma dei pesi grezzi delle sole immagini **accese**, in percentuale (`MoodboardShares`, funzione pura in HubCore):
 - **Numeri interi, somma esatta 100:** si arrotonda col metodo del resto più grande, quindi tre immagini uguali sono 34–33–33 (la prima di cui il resto è maggiore, a parità l'ordine delle miniature).
-- **Immagine aggiunta:** prende la quota di una fetta uguale (100 ÷ numero di immagini accese); le altre si riducono **in proporzione**, conservando il loro rapporto. Da 50–50 a tre immagini: 33–33–33; da 70–30 a tre: 33–47–20.
+- **Immagine aggiunta:** prende la quota di una fetta uguale (100 ÷ numero di immagini accese); le altre si riducono **in proporzione**, conservando il loro rapporto. Da 50–50 a tre immagini: 33–33–33; da 70–30 a tre (l'ultima è la nuova): 47–20–33.
 - **Immagine tolta:** le altre crescono in proporzione fino a riempire 100.
 - **Quota modificata** (cursore o campo): l'immagine prende il valore scelto (0–100) e le altre si ridistribuiscono in proporzione sul resto (100 − valore). Se tutte le altre sono a zero, si dividono il resto in parti uguali. A 100 le altre vanno a 0.
 - **Occhio spento:** l'immagine esce dalla torta (non conta nella somma) e le altre si ricalcolano; riaccesa, rientra con il suo peso grezzo. La sua quota mostrata è "—".
@@ -131,7 +131,7 @@ Tutti i messaggi sono localizzati (it, en), senza testo tecnico grezzo.
 - maschera: pennello, gomma, morbidezza, inverti, svuota; annulla/ripeti con limite di memoria;
 - store: aggiunta e copia, rimozione e pulizia, ripristino, copie mancanti, annulla delle rimozioni;
 - regola di rilascio del Moodboard (sostituisce o aggiunge);
-- quote del Moodboard (§4.1): somma sempre 100 con numeri interi, uno/due/tre/sette immagini, aggiunta e rimozione che conservano i rapporti, modifica di una quota, immagine spenta ed riaccesa, tutte a zero, un'immagine al 100%.
+- quote del Moodboard (§4.1): somma sempre 100 con numeri interi, uno/due/tre/sette immagini, aggiunta e rimozione che conservano i rapporti, modifica di una quota, immagine spenta e riaccesa, tutte a zero, un'immagine al 100%.
 
 **DTBridge:** mappatura di forza, maschera, hint e `enableInpainting` nel `JobMapper`.
 
