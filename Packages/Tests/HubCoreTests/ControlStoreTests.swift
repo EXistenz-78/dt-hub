@@ -275,4 +275,233 @@ struct ControlStoreTests {
     try FileManager.default.removeItem(at: root.appendingPathComponent("Control/\(try #require(store.inputs.image).fileName)"))
     #expect(throws: ControlError.unreadable("a.png")) { try store.pendingInputs(canvasWidth: 64, canvasHeight: 64).render() }
   }
+
+  // MARK: Moodboard
+
+  func addPictures(_ store: ControlStore, _ count: Int) throws {
+    for number in 1...count {
+      try store.addMoodboardImage(
+        data: pictureData(width: 40 + number, height: 30), name: "m\(number).png", source: .pasteboard)
+    }
+  }
+
+  @Test func moodboardPicturesAreCopiedInOrderAndStartOn() throws {
+    let root = folder()
+    let store = store(in: root)
+    try addPictures(store, 3)
+    #expect(store.inputs.moodboard.map(\.image.name) == ["m1.png", "m2.png", "m3.png"])
+    #expect(store.inputs.moodboard.allSatisfy { $0.isOn })
+    #expect(copies(in: root).count == 3)
+  }
+
+  @Test func theSwitchTurnsAPictureOffWithoutLosingIt() throws {
+    let store = store(in: folder())
+    try addPictures(store, 3)
+    let second = store.inputs.moodboard[1].id
+    store.setMoodboardOn(id: second, isOn: false)
+    #expect(store.inputs.moodboard.map(\.isOn) == [true, false, true])
+    store.setMoodboardOn(id: second, isOn: true)
+    #expect(store.inputs.moodboard.allSatisfy { $0.isOn })
+  }
+
+  @Test func removingAMoodboardPictureCanBeUndone() throws {
+    let store = store(in: folder())
+    try addPictures(store, 3)
+    let removed = store.inputs.moodboard[0]
+    store.removeMoodboardImage(id: removed.id)
+    #expect(store.inputs.moodboard.count == 2)
+    #expect(store.notice == .removed(name: "m1.png"))
+    store.undo()
+    #expect(store.inputs.moodboard.first == removed)
+    #expect(store.inputs.moodboard.count == 3)
+  }
+
+  @Test func replacingAPictureKeepsItsPlaceAndSwitch() throws {
+    let root = folder()
+    let store = store(in: root)
+    try addPictures(store, 2)
+    let target = store.inputs.moodboard[0].id
+    store.setMoodboardOn(id: target, isOn: false)
+    let before = store.inputs.moodboard[0]
+    try store.replaceMoodboardImage(id: target, data: pictureData(width: 20, height: 20), name: "new.png", source: .result)
+    let after = store.inputs.moodboard[0]
+    #expect(after.image.name == "new.png" && after.image.source == .result)
+    #expect(after.isOn == false && after.isOn == before.isOn)
+    #expect(after.id != before.id)
+    #expect(store.inputs.moodboard.count == 2)
+    #expect(store.notice == .replaced(name: "m1.png"))
+    store.undo()
+    #expect(store.inputs.moodboard[0] == before)
+  }
+
+  @Test func picturesCanBeReordered() throws {
+    let store = store(in: folder())
+    try addPictures(store, 3)
+    let ids = store.inputs.moodboard.map(\.id)
+    store.moveMoodboardImage(id: ids[2], before: ids[0])
+    #expect(store.inputs.moodboard.map(\.id) == [ids[2], ids[0], ids[1]])
+    store.moveMoodboardImage(id: ids[2], before: nil)
+    #expect(store.inputs.moodboard.map(\.id) == [ids[0], ids[1], ids[2]])
+    store.moveMoodboardImage(id: ids[0], before: ids[0])
+    #expect(store.inputs.moodboard.map(\.id) == [ids[0], ids[1], ids[2]])
+  }
+
+  @Test func theMoodboardComesBackAtTheNextLaunchAndLostCopiesAreDropped() throws {
+    let root = folder()
+    let first = store(in: root)
+    try addPictures(first, 3)
+    first.setMoodboardOn(id: first.inputs.moodboard[1].id, isOn: false)
+    let second = store(in: root)
+    #expect(second.inputs.moodboard == first.inputs.moodboard)
+    #expect(second.notice == nil)
+    try FileManager.default.removeItem(
+      at: root.appendingPathComponent("Control/\(first.inputs.moodboard[2].image.fileName)"))
+    let third = store(in: root)
+    #expect(third.inputs.moodboard.map(\.image.name) == ["m1.png", "m2.png"])
+    #expect(third.notice == .missingAtLaunch(name: "m3.png"))
+  }
+
+  @Test func theMoodboardAloneCanBeClearedAndUndone() throws {
+    let store = store(in: folder())
+    try store.setImage(data: pictureData(width: 64, height: 64), name: "a.png", source: .pasteboard)
+    try addPictures(store, 2)
+    store.clearMoodboard()
+    #expect(store.inputs.moodboard.isEmpty && store.inputs.image?.name == "a.png")
+    #expect(store.notice == .cleared)
+    store.clearMoodboard()
+    #expect(store.canUndo)
+    store.undo()
+    #expect(store.inputs.moodboard.count == 2)
+  }
+
+  @Test func undoingAnAddKeepsTheSwitchesTheUserSet() throws {
+    let store = store(in: folder())
+    try addPictures(store, 2)
+    let first = store.inputs.moodboard[0].id
+    store.setMoodboardOn(id: first, isOn: false)
+    store.undo()
+    #expect(store.inputs.moodboard.map(\.image.name) == ["m1.png"])
+    #expect(store.inputs.moodboard[0].isOn == false)
+    store.setMoodboardOn(id: first, isOn: true)
+    store.redo()
+    #expect(store.inputs.moodboard.map(\.image.name) == ["m1.png", "m2.png"])
+    #expect(store.inputs.moodboard[0].isOn == true)
+  }
+
+  @Test func undoKeepsTheOrderTheUserGave() throws {
+    let store = store(in: folder())
+    try addPictures(store, 3)
+    let ids = store.inputs.moodboard.map(\.id)
+    try store.addMoodboardImage(data: pictureData(width: 50, height: 30), name: "m4.png", source: .pasteboard)
+    store.moveMoodboardImage(id: ids[2], before: ids[0])
+    #expect(store.inputs.moodboard.map(\.image.name) == ["m3.png", "m1.png", "m2.png", "m4.png"])
+    store.undo()
+    #expect(store.inputs.moodboard.map(\.image.name) == ["m3.png", "m1.png", "m2.png"])
+  }
+
+  @Test func aRemovedPictureComesBackWhereItWasWithItsSwitch() throws {
+    let store = store(in: folder())
+    try addPictures(store, 3)
+    let second = store.inputs.moodboard[1].id
+    store.setMoodboardOn(id: second, isOn: false)
+    store.removeMoodboardImage(id: second)
+    store.undo()
+    #expect(store.inputs.moodboard.map(\.image.name) == ["m1.png", "m2.png", "m3.png"])
+    #expect(store.inputs.moodboard.map(\.isOn) == [true, false, true])
+  }
+
+  @Test func clearingTakesTheMoodboardOutToo() throws {
+    let root = folder()
+    let store = store(in: root)
+    try store.setImage(data: pictureData(width: 64, height: 64), name: "a.png", source: .pasteboard)
+    try addPictures(store, 2)
+    store.clear()
+    #expect(store.inputs == ControlInputs())
+    store.undo()
+    #expect(store.inputs.moodboard.count == 2 && store.inputs.image != nil)
+    #expect(copies(in: root).count == 3)
+  }
+
+  @Test func anUnreadableMoodboardFileIsRefusedAndLeavesNothing() throws {
+    let root = folder()
+    let store = store(in: root)
+    #expect(throws: ControlError.unreadable("x.txt")) {
+      try store.addMoodboardImage(data: Data("no".utf8), name: "x.txt", source: .pasteboard)
+    }
+    #expect(store.inputs.moodboard.isEmpty && copies(in: root).isEmpty)
+  }
+
+  @Test func aMoodboardFileFromTheFinderIsTakenAsAFile() async throws {
+    let root = folder()
+    let store = store(in: root)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    let file = root.appendingPathComponent("style.png")
+    try pictureData(width: 50, height: 40).write(to: file)
+    try await store.addMoodboardImage(fileURL: file)
+    #expect(store.inputs.moodboard.first?.image.source == .file(path: file.path))
+    try await store.addMoodboardImage(fileURL: file, source: .result)
+    #expect(store.inputs.moodboard.last?.image.source == .result)
+    await #expect(throws: ControlError.unreadable("missing.png")) {
+      try await store.addMoodboardImage(fileURL: root.appendingPathComponent("missing.png"))
+    }
+  }
+
+  @Test func theCopyOfAPictureCanBeDraggedOut() throws {
+    let root = folder()
+    let store = store(in: root)
+    try store.setImage(data: pictureData(width: 64, height: 64), name: "a.png", source: .pasteboard)
+    let image = try #require(store.inputs.image)
+    let url = try #require(store.copyURL(of: image))
+    #expect(FileManager.default.fileExists(atPath: url.path))
+    #expect(url.lastPathComponent == image.fileName)
+  }
+
+  @Test func theRunSendsTheMoodboardPicturesThatAreOnAllWithTheSameWeight() throws {
+    let store = store(in: folder())
+    try addPictures(store, 3)
+    store.setMoodboardOn(id: store.inputs.moodboard[1].id, isOn: false)
+    let inputs = try store.pendingInputs(canvasWidth: 256, canvasHeight: 256).render()
+    #expect(inputs.image == nil)
+    #expect(inputs.hints.count == 2 && inputs.hints.allSatisfy { $0.weight == 1 })
+    for hint in inputs.hints {
+      let source = try #require(CGImageSourceCreateWithData(hint.imageData as CFData, nil))
+      #expect(CGImageSourceGetCount(source) == 1)
+    }
+    #expect(try store.pendingInputs(canvasWidth: 256, canvasHeight: 256, includeMoodboard: false).render().isEmpty)
+  }
+
+  @Test func aBigMoodboardPictureIsSentReduced() throws {
+    let store = store(in: folder())
+    try store.addMoodboardImage(data: pictureData(width: 3000, height: 2000), name: "big.png", source: .pasteboard)
+    let hint = try #require(try store.pendingInputs(canvasWidth: 256, canvasHeight: 256).render().hints.first)
+    let source = try #require(CGImageSourceCreateWithData(hint.imageData as CFData, nil))
+    let image = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
+    #expect(max(image.width, image.height) == 1024)
+    #expect(image.width > image.height)
+  }
+
+  @Test func aMoodboardCopyThatVanishedBeforeTheRunIsReported() throws {
+    let root = folder()
+    let store = store(in: root)
+    try addPictures(store, 1)
+    try FileManager.default.removeItem(
+      at: root.appendingPathComponent("Control/\(store.inputs.moodboard[0].image.fileName)"))
+    #expect(throws: ControlError.unreadable("m1.png")) {
+      try store.pendingInputs(canvasWidth: 64, canvasHeight: 64).render()
+    }
+  }
+
+  @Test func manyReferencesAndAFamilyThatIgnoresThemAreReported() throws {
+    let store = store(in: folder())
+    try addPictures(store, 3)
+    #expect(store.warnings(canvasWidth: 512, canvasHeight: 512).isEmpty)
+    try addPictures(store, 1)
+    #expect(store.warnings(canvasWidth: 512, canvasHeight: 512) == [.manyReferences(count: 4)])
+    store.setMoodboardOn(id: store.inputs.moodboard[0].id, isOn: false)
+    #expect(store.warnings(canvasWidth: 512, canvasHeight: 512).isEmpty)
+    #expect(
+      store.warnings(canvasWidth: 512, canvasHeight: 512, usesMoodboard: false) == [.moodboardIgnored])
+    let empty = ControlStore(storage: FileReferenceStorage(folder: folder()), fileURL: folder().appendingPathComponent("c.json"))
+    #expect(empty.warnings(canvasWidth: 512, canvasHeight: 512, usesMoodboard: false).isEmpty)
+  }
 }

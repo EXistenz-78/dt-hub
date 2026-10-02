@@ -1,6 +1,8 @@
 import DrawThingsClient
 import HubKit
+import ImageIO
 import Testing
+import UniformTypeIdentifiers
 
 @testable import DTBridge
 
@@ -33,7 +35,7 @@ struct JobMapperTests {
     let image = try #require(TestImages.make(width: 64, height: 48))
     var job = GenerationJob(prompt: "a fox", model: "m.ckpt", parameters: GenerationParameters(width: 64, height: 64))
     job.imageStrength = 0.6
-    let request = JobMapper.request(for: job, inputs: GenerationInputs(image: image))
+    let request = try JobMapper.request(for: job, inputs: GenerationInputs(image: image))
     #expect(request.image === image)
     #expect(abs(request.configuration.strength - 0.6) < 0.0001)
     // The Control tab's strength wins over a "strength" key of the JSON editor.
@@ -41,17 +43,57 @@ struct JobMapperTests {
     withExtra = GenerationJob(
       prompt: "a fox", model: "m.ckpt",
       parameters: GenerationParameters(extra: ["strength": .double(0.2)]), imageStrength: 0.6)
-    let wins = JobMapper.request(for: withExtra, inputs: GenerationInputs(image: image))
+    let wins = try JobMapper.request(for: withExtra, inputs: GenerationInputs(image: image))
     #expect(abs(wins.configuration.strength - 0.6) < 0.0001)
   }
 
-  @Test func withoutAnImageTheRequestIsTextToImage() {
+  @Test func withoutAnImageTheRequestIsTextToImage() throws {
     var job = GenerationJob(prompt: "a fox", model: "m.ckpt", parameters: .default)
     job.imageStrength = 0.6
-    let request = JobMapper.request(for: job, inputs: .none)
+    let request = try JobMapper.request(for: job, inputs: .none)
     #expect(request.image == nil)
     #expect(request.configuration.strength == 1.0)
     #expect(JobMapper.request(for: job).image == nil)
+  }
+
+  func pngBytes(width: Int = 32, height: Int = 24) throws -> Data {
+    let image = try #require(TestImages.make(width: width, height: height))
+    let data = NSMutableData()
+    let destination = try #require(CGImageDestinationCreateWithData(data, UTType.png.identifier as CFString, 1, nil))
+    CGImageDestinationAddImage(destination, image, nil)
+    CGImageDestinationFinalize(destination)
+    return data as Data
+  }
+
+  @Test func sendsTheMoodboardAsOneShuffleHintWithTheSharesAsWeights() throws {
+    let bytes = try pngBytes()
+    let inputs = GenerationInputs(hints: [
+      GenerationHint(imageData: bytes, weight: 0.7), GenerationHint(imageData: bytes, weight: 0.3),
+    ])
+    let request = try JobMapper.request(
+      for: GenerationJob(prompt: "a fox", model: "m.ckpt", parameters: .default), inputs: inputs)
+    #expect(request.image == nil)
+    #expect(request.hints.count == 1)
+    #expect(request.hints[0].hintType == "shuffle")
+    #expect(request.hints[0].tensors.count == 2)
+    #expect(abs(request.hints[0].tensors[0].weight - 0.7) < 0.0001)
+    #expect(abs(request.hints[0].tensors[1].weight - 0.3) < 0.0001)
+  }
+
+  @Test func aStartImageAndAMoodboardGoTogetherAndNoHintsMeansNone() throws {
+    let image = try #require(TestImages.make(width: 64, height: 64))
+    let job = GenerationJob(prompt: "a fox", model: "m.ckpt", parameters: GenerationParameters(width: 64, height: 64))
+    let both = try JobMapper.request(
+      for: job, inputs: GenerationInputs(image: image, hints: [GenerationHint(imageData: try pngBytes(), weight: 1)]))
+    #expect(both.image === image && both.hints.count == 1)
+    #expect(try JobMapper.request(for: job, inputs: GenerationInputs(image: image)).hints.isEmpty)
+  }
+
+  @Test func aHintThatCannotBeReadStopsTheRunWithAMessage() {
+    let inputs = GenerationInputs(hints: [GenerationHint(imageData: Data([1, 2, 3]), weight: 1)])
+    #expect(throws: BackendError.self) {
+      try JobMapper.request(for: GenerationJob(prompt: "p", model: "m.ckpt", parameters: .default), inputs: inputs)
+    }
   }
 
   @Test func sendsTheNegativePromptAndTheLoRAs() {

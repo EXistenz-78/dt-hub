@@ -26,6 +26,8 @@ public protocol ReferenceStorage: Sendable {
   /// The picture decoded with its longest side at most `maxPixel`, orientation applied.
   func image(named fileName: String, maxPixel: Int) -> CGImage?
   func exists(_ fileName: String) -> Bool
+  /// Where a copy lives, to drag it out of the app.
+  func url(for fileName: String) -> URL
   func remove(_ fileName: String)
   func allFileNames() -> [String]
 }
@@ -83,6 +85,10 @@ public struct FileReferenceStorage: ReferenceStorage {
       kCGImageSourceThumbnailMaxPixelSize: max(maxPixel, 1),
     ]
     return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
+  }
+
+  public func url(for fileName: String) -> URL {
+    folder.appendingPathComponent(fileName)
   }
 
   public func exists(_ fileName: String) -> Bool {
