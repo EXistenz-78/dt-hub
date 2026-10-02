@@ -12,9 +12,11 @@ struct MainWindowView: View {
     VStack(spacing: DS.panelPadding) {
       HeaderBar(connection: connection, generation: generation)
       ManagedServerBanner(connection: connection)
-      WorkspaceTabBar(workspace: workspace)
-      tabContent
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+      DSTabFrame {
+        WorkspaceTabBar(workspace: workspace)
+      } content: {
+        tabContent
+      }
     }
     .padding(20)
     .frame(minWidth: 900, idealWidth: 1100, minHeight: 640, idealHeight: 820)
