@@ -48,7 +48,7 @@ let package = Package(
     .testTarget(name: "LLMBridgeTests", dependencies: ["LLMBridge", "HubKit"]),
     .testTarget(name: "HubKitTests", dependencies: ["HubKit"]),
     .testTarget(name: "HubCoreTests", dependencies: ["HubCore", "HubKit"]),
-    .testTarget(name: "DTBridgeTests", dependencies: ["DTBridge", "HubKit"]),
+    .testTarget(name: "DTBridgeTests", dependencies: ["DTBridge", "HubKit", "HubCore"]),
     // Checks App/Localizable.xcstrings: every string translated in en and it (spec §12).
     .testTarget(name: "CatalogTests"),
   ]

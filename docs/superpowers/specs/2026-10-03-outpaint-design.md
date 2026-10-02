@@ -1,6 +1,6 @@
 # DT Hub — Design dell'outpaint (zoom dell'immagine nel canvas)
 
-Data: 3 ottobre 2026 · Stato: bozza da approvare · Estende `2026-10-01-tab-control-design.md` (§5 Inquadratura, §6 Dal tab al RUN)
+Data: 3 ottobre 2026 · Stato: realizzata (M7d) · Estende `2026-10-01-tab-control-design.md` (§5 Inquadratura, §6 Dal tab al RUN)
 
 ## 1. Scopo
 
@@ -35,7 +35,7 @@ Lo zoom e lo spostamento **non fanno parte della storia** (come oggi lo spostame
 
 ## 4. Dal tab al RUN
 
-- **Immagine.** Il canvas riceve l'immagine nella sua posizione, scalata; il Pennello va sopra nello stesso taglio. I margini si riempiono di **grigio neutro** (50%). Il prototipo prova anche l'estensione dei bordi e, se la giunzione è migliore, la sostituisce (ruling).
+- **Immagine.** Il canvas riceve l'immagine nella sua posizione, scalata; il Pennello va sopra nello stesso taglio. I margini si riempiono con i **pixel del bordo dell'immagine stesi in fuori** (gli angoli con il pixel d'angolo). Provato dal vivo il 3 ottobre 2026 (SD 1.5, 512×512 in un canvas 768×512): con un grigio neutro "Conserva l'originale" lasciava una riga chiara sulla giunzione, con i bordi estesi no.
 - **Maschera.** `InputComposer.mask` accetta la maschera dipinta **opzionale**: la maschera inviata è l'unione di margini (rigenerare) e maschera dipinta scalata. Il bordo dei margini passa dalle stesse impostazioni (Sfumatura, Margine, "Conserva l'originale"). Con margini ma senza maschera dipinta il Run manda comunque la maschera e `strength` al 100% (con forza scelta a mano vale la forza scelta).
 - **Forza automatica.** 100% se c'è una maschera dipinta **o** un margine, 70% negli altri casi (anche con zoom positivo); modelli Edit 100%. `effectiveStrength` riceve `hasMargins`.
 - **`enableInpainting`** e l'invio della maschera si decidono come in M7c (solo con l'immagine, solo per i modelli con `modifier == "inpainting"`).
@@ -67,12 +67,12 @@ Lo zoom e lo spostamento **non fanno parte della storia** (come oggi lo spostame
 **Unitari (HubCore, HubKit):**
 - finestra: zoom 0 uguale a oggi, zoom positivo (rettangolo più piccolo, spostamento), zoom negativo (rettangolo che esce, `offset` −1/0/+1 attacca ai bordi), 1:1 in 4:3 e 3:4 in 4:3, `zoomContain` (rapporto uguale → 0);
 - margini: lati, percentuali, `hasMargins` (zoom 0 con rapporto uguale: nessuno);
-- compositore: pixel reali (immagine nella posizione, margini grigi, il Pennello nello stesso taglio); maschera: trasparente nei margini, la dipinta al suo posto, senza maschera dipinta; bordo con Margine/Sfumatura;
+- compositore: pixel reali (immagine nella posizione, margini con il colore del bordo, il Pennello nello stesso taglio); maschera: trasparente nei margini, la dipinta al suo posto, senza maschera dipinta; bordo con Margine/Sfumatura;
 - forza automatica con margini, con maschera, senza;
 - store: `setZoom` limita, si salva e si ripristina, non entra in Annulla, cambiando immagine torna a 0; avvisi (ritaglio forte solo con zoom ≤ 0);
 - lettura tollerante di `control.json` vecchi (con `mode`, senza `zoom`).
 
-**Dal vivo con un server vero:** un'immagine rimpicciolita in un canvas più largo; i margini si rigenerano, l'immagine resta (Conserva l'originale), giunzione senza cucitura visibile; confronto grigio e bordi estesi; forza al 100%.
+**Dal vivo con un server vero** (fatto il 3 ottobre 2026): un'immagine rimpicciolita in un canvas più largo; i margini si rigenerano, l'immagine resta (Conserva l'originale), giunzione senza cucitura visibile con i bordi estesi (con il grigio c'era una riga chiara); forza al 100%.
 
 **Prestazioni:** il trascinamento e lo slider devono restare fluidi: l'immagine si ricompone sullo schermo a ogni evento (da misurare nel prototipo, sullo stage già a strati).
 
