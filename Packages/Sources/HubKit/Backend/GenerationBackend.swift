@@ -15,9 +15,16 @@ public enum BackendError: Error, Equatable, Sendable {
 public protocol GenerationBackend: Sendable {
   /// Asks the server what it has installed. Doubles as the connection check.
   func fetchCatalog() async throws -> ModelCatalog
-  /// Runs one generation. Cancelling the consuming task cancels it on the server.
-  /// The stream ends with `.finished` or throws a `BackendError`.
-  func generate(_ job: GenerationJob) -> AsyncThrowingStream<GenerationUpdate, any Error>
+  /// Runs one generation, with the images of the Control tab. Cancelling the consuming task
+  /// cancels it on the server. The stream ends with `.finished` or throws a `BackendError`.
+  func generate(_ job: GenerationJob, inputs: GenerationInputs) -> AsyncThrowingStream<GenerationUpdate, any Error>
   /// Closes the connection. The backend is not used afterwards.
   func shutdown() async
+}
+
+extension GenerationBackend {
+  /// A text-to-image RUN, without the Control tab's images.
+  public func generate(_ job: GenerationJob) -> AsyncThrowingStream<GenerationUpdate, any Error> {
+    generate(job, inputs: .none)
+  }
 }

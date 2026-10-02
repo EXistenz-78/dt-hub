@@ -3,10 +3,14 @@ import HubKit
 
 /// Translates DT Hub's `GenerationJob` and the library's events (spec §5).
 enum JobMapper {
-  static func request(for job: GenerationJob) -> GenerationRequest {
-    GenerationRequest(
+  static func request(for job: GenerationJob, inputs: GenerationInputs = .none) -> GenerationRequest {
+    var configuration = configuration(model: job.model, parameters: job.parameters)
+    // The start image and its strength come from the Control tab, after the JSON editor's
+    // extra settings: they win. Without an image the RUN stays text-to-image.
+    if inputs.image != nil, let strength = job.imageStrength { configuration.strength = Float(strength) }
+    return GenerationRequest(
       prompt: job.promptWithTriggers, negativePrompt: job.negativePrompt,
-      configuration: configuration(model: job.model, parameters: job.parameters))
+      configuration: configuration, image: inputs.image)
   }
 
   /// The Draw Things configuration for a model and parameters: clamped, the Advanced cards

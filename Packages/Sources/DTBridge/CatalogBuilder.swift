@@ -93,6 +93,7 @@ enum CatalogBuilder {
       t5: has("t5_xxl"),
       optionalT5: spec["t5_encoder"] != nil,
       clipSkip: textEncoder.contains("clip_vit") || textEncoder.contains("open_clip"),
-      nativeSize: (spec["default_scale"] as? Int).map { $0 * 64 })
+      nativeSize: (spec["default_scale"] as? Int).map { $0 * 64 },
+      modifier: spec["modifier"] as? String)
   }
 }
