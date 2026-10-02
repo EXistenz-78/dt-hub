@@ -59,7 +59,7 @@ public actor DrawThingsBackend: GenerationBackend {
       let task = Task {
         do {
           let service = await self.currentService()
-          for try await event in service.stream(JobMapper.request(for: job, inputs: inputs)) {
+          for try await event in service.stream(try JobMapper.request(for: job, inputs: inputs)) {
             if let update = try JobMapper.update(for: event) { continuation.yield(update) }
           }
           continuation.finish()

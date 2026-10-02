@@ -51,6 +51,45 @@ enum ControlImport {
     return nil
   }
 
+  /// Every file of a drop is added to the Moodboard; the first problem is the message.
+  static func takeMoodboard(urls: [URL], into control: ControlStore) async -> String? {
+    var message: String?
+    for url in urls {
+      guard url.isFileURL else {
+        message = message ?? ControlText.error(.unreadable(url.lastPathComponent.isEmpty ? (url.host ?? url.absoluteString) : url.lastPathComponent))
+        continue
+      }
+      do throws(ControlError) {
+        try await control.addMoodboardImage(fileURL: url)
+      } catch {
+        message = message ?? ControlText.error(error)
+      }
+    }
+    return message
+  }
+
+  /// A file dropped on a Moodboard picture takes its place.
+  static func replaceMoodboard(id: UUID, urls: [URL], into control: ControlStore) async -> String? {
+    guard let url = urls.first(where: { $0.isFileURL }) else {
+      return await takeMoodboard(urls: urls, into: control)
+    }
+    do throws(ControlError) {
+      try await control.replaceMoodboardImage(id: id, fileURL: url)
+      return nil
+    } catch {
+      return ControlText.error(error)
+    }
+  }
+
+  /// The file panel of "Add…" in the Moodboard: several files at once.
+  static func chooseMoodboard(into control: ControlStore) async -> String? {
+    let panel = NSOpenPanel()
+    panel.allowedContentTypes = [.image]
+    panel.allowsMultipleSelection = true
+    guard panel.runModal() == .OK else { return nil }
+    return await takeMoodboard(urls: panel.urls, into: control)
+  }
+
   /// The file panel of "Choose…" and "Replace…".
   static func choose(into control: ControlStore) async -> String? {
     let panel = NSOpenPanel()

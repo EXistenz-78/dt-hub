@@ -4,6 +4,21 @@ import Testing
 @testable import HubCore
 
 struct FamilyTraitsTests {
+  @Test(arguments: ["v1", "v2", "sdxl_base_v0.9", "sdxl_refiner_v0.9", "ssd_1b", "z_image"])
+  func theFamiliesThatIgnoreTheMoodboardAreGreyed(family: String) {
+    #expect(!FamilyTraits.of(family).usesMoodboard)
+  }
+
+  @Test(arguments: ["flux2_9b", "flux2_4b", "flux1", "qwen_image", "qwen_image_2.1", "krea_2", "ideogram_4", "sd3", "a_future_family"])
+  func modernAndUnknownFamiliesUseTheMoodboard(family: String) {
+    #expect(FamilyTraits.of(family).usesMoodboard)
+  }
+
+  @Test func anUnknownModelUsesTheMoodboard() {
+    #expect(FamilyTraits.of(nil).usesMoodboard)
+    #expect(FamilyTraits.all.usesMoodboard)
+  }
+
   @Test(arguments: ["flux2_9b", "flux1", "qwen_image", "qwen_image_2.1", "z_image", "krea_2", "ideogram_4", "ernie_image", "sd3"])
   func flowMatchingFamiliesUseShift(family: String) {
     #expect(FamilyTraits.of(family).usesShift)
@@ -66,6 +81,14 @@ struct JobComposerTests {
     JobComposer.batches(
       prompt: "fox", negativePrompt: "blurry", model: "m.ckpt", family: family,
       parameters: parameters, catalog: catalog) { 7 }
+  }
+
+  @Test func everyBatchRecordsHowManyMoodboardPicturesWent() {
+    let jobs = JobComposer.batches(
+      prompt: "fox", negativePrompt: "", model: "m.ckpt", family: nil, parameters: GenerationParameters(batchCount: 2),
+      catalog: catalog, moodboardCount: 3) { 7 }
+    #expect(jobs.count == 2 && jobs.allSatisfy { $0.moodboardCount == 3 })
+    #expect(compose(family: nil, .default).allSatisfy { $0.moodboardCount == 0 })
   }
 
   @Test func everyBatchRecordsTheStrengthOfTheStartImage() {
