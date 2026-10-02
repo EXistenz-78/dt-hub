@@ -8,7 +8,7 @@ import HubKit
 public enum JobComposer {
   public static func batches(
     prompt: String, negativePrompt: String, model: String, family: String?,
-    parameters: GenerationParameters, catalog: ModelCatalog,
+    parameters: GenerationParameters, catalog: ModelCatalog, imageStrength: Double? = nil,
     randomSeed draw: () -> UInt32 = { UInt32.random(in: .min ... .max) }
   ) -> [GenerationJob] {
     let traits = FamilyTraits.of(family)
@@ -18,7 +18,8 @@ public enum JobComposer {
     sent.advanced = advanced(parameters, model: catalog.model(forFile: model), catalog: catalog)
     let negative = traits.usesNegativePrompt ? negativePrompt : ""
     return sent.batchesForRun(randomSeed: draw).map {
-      GenerationJob(prompt: prompt, negativePrompt: negative, model: model, parameters: $0)
+      GenerationJob(
+        prompt: prompt, negativePrompt: negative, model: model, parameters: $0, imageStrength: imageStrength)
     }
   }
 

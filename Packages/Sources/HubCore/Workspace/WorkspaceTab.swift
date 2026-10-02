@@ -1,6 +1,7 @@
 /// One entry of the tab bar under the header.
 public struct WorkspaceTab: Identifiable, Equatable, Sendable {
-  /// Identifier of the built-in Generation tab, the only tab the app ships with.
+  /// Identifiers of the two built-in tabs, Control and Generation.
+  public static let controlID = "control"
   public static let generationID = "generation"
 
   public let id: String

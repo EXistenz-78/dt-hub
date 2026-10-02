@@ -12,9 +12,11 @@ struct MainWindowView: View {
     VStack(spacing: DS.panelPadding) {
       HeaderBar(connection: connection, generation: generation)
       ManagedServerBanner(connection: connection)
-      WorkspaceTabBar(workspace: workspace)
-      tabContent
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+      DSTabFrame {
+        WorkspaceTabBar(workspace: workspace)
+      } content: {
+        tabContent
+      }
     }
     .padding(20)
     .frame(minWidth: 900, idealWidth: 1100, minHeight: 640, idealHeight: 820)
@@ -24,7 +26,9 @@ struct MainWindowView: View {
   }
 
   @ViewBuilder private var tabContent: some View {
-    if workspace.selectedTabID == WorkspaceTab.generationID {
+    if workspace.selectedTabID == WorkspaceTab.controlID {
+      ControlTabView(generation: generation, connection: connection)
+    } else if workspace.selectedTabID == WorkspaceTab.generationID {
       GenerationTabView(controller: generation, connection: connection)
     } else {
       // Plug-in tabs arrive with the plug-in contract (M7).

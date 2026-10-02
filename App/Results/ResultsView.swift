@@ -9,6 +9,10 @@ struct ResultsView: View {
   let controller: GenerationController
   let connection: DrawThingsConnection
   @State private var selectedID: GeneratedImage.ID?
+  /// Why "Use as image" did not work.
+  @State private var useError: String?
+  /// The chosen picture of a previous launch, read from its file at a larger size than the strip's.
+  @State private var restoredFull: (id: GeneratedImage.ID, image: CGImage)?
 
   private var session: GenerationSession { controller.session }
   private var selected: GeneratedImage? {
@@ -30,10 +34,17 @@ struct ResultsView: View {
     .background(DSWindowConfigurator())
     .tint(DS.accent)
     .onChange(of: session.results.first?.id) { selectedID = session.results.first?.id }
+    .task(id: selected?.id) {
+      // A picture read back at launch is a small one: the chosen one is loaded from its file.
+      guard let chosen = selected, chosen.isRestored, let url = chosen.fileURL else { return restoredFull = nil }
+      let image = await Task.detached { PNGImageStore.image(at: url, maxPixel: 2048) }.value
+      restoredFull = image.map { (chosen.id, $0) }
+    }
   }
 
   private var shownImage: CGImage? {
     if session.isRunning, let preview = session.preview { return preview }
+    if let restoredFull, restoredFull.id == selected?.id { return restoredFull.image }
     return selected?.image
   }
 
@@ -115,25 +126,54 @@ struct ResultsView: View {
     ScrollView(.horizontal) {
       HStack(spacing: DS.controlGap) {
         ForEach(session.results) { result in
-          Button {
-            selectedID = result.id
-          } label: {
-            Image(decorative: result.image, scale: 1)
-              .resizable()
-              .scaledToFill()
-              .frame(width: 72, height: 72)
-              .clipShape(RoundedRectangle(cornerRadius: DS.boxRadius, style: .continuous))
-              .overlay(
-                RoundedRectangle(cornerRadius: DS.boxRadius, style: .continuous)
-                  .strokeBorder(result.id == selected?.id ? DS.accent : Color.clear, lineWidth: 2))
-          }
-          .buttonStyle(.plain)
-          .accessibilityLabel(result.job.prompt)
+          thumbnail(of: result)
         }
       }
       .padding(2)
     }
     .frame(height: 80)
+  }
+
+  /// One picture of the strip: it can be dragged into the Control tab (or any app) as its file,
+  /// and the menu uses it as the start image.
+  @ViewBuilder private func thumbnail(of result: GeneratedImage) -> some View {
+    let button = Button {
+      selectedID = result.id
+    } label: {
+      Image(decorative: result.image, scale: 1)
+        .resizable()
+        .scaledToFill()
+        .frame(width: 72, height: 72)
+        .clipShape(RoundedRectangle(cornerRadius: DS.boxRadius, style: .continuous))
+        .overlay(
+          RoundedRectangle(cornerRadius: DS.boxRadius, style: .continuous)
+            .strokeBorder(result.id == selected?.id ? DS.accent : Color.clear, lineWidth: 2))
+    }
+    .buttonStyle(.plain)
+    .accessibilityLabel(result.job.prompt)
+    .contextMenu {
+      Button("results.useAsImage") { useAsImage(result) }
+    }
+    if let url = result.fileURL {
+      button.draggable(url)
+    } else {
+      button
+    }
+  }
+
+  private func useAsImage(_ result: GeneratedImage) {
+    useError = nil
+    Task {
+      do throws(ControlError) {
+        if let url = result.fileURL {
+          try await controller.control.setImage(fileURL: url, source: .result)
+        } else {
+          try controller.control.setImage(result.image, name: String(localized: "results.unsaved.name"), source: .result)
+        }
+      } catch {
+        useError = ControlText.error(error)
+      }
+    }
   }
 
   private func actions(for result: GeneratedImage) -> some View {
@@ -145,7 +185,12 @@ struct ResultsView: View {
       if let error = result.saveError {
         Text("results.notSaved").font(.caption).foregroundStyle(DS.remove).help(error)
       }
+      if let useError {
+        Text(verbatim: useError).font(.caption).foregroundStyle(DS.remove).lineLimit(2)
+      }
       Spacer(minLength: 0)
+      Button("results.useAsImage") { useAsImage(result) }
+        .buttonStyle(DSPillButtonStyle())
       if let url = result.fileURL {
         Button("results.showInFinder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
           .buttonStyle(DSPillButtonStyle())

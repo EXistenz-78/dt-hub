@@ -12,6 +12,8 @@ public struct GeneratedImage: Identifiable, Sendable {
   /// nil when saving failed; `saveError` says why.
   public let fileURL: URL?
   public let saveError: String?
+  /// True for a picture read back from its file at launch: `image` is a small version of it.
+  public var isRestored = false
 }
 
 /// Runs generations, one at a time: progress, live preview, results, Stop (spec §7, §10).
@@ -43,10 +45,17 @@ public final class GenerationSession {
   public private(set) var results: [GeneratedImage] = []
 
   @ObservationIgnored private let store: any ImageStore
+  @ObservationIgnored private let history: ResultsHistoryStore?
   @ObservationIgnored private var task: Task<Void, Never>?
 
-  public init(store: any ImageStore) {
+  /// Longest side of the pictures read back at launch.
+  public nonisolated static let restoredThumbnailSize = 512
+
+  /// With a `history`, the strip survives the app: it is saved after every RUN and read back by
+  /// `restoreHistory`.
+  public init(store: any ImageStore, history: ResultsHistoryStore? = nil) {
     self.store = store
+    self.history = history
   }
 
   public var isRunning: Bool {
@@ -60,8 +69,12 @@ public final class GenerationSession {
   }
 
   /// Starts a RUN made of batches, run one after the other (see `batchesForRun`); ignored
-  /// while one is running. The monitor's checks pause meanwhile.
-  public func start(_ batches: [GenerationJob], backend: any GenerationBackend, monitor: ConnectionMonitor) {
+  /// while one is running. The monitor's checks pause meanwhile. Every batch gets the same
+  /// `inputs` (the Control tab's images).
+  public func start(
+    _ batches: [GenerationJob], inputs: GenerationInputs = .none, backend: any GenerationBackend,
+    monitor: ConnectionMonitor
+  ) {
     guard !isRunning, let first = batches.first else { return }
     phase = .running(step: nil, totalSteps: first.parameters.steps)
     batch = Batch(index: 1, count: batches.count)
@@ -75,7 +88,7 @@ public final class GenerationSession {
           try Task.checkCancellation()
           batch = Batch(index: number + 1, count: batches.count)
           phase = .running(step: nil, totalSteps: job.parameters.steps)
-          for try await update in backend.generate(job) {
+          for try await update in backend.generate(job, inputs: inputs) {
             switch update {
             case .progress(let step, let total):
               phase = .running(step: step, totalSteps: total)
@@ -84,6 +97,7 @@ public final class GenerationSession {
             case .finished(let images):
               let saved = await Self.save(images, of: job, in: store)
               results.insert(contentsOf: saved, at: 0)
+              persistHistory()
             }
           }
         }
@@ -106,6 +120,44 @@ public final class GenerationSession {
   /// Waits for the current RUN to end (tests).
   public func waitUntilFinished() async {
     await task?.value
+  }
+
+  /// Shows a failure for a RUN that could not start (its inputs could not be prepared).
+  public func fail(with error: BackendError) {
+    guard !isRunning else { return }
+    phase = .failed(error)
+  }
+
+  /// Brings back the strip of the last launches: the saved results that are still on disk and
+  /// still carry their job, small and away from the main actor. What is already in the strip
+  /// (a RUN that finished meanwhile) stays ahead and is not listed twice.
+  public func restoreHistory() async {
+    guard let history else { return }
+    let entries = history.load()
+    let restored = await Task.detached(priority: .utility) {
+      entries.compactMap { Self.restoredImage($0) }
+    }.value
+    let present = Set(results.compactMap(\.fileURL))
+    results.append(contentsOf: restored.filter { $0.fileURL.map { !present.contains($0) } ?? false })
+  }
+
+  private nonisolated static func restoredImage(_ entry: ResultsHistoryEntry) -> GeneratedImage? {
+    let url = URL(fileURLWithPath: entry.path)
+    guard let job = PNGImageStore.job(in: url),
+      let image = PNGImageStore.image(at: url, maxPixel: restoredThumbnailSize)
+    else { return nil }
+    return GeneratedImage(
+      image: image, job: job, date: entry.date, fileURL: url, saveError: nil, isRestored: true)
+  }
+
+  /// Writes the strip's files, newest first, keeping the older entries not read back yet.
+  private func persistHistory() {
+    guard let history else { return }
+    let current = results.compactMap { result in
+      result.fileURL.map { ResultsHistoryEntry(path: $0.path, date: result.date) }
+    }
+    let listed = Set(current.map(\.path))
+    history.save(current + history.load().filter { !listed.contains($0.path) })
   }
 
   /// Hides a failure message.

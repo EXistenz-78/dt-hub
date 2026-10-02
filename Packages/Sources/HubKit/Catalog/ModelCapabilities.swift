@@ -15,10 +15,20 @@ public struct ModelCapabilities: Equatable, Sendable {
   public var clipSkip: Bool
   /// Native size in pixels (`default_scale` × 64); the Hires fix starts here. nil when unknown.
   public var nativeSize: Int?
+  /// The spec's `modifier`: `kontext`, `kontext_kv`, `qwenimage_edit_plus`, `editing` (Edit models),
+  /// `inpainting`, `depth`… nil when the spec has none.
+  public var modifier: String?
+
+  /// Edit and in-context models: the canvas image is the one to modify, and the Moodboard
+  /// brings extra references (tab Control spec §2).
+  public var isEditModel: Bool {
+    guard let modifier else { return false }
+    return ["kontext", "kontext_kv", "qwenimage_edit_plus", "editing"].contains(modifier)
+  }
 
   public init(
     guidanceEmbed: Bool, teaCache: Bool, clipL: Bool, openClipG: Bool, t5: Bool,
-    optionalT5: Bool, clipSkip: Bool, nativeSize: Int?
+    optionalT5: Bool, clipSkip: Bool, nativeSize: Int?, modifier: String? = nil
   ) {
     self.guidanceEmbed = guidanceEmbed
     self.teaCache = teaCache
@@ -28,6 +38,7 @@ public struct ModelCapabilities: Equatable, Sendable {
     self.optionalT5 = optionalT5
     self.clipSkip = clipSkip
     self.nativeSize = nativeSize
+    self.modifier = modifier
   }
 
   /// A model without a specification: everything may apply.

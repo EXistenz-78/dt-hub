@@ -29,6 +29,31 @@ struct JobMapperTests {
     #expect(!configuration.resolutionDependentShift)
   }
 
+  @Test func sendsTheStartImageAndItsStrength() throws {
+    let image = try #require(TestImages.make(width: 64, height: 48))
+    var job = GenerationJob(prompt: "a fox", model: "m.ckpt", parameters: GenerationParameters(width: 64, height: 64))
+    job.imageStrength = 0.6
+    let request = JobMapper.request(for: job, inputs: GenerationInputs(image: image))
+    #expect(request.image === image)
+    #expect(abs(request.configuration.strength - 0.6) < 0.0001)
+    // The Control tab's strength wins over a "strength" key of the JSON editor.
+    var withExtra = job
+    withExtra = GenerationJob(
+      prompt: "a fox", model: "m.ckpt",
+      parameters: GenerationParameters(extra: ["strength": .double(0.2)]), imageStrength: 0.6)
+    let wins = JobMapper.request(for: withExtra, inputs: GenerationInputs(image: image))
+    #expect(abs(wins.configuration.strength - 0.6) < 0.0001)
+  }
+
+  @Test func withoutAnImageTheRequestIsTextToImage() {
+    var job = GenerationJob(prompt: "a fox", model: "m.ckpt", parameters: .default)
+    job.imageStrength = 0.6
+    let request = JobMapper.request(for: job, inputs: .none)
+    #expect(request.image == nil)
+    #expect(request.configuration.strength == 1.0)
+    #expect(JobMapper.request(for: job).image == nil)
+  }
+
   @Test func sendsTheNegativePromptAndTheLoRAs() {
     let parameters = GenerationParameters(loras: [
       LoRASelection(file: "style.safetensors", weight: 0.75, mode: .base), LoRASelection(file: "detail.safetensors"),
@@ -163,5 +188,18 @@ struct JobMapperTests {
     #expect(JobMapper.backendError(for: DrawThingsError.connectionFailed("down")) as? BackendError == .unreachable("down"))
     #expect(JobMapper.backendError(for: DrawThingsError.unauthenticated) as? BackendError == .unauthorized)
     #expect(JobMapper.backendError(for: CancellationError()) is CancellationError)
+  }
+}
+
+import CoreGraphics
+
+enum TestImages {
+  static func make(width: Int, height: Int) -> CGImage? {
+    let context = CGContext(
+      data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+      space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+    context?.setFillColor(CGColor(red: 1, green: 0, blue: 0, alpha: 1))
+    context?.fill(CGRect(x: 0, y: 0, width: width, height: height))
+    return context?.makeImage()
   }
 }
