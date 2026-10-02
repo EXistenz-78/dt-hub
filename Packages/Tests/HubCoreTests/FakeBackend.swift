@@ -13,6 +13,7 @@ actor FakeBackend: GenerationBackend {
   private var scriptError: BackendError?
   private var stepDelay: Duration = .zero
   private(set) var jobs: [GenerationJob] = []
+  private(set) var inputs: [GenerationInputs] = []
   /// From this job on (1-based), `generate` fails at once with `failure`.
   private var failFrom: (job: Int, error: BackendError)?
 
@@ -45,10 +46,10 @@ actor FakeBackend: GenerationBackend {
     return try result.get()
   }
 
-  nonisolated func generate(_ job: GenerationJob) -> AsyncThrowingStream<GenerationUpdate, any Error> {
+  nonisolated func generate(_ job: GenerationJob, inputs: GenerationInputs) -> AsyncThrowingStream<GenerationUpdate, any Error> {
     AsyncThrowingStream { continuation in
       let task = Task {
-        let (updates, error, pause) = await self.start(job)
+        let (updates, error, pause) = await self.start(job, inputs: inputs)
         do {
           for update in updates {
             try await Task.sleep(for: pause)
@@ -64,8 +65,9 @@ actor FakeBackend: GenerationBackend {
     }
   }
 
-  private func start(_ job: GenerationJob) -> ([GenerationUpdate], BackendError?, Duration) {
+  private func start(_ job: GenerationJob, inputs: GenerationInputs) -> ([GenerationUpdate], BackendError?, Duration) {
     jobs.append(job)
+    self.inputs.append(inputs)
     if let failFrom, jobs.count >= failFrom.job { return ([], failFrom.error, .zero) }
     return (script, scriptError, stepDelay)
   }

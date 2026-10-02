@@ -18,6 +18,13 @@ struct CatalogBuilderTests {
      {"name": "No file"}]
     """.utf8)
 
+  @Test func readsTheModifierOfAModel() {
+    #expect(CatalogBuilder.capabilities(["modifier": "kontext"]).modifier == "kontext")
+    #expect(CatalogBuilder.capabilities(["modifier": "kontext"]).isEditModel)
+    #expect(CatalogBuilder.capabilities([:]).modifier == nil)
+    #expect(!CatalogBuilder.capabilities(["modifier": "inpainting"]).isEditModel)
+  }
+
   @Test func modelsAreTheFilesWithASpec() {
     let catalog = CatalogBuilder.build(
       files: [klein, vae, describedLoRA, bareLoRA], modelSpecs: specs, loraMetadata: loraJSON)

@@ -7,6 +7,10 @@ import SwiftUI
 @main
 struct DTHubApp: App {
   @State private var workspace = WorkspaceState(
+    controlTab: WorkspaceTab(
+      id: WorkspaceTab.controlID,
+      title: String(localized: "tab.control"),
+      systemImage: "photo.on.rectangle"),
     generationTab: WorkspaceTab(
       id: WorkspaceTab.generationID,
       title: String(localized: "tab.generation"),
@@ -22,7 +26,9 @@ struct DTHubApp: App {
     let languageModel = LanguageModelManager(
       service: MLXLanguageModelService(), releaseImageModel: { await connection.releaseImageModel() },
       isImageModelBusy: { connection.isImageWorkActive() })
-    let generation = GenerationController(languageModel: languageModel)
+    let control = ControlStore(
+      storage: FileReferenceStorage(folder: FileReferenceStorage.defaultFolder), fileURL: ControlStore.defaultFileURL)
+    let generation = GenerationController(languageModel: languageModel, control: control)
     // The language model never takes the image model's memory while an image is being made.
     connection.isImageWorkActive = { generation.session.isRunning || generation.isPreparing }
     _connection = State(initialValue: connection)

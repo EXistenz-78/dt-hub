@@ -34,6 +34,31 @@ struct GenerationSessionTests {
     return monitor
   }
 
+  @Test func theBackendReceivesTheControlInputsOfEveryBatch() async {
+    let backend = FakeBackend(.success(catalog))
+    await backend.setGeneration([.finished([testImage()])])
+    let monitor = await connected(backend)
+    let session = GenerationSession(store: MemoryImageStore())
+    let start = testImage(width: 16, height: 16)
+    session.start([job, job], inputs: GenerationInputs(image: start), backend: backend, monitor: monitor)
+    await session.waitUntilFinished()
+    let received = await backend.inputs
+    #expect(received.count == 2)
+    #expect(received.allSatisfy { $0.image === start })
+    session.start(job, backend: backend, monitor: monitor)
+    await session.waitUntilFinished()
+    #expect(await backend.inputs.last?.isEmpty == true)
+  }
+
+  @Test func aRunThatCannotStartCanBeReportedAsAFailure() {
+    let session = GenerationSession(store: MemoryImageStore())
+    session.fail(with: .generationFailed("The start image could not be read"))
+    #expect(session.phase == .failed(.generationFailed("The start image could not be read")))
+    #expect(!session.isRunning)
+    session.dismissFailure()
+    #expect(session.phase == .idle)
+  }
+
   @Test func runsAGenerationAndKeepsTheSavedImages() async {
     let backend = FakeBackend(.success(catalog))
     await backend.setGeneration([.progress(step: nil, totalSteps: 4), .progress(step: 2, totalSteps: 4), .finished([testImage(), testImage()])])
