@@ -38,7 +38,7 @@ Decisioni dell'utente (1 ottobre 2026):
 **Scheda Immagine** (sinistra):
 - miniatura con ✕ sempre visibile, nome, dimensioni, provenienza ("da Risultati", "dal Finder", "da <plug-in>");
 - pulsanti "Sostituisci" e "Usa le dimensioni" (vedi §5);
-- cursore **Forza** 0–100% con campo numerico; con i modelli Edit la scheda dice "Modello Edit: l'immagine viene modificata, forza al 100%";
+- cursore **Forza** 0–100% con campo numerico. **Automatica** finché l'utente non la sceglie: 100% per i modelli Edit (la scheda dice "Modello Edit: l'immagine viene modificata, forza al 100%"), 70% per gli altri, perché con un I2I normale a 100% l'immagine viene ignorata. Una scelta dell'utente vince; "Automatica" la riporta al valore del modello;
 - zona di rilascio: trascinare un'immagine la imposta; se ce n'era una, la sostituisce con annulla.
 
 **Scheda Moodboard** (sinistra, sotto):
@@ -69,7 +69,7 @@ Decisioni dell'utente (1 ottobre 2026):
 - `Framing`: modo (`fill`; `contain` in seguito) e spostamento normalizzato dentro il canvas.
 - `MaskSettings`: sfumatura, margine, conserva l'originale.
 - `MoodboardEntry`: `id`, `ReferenceImage`, **peso grezzo** (≥ 0, il rapporto relativo che l'utente ha dato) e acceso/spento. Le **quote** mostrate e inviate non si salvano: si calcolano dal peso grezzo delle sole voci accese (§4.1).
-- `ControlInputs`: immagine opzionale con `Framing` e forza, maschera opzionale (riferimento al file) con `MaskSettings`, lista di `MoodboardEntry`.
+- `ControlInputs`: immagine opzionale con `Framing` e forza (nil = automatica), maschera opzionale (riferimento al file) con `MaskSettings`, lista di `MoodboardEntry`.
 - `GenerationInputs` (non `Codable`, non finisce nei PNG): immagine già inquadrata alla dimensione esatta del canvas, maschera (pixel **trasparenti = da rigenerare**, come vuole il client), lista di hint con tipo e peso.
 - Il protocollo backend diventa `generate(_ job: GenerationJob, inputs: GenerationInputs)`; `GenerationJob` non cambia, e gli ingressi vuoti riproducono il T2I di oggi.
 
