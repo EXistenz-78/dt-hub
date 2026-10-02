@@ -6,11 +6,13 @@ import SwiftUI
 /// "Clear all" and the warnings worth a look before pressing RUN.
 struct ControlStrip: View {
   let generation: GenerationController
+  let connection: DrawThingsConnection
   private var control: ControlStore { generation.control }
 
   var body: some View {
     let warnings = control.warnings(
-      canvasWidth: generation.parameters.width, canvasHeight: generation.parameters.height)
+      canvasWidth: generation.parameters.width, canvasHeight: generation.parameters.height,
+      usesMoodboard: FamilyTraits.of(generation.family(in: connection)).usesMoodboard)
     VStack(alignment: .leading, spacing: DS.controlGap) {
       HStack(spacing: DS.controlGap) {
         DSGroupHeader(title: String(localized: "control.strip.title"))
@@ -19,7 +21,14 @@ struct ControlStrip: View {
             systemImage: "photo", title: String(localized: "control.strip.image"),
             detail: "\(image.pixelWidth)×\(image.pixelHeight)",
             remove: { control.removeImage() })
-        } else {
+        }
+        if !control.inputs.moodboard.isEmpty {
+          chip(
+            systemImage: "square.grid.2x2", title: String(localized: "control.strip.moodboard"),
+            detail: "\(control.inputs.moodboard.filter(\.isOn).count)",
+            remove: { control.clearMoodboard() })
+        }
+        if control.inputs.image == nil, control.inputs.moodboard.isEmpty {
           Text("control.strip.empty").font(.caption).foregroundStyle(.secondary)
         }
         Spacer(minLength: 0)

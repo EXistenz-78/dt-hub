@@ -153,6 +153,7 @@ struct ResultsView: View {
     .accessibilityLabel(result.job.prompt)
     .contextMenu {
       Button("results.useAsImage") { useAsImage(result) }
+      Button("results.addToMoodboard") { addToMoodboard(result) }
     }
     if let url = result.fileURL {
       button.draggable(url)
@@ -176,6 +177,22 @@ struct ResultsView: View {
     }
   }
 
+  private func addToMoodboard(_ result: GeneratedImage) {
+    useError = nil
+    Task {
+      do throws(ControlError) {
+        if let url = result.fileURL {
+          try await controller.control.addMoodboardImage(fileURL: url, source: .result)
+        } else {
+          try controller.control.addMoodboardImage(
+            result.image, name: String(localized: "results.unsaved.name"), source: .result)
+        }
+      } catch {
+        useError = ControlText.error(error)
+      }
+    }
+  }
+
   private func actions(for result: GeneratedImage) -> some View {
     HStack(spacing: DS.controlGap) {
       Text(String(format: String(localized: "results.seed"), String(result.job.parameters.seed)))
@@ -190,6 +207,8 @@ struct ResultsView: View {
       }
       Spacer(minLength: 0)
       Button("results.useAsImage") { useAsImage(result) }
+        .buttonStyle(DSPillButtonStyle())
+      Button("results.addToMoodboard") { addToMoodboard(result) }
         .buttonStyle(DSPillButtonStyle())
       if let url = result.fileURL {
         Button("results.showInFinder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }

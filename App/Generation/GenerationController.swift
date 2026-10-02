@@ -171,7 +171,7 @@ final class GenerationController {
       // Memory first: the language model leaves, a server parked for it comes back.
       await languageModel.prepareForRun()
       await connection.ensureServerForRun()
-      let inputs = await renderInputs()
+      let inputs = await renderInputs(in: connection)
       isPreparing = false
       preparation = nil
       guard !Task.isCancelled, let inputs else { return }
@@ -197,15 +197,19 @@ final class GenerationController {
     let batches = JobComposer.batches(
       prompt: prompt, negativePrompt: negativePrompt, model: model, family: family(in: connection),
       parameters: parameters, catalog: connection.monitor.catalog,
-      imageStrength: inputs.isEmpty ? nil : control.inputs.effectiveStrength(editModel: isEditModel(in: connection)))
+      imageStrength: inputs.image == nil ? nil : control.inputs.effectiveStrength(editModel: isEditModel(in: connection)),
+      moodboardCount: inputs.hints.count)
     if parameters.randomSeed, let first = batches.first { parameters.seed = first.parameters.seed }
     session.start(batches, inputs: inputs, backend: backend, monitor: connection.monitor)
   }
 
   /// The Control tab's images framed to the canvas, decoded away from the main actor. A failure
   /// is shown as the RUN's failure, and nothing starts.
-  private func renderInputs() async -> GenerationInputs? {
-    let pending = control.pendingInputs(canvasWidth: parameters.width, canvasHeight: parameters.height)
+  private func renderInputs(in connection: DrawThingsConnection) async -> GenerationInputs? {
+    // The Moodboard goes only to a model that uses it (the old families would need an adapter).
+    let pending = control.pendingInputs(
+      canvasWidth: parameters.width, canvasHeight: parameters.height,
+      includeMoodboard: FamilyTraits.of(family(in: connection)).usesMoodboard)
     do {
       return try await Task.detached { try pending.render() }.value
     } catch {
