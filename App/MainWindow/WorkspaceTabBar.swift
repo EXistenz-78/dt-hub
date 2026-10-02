@@ -22,6 +22,5 @@ struct WorkspaceTabBar: View {
       }
       Spacer(minLength: 0)
     }
-    .padding(.horizontal, 4)
   }
 }
