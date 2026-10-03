@@ -15,6 +15,11 @@ struct PNGImageStoreTests {
     FileManager.default.temporaryDirectory.appendingPathComponent("PNGImageStoreTests-\(UUID())", isDirectory: true)
   }
 
+  @Test func trashingAFileThatIsAlreadyGoneIsDone() throws {
+    let store = PNGImageStore(folder: tempFolder())
+    try store.trash(URL(fileURLWithPath: "/tmp/DTHub-gone-\(UUID()).png"))
+  }
+
   @Test func savesAPNGWithTheJobInside() throws {
     let store = PNGImageStore(folder: tempFolder())
     let url = try store.save(testImage(), job: job, index: 0, date: date)
