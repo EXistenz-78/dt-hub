@@ -102,11 +102,36 @@ public struct GenerationParameters: Equatable, Codable, Sendable {
 
   /// Allowed ranges, used by the cards and by `clamped()`.
   public static let sizeRange = 64...2048
+  /// The sizes allowed with the Tiled Diffusion on (spec: dimensioni fino a 8192).
+  public static let tiledSizeRange = 64...8192
   public static let stepsRange = 1...150
   public static let guidanceRange = 0.0...50.0
   public static let shiftRange = 0.0...20.0
   public static let batchSizeRange = 1...4
   public static let batchCountRange = 1...100
+
+  /// The largest side allowed now: 8192 with the Tiled Diffusion on, 2048 without.
+  public var sizeLimit: Int {
+    advanced.tiledDiffusion ? Self.tiledSizeRange.upperBound : Self.sizeRange.upperBound
+  }
+
+  /// Turns the Tiled Diffusion on or off. Turning it off with a side above 2048 brings the size back
+  /// within it (`fitSizeToLimit`).
+  public mutating func setTiledDiffusion(_ on: Bool) {
+    advanced.tiledDiffusion = on
+    fitSizeToLimit()
+  }
+
+  /// Scales both sides, keeping the ratio, so that the long side is the limit; sides in multiples of
+  /// 64 and at least 64. Nothing when the size is within the limit already.
+  public mutating func fitSizeToLimit() {
+    let limit = sizeLimit
+    let long = max(width, height)
+    guard long > limit else { return }
+    let scale = Double(limit) / Double(long)
+    width = Self.snap(Double(width) * scale, limit: limit)
+    height = Self.snap(Double(height) * scale, limit: limit)
+  }
 
   /// Portrait ↔ landscape. One mutation: `swap(&p.width, &p.height)` on an observed property
   /// is two overlapping accesses to the same struct and crashes at run time.
@@ -117,32 +142,32 @@ public struct GenerationParameters: Equatable, Codable, Sendable {
   /// Applies an aspect ratio keeping the long side and the orientation (portrait stays portrait).
   public mutating func apply(_ ratio: AspectRatio) {
     let long = max(width, height)
-    let short = Self.snap(Double(long) * Double(ratio.height) / Double(ratio.width))
+    let short = Self.snap(Double(long) * Double(ratio.height) / Double(ratio.width), limit: sizeLimit)
     if height > width {
-      (width, height) = (short, Self.snap(Double(long)))
+      (width, height) = (short, Self.snap(Double(long), limit: sizeLimit))
     } else {
-      (width, height) = (Self.snap(Double(long)), short)
+      (width, height) = (Self.snap(Double(long), limit: sizeLimit), short)
     }
   }
 
   /// Sets the width; with a ratio (width ÷ height) the height follows to keep it.
   public mutating func setWidth(_ newWidth: Int, keepingRatio ratio: Double?) {
     width = newWidth
-    if let ratio, ratio > 0 { height = Self.snap(Double(newWidth) / ratio) }
+    if let ratio, ratio > 0 { height = Self.snap(Double(newWidth) / ratio, limit: sizeLimit) }
   }
 
   /// Sets the height; with a ratio (width ÷ height) the width follows to keep it.
   public mutating func setHeight(_ newHeight: Int, keepingRatio ratio: Double?) {
     height = newHeight
-    if let ratio, ratio > 0 { width = Self.snap(Double(newHeight) * ratio) }
+    if let ratio, ratio > 0 { width = Self.snap(Double(newHeight) * ratio, limit: sizeLimit) }
   }
 
   /// The same parameters forced into the allowed ranges; sizes rounded to the nearest multiple
   /// of 64, as the size fields do when editing ends.
   public func clamped() -> GenerationParameters {
     var copy = self
-    copy.width = Self.snap(Double(width))
-    copy.height = Self.snap(Double(height))
+    copy.width = Self.snap(Double(width), limit: sizeLimit)
+    copy.height = Self.snap(Double(height), limit: sizeLimit)
     copy.steps = min(max(steps, Self.stepsRange.lowerBound), Self.stepsRange.upperBound)
     copy.guidanceScale = min(max(guidanceScale, Self.guidanceRange.lowerBound), Self.guidanceRange.upperBound)
     copy.cfgZeroInitSteps = min(max(cfgZeroInitSteps, 0), copy.steps)
@@ -157,9 +182,9 @@ public struct GenerationParameters: Equatable, Codable, Sendable {
     return copy
   }
 
-  /// Nearest multiple of 64 inside `sizeRange`.
-  public static func snap(_ size: Double) -> Int {
+  /// Nearest multiple of 64 from 64 to `limit` (2048 unless given).
+  public static func snap(_ size: Double, limit: Int = sizeRange.upperBound) -> Int {
     let rounded = Int((size / 64).rounded()) * 64
-    return min(max(rounded, sizeRange.lowerBound), sizeRange.upperBound)
+    return min(max(rounded, sizeRange.lowerBound), limit)
   }
 }
