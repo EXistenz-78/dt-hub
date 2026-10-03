@@ -60,6 +60,11 @@ public final class PluginRegistry: PluginHosting {
   public private(set) var family: String?
   public private(set) var model: String?
 
+  /// What the active plug-ins contributed (teal fields, conflicts, the pipeline); the app sets its `target`.
+  public let contributions = ContributionStore()
+  /// Answers a plug-in's question to the language model (`llm` message); nil = no language model.
+  @ObservationIgnored public var askLanguageModel: (@MainActor (_ prompt: String, _ images: [URL]) async throws -> String)?
+
   @ObservationIgnored private let folder: PluginFolder
   @ObservationIgnored private let settings: PluginSettingsStore
   @ObservationIgnored private let loader: any PluginLoading
@@ -217,6 +222,7 @@ public final class PluginRegistry: PluginHosting {
       entries[index].isActive != isActive
     else { return }
     entries[index].isActive = isActive
+    if !isActive { contributions.forget(identifier) }
     send(PluginMessageType.bare(isActive ? PluginMessageType.activate : PluginMessageType.deactivate), to: identifier)
     if isActive { sendContext(to: identifier) }
   }
@@ -271,8 +277,12 @@ public final class PluginRegistry: PluginHosting {
 
   // MARK: PluginHosting
 
-  public func receive(_ message: Data, from pluginID: String) -> Data {
+  public func receive(_ message: Data, from pluginID: String) async -> Data {
     switch PluginMessageType.of(message) {
+    case PluginMessageType.contribute:
+      return contribute(message, from: pluginID)
+    case PluginMessageType.llm:
+      return await askModel(message, from: pluginID)
     case PluginMessageType.notice:
       if let notice = try? JSONDecoder().decode(PluginNotice.self, from: message) {
         let name = entries.first { $0.id == pluginID }?.name ?? pluginID
@@ -284,6 +294,39 @@ public final class PluginRegistry: PluginHosting {
       return PluginMessageType.bare(PluginMessageType.ok)
     default:
       return PluginMessageType.bare(PluginMessageType.unsupported)
+    }
+  }
+
+  private func isActive(_ pluginID: String) -> Bool {
+    entries.first { $0.id == pluginID }?.isActive ?? false
+  }
+
+  /// Only a plug-in that is on for this job contributes; the answer says how it went.
+  private func contribute(_ message: Data, from pluginID: String) -> Data {
+    guard isActive(pluginID) else { return PluginMessageType.failure("The plug-in is not active.") }
+    guard let contribution = PluginContribution(message: message) else {
+      return PluginMessageType.failure("The message is not a JSON object.")
+    }
+    let problems = contributions.receive(contribution, from: pluginID)
+    var answer: [String: Any] = ["type": PluginMessageType.ok, "conflicts": contributions.conflicts.count]
+    if !problems.isEmpty { answer["problems"] = problems }
+    return (try? JSONSerialization.data(withJSONObject: answer)) ?? PluginMessageType.bare(PluginMessageType.ok)
+  }
+
+  /// `{"type":"llm","prompt":…,"images":[paths]}` → `{"type":"llm","text":…}`.
+  private func askModel(_ message: Data, from pluginID: String) async -> Data {
+    guard isActive(pluginID) else { return PluginMessageType.failure("The plug-in is not active.") }
+    guard let object = try? JSONSerialization.jsonObject(with: message) as? [String: Any],
+      let prompt = object["prompt"] as? String, !prompt.isEmpty
+    else { return PluginMessageType.failure("The message has no prompt.") }
+    guard let ask = askLanguageModel else { return PluginMessageType.failure("There is no language model.") }
+    let images = (object["images"] as? [String] ?? []).map { URL(fileURLWithPath: $0) }
+    do {
+      let text = try await ask(prompt, images)
+      return (try? JSONSerialization.data(withJSONObject: ["type": PluginMessageType.llm, "text": text]))
+        ?? PluginMessageType.failure("The answer could not be sent.")
+    } catch {
+      return PluginMessageType.failure(String(describing: error))
     }
   }
 }

@@ -14,8 +14,8 @@ public protocol LoadedPlugin: AnyObject {
 /// What a plug-in calls into: the app side of the message channel.
 @MainActor
 public protocol PluginHosting: AnyObject {
-  /// Plug-in → app; the answer goes back to the plug-in.
-  func receive(_ message: Data, from pluginID: String) -> Data
+  /// Plug-in → app; the answer goes back to the plug-in. Async: a question for the language model takes a while.
+  func receive(_ message: Data, from pluginID: String) async -> Data
 }
 
 /// Loads the code of a plug-in bundle (the app's implementation uses `Bundle`; the tests a fake).

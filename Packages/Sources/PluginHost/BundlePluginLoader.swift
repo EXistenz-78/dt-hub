@@ -81,7 +81,7 @@ final class PluginHostObject: NSObject, @unchecked Sendable {
     nonisolated(unsafe) let reply = reply
     Task { @MainActor [weak self] in
       guard let self, let host = self.host else { return reply(PluginMessageType.bare(PluginMessageType.unsupported)) }
-      reply(host.receive(message, from: self.pluginID))
+      reply(await host.receive(message, from: self.pluginID))
     }
   }
 }
