@@ -63,10 +63,18 @@ L'app ha il *hardened runtime*; per caricare un bundle firmato da altri (o solo 
 ## 7. Contributi, conflitti, pipeline (M8b)
 
 Il contenuto è quello della spec principale §8, trasportato dai messaggi `contribute` e `llm`. **Non c'è una card Contributi** (deciso dall'utente il 3 ottobre 2026): i contributi si vedono dove stanno.
-- **Campi impostati da un plug-in** (prompt, negativo, dimensioni, passi, LoRA, ogni altro parametro): evidenziati in **teal** nella loro card, con il suggerimento "Impostato da <plug-in>". Un piccolo ✕ sul campo ripristina il valore che c'era prima del contributo. Se l'utente modifica il campo a mano, il contributo diventa suo e il teal sparisce.
-- **Immagine di partenza, moodboard, maschera:** nelle schede del tab Control, con la provenienza del plug-in (spec del tab Control §7).
+
+**Precedenza.** In ogni campo di Generazione, **il valore dato da un plug-in prevale sempre su quello manuale**; questo non è un conflitto. Finché un plug-in attivo ha contribuito a un campo:
+- il campo mostra il valore del plug-in, **evidenziato in teal**, con il suggerimento "Impostato da <plug-in>";
+- il campo **non si modifica a mano**; a destra del campo c'è un piccolo ✕ con due voci: **"Ripristina il valore di prima"** (torna il valore manuale che c'era prima del contributo) e **"Tieni questo valore"** (il valore resta com'è e diventa manuale). Entrambe liberano il campo: il plug-in non lo riscrive finché non contribuisce di nuovo;
+- spegnere il plug-in (o toglierlo dal menu dell'header per questo lavoro) libera i suoi campi come "Ripristina il valore di prima";
+- se lo stesso plug-in manda un valore nuovo per lo stesso campo, lo aggiorna: nemmeno questo è un conflitto.
+
+**Conflitto** (l'unico caso): **due plug-in attivi mandano un valore allo stesso campo** (anche uguale), o **danno entrambi una pipeline**. Il Run si blocca con un messaggio che nomina i due plug-in e il campo (o la pipeline), e il campo in conflitto è evidenziato in rosso. Si risolve spegnendo un plug-in dal menu dell'header o togliendo il contributo con il ✕.
+
+**Altri contributi**
+- **Immagine di partenza, moodboard, maschera:** nelle schede del tab Control, con la provenienza del plug-in (spec del tab Control §7). Anche qui valgono la stessa precedenza e lo stesso conflitto fra plug-in; l'utente le toglie o le cambia come le altre.
 - **Pipeline** (lista ordinata di passaggi: modifiche alla configurazione, ingressi, se l'output precedente diventa l'immagine di partenza): **sul pulsante Run**, che diventa "Run · N passaggi" in teal, con i passaggi elencati nel suggerimento. Si toglie dal menu contestuale del pulsante ("Togli la pipeline di <plug-in>"). Senza pipeline, il Run esegue un solo passaggio con la configurazione corrente.
-- **Conflitti:** se due plug-in attivi contribuiscono allo stesso campo o danno entrambi una pipeline, il Run si blocca con un messaggio che nomina i plug-in e il campo (o la pipeline); il campo in conflitto si evidenzia.
 - Un plug-in non cambia mai il modello e non lancia generazioni da solo.
 Il dettaglio dei messaggi di M8b si scrive nel suo piano.
 
