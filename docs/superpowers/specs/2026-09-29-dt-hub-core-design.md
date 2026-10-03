@@ -285,7 +285,7 @@ Ogni tappa termina con qualcosa di utilizzabile.
 | M5 Server gestito | Modalità "avvia gRPCServerCLI", arresti inattesi e riavvio | DT Hub funziona senza l'app DT aperta |
 | M6 LLM | LLMBridge, scaricamento nella cartella scelta, politica di memoria, prova nelle Preferenze | l'LLM risponde, anche su immagini |
 | M7 Tab Control | **M7a** immagine di partenza e I2I; **M7b** Moodboard e modelli Edit; **M7c** inpaint con pennello (design in `2026-10-01-tab-control-design.md`) | I2I, Moodboard e inpaint funzionano |
-| M8 Plug-in | Contratto HubKit, menu plug-in, card Contributi, pipeline, conflitti, plug-in di prova | la v1 è completa |
+| M8 Plug-in | (rivisto il 3 ottobre 2026, vedi `2026-10-03-plugin-design.md`) **M8a** bundle scaricabili, installazione dalle Preferenze, menu plug-in, plug-in di prova; **M8b** contributi evidenziati in teal, pipeline sul pulsante Run, conflitti | la v1 è completa |
 | Dopo | Tiled Diffusion fino a 8192 → outpaint → PM2 → SLR → Qwen Image 2.1 → Galleria | una spec breve per ciascuno |
 
 M4 si svolge in tre tappe, ognuna con revisione e merge (deciso con l'utente, 30 settembre 2026): **M4a** negativo, LoRA, visibilità per famiglia, ripristino sessione; **M4b** card Avanzate e avviso "valori nascosti attivi"; **M4c** editor JSON, preset, import di `custom_configs.json`.
