@@ -11,6 +11,7 @@
 		9DE148152A7E358B4403C627 /* HubCore in Frameworks */ = {isa = PBXBuildFile; productRef = 032BDA881CF996C0D4322A03 /* HubCore */; };
 		D7B41D6E5C2A4F0B9E3A1C01 /* DTBridge in Frameworks */ = {isa = PBXBuildFile; productRef = D7B41D6E5C2A4F0B9E3A1C02 /* DTBridge */; };
 		E8C52E7F6D3B5A1CAF4B2D11 /* LLMBridge in Frameworks */ = {isa = PBXBuildFile; productRef = E8C52E7F6D3B5A1CAF4B2D12 /* LLMBridge */; };
+		F9D63F808E4C6B2DB05C3E21 /* PluginHost in Frameworks */ = {isa = PBXBuildFile; productRef = F9D63F808E4C6B2DB05C3E22 /* PluginHost */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -35,6 +36,7 @@
 				9DE148152A7E358B4403C627 /* HubCore in Frameworks */,
 				D7B41D6E5C2A4F0B9E3A1C01 /* DTBridge in Frameworks */,
 				E8C52E7F6D3B5A1CAF4B2D11 /* LLMBridge in Frameworks */,
+				F9D63F808E4C6B2DB05C3E21 /* PluginHost in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -90,6 +92,7 @@
 				032BDA881CF996C0D4322A03 /* HubCore */,
 				D7B41D6E5C2A4F0B9E3A1C02 /* DTBridge */,
 				E8C52E7F6D3B5A1CAF4B2D12 /* LLMBridge */,
+				F9D63F808E4C6B2DB05C3E22 /* PluginHost */,
 			);
 			productName = DTHub;
 			productReference = 26BE388AD6E6D7E846B549DF /* DTHub.app */;
@@ -158,6 +161,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = DTHub.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -305,6 +309,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = DTHub.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -375,6 +380,10 @@
 		E8C52E7F6D3B5A1CAF4B2D12 /* LLMBridge */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = LLMBridge;
+		};
+		F9D63F808E4C6B2DB05C3E22 /* PluginHost */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PluginHost;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

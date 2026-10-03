@@ -12,6 +12,7 @@ let package = Package(
     .library(name: "HubCore", targets: ["HubCore"]),
     .library(name: "DTBridge", targets: ["DTBridge"]),
     .library(name: "LLMBridge", targets: ["LLMBridge"]),
+    .library(name: "PluginHost", targets: ["PluginHost"]),
   ],
   dependencies: [
     // Single maintainer, frequent releases: accept patch updates only (spec §5, §16).
@@ -43,12 +44,15 @@ let package = Package(
         .product(name: "HuggingFace", package: "swift-huggingface"),
         .product(name: "Tokenizers", package: "swift-transformers"),
       ]),
+    // Loads downloaded plug-in bundles (AppKit, Bundle, selectors); knows HubCore, never DT or MLX.
+    .target(name: "PluginHost", dependencies: ["HubKit", "HubCore"]),
     // Live tests: need a model on disk or the network, and the Metal library, so they run with
     // `xcodebuild test` (`swift test` skips them: spec §13, "LLMBridge: test a mano").
     .testTarget(name: "LLMBridgeTests", dependencies: ["LLMBridge", "HubKit"]),
     .testTarget(name: "HubKitTests", dependencies: ["HubKit"]),
     .testTarget(name: "HubCoreTests", dependencies: ["HubCore", "HubKit"]),
     .testTarget(name: "DTBridgeTests", dependencies: ["DTBridge", "HubKit", "HubCore"]),
+    .testTarget(name: "PluginHostTests", dependencies: ["PluginHost", "HubCore", "HubKit"]),
     // Checks App/Localizable.xcstrings: every string translated in en and it (spec §12).
     .testTarget(name: "CatalogTests"),
   ]
