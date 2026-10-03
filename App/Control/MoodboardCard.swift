@@ -10,6 +10,7 @@ struct MoodboardCard: View {
   let connection: DrawThingsConnection
   let report: (ControlMessage) -> Void
   @State private var isTargeted = false
+  @Environment(ContributionStore.self) private var contributions: ContributionStore?
 
   private var control: ControlStore { generation.control }
   private var entries: [MoodboardEntry] { control.inputs.moodboard }
@@ -47,7 +48,8 @@ struct MoodboardCard: View {
           }
           LazyVGrid(columns: [GridItem(.adaptive(minimum: 124), spacing: DS.rowGap, alignment: .top)], spacing: DS.rowGap) {
             ForEach(entries) { entry in
-              MoodboardTile(entry: entry, control: control, report: report)
+              MoodboardTile(
+                entry: entry, control: control, isContributed: contributions?.moodboardPlugins[entry.id] != nil, report: report)
             }
           }
           Text("control.moodboard.hint").font(.caption).foregroundStyle(.secondary)
@@ -86,7 +88,10 @@ struct MoodboardCard: View {
 private struct MoodboardTile: View {
   let entry: MoodboardEntry
   let control: ControlStore
+  /// A plug-in added this picture and it is still there: teal at 30%.
+  let isContributed: Bool
   let report: (ControlMessage) -> Void
+  @Environment(PluginRegistry.self) private var plugins: PluginRegistry?
   @State private var thumbnail: CGImage?
   @State private var isTargeted = false
 
@@ -122,6 +127,11 @@ private struct MoodboardTile: View {
         .padding(4)
       }
       .frame(width: 124, height: 124)
+      .contributed(isContributed)
+      if case .plugin = entry.image.source {
+        Text(verbatim: ControlText.source(entry.image.source, plugins: plugins))
+          .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+      }
     }
     .dropDestination(for: URL.self) { urls, _ in
       Task {

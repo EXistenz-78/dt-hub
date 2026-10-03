@@ -10,6 +10,7 @@ import SwiftUI
 struct LoRACard: View {
   @Bindable var controller: GenerationController
   let connection: DrawThingsConnection
+  @Environment(ContributionStore.self) private var contributions: ContributionStore?
 
   private var catalog: ModelCatalog { connection.monitor.catalog }
   private var family: String? { controller.family(in: connection) }
@@ -29,6 +30,7 @@ struct LoRACard: View {
             selection: binding(for: selection),
             name: catalog.lora(forFile: selection.file)?.name ?? selection.file,
             status: catalog.status(of: selection, family: family),
+            isContributed: contributions?.loraPlugins[selection.file] != nil,
             remove: { controller.parameters.removeLoRA(selection.file) })
         }
         addMenu
@@ -90,6 +92,8 @@ private struct LoRARow: View {
   @Binding var selection: LoRASelection
   let name: String
   let status: LoRAStatus
+  /// A plug-in added this LoRA: teal at 30%.
+  let isContributed: Bool
   let remove: () -> Void
 
   var body: some View {
@@ -139,6 +143,7 @@ private struct LoRARow: View {
       }
     }
     .padding(.vertical, 2)
+    .contributed(isContributed)
   }
 
   private var reason: String? {
