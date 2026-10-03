@@ -24,7 +24,6 @@ Cose decise o chieste e non ancora fatte. Si cancella una voce quando entra in u
 
 ## Rimandi di M7d (outpaint)
 
-- **Controllo di compatibilità LoRA/modello** (3 ottobre 2026): un LoRA di un'altra famiglia (per esempio `flux_outpaint_lora`, Flux.1, su FLUX.2 klein) fa cadere il server in `LoRALoader.mergeLoRA` (trap). DT Hub dovrebbe avvisare o escludere i LoRA non compatibili con il modello scelto, se il catalogo ne dà la famiglia.
 - **Klein e il grigio** (prova dell'utente): con FLUX.2 klein, margini grigi pieni e il prompt "expand the image" (senza accennare al colore) funzionano meglio che bordi estesi + maschera. Il riempimento automatico oggi dà `edges` a Klein senza LoRA; valutare un default diverso per i modelli Edit senza LoRA.
 - Il riempimento automatico riconosce un LoRA di outpaint dalla parola "outpaint" nel nome o nel trigger: un LoRA senza la parola va scelto a mano dal menu.
 - Soglia della maschera sul bordo dei margini diversa di una frazione di pixel (copertura 0,29 invece di 0,5) a seconda che esista una maschera dipinta (`InputComposer.mask`: riempie a 0 e poi disegna la maschera in grigio).
