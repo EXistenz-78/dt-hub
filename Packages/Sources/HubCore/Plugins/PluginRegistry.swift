@@ -144,6 +144,8 @@ public final class PluginRegistry: PluginHosting {
   }
 
   public func remove(_ identifier: String) throws(PluginError) {
+    // A plug-in that is going away stops contributing now, not at the next launch.
+    setActive(identifier, false)
     if entries.first(where: { $0.id == identifier })?.state == .loaded { removedWhileLoaded = true }
     if let row = entries.first(where: { $0.id == identifier }), identifier.hasPrefix("broken:") {
       try folder.remove(folderAt: row.url)
@@ -167,6 +169,9 @@ public final class PluginRegistry: PluginHosting {
     } else if entries[index].state != .loaded {
       entries[index].state = .off
     }
+    // A plug-in already loaded stays loaded until the next launch, but it follows the switch for the job:
+    // off takes its teal, its brackets and its pipeline and it stops contributing (plug-in design §7).
+    if entries[index].state == .loaded { setActive(identifier, isOn) }
     updateRestartFlag()
   }
 

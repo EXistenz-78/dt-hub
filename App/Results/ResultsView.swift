@@ -104,7 +104,7 @@ struct ResultsView: View {
           .font(.caption).foregroundStyle(.secondary)
         }
         Button {
-          session.cancel()
+          controller.stop()
         } label: {
           Label("header.stop", systemImage: "stop.fill")
         }

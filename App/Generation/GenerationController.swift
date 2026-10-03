@@ -221,18 +221,20 @@ final class GenerationController {
       let inputs = PipelineInputs.inputs(
         for: pass, base: base, previousOutput: previous, canvasWidth: used.parameters.width,
         canvasHeight: used.parameters.height, usesMoodboard: FamilyTraits.of(family(in: connection)).usesMoodboard)
-      let hasTabImage = inputs.image != nil && inputs.image === base.image
+      let replacesStart = inputs.image != nil && inputs.image !== base.image
       let batches = JobComposer.batches(
         prompt: used.prompt, negativePrompt: used.negativePrompt, model: model, family: family(in: connection),
         parameters: used.parameters, catalog: connection.monitor.catalog,
-        imageStrength: inputs.image == nil ? nil : control.inputs.effectiveStrength(
-          editModel: isEditModel(in: connection),
-          hasMargins: hasTabImage && control.hasMargins(canvasWidth: used.parameters.width, canvasHeight: used.parameters.height)),
+        imageStrength: inputs.image == nil ? nil : PipelineInputs.strength(
+          tab: control.inputs, replacesStart: replacesStart, editModel: isEditModel(in: connection),
+          hasMargins: control.hasMargins(canvasWidth: used.parameters.width, canvasHeight: used.parameters.height)),
         moodboardCount: inputs.hints.count, maskSettings: inputs.mask == nil ? nil : control.inputs.maskSettings)
+      let before = session.results.first?.id
       session.start(batches, inputs: inputs, backend: backend, monitor: connection.monitor)
       await session.waitUntilFinished()
       if case .failed = session.phase { return }
-      guard !Task.isCancelled, let made = session.results.first else { return }
+      // Stopped from anywhere (the Results window too), or no picture: the pipeline ends here.
+      guard !Task.isCancelled, let made = PipelineInputs.output(after: before, in: session.results) else { return }
       previous = made.fileURL.flatMap { PNGImageStore.image(at: $0, maxPixel: 4096) } ?? made.image
     }
   }
