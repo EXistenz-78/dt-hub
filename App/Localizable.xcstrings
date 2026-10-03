@@ -3724,6 +3724,23 @@
         }
       }
     },
+    "plugin.state.pendingVersion": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On — version %@ is running; version %@ from the next launch"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acceso — è in uso la versione %@; la %@ dal prossimo avvio"
+          }
+        }
+      }
+    },
     "plugin.state.skipped": {
       "extractionState": "manual",
       "localizations": {
@@ -4642,6 +4659,23 @@
         }
       }
     },
+    "prefs.plugins.lastNotice": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Last notice: %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ultimo avviso: %@"
+          }
+        }
+      }
+    },
     "prefs.plugins.note": {
       "extractionState": "manual",
       "localizations": {
@@ -4672,6 +4706,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Rimuovi"
+          }
+        }
+      }
+    },
+    "prefs.plugins.restart": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restart DT Hub"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Riavvia DT Hub"
+          }
+        }
+      }
+    },
+    "prefs.plugins.restart.note": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Changes to plug-ins take effect after a restart."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le modifiche ai plug-in valgono dopo il riavvio."
           }
         }
       }

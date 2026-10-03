@@ -159,7 +159,7 @@ struct PluginRegistryTests {
     #expect(offer.info.name == "A" && offer.replacing == nil)
     #expect(registry.entries.isEmpty, "nothing is copied before the user confirms")
     try registry.install(offer)
-    #expect(registry.entries.map(\.state) == [.off] && registry.entries.map(\.name) == ["A"])
+    #expect(registry.entries.map(\.state) == [.loadsAtNextLaunch] && registry.entries.map(\.name) == ["A"])
     let newer = try PluginFixture.bundle(in: PluginFixture.folder(), id: "a", name: "A", version: "1.1")
     #expect(try registry.offer(for: newer).replacing == "1.0")
     #expect(throws: PluginError.notNewer(installed: "1.0")) { try registry.offer(for: source) }
@@ -176,7 +176,7 @@ struct PluginRegistryTests {
     let other = try PluginFixture.bundle(in: PluginFixture.folder(), id: "b", name: "B")
     try registry.install(registry.offer(for: other))
     #expect(registry.entries.first { $0.id == "a" }?.state == .failed(.noEntryPoint))
-    #expect(registry.entries.first { $0.id == "b" }?.state == .off)
+    #expect(registry.entries.first { $0.id == "b" }?.state == .loadsAtNextLaunch, "a new plug-in is turned on by the install")
   }
 
   @Test func twoFoldersOfOnePluginAreTwoRowsWithDifferentIdsAndNothingCrashes() throws {
@@ -208,6 +208,64 @@ struct PluginRegistryTests {
     registry.start()
     var isDirectory: ObjCBool = false
     #expect(FileManager.default.fileExists(atPath: temp.path, isDirectory: &isDirectory) && isDirectory.boolValue)
+  }
+
+  @Test func aNewPluginIsTurnedOnByTheInstallButAnUpdateKeepsTheSwitchAsItWas() throws {
+    let registry = registry()
+    registry.start()
+    let one = try PluginFixture.bundle(in: PluginFixture.folder(), id: "a", name: "A", version: "1.0")
+    try registry.install(registry.offer(for: one))
+    #expect(registry.isEnabled("a"))
+    registry.setEnabled("a", false)
+    let two = try PluginFixture.bundle(in: PluginFixture.folder(), id: "a", name: "A", version: "1.1")
+    try registry.install(registry.offer(for: two))
+    #expect(!registry.isEnabled("a"), "the user turned it off: an update does not turn it on again")
+    #expect(registry.entries.map(\.state) == [.off])
+  }
+
+  @Test func theRowShowsTheInstalledVersionWhileTheRunningOneIsTheOldOne() throws {
+    try PluginFixture.bundle(in: root, id: "a", name: "A", version: "1.0")
+    let registry = registry(enabled: ["a"])
+    registry.start()
+    #expect(registry.entries.first?.runningVersion == "1.0")
+    let newer = try PluginFixture.bundle(in: PluginFixture.folder(), id: "a", name: "A", version: "2.0")
+    try registry.install(registry.offer(for: newer))
+    let row = try #require(registry.entries.first)
+    #expect(row.state == .loaded && row.version == "2.0" && row.runningVersion == "1.0")
+  }
+
+  @Test func theRegistryKnowsWhenARestartIsNeeded() throws {
+    try PluginFixture.bundle(in: root, id: "a", name: "A")
+    try PluginFixture.bundle(in: root, id: "b", name: "B")
+    let registry = registry(enabled: ["b"])
+    registry.start()
+    #expect(!registry.needsRestart)
+    registry.setEnabled("a", true)
+    #expect(registry.needsRestart, "a plug-in turned on loads at the next launch")
+    registry.setEnabled("a", false)
+    #expect(!registry.needsRestart)
+    registry.setEnabled("b", false)
+    #expect(registry.needsRestart, "a loaded plug-in turned off goes at the next launch")
+    registry.setEnabled("b", true)
+    #expect(!registry.needsRestart)
+    try registry.remove("b")
+    #expect(registry.needsRestart, "a loaded plug-in removed is still running until then")
+  }
+
+  @Test func theNoticesOfAPluginAreKeptNewestFirstEvenAfterTheBannerIsClosed() throws {
+    try PluginFixture.bundle(in: root, id: "a", name: "Alpha")
+    let loader = FakeLoader()
+    let registry = registry(loader: loader, enabled: ["a"])
+    registry.start()
+    let host = try #require(loader.host)
+    _ = host.receive(Data(#"{"type":"notice","text":"one"}"#.utf8), from: "a")
+    _ = host.receive(Data(#"{"type":"notice","text":"two"}"#.utf8), from: "a")
+    #expect(registry.lastNotice(of: "a")?.text == "two")
+    registry.dismissNotice()
+    #expect(registry.latestNotice == nil && registry.lastNotice(of: "a")?.text == "two")
+    #expect(registry.lastNotice(of: "zzz") == nil)
+    for index in 0..<30 { _ = host.receive(Data(#"{"type":"notice","text":"n\#(index)"}"#.utf8), from: "a") }
+    #expect(registry.notices.count == 20 && registry.notices.first?.text == "n29")
   }
 
   @Test func removingForgetsThePluginAndItsSwitch() throws {

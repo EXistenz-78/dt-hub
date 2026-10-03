@@ -20,6 +20,14 @@ enum PluginText {
     }
   }
 
+  /// The line under a plug-in's name: its state, and when the folder holds a version newer than the one running.
+  static func state(_ entry: PluginEntry) -> String {
+    if entry.state == .loaded, let running = entry.runningVersion, running != entry.version {
+      return String(format: String(localized: "plugin.state.pendingVersion"), running, entry.version)
+    }
+    return state(entry.state)
+  }
+
   static func state(_ state: PluginEntry.State) -> String {
     switch state {
     case .off: String(localized: "plugin.state.off")
