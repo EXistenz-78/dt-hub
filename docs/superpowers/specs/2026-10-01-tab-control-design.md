@@ -109,7 +109,7 @@ Se il rapporto delle Dimensioni cambia dopo il caricamento, il ritaglio si rical
 
 ## 7. Plug-in (M8)
 
-Le immagini che i plug-in propongono (in particolare Prompt Master e Sphere Light) **arrivano in queste stesse schede**, con la provenienza del plug-in; la card "Contributi" della spec principale (§8) perde la parte immagini. Se due plug-in vogliono lo stesso ingresso (l'immagine, o la maschera) c'è conflitto e RUN si blocca con un messaggio che li nomina, come già previsto.
+Le immagini che i plug-in propongono (in particolare Prompt Master e Sphere Light) **arrivano in queste stesse schede**, con la provenienza del plug-in; nessuna card "Contributi" (`2026-10-03-plugin-design.md` §7): i campi impostati da un plug-in sono evidenziati in teal. Se due plug-in vogliono lo stesso ingresso (l'immagine, o la maschera) c'è conflitto e RUN si blocca con un messaggio che li nomina, come già previsto.
 
 ## 8. Errori
 

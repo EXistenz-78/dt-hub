@@ -149,7 +149,8 @@ Il file va portato in HubKit, così i plug-in lo usano.
 ├──────────────────────────────────────────────────────────────┤
 │  PROMPT  a tutta larghezza; sotto il prompt, il NEGATIVO      │
 │          (tinta arancio, solo se la famiglia lo usa)          │
-│  CONTRIBUTI PLUG-IN  solo se un plug-in ha contribuito        │
+│  (nessuna card Contributi: i campi impostati da un plug-in    │
+│   sono evidenziati in teal, vedi 2026-10-03-plugin-design.md) │
 │  [ Dimensioni      ] [ Seed e batch   ]  due card per riga,    │
 │  [ Campionamento   ] [ …              ]  alte come la più alta │
 └──────────────────────────────────────────────────────────────┘
@@ -198,8 +199,8 @@ Riceve dal cuore dell'app:
 **I contributi sono sempre visibili prima di RUN.** Un plug-in può:
 - impostare uno o più parametri: compaiono nelle rispettive card, con un segno che indica quale plug-in li ha impostati;
 - scrivere il prompt o il negativo;
-- inserire immagine di partenza, immagini di moodboard o la maschera: compaiono **nelle schede del tab Control**, con la provenienza del plug-in, e l'utente le toglie o le cambia come le altre (design in `2026-10-01-tab-control-design.md`, §7); la card **Contributi plug-in** resta per parametri, prompt e pipeline;
-- fornire una **pipeline** a più passaggi, anch'essa elencata nella card Contributi.
+- inserire immagine di partenza, immagini di moodboard o la maschera: compaiono **nelle schede del tab Control**, con la provenienza del plug-in, e l'utente le toglie o le cambia come le altre (design in `2026-10-01-tab-control-design.md`, §7); i parametri e il prompt impostati da un plug-in si evidenziano in teal nei loro campi, la pipeline sta sul pulsante Run (nessuna card Contributi: `2026-10-03-plugin-design.md` §7);
+- fornire una **pipeline** a più passaggi, che si vede sul pulsante Run ("Run · N passaggi", in teal).
 
 L'utente può modificare o rimuovere ogni contributo prima di RUN. Un plug-in **non cambia mai il modello** e non lancia generazioni da solo.
 
