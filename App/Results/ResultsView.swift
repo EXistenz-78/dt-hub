@@ -8,11 +8,13 @@ import SwiftUI
 struct ResultsView: View {
   let controller: GenerationController
   let connection: DrawThingsConnection
-  /// The picture shown large: the last one clicked.
-  @State private var selectedID: GeneratedImage.ID?
-  /// Every picture selected in the strip (⌘-click adds or takes away, ⇧-click extends from `anchorID`).
-  @State private var selection: Set<GeneratedImage.ID> = []
-  @State private var anchorID: GeneratedImage.ID?
+  /// The pictures selected in the strip (⌘-click adds or takes away, ⇧-click extends) and the one
+  /// shown large. Something is always selected while the strip is not empty.
+  @State private var picks = ResultSelection()
+  /// The keys ⌫ and ⌘A act on the strip only after a click in it: this window comes to the front
+  /// at every RUN, and the prompt's editing keys must never reach the pictures.
+  @FocusState private var stripFocused: Bool
+  @Environment(\.controlActiveState) private var activeState
   /// Why "Use as image" or the removal did not work.
   @State private var useError: String?
   /// The chosen picture of a previous launch, read from its file at a larger size than the strip's.
@@ -20,7 +22,7 @@ struct ResultsView: View {
 
   private var session: GenerationSession { controller.session }
   private var selected: GeneratedImage? {
-    session.results.first { $0.id == selectedID } ?? session.results.first
+    session.results.first { $0.id == picks.primary } ?? session.results.first
   }
 
   var body: some View {
@@ -37,12 +39,12 @@ struct ResultsView: View {
     .background(DSBackground())
     .background(DSWindowConfigurator())
     .tint(DS.accent)
-    .onChange(of: session.results.first?.id) {
-      selectedID = session.results.first?.id
-      selection = selectedID.map { [$0] } ?? []
-      anchorID = selectedID
+    .onChange(of: session.results.first?.id, initial: true) {
+      picks = ResultSelection(only: session.results.first?.id)
     }
-    .background(shortcuts)
+    .onChange(of: session.results.map(\.id)) { picks.keepOnly(order: session.results.map(\.id)) }
+    // Coming back to this window (a RUN brings it to the front) the keys are not on the strip.
+    .onChange(of: activeState) { if activeState == .inactive { stripFocused = false } }
     .task(id: selected?.id) {
       // A picture read back at launch is a small one: the chosen one is loaded from its file.
       guard let chosen = selected, chosen.isRestored, let url = chosen.fileURL else { return restoredFull = nil }
@@ -141,12 +143,25 @@ struct ResultsView: View {
       .padding(2)
     }
     .frame(height: 80)
+    .focusable()
+    .focused($stripFocused)
+    .focusEffectDisabled()
+    .onKeyPress(keys: [.delete, "a"]) { press in
+      if press.key == .delete {
+        trash(selectedResults.map(\.id))
+        return .handled
+      }
+      guard press.modifiers.contains(.command) else { return .ignored }
+      picks.selectAll(order: session.results.map(\.id))
+      return .handled
+    }
+    .onCommand(#selector(NSResponder.selectAll(_:))) { picks.selectAll(order: session.results.map(\.id)) }
   }
 
   /// One picture of the strip: it can be dragged into the Control tab (or any app) as its file,
   /// and the menu uses it as the start image. A click selects it; ⌘ adds or takes it away, ⇧ extends.
   @ViewBuilder private func thumbnail(of result: GeneratedImage) -> some View {
-    let isSelected = selection.contains(result.id) || (selection.isEmpty && result.id == selected?.id)
+    let isSelected = picks.ids.contains(result.id)
     let button = Button {
       click(result)
     } label: {
@@ -178,69 +193,31 @@ struct ResultsView: View {
 
   /// What a menu on `result` acts on: the whole selection when it is part of it, else just that picture.
   private func targets(of result: GeneratedImage) -> [GeneratedImage] {
-    selection.contains(result.id) && selection.count > 1
-      ? session.results.filter { selection.contains($0.id) } : [result]
+    picks.ids.contains(result.id) && picks.ids.count > 1
+      ? session.results.filter { picks.ids.contains($0.id) } : [result]
   }
 
   /// The pictures selected, in the order of the strip.
   private var selectedResults: [GeneratedImage] {
-    selection.isEmpty ? selected.map { [$0] } ?? [] : session.results.filter { selection.contains($0.id) }
+    session.results.filter { picks.ids.contains($0.id) }
   }
 
   private func click(_ result: GeneratedImage) {
     let modifiers = NSEvent.modifierFlags
-    if modifiers.contains(.command) {
-      if selection.contains(result.id) {
-        selection.remove(result.id)
-        if selectedID == result.id { selectedID = session.results.first { selection.contains($0.id) }?.id }
-      } else {
-        selection.insert(result.id)
-        selectedID = result.id
-      }
-      anchorID = result.id
-    } else if modifiers.contains(.shift), let anchor = anchorID,
-      let from = session.results.firstIndex(where: { $0.id == anchor }),
-      let to = session.results.firstIndex(where: { $0.id == result.id })
-    {
-      selection = Set(session.results[min(from, to)...max(from, to)].map(\.id))
-      selectedID = result.id
-    } else {
-      selection = [result.id]
-      selectedID = result.id
-      anchorID = result.id
-    }
-  }
-
-  private func selectAll() {
-    selection = Set(session.results.map(\.id))
+    stripFocused = true
+    picks.click(
+      result.id, command: modifiers.contains(.command), shift: modifiers.contains(.shift),
+      order: session.results.map(\.id))
   }
 
   /// Moves the pictures to the Trash and picks the nearest one left.
   private func trash(_ ids: [GeneratedImage.ID]) {
     guard !ids.isEmpty else { return }
     useError = nil
-    let first = session.results.firstIndex { ids.contains($0.id) } ?? 0
+    let before = session.results.map(\.id)
     let failures = session.remove(Set(ids))
     if !failures.isEmpty { useError = failures.joined(separator: "; ") }
-    let next = session.results.isEmpty ? nil : session.results[min(first, session.results.count - 1)]
-    selectedID = next?.id
-    selection = next.map { [$0.id] } ?? []
-    anchorID = next?.id
-  }
-
-  /// Keys for the strip: ⌫ and ⌘⌫ move the selection to the Trash, ⌘A selects every picture.
-  private var shortcuts: some View {
-    ZStack {
-      Button(action: { trash(selectedResults.map(\.id)) }) { EmptyView() }
-        .keyboardShortcut(.delete, modifiers: [])
-      Button(action: { trash(selectedResults.map(\.id)) }) { EmptyView() }
-        .keyboardShortcut(.delete, modifiers: .command)
-      Button(action: { selectAll() }) { EmptyView() }
-        .keyboardShortcut("a", modifiers: .command)
-    }
-    .opacity(0)
-    .allowsHitTesting(false)
-    .accessibilityHidden(true)
+    picks.afterRemoval(removed: Set(ids), order: before, remaining: session.results.map(\.id))
   }
 
   private func useAsImage(_ result: GeneratedImage) {
