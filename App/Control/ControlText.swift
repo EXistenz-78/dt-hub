@@ -11,12 +11,13 @@ enum ControlText {
     }
   }
 
-  static func source(_ source: ReferenceImage.Source) -> String {
+  static func source(_ source: ReferenceImage.Source, plugins: PluginRegistry? = nil) -> String {
     switch source {
     case .file: String(localized: "control.source.file")
     case .result: String(localized: "control.source.result")
     case .pasteboard: String(localized: "control.source.pasteboard")
-    case .plugin(let id): String(format: String(localized: "control.source.plugin"), id)
+    case .plugin(let id):
+      String(format: String(localized: "control.source.plugin"), plugins?.entries.first { $0.id == id }?.name ?? id)
     }
   }
 

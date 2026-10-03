@@ -14,13 +14,13 @@ struct SamplingCard: View {
     ) {
       let usesShift = controller.traits(in: connection).usesShift
       VStack(spacing: DS.rowGap) {
-        CardRow(label: String(localized: "card.sampling.steps")) {
+        CardRow(label: String(localized: "card.sampling.steps"), fields: [.steps]) {
           IntField(
             label: String(localized: "card.sampling.steps"), value: $controller.parameters.steps,
             range: GenerationParameters.stepsRange)
         }
 
-        CardRow(label: String(localized: "card.sampling.guidance")) {
+        CardRow(label: String(localized: "card.sampling.guidance"), fields: [.guidanceScale, .cfgZeroStar]) {
           if usesShift {
             Toggle(isOn: $controller.parameters.cfgZeroStar) {
               Text("card.sampling.cfgZero")
@@ -33,7 +33,7 @@ struct SamplingCard: View {
             range: GenerationParameters.guidanceRange, step: 0.5)
         }
         if usesShift, controller.parameters.cfgZeroStar {
-          CardRow(label: String(localized: "card.sampling.cfgZeroInitSteps")) {
+          CardRow(label: String(localized: "card.sampling.cfgZeroInitSteps"), fields: [.cfgZeroInitSteps]) {
             IntField(
               label: String(localized: "card.sampling.cfgZeroInitSteps"),
               value: $controller.parameters.cfgZeroInitSteps,
@@ -41,7 +41,7 @@ struct SamplingCard: View {
           }
         }
 
-        CardRow(label: String(localized: "card.sampling.sampler")) {
+        CardRow(label: String(localized: "card.sampling.sampler"), fields: [.sampler]) {
           Picker(selection: $controller.parameters.sampler) {
             ForEach(Sampler.allCases) { sampler in
               Text(verbatim: sampler.displayName).tag(sampler)
@@ -55,7 +55,7 @@ struct SamplingCard: View {
         }
 
         if usesShift {
-          CardRow(label: String(localized: "card.sampling.shift")) {
+          CardRow(label: String(localized: "card.sampling.shift"), fields: [.shift, .resolutionDependentShift]) {
             Toggle(isOn: $controller.parameters.resolutionDependentShift) {
               Text("card.sampling.resolutionShift")
             }

@@ -128,7 +128,12 @@ struct ResultsView: View {
       if controller.isPreparing {
         HStack(spacing: DS.controlGap) {
           ProgressView().controlSize(.small)
-          Text("results.preparingMemory").font(.caption).foregroundStyle(.secondary)
+          if let pass = controller.pipelinePass {
+            Text(verbatim: String(format: String(localized: "header.stop.pass"), pass.index, pass.count))
+              .font(.caption).foregroundStyle(.secondary)
+          } else {
+            Text("results.preparingMemory").font(.caption).foregroundStyle(.secondary)
+          }
         }
       }
     }

@@ -14,7 +14,7 @@ struct SeedBatchCard: View {
       isExpanded: controller.cards.binding("seed")
     ) {
       VStack(spacing: DS.rowGap) {
-        CardRow(label: String(localized: "card.seed.value")) {
+        CardRow(label: String(localized: "card.seed.value"), fields: [.seed, .randomSeed]) {
           Toggle(isOn: $controller.parameters.randomSeed) {
             Text("card.seed.random")
           }
@@ -46,12 +46,12 @@ struct SeedBatchCard: View {
           }
         }
 
-        CardRow(label: String(localized: "card.batch.size")) {
+        CardRow(label: String(localized: "card.batch.size"), fields: [.batchSize]) {
           IntField(
             label: String(localized: "card.batch.size"), value: $controller.parameters.batchSize,
             range: GenerationParameters.batchSizeRange)
         }
-        CardRow(label: String(localized: "card.batch.count")) {
+        CardRow(label: String(localized: "card.batch.count"), fields: [.batchCount]) {
           IntField(
             label: String(localized: "card.batch.count"), value: $controller.parameters.batchCount,
             range: GenerationParameters.batchCountRange)
