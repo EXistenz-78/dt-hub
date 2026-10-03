@@ -98,6 +98,42 @@ struct OutpaintStoreTests {
     #expect(inputs.mask == nil)
   }
 
+  @Test func theMarginFillIsKeptAcrossARestartAndNotUndone() throws {
+    let root = folder()
+    let first = try withImage(root)
+    first.setMarginFill(.gray)
+    var mask = MaskBitmap(width: first.maskSize!.width, height: first.maskSize!.height)
+    mask.stroke(from: CGPoint(x: 20, y: 20), to: CGPoint(x: 20, y: 20), radius: 5, erase: false)
+    try first.commitMask(mask)
+    first.undo()
+    #expect(first.inputs.marginFill == .gray)
+    let second = store(in: root)
+    #expect(second.inputs.marginFill == .gray)
+    second.setMarginFill(nil)
+    #expect(second.inputs.marginFill == nil)
+  }
+
+  @Test func aSolidFillRunHasNoMaskForTheMargins() async throws {
+    let store = try withImage(folder(), width: 400, height: 300)
+    store.setZoom(-50)
+    let plain = store.pendingInputs(canvasWidth: 256, canvasHeight: 192, marginFill: .gray)
+    let noMask = try await Task.detached { try plain.render() }.value
+    #expect(noMask.image != nil && noMask.mask == nil)
+    var painted = MaskBitmap(width: store.maskSize!.width, height: store.maskSize!.height)
+    painted.stroke(from: CGPoint(x: 200, y: 150), to: CGPoint(x: 200, y: 150), radius: 20, erase: false)
+    try store.commitMask(painted)
+    let withMask = store.pendingInputs(canvasWidth: 256, canvasHeight: 192, marginFill: .gray)
+    let inputs = try await Task.detached { try withMask.render() }.value
+    let mask = try #require(inputs.mask)
+    // The corner of the canvas is margin: kept (opaque), because with a solid fill the model does the work.
+    var bytes = [UInt8](repeating: 0, count: 4)
+    let context = CGContext(
+      data: &bytes, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+      space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+    context.draw(mask, in: CGRect(x: 0, y: -(mask.height - 1), width: mask.width, height: mask.height))
+    #expect(bytes[3] == 255)
+  }
+
   @Test func theBiggestZoomOfAHugeImageStillRenders() async throws {
     let store = try withImage(folder(), width: 4000, height: 3000)
     store.setZoom(100)

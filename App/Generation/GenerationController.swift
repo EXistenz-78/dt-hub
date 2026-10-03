@@ -212,7 +212,7 @@ final class GenerationController {
     // The Moodboard goes only to a model that uses it (the old families would need an adapter).
     let pending = control.pendingInputs(
       canvasWidth: parameters.width, canvasHeight: parameters.height,
-      includeMoodboard: FamilyTraits.of(family(in: connection)).usesMoodboard)
+      includeMoodboard: FamilyTraits.of(family(in: connection)).usesMoodboard, marginFill: marginFill)
     do {
       var inputs = try await Task.detached { try pending.render() }.value
       inputs.enableInpainting = selectedModel(in: connection)?.capabilities.needsInpaintControl ?? false
@@ -222,6 +222,11 @@ final class GenerationController {
       session.fail(with: .generationFailed(text))
       return nil
     }
+  }
+
+  /// What fills the margins of the canvas: the user's choice, or what the LoRAs of the job ask for.
+  var marginFill: MarginFill {
+    control.inputs.marginFill ?? MarginFill.automatic(loras: parameters.loras)
   }
 
   /// True when the chosen model is an Edit model (the canvas image is the one to modify).

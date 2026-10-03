@@ -326,6 +326,12 @@ public final class ControlStore {
     save()
   }
 
+  /// What fills the margins (nil = automatic from the LoRAs).
+  public func setMarginFill(_ fill: MarginFill?) {
+    inputs.marginFill = fill
+    save()
+  }
+
   /// Back to the fill, centred.
   public func resetFraming() {
     inputs.framing = Framing()
@@ -417,12 +423,15 @@ public final class ControlStore {
 
   /// What a RUN needs to prepare its inputs, to be rendered away from the main actor. The Moodboard
   /// goes only when `includeMoodboard` (the model uses it).
-  public func pendingInputs(canvasWidth: Int, canvasHeight: Int, includeMoodboard: Bool = true) -> PendingInputs {
+  public func pendingInputs(
+    canvasWidth: Int, canvasHeight: Int, includeMoodboard: Bool = true, marginFill: MarginFill = .edges
+  ) -> PendingInputs {
     let sent = inputs.moodboard.filter(\.isOn).map { (image: $0.image, weight: 1.0) }
     return PendingInputs(
       storage: storage, image: inputs.image, mask: inputs.image == nil ? nil : inputs.mask,
       paint: inputs.image == nil ? nil : inputs.paint, framing: inputs.framing,
-      canvasWidth: canvasWidth, canvasHeight: canvasHeight, moodboard: includeMoodboard ? sent : [])
+      canvasWidth: canvasWidth, canvasHeight: canvasHeight, moodboard: includeMoodboard ? sent : [],
+      marginFill: marginFill)
   }
 
   // MARK: Private
@@ -462,6 +471,7 @@ public final class ControlStore {
     restored.maskSettings = current.maskSettings
     restored.strength = current.strength
     restored.framing = current.framing
+    restored.marginFill = current.marginFill
   }
 
   nonisolated static func pngData(of image: CGImage) -> Data? {
@@ -517,6 +527,8 @@ public struct PendingInputs: Sendable {
   let canvasHeight: Int
   /// The Moodboard pictures that are on, all with the same weight.
   let moodboard: [(image: ReferenceImage, weight: Double)]
+  /// What fills the margins of the canvas (already resolved: never "automatic").
+  let marginFill: MarginFill
 
   /// Longest side of a Moodboard picture when it is sent.
   static let moodboardPixels = 1024
@@ -548,13 +560,15 @@ public struct PendingInputs: Sendable {
     }
     guard let decoded = storage.image(named: image.fileName, maxPixel: maxPixel),
       let framed = InputComposer.frame(
-        decoded, toWidth: canvasWidth, height: canvasHeight, framing: framing, paint: layer)
+        decoded, toWidth: canvasWidth, height: canvasHeight, framing: framing, paint: layer, fill: marginFill)
     else { throw .unreadable(image.name) }
     let margins = !FramingMath.margins(
       imageWidth: image.pixelWidth, imageHeight: image.pixelHeight, canvasWidth: canvasWidth,
       canvasHeight: canvasHeight, framing: framing
     ).isEmpty
-    if mask == nil, !margins { return GenerationInputs(image: framed, hints: hints) }
+    // Margins make a mask only when they are regenerated; a flat fill is left to the model.
+    let regenerated = margins && marginFill.sendsMask
+    if mask == nil, !regenerated { return GenerationInputs(image: framed, hints: hints) }
     var bitmap: MaskBitmap?
     if let mask {
       guard let stored = storage.image(named: mask.fileName, maxPixel: MaskBitmap.maxSide),
@@ -565,7 +579,7 @@ public struct PendingInputs: Sendable {
     guard
       let scaled = InputComposer.mask(
         bitmap, imageWidth: image.pixelWidth, imageHeight: image.pixelHeight, toWidth: canvasWidth,
-        height: canvasHeight, framing: framing)
+        height: canvasHeight, framing: framing, marginsRegenerated: marginFill.sendsMask)
     else { throw .unreadable(image.name) }
     return GenerationInputs(image: framed, hints: hints, mask: scaled)
   }

@@ -63,6 +63,32 @@ struct OutpaintComposerTests {
     }
   }
 
+  @Test func aSolidFillLeavesTheMarginsGreyOrGreen() throws {
+    let grey = try #require(
+      InputComposer.frame(halves(vertical: false), toWidth: 200, height: 100, framing: Framing(zoom: -50), fill: .gray))
+    for x in [5, 195] { #expect(sample(grey, x, 50)[0...2].allSatisfy { abs($0 - 128) < 4 }) }
+    #expect(isRed(sample(grey, 70, 50)) && isBlue(sample(grey, 130, 50)))
+    let green = try #require(
+      InputComposer.frame(halves(vertical: false), toWidth: 200, height: 100, framing: Framing(zoom: -50), fill: .green))
+    for x in [5, 195] { #expect(sample(green, x, 50)[0] < 4 && sample(green, x, 50)[1] > 250 && sample(green, x, 50)[2] < 4) }
+    #expect(isRed(sample(green, 70, 50)))
+  }
+
+  @Test func theMarginsCanBeLeftOutOfTheMask() throws {
+    var painted = MaskBitmap(width: 100, height: 100)
+    for x in 50..<100 {
+      painted.stroke(from: CGPoint(x: Double(x) + 0.5, y: 0), to: CGPoint(x: Double(x) + 0.5, y: 100), radius: 0.7, erase: false)
+    }
+    let mask = try #require(
+      InputComposer.mask(
+        painted, imageWidth: 100, imageHeight: 100, toWidth: 200, height: 100, framing: Framing(zoom: -50),
+        marginsRegenerated: false))
+    #expect(sample(mask, 10, 50)[3] == 255)  // margin, kept
+    #expect(sample(mask, 70, 50)[3] == 255)  // image, kept
+    #expect(sample(mask, 130, 50)[3] == 0)  // image, painted
+    #expect(sample(mask, 190, 50)[3] == 255)  // margin, kept
+  }
+
   @Test func theOffsetMovesTheImageInTheCanvas() throws {
     let framed = try #require(
       InputComposer.frame(halves(vertical: false), toWidth: 200, height: 100, framing: Framing(zoom: -50, offsetX: -1)))

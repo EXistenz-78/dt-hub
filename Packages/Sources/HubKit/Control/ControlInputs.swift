@@ -67,6 +67,35 @@ public struct Framing: Equatable, Codable, Sendable {
   }
 }
 
+/// What the outpaint puts in the margins of the canvas (spec: outpaint §4). With `edges` the image's own
+/// edge pixels are stretched outwards and the margins are sent in the mask (inpaint models, and the
+/// Edit models without an outpaint LoRA). The outpaint LoRAs for the Edit models are different:
+/// they are told to fill a flat colour (the Qwen one "the solid gray areas", the Flux one "the green
+/// spaces") and want no mask, so with `gray` or `green` the margins are that colour and nothing is
+/// masked (measured on Qwen Image 2.1 with q21_outpaint_v2: edges + mask kept the stretched stripes).
+public enum MarginFill: String, Codable, Sendable, CaseIterable {
+  case edges
+  case gray
+  case green
+
+  /// Whether the margins go into the mask.
+  public var sendsMask: Bool { self == .edges }
+
+  /// The fill the selected LoRAs ask for: an outpaint LoRA (the word is in its file name or its
+  /// trigger) asks for green when the trigger names the green spaces and for gray otherwise; with
+  /// none, `edges`.
+  public static func automatic(loras: [LoRASelection]) -> MarginFill {
+    for lora in loras {
+      let name = lora.file.lowercased()
+      let trigger = lora.trigger.lowercased()
+      if name.contains("outpaint") || trigger.contains("outpaint") {
+        return trigger.contains("green") ? .green : .gray
+      }
+    }
+    return .edges
+  }
+}
+
 /// What Draw Things does with the inpaint mask (tab Control spec §3). The defaults are Draw Things'.
 public struct MaskSettings: Equatable, Codable, Sendable {
   /// How much the edge of the mask is softened (`maskBlur`).
@@ -162,12 +191,16 @@ public struct ControlInputs: Equatable, Codable, Sendable {
   /// whole), 70 % for the others (at 100 % a normal image-to-image ignores the image). The
   /// user's choice, once made, wins.
   public var strength: Double?
+  /// What fills the margins when the image is smaller than the canvas. nil = automatic: from the
+  /// LoRAs of the job (`MarginFill.automatic`). The user's choice, once made, wins.
+  public var marginFill: MarginFill?
 
   public init(
     image: ReferenceImage? = nil, framing: Framing = Framing(), strength: Double? = nil,
     moodboard: [MoodboardEntry] = [], mask: MaskReference? = nil, maskSettings: MaskSettings = MaskSettings(),
-    paint: PaintReference? = nil
+    paint: PaintReference? = nil, marginFill: MarginFill? = nil
   ) {
+    self.marginFill = marginFill
     self.paint = paint
     self.mask = mask
     self.maskSettings = maskSettings
@@ -189,6 +222,7 @@ public struct ControlInputs: Equatable, Codable, Sendable {
     image = try? container.decodeIfPresent(ReferenceImage.self, forKey: .image)
     framing = (try? container.decodeIfPresent(Framing.self, forKey: .framing)) ?? Framing()
     strength = try? container.decodeIfPresent(Double.self, forKey: .strength)
+    marginFill = try? container.decodeIfPresent(MarginFill.self, forKey: .marginFill)
     // A mask belongs to an image: one without it is not kept.
     mask = image == nil ? nil : try? container.decodeIfPresent(MaskReference.self, forKey: .mask)
     maskSettings = (try? container.decodeIfPresent(MaskSettings.self, forKey: .maskSettings)) ?? MaskSettings()
