@@ -10,7 +10,7 @@ Decisioni dell'utente (3 ottobre 2026):
 - un plug-in è un **bundle caricato dentro l'app** (non un programma separato, non un insieme di soli dati);
 - **si installa scaricando il file a mano** e aggiungendolo dalle Preferenze (o trascinandolo): niente catalogo nell'app, niente installazione da indirizzo web;
 - le Preferenze avranno, quando esisterà, **un link alla pagina GitHub** da cui scaricare i plug-in; finché la pagina non c'è, il link non compare;
-- spec principale §8 invariata nel contenuto: i contributi sono sempre visibili prima del Run, un plug-in non cambia mai il modello e non lancia generazioni da solo.
+- spec principale §8 invariata nel contenuto: i contributi sono sempre visibili prima del Run (ora **evidenziati in teal nei campi, senza una card a parte**), un plug-in non cambia mai il modello e non lancia generazioni da solo.
 
 ## 2. Il pacchetto: `.dthubplugin`
 
@@ -62,11 +62,11 @@ L'app ha il *hardened runtime*; per caricare un bundle firmato da altri (o solo 
 
 ## 7. Contributi, conflitti, pipeline (M8b)
 
-Il contenuto è quello della spec principale §8, ora trasportato dai messaggi `contribute` e `llm`:
-- **Card "Contributi plug-in"** (nel tab Generazione, sotto il prompt): compare solo se un plug-in ha contribuito; elenca per ogni plug-in attivo cosa ha impostato (parametri, prompt e negativo, pipeline), con il nome del plug-in; l'utente modifica o toglie ogni voce prima del Run.
-- Immagine di partenza, moodboard e maschera proposte da un plug-in arrivano **nelle schede del tab Control**, con la provenienza (spec del tab Control §7).
-- **Conflitti:** se due plug-in attivi contribuiscono allo stesso campo o danno entrambi una pipeline, il Run si blocca con un messaggio che nomina plug-in e campo.
-- **Pipeline:** lista ordinata di passaggi (modifiche alla configurazione, ingressi, se l'output precedente diventa l'immagine di partenza), come in §8.
+Il contenuto è quello della spec principale §8, trasportato dai messaggi `contribute` e `llm`. **Non c'è una card Contributi** (deciso dall'utente il 3 ottobre 2026): i contributi si vedono dove stanno.
+- **Campi impostati da un plug-in** (prompt, negativo, dimensioni, passi, LoRA, ogni altro parametro): evidenziati in **teal** nella loro card, con il suggerimento "Impostato da <plug-in>". Un piccolo ✕ sul campo ripristina il valore che c'era prima del contributo. Se l'utente modifica il campo a mano, il contributo diventa suo e il teal sparisce.
+- **Immagine di partenza, moodboard, maschera:** nelle schede del tab Control, con la provenienza del plug-in (spec del tab Control §7).
+- **Pipeline** (lista ordinata di passaggi: modifiche alla configurazione, ingressi, se l'output precedente diventa l'immagine di partenza): **sul pulsante Run**, che diventa "Run · N passaggi" in teal, con i passaggi elencati nel suggerimento. Si toglie dal menu contestuale del pulsante ("Togli la pipeline di <plug-in>"). Senza pipeline, il Run esegue un solo passaggio con la configurazione corrente.
+- **Conflitti:** se due plug-in attivi contribuiscono allo stesso campo o danno entrambi una pipeline, il Run si blocca con un messaggio che nomina i plug-in e il campo (o la pipeline); il campo in conflitto si evidenzia.
 - Un plug-in non cambia mai il modello e non lancia generazioni da solo.
 Il dettaglio dei messaggi di M8b si scrive nel suo piano.
 
@@ -81,7 +81,7 @@ Il dettaglio dei messaggi di M8b si scrive nel suo piano.
 | Tappa | Contenuto | Esito |
 |---|---|---|
 | **M8a** | `DTHubPluginKit`, bundle di prova, entitlement, scansione e caricamento, installazione/rimozione e Preferenze → Plug-in, messaggi `context`, `activate`, `notice`, il menu Plug-in dell'header | si installa e si accende un plug-in che mostra il proprio tab |
-| **M8b** | Messaggi `contribute` e `llm`, card Contributi, schede del tab Control con provenienza, conflitti, pipeline | un plug-in contribuisce e il Run lo esegue |
+| **M8b** | Messaggi `contribute` e `llm`, campi evidenziati in teal con ✕ per ripristinare, schede del tab Control con provenienza, conflitti, pipeline sul pulsante Run | un plug-in contribuisce e il Run lo esegue |
 | Poi | Prompt Master, Sphere Light, Qwen Image 2.1: ognuno a parte, come suo `.dthubplugin` | |
 
 ## 10. Fuori e rischi
