@@ -47,11 +47,11 @@ Packages/
   HubCore                   stato globale, composizione del lavoro, esecuzione, persistenza
   DTBridge                  implementa GenerationBackend con DrawThings-Swift (gRPC)
   LLMBridge                 implementa LanguageModelService con mlx-swift-lm
-  Plugins/…                 un pacchetto per plug-in (nessuno nella v1, tranne quello di test)
+  Plugins/…                 (cambiato il 3 ottobre 2026) i plug-in non sono più pacchetti compilati dentro l'app: sono bundle `.dthubplugin` scaricati a parte e caricati all'avvio; vedi `2026-10-03-plugin-design.md`. Resta nel repository `DTHubPluginKit` (il pacchetto per gli autori) e un plug-in di prova
 ```
 
 **Regole di dipendenza** (le fa rispettare il compilatore):
-- i plug-in dipendono **solo** da HubKit;
+- i plug-in non dipendono da HubKit: usano `DTHubPluginKit` e parlano con l'app per messaggi JSON (vedi `2026-10-03-plugin-design.md`);
 - HubCore dipende da HubKit e usa DT e LLM solo tramite i protocolli `GenerationBackend` e `LanguageModelService`;
 - DTBridge è l'unico modulo che importa DrawThings-Swift e gRPC; LLMBridge è l'unico che importa MLX;
 - l'app collega le implementazioni all'avvio e contiene solo interfaccia e collegamenti.
@@ -181,6 +181,8 @@ Il file va portato in HubKit, così i plug-in lo usano.
 - *Output*: cartella di salvataggio.
 
 ## 8. Contratto dei plug-in (HubKit)
+
+> **Aggiornato il 3 ottobre 2026:** il contenuto di questa sezione (contributi, conflitti, pipeline) resta valido, ma il contratto non è più un insieme di protocolli Swift di HubKit: viaggia come selettori e messaggi JSON tra l'app e un bundle scaricato a parte. Il disegno è in `2026-10-03-plugin-design.md`.
 
 Un plug-in dichiara:
 - identificatore, nome, icona;
