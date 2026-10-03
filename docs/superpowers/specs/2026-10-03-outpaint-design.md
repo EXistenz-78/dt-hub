@@ -41,6 +41,16 @@ Lo zoom e lo spostamento **non fanno parte della storia** (come oggi lo spostame
 - **`enableInpainting`** e l'invio della maschera si decidono come in M7c (solo con l'immagine, solo per i modelli con `modifier == "inpainting"`).
 - **Decodifica.** La dimensione a cui si decodifica l'immagine tiene conto dello zoom (con zoom positivo servono più pixel di oggi).
 
+### 4b. Riempimento dei margini per i LoRA di outpaint (aggiunto il 3 ottobre 2026, dopo la prova dell'utente)
+
+I bordi estesi con la maschera valgono per i modelli inpaint e per Klein senza LoRA (misurato su FLUX.2 klein: continua bene). Sono sbagliati per i **LoRA di outpaint dei modelli Edit**: si istruiscono con il prompt (Qwen: "replace the solid gray areas…", Flux: "fill the green spaces…") e vogliono margini di **un colore pieno** e **nessuna maschera**. Misurato su Qwen Image 2.1 + `q21_outpaint_v2` (576×1024, 25 passi, forza 100%, guida 1): con bordi estesi + maschera il modello **conserva le strisce**; con grigio pieno e senza maschera continua la scena come in Draw Things; con grigio e maschera l'originale torna intatto ma la giunzione si vede come una cornice e il resto non si fonde.
+
+- `MarginFill`: `edges` (bordi estesi, margini nella maschera), `gray`, `green` (colore pieno, margini fuori dalla maschera). `ControlInputs.marginFill` (nil = automatico) si salva e non è un passo della cronologia.
+- **Automatico**: se tra i LoRA del job ce n'è uno con "outpaint" nel nome del file o nel trigger → `green` se il trigger parla di "green", altrimenti `gray`; senza → `edges`.
+- Una maschera dipinta dall'utente si manda comunque, ma senza i margini.
+- La card Canvas mostra, solo quando ci sono margini, il menu "Riempimento margini" (Automatico (…) / Bordi estesi + maschera / Grigio, senza maschera / Verde, senza maschera). In Disegno i margini sono arancio solo se vanno nella maschera, altrimenti del colore del riempimento.
+- Crash noto, **non di DT Hub**: il LoRA `flux_outpaint_lora` è per Flux.1; applicato a FLUX.2 klein fa cadere il server (trap in `LoRALoader.mergeLoRA`). Si risolve con un controllo di compatibilità LoRA/modello (backlog).
+
 ## 5. Interfaccia (card Canvas)
 
 **Modo Canvas.** Sotto il selettore Canvas/Disegno, lo slider **Zoom** (−100…+100, con il valore a fianco e un pulsante "ripristina" che riporta zoom e spostamento a 0). Lo stage mostra sempre il **canvas** (rapporto fisso), con l'immagine che si muove e scala dentro. Attorno al canvas una **cornice scura** (circa il 12% per lato) mostra la parte che esce, oscurata; i margini sono a scacchi. Il drag sposta l'immagine su entrambi gli assi dove c'è spazio.

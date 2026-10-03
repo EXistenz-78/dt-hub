@@ -1735,6 +1735,91 @@
         }
       }
     },
+    "control.fill.automatic": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatic (%@)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatico (%@)"
+          }
+        }
+      }
+    },
+    "control.fill.edges": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Extended edges + mask"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bordi estesi + maschera"
+          }
+        }
+      }
+    },
+    "control.fill.gray": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grey, no mask"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grigio, senza maschera"
+          }
+        }
+      }
+    },
+    "control.fill.green": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Green, no mask"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verde, senza maschera"
+          }
+        }
+      }
+    },
+    "control.fill.help": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Extended edges: the margins are regenerated through the mask (inpaint models). Grey or green: the margins are a flat colour for an outpaint LoRA (Qwen asks for grey, Flux for green), with no mask."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bordi estesi: i margini si rigenerano con la maschera (modelli inpaint). Grigio o verde: i margini sono un colore pieno per un LoRA di outpaint (Qwen vuole il grigio, Flux il verde), senza maschera."
+          }
+        }
+      }
+    },
     "control.image.adapt": {
       "extractionState": "manual",
       "localizations": {
@@ -2411,6 +2496,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Il canvas è vuoto: Run genera da zero."
+          }
+        }
+      }
+    },
+    "control.stage.fill": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Margin fill"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Riempimento margini"
           }
         }
       }

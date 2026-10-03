@@ -7,9 +7,11 @@ public enum InputComposer {
   /// The start image cut and scaled to the exact canvas size, opaque. nil when the context cannot
   /// be made (a size of zero).
   /// With `paint` (the Brush drawing, in the image's own coordinates) it is put over the image in
-  /// the same cut.
+  /// the same cut. The margins the image leaves are `fill`: its own edge pixels stretched outwards, or a
+  /// flat grey or green.
   public static func frame(
-    _ image: CGImage, toWidth width: Int, height: Int, framing: Framing, paint: PaintBitmap? = nil
+    _ image: CGImage, toWidth width: Int, height: Int, framing: Framing, paint: PaintBitmap? = nil,
+    fill: MarginFill = .edges
   ) -> CGImage? {
     guard width > 0, height > 0 else { return nil }
     let crop = FramingMath.cropRect(
@@ -25,7 +27,14 @@ public enum InputComposer {
     let drawn = CGRect(
       x: -crop.minX * scale, y: -(Double(image.height) - crop.maxY) * scale,
       width: Double(image.width) * scale, height: Double(image.height) * scale)
-    extendEdges(of: image, drawn: drawn, in: context, width: width, height: height)
+    switch fill {
+    case .edges:
+      extendEdges(of: image, drawn: drawn, in: context, width: width, height: height)
+    case .gray, .green:
+      context.setFillColorSpace(CGColorSpaceCreateDeviceRGB())
+      context.setFillColor(fill == .gray ? [0.5, 0.5, 0.5, 1] : [0, 1, 0, 1])
+      context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+    }
     context.draw(image, in: drawn)
     if let layer = paint?.cgImage() { context.draw(layer, in: drawn) }
     return context.makeImage()
@@ -75,9 +84,12 @@ public enum InputComposer {
   /// The mask for the canvas, in the same cut as the start image: transparent where the picture is
   /// regenerated, opaque where it is kept (what the client wants). The mask is scaled with the same
   /// smoothing as the image and then cut at half, so its edge is clean at any scale. What the image
-  /// does not cover (its margins in the canvas) is always regenerated; with no `mask` that is all.
+  /// does not cover (its margins in the canvas) is regenerated too, unless `marginsRegenerated` is false
+  /// (a flat fill that an outpaint LoRA reads: the margins stay out of the mask); with no `mask` and the
+  /// margins regenerated that is all.
   public static func mask(
-    _ mask: MaskBitmap?, imageWidth: Int, imageHeight: Int, toWidth width: Int, height: Int, framing: Framing
+    _ mask: MaskBitmap?, imageWidth: Int, imageHeight: Int, toWidth width: Int, height: Int, framing: Framing,
+    marginsRegenerated: Bool = true
   ) -> CGImage? {
     guard width > 0, height > 0, imageWidth > 0, imageHeight > 0 else { return nil }
     var gray: CGImage?
@@ -87,7 +99,7 @@ public enum InputComposer {
     }
     let crop = FramingMath.cropRect(
       imageWidth: imageWidth, imageHeight: imageHeight, canvasWidth: width, canvasHeight: height, framing: framing)
-    var bytes = [UInt8](repeating: 255, count: width * height)
+    var bytes = [UInt8](repeating: marginsRegenerated ? 255 : 0, count: width * height)
     let drawn = bytes.withUnsafeMutableBytes { buffer -> Bool in
       guard
         let context = CGContext(

@@ -227,6 +227,49 @@ struct LiveServerTests {
     #expect(abs(left.r - 0.5) + abs(left.g - 0.5) + abs(left.b - 0.5) > 0.03, "the margin must not stay grey")
   }
 
+  /// Outpaint with an Edit model and its outpaint LoRA, measured on Qwen Image 2.1 with
+  /// q21_outpaint_v2 (a photo in a 768×512 canvas at zoom −35, margins all round, 25 steps, guidance 1):
+  /// the LoRA is told to replace "the solid gray areas", so the margins must be flat grey and no mask
+  /// is sent (the app's automatic fill for an outpaint LoRA). With the edges stretched outwards and the
+  /// margins in the mask — the fill that suits inpaint models — the model keeps the stretched stripes
+  /// instead of continuing the scene. The stripes show as a top margin whose rows barely differ.
+  @Test(.enabled(if: address != nil))
+  func anOutpaintLoRAContinuesTheSceneFromAFlatGreyFill() async throws {
+    let backend = try await liveBackend()
+    let models = try await backend.fetchCatalog().models
+    let model = try #require(models.first { $0.file.hasPrefix("qwen_image_2.1") }?.file, "needs Qwen Image 2.1")
+    let lora = "q21_outpaint_v2_lora_f16.ckpt"
+    let path = "/Library/Desktop Pictures/Ducks on a Misty Pond.jpg"
+    let source = try #require(
+      CGImageSourceCreateWithURL(URL(fileURLWithPath: path) as CFURL, nil).flatMap { CGImageSourceCreateImageAtIndex($0, 0, nil) },
+      "needs a photo at \(path)")
+    let framing = Framing(zoom: -35)
+    let framed = try #require(InputComposer.frame(source, toWidth: 768, height: 512, framing: framing, fill: .gray))
+    var job = GenerationJob(
+      prompt: "outpaint the image: replace the solid gray areas with a seamless continuation of the scene, keeping the existing picture unchanged.",
+      model: model,
+      parameters: GenerationParameters(
+        width: 768, height: 512, steps: 25, guidanceScale: 1, sampler: .uniPCTrailing, seed: 5, randomSeed: false,
+        loras: [LoRASelection(file: lora, weight: 1)]))
+    job.imageStrength = 1.0
+    let out = try await run(backend, job, GenerationInputs(image: framed))
+    await backend.shutdown()
+    #expect(out.width == 768 && out.height == 512)
+    func row(_ y: Int) -> [Double] {
+      guard let part = out.cropping(to: CGRect(x: 0, y: y, width: 768, height: 1)) else { return [] }
+      var bytes = [UInt8](repeating: 0, count: 768 * 4)
+      let context = CGContext(
+        data: &bytes, width: 768, height: 1, bitsPerComponent: 8, bytesPerRow: 768 * 4,
+        space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+      context.draw(part, in: CGRect(x: 0, y: 0, width: 768, height: 1))
+      return (0..<768).flatMap { x in (0..<3).map { Double(bytes[x * 4 + $0]) / 255 } }
+    }
+    let a = row(10), b = row(70)
+    let difference = zip(a, b).map { abs($0 - $1) }.reduce(0, +) / Double(a.count)
+    print("LIVE outpaint LoRA: top rows differ by \(difference) (stripes ≈ 0.001, a continued scene ≈ 0.01+)")
+    #expect(difference > 0.005, "the top margin looks like stretched stripes")
+  }
+
   /// 512×512, the right half transparent (to regenerate), the left half opaque (to keep).
   private func halfMask(size: Int) -> CGImage {
     let context = CGContext(

@@ -52,6 +52,7 @@ struct CanvasStage: View {
           if mode == .canvas {
             stage(for: image)
             zoomRow(for: image)
+            if control.hasMargins(canvasWidth: canvasWidth, canvasHeight: canvasHeight) { fillRow }
             caption(for: image)
           } else {
             drawArea(for: image)
@@ -239,6 +240,37 @@ struct CanvasStage: View {
           control.resetFraming()
         }
       }
+    }
+  }
+
+  /// What fills the margins: automatic follows the LoRAs (an outpaint LoRA asks for a flat grey or green
+  /// and no mask), or the user picks. Shown only when the image leaves margins.
+  private var fillRow: some View {
+    let automatic = MarginFill.automatic(loras: generation.parameters.loras)
+    return CardRow(label: String(localized: "control.stage.fill")) {
+      EmptyView()
+    } control: {
+      Picker(
+        String(localized: "control.stage.fill"),
+        selection: Binding(get: { control.inputs.marginFill }, set: { control.setMarginFill($0) })
+      ) {
+        Text(String(format: String(localized: "control.fill.automatic"), fillName(automatic))).tag(MarginFill?.none)
+        ForEach(MarginFill.allCases, id: \.self) { fill in
+          Text(fillName(fill)).tag(MarginFill?.some(fill))
+        }
+      }
+      .labelsHidden()
+      .pickerStyle(.menu)
+      .fixedSize()
+      .help(String(localized: "control.fill.help"))
+    }
+  }
+
+  private func fillName(_ fill: MarginFill) -> String {
+    switch fill {
+    case .edges: String(localized: "control.fill.edges")
+    case .gray: String(localized: "control.fill.gray")
+    case .green: String(localized: "control.fill.green")
     }
   }
 
@@ -449,18 +481,22 @@ struct CanvasStage: View {
       .frame(width: frame.width, height: frame.height)
       .position(x: origin.x + frame.width / 2, y: origin.y + frame.height / 2)
     }
+    let fill = generation.marginFill
     return ZStack(alignment: .topLeading) {
-      Color(white: 0.5)
+      if fill == .green { Color(red: 0, green: 1, blue: 0) } else { Color(white: 0.5) }
       layer(picture)
       layer(drawing.paintImage)
       layer(drawing.maskImage)
-      // What the image leaves uncovered is regenerated: it shows like the mask.
-      Path { path in
-        path.addRect(CGRect(origin: .zero, size: size))
-        path.addRect(CGRect(origin: origin, size: frame))
+      // What the image leaves uncovered is regenerated when it goes in the mask: it shows like the mask.
+      // With a flat grey or green fill (an outpaint LoRA) it shows as that colour, and nothing is masked.
+      if fill.sendsMask {
+        Path { path in
+          path.addRect(CGRect(origin: .zero, size: size))
+          path.addRect(CGRect(origin: origin, size: frame))
+        }
+        .fill(Color(red: 1, green: 140 / 255, blue: 0).opacity(0.55), style: FillStyle(eoFill: true))
+        .allowsHitTesting(false)
       }
-      .fill(Color(red: 1, green: 140 / 255, blue: 0).opacity(0.55), style: FillStyle(eoFill: true))
-      .allowsHitTesting(false)
       if let hover {
         let radius = brushSize / 2 * size.width / Double(max(canvasWidth, 1))
         ZStack {
