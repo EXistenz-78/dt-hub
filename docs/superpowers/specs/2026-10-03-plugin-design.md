@@ -82,7 +82,7 @@ Il contenuto è quello della spec principale §8, trasportato dai messaggi `cont
 - **Pipeline** (lista ordinata di passaggi: modifiche alla configurazione, ingressi, se l'output precedente diventa l'immagine di partenza): **sul pulsante Run**, che diventa «Run · N passaggi» in teal, con i passaggi elencati nel suggerimento. Se due plug-in ne propongono una, lo stesso pop-up fa scegliere («<plug-in> · N passaggi»). Non essendo un campo, si toglie dal menu contestuale del pulsante («Togli la pipeline»). Senza pipeline, il Run esegue un solo passaggio con la configurazione corrente.
 - **LoRA e Moodboard si sommano** (sono liste): i LoRA e le immagini che arrivano da plug-in diversi si **aggiungono** alla lista, ciascuno col suo teal al 30% (e, per le immagini, la provenienza del plug-in), e non c'è mai un pop-up. Lo stesso LoRA già presente prende il peso dell'ultimo plug-in che lo manda. Spegnere il plug-in toglie il teal e lascia le voci in lista come manuali.
 - Un plug-in non cambia mai il modello e non lancia generazioni da solo.
-Il dettaglio dei messaggi di M8b si scrive nel suo piano.
+I messaggi di M8b e le scelte fatte nel prototipo sono al §11.
 
 ## 8. Test e verifiche
 
@@ -102,3 +102,23 @@ Il dettaglio dei messaggi di M8b si scrive nel suo piano.
 
 **Fuori:** catalogo o negozio nell'app; installazione da indirizzo web; scaricamento a caldo del codice; plug-in in un processo separato; firma e notarizzazione per la distribuzione.
 **Rischi:** il codice di un plug-in può far cadere l'app o fare qualunque cosa possa fare DT Hub (l'utente lo conferma all'installazione); la quarantena dei file scaricati non è provata; un cambio del significato dei messaggi richiede una nuova versione del contratto e un aggiornamento dei plug-in.
+
+## 11. I messaggi di M8b (verificati in un prototipo il 4 ottobre 2026)
+
+Il contratto resta la **versione 1**: i nuovi messaggi sono aggiunte, e un'app che non li conosce risponde `{"type":"unsupported"}`. Tutti viaggiano come JSON nello stesso canale di M8a; solo un plug-in **attivo per il lavoro** (menu dell'header) può mandarli, gli altri ricevono `{"type":"error","text":…}`.
+
+**`contribute`** (plug-in → app). Ogni chiave è facoltativa; ciò che non si legge è lasciato fuori e non è un errore. Risposta `{"type":"ok","conflicts":n}` (più `problems` se un'immagine non si è potuta leggere); i conflitti li risolve l'utente nel pop-up, la risposta non aspetta.
+- `fields`: `prompt`, `negativePrompt` (testo); `width`, `height`, `steps`, `cfgZeroInitSteps`, `seed`, `batchSize`, `batchCount` (interi); `guidanceScale`, `shift` (numeri); `cfgZeroStar`, `resolutionDependentShift`, `randomSeed` (booleani); `sampler` (numero Draw Things o nome). Sono i campi delle card Prompt, Dimensioni, Campionamento, Seed e batch. I valori si limitano come fanno le card (`clamped()`), e il segno sul campo ricorda il valore **già limitato**. Il modello, le card Avanzate e la forza non si possono contribuire (backlog).
+- `loras`: `[{file, weight, mode, trigger}]`, si aggiungono; lo stesso file già presente prende peso, modo e trigger nuovi.
+- `moodboard`: `[{path, name}]` (file nella cartella temporanea del plug-in), si aggiungono con provenienza «da <plug-in>»; se **lo stesso** plug-in le rimanda, sostituiscono quelle che aveva mandato (e che sono ancora lì).
+- `startImage`: `{path, name}`, l'immagine di partenza del tab Control (provenienza del plug-in); la maschera non si può contribuire in M8b (backlog).
+- `pipeline`: `{name, steps: [{title, fields, loras, moodboard, startImage, useOutputAsStart}]}`. Il passaggio esegue i campi del tab con le sue modifiche sopra; `loras` e `moodboard` del passaggio **sostituiscono** quelli del tab per quel passaggio (`[]` = nessuno), se assenti restano quelli del tab; `startImage` o l'output del passaggio precedente (`useOutputAsStart`) sostituiscono l'immagine di partenza (inquadrata sul canvas del passaggio, senza la maschera del tab).
+
+**`llm`** (plug-in → app): `{prompt, images:[percorsi]}` → `{"type":"llm","text":…}` oppure `error` (nessun modello scelto, immagini non supportate…). La risposta può tardare (il modello si carica); la libreria dei plug-in aspetta fino a 300 secondi.
+
+**Scelte del prototipo.**
+- Un campo prende il teal finché **contiene** il valore del plug-in; se l'utente lo modifica compare il valore tra parentesi, e se riscrive lo stesso valore il teal torna. Prompt e negativo: teal, mai parentesi. Il segno non si salva: al riavvio i valori restano, senza teal.
+- Conflitto: solo se un **altro** plug-in manda un valore **diverso** da quello che il plug-in precedente aveva mandato, anche se l'utente nel frattempo l'ha cambiato. Valori uguali: nessun pop-up, il segno passa al nuovo plug-in. Lo stesso plug-in che chiede due volte la stessa cosa sostituisce la domanda precedente. Esc lascia tutto com'è.
+- La pipeline resta sul pulsante Run finché non la si toglie («Togli la pipeline», menu contestuale del pulsante) o il plug-in si spegne: non si consuma al Run. Ogni passaggio è una generazione normale e le sue immagini vanno nella striscia dei Risultati; un passaggio che fallisce o Stop fermano la pipeline; il campo Seed non si aggiorna.
+- **Più plug-in nello stesso processo:** ognuno porta la propria copia di `DTHubPluginKit`; due copie con lo stesso nome di modulo definiscono due volte le stesse classi Objective-C ("Class … is implemented in both"). Ogni plug-in deve dare alla propria copia un nome di modulo suo con `moduleAliases` in `Package.swift` (il sorgente continua a fare `import DTHubPluginKit`); il plug-in di esempio lo fa e il README lo dice.
+- Il plug-in di esempio 1.2 (e la sua variante B, per provare i conflitti) manda tutto questo e risponde a un messaggio `press` (come premere un pulsante), usato dai test.
