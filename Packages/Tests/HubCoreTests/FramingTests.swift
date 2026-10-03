@@ -62,6 +62,17 @@ struct FramingMathTests {
   }
 }
 
+struct AdaptedSizeLimitTests {
+  @Test func theLimitOfTheMomentIs8192WithTheTiledDiffusion() {
+    // 4:1 at the area of 6000×4000: 9798×2449 before the limit.
+    let plain = FramingMath.adaptedSize(imageWidth: 4000, imageHeight: 1000, currentWidth: 6000, currentHeight: 4000)
+    #expect(plain.width == 2048)
+    let tiled = FramingMath.adaptedSize(
+      imageWidth: 4000, imageHeight: 1000, currentWidth: 6000, currentHeight: 4000, limit: 8192)
+    #expect(tiled == Size(width: 8192, height: 2432))
+  }
+}
+
 struct InputComposerTests {
   /// An image whose left half is red and right half is blue.
   func twoTone(width: Int = 200, height: Int = 100) -> CGImage {
