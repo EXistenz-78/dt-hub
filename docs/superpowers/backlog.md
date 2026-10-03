@@ -22,6 +22,16 @@ Cose decise o chieste e non ancora fatte. Si cancella una voce quando entra in u
 - **Quote del Moodboard** (spec Control §4.1, 2 ottobre 2026): fette di una torta da 100 con barra, cursori ed Equilibra. Non fatte perché sui modelli che leggono il Moodboard Draw Things le ignora (FLUX.2 klein, Qwen Image Edit 2511: ogni valore sopra 0 dà lo stesso risultato; provato in Draw Things dall'utente e dal vivo da DT Hub). Da riprovare con Qwen Image 2.1 (encoder con visione) e con i ControlNet della voce D.
 - **Famiglie che leggono il Moodboard:** Z Image no (misurato); Qwen Image 2.1, Ideogram 4/4.5 e altre da provare; si aggiorna `FamilyTraits.withoutMoodboard`.
 
+## Rimandi di M7e (dimensioni fino a 8192)
+
+- `GenerationController.setTiledDiffusion` riscrive il rapporto bloccato anche quando le dimensioni non sono cambiate (un 16:9 arrotondato a 1,7 diventa 5:3 accendendo il Tiled): aggiornarlo solo se la dimensione cambia.
+- "Annulla" della barra "dimensioni adattate" del tab Control (`restoreDimensions`) può rimettere dimensioni sopra il limite se nel frattempo si sono ripresi i parametri di un risultato col Tiled spento: chiamare `fitSizeToLimit()` alla fine.
+- L'editor JSON e l'import dei preset rifiutano dimensioni sopra 2048 quando il JSON spegne il Tiled, mentre l'interruttore le riduce da solo; la spec dice che passano da `clamped()`: ridurre alla lettura o correggere il testo.
+- Manca il test di `setHeight` con rapporto bloccato al limite (simmetrico a `setWidth`).
+- **Non provato dal vivo**: un'immagine di partenza (I2I, inpaint, outpaint) a 8192²: il client ora ammette 1 GiB per messaggio, ma il limite di ricezione del server non è verificato.
+- Fuori perimetro, accettati: maschera e disegno a dimensione di lavoro 1024 (a 8192 i bordi sono sgranati), pennello al massimo 512 px (poco su 8192), picco di memoria della maschera al Run a 8192², Tiled Decoding che non si accende insieme al Tiled Diffusion, nessun avviso di memoria.
+- **Test dell'M3 instabili sotto carico** (`GenerationSessionTests`: `reportsProgressAndPreviewWhileRunning`, `reportsWhichBatchIsRunning`, `stopKeepsTheBatchesAlreadyFinished`): falliscono a turno, circa tre esecuzioni su otto; da sistemare (attese temporizzate).
+
 ## Rimandi di M7d (outpaint)
 
 - **Klein e il grigio** (prova dell'utente): con FLUX.2 klein, margini grigi pieni e il prompt "expand the image" (senza accennare al colore) funzionano meglio che bordi estesi + maschera. Il riempimento automatico oggi dà `edges` a Klein senza LoRA; valutare un default diverso per i modelli Edit senza LoRA.
