@@ -32,6 +32,10 @@ public enum PluginBundleReader {
       return value
     }
     let identifier = try text("CFBundleIdentifier")
+    // The identifier becomes a folder name: only letters, digits, dots, hyphens and underscores.
+    guard !identifier.hasPrefix("."),
+      identifier.unicodeScalars.allSatisfy({ $0.isASCII && ($0.properties.isAlphabetic || ("0"..."9").contains(Character($0)) || ".-_".unicodeScalars.contains($0)) })
+    else { throw .invalidIdentifier(identifier) }
     let name = try text("CFBundleName")
     let principal = try text("NSPrincipalClass")
     let version = (info["CFBundleShortVersionString"] as? String) ?? "0"

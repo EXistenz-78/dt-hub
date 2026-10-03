@@ -76,17 +76,31 @@ public struct PluginFolder: Sendable {
     }
     let destination = location(of: info.identifier)
     let manager = FileManager.default
+    // Copy to a hidden folder first, swap after; whatever happens the hidden folder goes away.
+    let staging = root.appendingPathComponent(".staging-\(UUID().uuidString)", isDirectory: true)
+    defer { try? manager.removeItem(at: staging) }
     do {
       try manager.createDirectory(at: root, withIntermediateDirectories: true)
-      // Copy first, swap after: a failed copy leaves the old version in place.
-      let staging = root.appendingPathComponent(".staging-\(UUID().uuidString)", isDirectory: true)
       try manager.copyItem(at: source, to: staging)
       Self.removeQuarantine(from: staging)
-      if manager.fileExists(atPath: destination.path) { try manager.removeItem(at: destination) }
-      try manager.moveItem(at: staging, to: destination)
+      // Every folder that holds this plug-in, under whatever name it was put there.
+      let previous = scan().filter { $0.info?.identifier == info.identifier }.map(\.url)
+      if manager.fileExists(atPath: destination.path) {
+        _ = try manager.replaceItemAt(destination, withItemAt: staging)
+      } else {
+        try manager.moveItem(at: staging, to: destination)
+      }
+      for url in previous where url.standardizedFileURL != destination.standardizedFileURL {
+        try? manager.removeItem(at: url)
+      }
     } catch {
       throw .cannotWrite(error.localizedDescription)
     }
+  }
+
+  /// Removes one folder of the list (a broken bundle has no identifier to go by).
+  public func remove(folderAt url: URL) throws(PluginError) {
+    do { try FileManager.default.removeItem(at: url) } catch { throw .cannotWrite(error.localizedDescription) }
   }
 
   /// Removes the plug-in's folder (a loaded plug-in goes away at the next launch).

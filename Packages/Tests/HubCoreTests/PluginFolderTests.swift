@@ -52,6 +52,16 @@ struct PluginBundleReaderTests {
     #expect(throws: PluginError.missingKey("CFBundleName")) { try PluginBundleReader.read(emptyName) }
   }
 
+  @Test func anIdentifierThatIsNotAPlainNameIsRefused() throws {
+    let folder = PluginFixture.folder()
+    for bad in ["../../X", "a/b", ".hidden", "with space", "tab\t"] {
+      let url = try PluginFixture.bundle(in: folder, id: bad, folderName: "bundle-\(UUID()).dthubplugin")
+      #expect(throws: PluginError.invalidIdentifier(bad)) { try PluginBundleReader.read(url) }
+    }
+    let good = try PluginFixture.bundle(in: folder, id: "com.example.My-Plug_in2", folderName: "good.dthubplugin")
+    #expect(try PluginBundleReader.read(good).identifier == "com.example.My-Plug_in2")
+  }
+
   @Test func aContractThisAppDoesNotKnowIsRefused() throws {
     let url = try PluginFixture.bundle(in: PluginFixture.folder(), contract: 7)
     #expect(throws: PluginError.contractNotSupported(7)) { try PluginBundleReader.read(url) }
@@ -108,6 +118,34 @@ struct PluginFolderTests {
     #expect(throws: PluginError.notNewer(installed: "1.1")) { try folder.install(one, info: PluginBundleReader.read(one)) }
     #expect(folder.installed("com.example.p")?.version == "1.1")
     #expect(folder.scan().count == 1, "no staging folder is left behind")
+  }
+
+  @Test func aFailedInstallLeavesNoStagingAndKeepsTheOldVersion() throws {
+    let root = PluginFixture.folder()
+    let folder = PluginFolder(root: root)
+    let one = try PluginFixture.bundle(in: PluginFixture.folder(), version: "1.0")
+    try folder.install(one, info: PluginBundleReader.read(one))
+    // A newer bundle with a file nobody can read: the copy fails halfway.
+    let two = try PluginFixture.bundle(in: PluginFixture.folder(), version: "1.1")
+    let locked = two.appendingPathComponent("Contents/Resources/locked.bin")
+    try FileManager.default.createDirectory(at: locked.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try Data("x".utf8).write(to: locked)
+    try FileManager.default.setAttributes([.posixPermissions: 0], ofItemAtPath: locked.path)
+    #expect(throws: PluginError.self) { try folder.install(two, info: PluginBundleReader.read(two)) }
+    let names = try FileManager.default.contentsOfDirectory(atPath: root.path)
+    #expect(names == ["com.example.p.dthubplugin"], "nothing else is left, hidden folders included")
+    #expect(folder.installed("com.example.p")?.version == "1.0")
+  }
+
+  @Test func anUpdateReplacesTheBundleEvenWhenItSitsUnderAnotherFolderName() throws {
+    let root = PluginFixture.folder()
+    try PluginFixture.bundle(in: root, id: "com.example.p", version: "1.0", folderName: "Sample.dthubplugin")
+    let folder = PluginFolder(root: root)
+    let newer = try PluginFixture.bundle(in: PluginFixture.folder(), version: "1.1")
+    try folder.install(newer, info: PluginBundleReader.read(newer))
+    let slots = folder.scan()
+    #expect(slots.count == 1 && slots.first?.info?.version == "1.1")
+    #expect(!FileManager.default.fileExists(atPath: root.appendingPathComponent("Sample.dthubplugin").path))
   }
 
   @Test func removingTakesTheFolderAway() throws {

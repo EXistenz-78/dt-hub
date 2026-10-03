@@ -3554,6 +3554,23 @@
         }
       }
     },
+    "plugin.error.identifier": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The plug-in's identifier “%@” is not a plain name."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L'identificatore del plug-in «%@» non è un nome semplice."
+          }
+        }
+      }
+    },
     "plugin.error.load": {
       "extractionState": "manual",
       "localizations": {

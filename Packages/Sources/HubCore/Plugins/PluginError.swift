@@ -18,4 +18,6 @@ public enum PluginError: Error, Equatable, Sendable {
   case notNewer(installed: String)
   /// A file operation failed.
   case cannotWrite(String)
+  /// The bundle identifier is not a plain name (it becomes a folder name).
+  case invalidIdentifier(String)
 }
