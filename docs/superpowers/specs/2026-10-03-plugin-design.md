@@ -1,6 +1,6 @@
 # DT Hub — Design dei plug-in scaricabili (M8)
 
-Data: 3 ottobre 2026 · Stato: bozza da approvare · **Sostituisce** nella spec principale (`2026-09-29-dt-hub-core-design.md`) la parte di §4 "Plugins/… un pacchetto per plug-in" e il *modo di consegna* del contratto di §8 (che resta valido per il contenuto: contributi, conflitti, pipeline).
+Data: 3 ottobre 2026 · Stato: M8a realizzata, M8b da fare · **Sostituisce** nella spec principale (`2026-09-29-dt-hub-core-design.md`) la parte di §4 "Plugins/… un pacchetto per plug-in" e il *modo di consegna* del contratto di §8 (che resta valido per il contenuto: contributi, conflitti, pipeline).
 
 ## 1. Scopo
 
