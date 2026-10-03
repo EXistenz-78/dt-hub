@@ -23,6 +23,14 @@ struct PluginsPreferencesView: View {
       } footer: {
         VStack(alignment: .leading, spacing: 4) {
           if let problem { Text(verbatim: problem).foregroundStyle(DS.remove) }
+          if plugins.needsRestart {
+            HStack(spacing: DS.controlGap) {
+              Text("prefs.plugins.restart.note").foregroundStyle(.secondary)
+              Spacer(minLength: 0)
+              Button("prefs.plugins.restart") { AppRelaunch.relaunch() }
+                .buttonStyle(DSPillButtonStyle(prominent: true))
+            }
+          }
           Text("prefs.plugins.note").foregroundStyle(.secondary)
           if let page = PluginText.downloadPage {
             Link("prefs.plugins.download", destination: page)
@@ -61,8 +69,12 @@ struct PluginsPreferencesView: View {
     HStack(spacing: DS.controlGap) {
       VStack(alignment: .leading, spacing: 2) {
         Text(verbatim: "\(entry.name) \(entry.version)")
-        Text(verbatim: PluginText.state(entry.state)).font(.caption)
+        Text(verbatim: PluginText.state(entry)).font(.caption)
           .foregroundStyle({ if case .failed = entry.state { DS.remove } else { Color.secondary } }())
+        if let notice = plugins.lastNotice(of: entry.id) {
+          Text(verbatim: String(format: String(localized: "prefs.plugins.lastNotice"), notice.text)).font(.caption)
+            .foregroundStyle(notice.isError ? DS.remove : Color.secondary).lineLimit(2)
+        }
       }
       Spacer(minLength: 0)
       if case .failed = entry.state {

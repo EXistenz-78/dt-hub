@@ -5,6 +5,7 @@ import SwiftUI
 /// A line a plug-in asked to show, floating over the window for a few seconds.
 struct PluginNoticeBanner: View {
   let plugins: PluginRegistry
+  @Environment(\.controlActiveState) private var activeState
 
   var body: some View {
     Group {
@@ -25,7 +26,9 @@ struct PluginNoticeBanner: View {
         .shadow(radius: 6, y: 2)
         .padding(.bottom, 16)
         .transition(.opacity)
-        .task(id: notice.id) {
+        // The 8 seconds count while the window is the one in use: a line that arrives while the window is behind others waits.
+        .task(id: "\(notice.id)-\(activeState != .inactive)") {
+          guard activeState != .inactive else { return }
           try? await Task.sleep(for: .seconds(8))
           if plugins.latestNotice?.id == notice.id { plugins.dismissNotice() }
         }

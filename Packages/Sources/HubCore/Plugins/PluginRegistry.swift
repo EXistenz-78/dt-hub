@@ -18,7 +18,11 @@ public struct PluginEntry: Identifiable, Equatable, Sendable {
   public let id: String
   public let url: URL
   public let name: String
-  public let version: String
+  /// The version in the folder.
+  public var version: String
+  /// The version of the code that is running (nil unless loaded); it differs from `version` after an
+  /// update that takes effect at the next launch.
+  public var runningVersion: String?
   public var state: State
   /// Whether it counts for the work in hand (the header menu); only a loaded plug-in can be.
   public var isActive: Bool
@@ -28,6 +32,7 @@ public struct PluginEntry: Identifiable, Equatable, Sendable {
 /// A line a plug-in asked the app to show.
 public struct PluginNoticeItem: Identifiable, Equatable, Sendable {
   public let id = UUID()
+  public let pluginID: String
   public let pluginName: String
   public let text: String
   public let isError: Bool
@@ -46,7 +51,12 @@ public struct PluginInstallOffer: Equatable, Sendable {
 @Observable
 public final class PluginRegistry: PluginHosting {
   public private(set) var entries: [PluginEntry] = []
+  /// The banner's line; closing the banner clears it, not the history.
   public private(set) var latestNotice: PluginNoticeItem?
+  /// Every notice received, newest first, 20 at most.
+  public private(set) var notices: [PluginNoticeItem] = []
+  /// A change (a plug-in turned on or off, installed, replaced or removed while loaded) waits for a restart.
+  public private(set) var needsRestart = false
   public private(set) var family: String?
   public private(set) var model: String?
 
@@ -56,6 +66,7 @@ public final class PluginRegistry: PluginHosting {
   @ObservationIgnored private let tempFolder: URL
   @ObservationIgnored private var loaded: [String: any LoadedPlugin] = [:]
   @ObservationIgnored private var skipPlugins = false
+  @ObservationIgnored private var removedWhileLoaded = false
 
   public init(folder: PluginFolder, settings: PluginSettingsStore, loader: any PluginLoading, tempFolder: URL) {
     self.folder = folder
@@ -88,6 +99,7 @@ public final class PluginRegistry: PluginHosting {
         loaded[info.identifier] = plugin
         entry.state = .loaded
         entry.isActive = true
+        entry.runningVersion = info.version
         entry.manifest = plugin.manifest
       } catch {
         entry.state = .failed((error as? PluginError) ?? .loadFailed(String(describing: error)))
@@ -95,6 +107,7 @@ public final class PluginRegistry: PluginHosting {
       return entry
     }
     for entry in entries where entry.isActive { send(PluginMessageType.bare(PluginMessageType.activate), to: entry.id) }
+    updateRestartFlag()
   }
 
   /// The id of a row whose bundle could not be read: it cannot clash with a plug-in's identifier.
@@ -116,10 +129,17 @@ public final class PluginRegistry: PluginHosting {
   /// and takes effect at the next launch.
   public func install(_ offer: PluginInstallOffer) throws(PluginError) {
     try folder.install(offer.source, info: offer.info)
+    // A new plug-in is turned on by the install (the user just confirmed it); an update keeps the switch.
+    if offer.replacing == nil {
+      var enabled = settings.enabled()
+      enabled.insert(offer.info.identifier)
+      settings.save(enabled)
+    }
     refreshEntries()
   }
 
   public func remove(_ identifier: String) throws(PluginError) {
+    if entries.first(where: { $0.id == identifier })?.state == .loaded { removedWhileLoaded = true }
     if let row = entries.first(where: { $0.id == identifier }), identifier.hasPrefix("broken:") {
       try folder.remove(folderAt: row.url)
     } else {
@@ -142,6 +162,7 @@ public final class PluginRegistry: PluginHosting {
     } else if entries[index].state != .loaded {
       entries[index].state = .off
     }
+    updateRestartFlag()
   }
 
   /// Whether a plug-in is turned on in the settings.
@@ -159,7 +180,11 @@ public final class PluginRegistry: PluginHosting {
       }
       if let old = previous[info.identifier] {
         // What is loaded stays; a load that failed stays failed until the bundle changes.
-        if old.state == .loaded { return old }
+        if old.state == .loaded {
+          var kept = old
+          kept.version = info.version
+          return kept
+        }
         if case .failed = old.state, old.url == slot.url, old.version == info.version { return old }
       }
       var entry = PluginEntry(
@@ -168,6 +193,20 @@ public final class PluginRegistry: PluginHosting {
       if enabled.contains(info.identifier) { entry.state = skipPlugins ? .skipped : .loadsAtNextLaunch }
       return entry
     }
+    updateRestartFlag()
+  }
+
+  private func updateRestartFlag() {
+    let enabled = settings.enabled()
+    needsRestart =
+      removedWhileLoaded
+      || entries.contains { entry in
+        switch entry.state {
+        case .loadsAtNextLaunch: true
+        case .loaded: !enabled.contains(entry.id) || entry.runningVersion != entry.version
+        default: false
+        }
+      }
   }
 
   // MARK: Active plug-ins and tabs
@@ -225,6 +264,11 @@ public final class PluginRegistry: PluginHosting {
 
   public func dismissNotice() { latestNotice = nil }
 
+  /// The newest notice a plug-in sent.
+  public func lastNotice(of identifier: String) -> PluginNoticeItem? {
+    notices.first { $0.pluginID == identifier }
+  }
+
   // MARK: PluginHosting
 
   public func receive(_ message: Data, from pluginID: String) -> Data {
@@ -232,7 +276,10 @@ public final class PluginRegistry: PluginHosting {
     case PluginMessageType.notice:
       if let notice = try? JSONDecoder().decode(PluginNotice.self, from: message) {
         let name = entries.first { $0.id == pluginID }?.name ?? pluginID
-        latestNotice = PluginNoticeItem(pluginName: name, text: notice.text, isError: notice.isError)
+        let item = PluginNoticeItem(pluginID: pluginID, pluginName: name, text: notice.text, isError: notice.isError)
+        latestNotice = item
+        notices.insert(item, at: 0)
+        if notices.count > 20 { notices.removeLast(notices.count - 20) }
       }
       return PluginMessageType.bare(PluginMessageType.ok)
     default:
