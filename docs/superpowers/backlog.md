@@ -103,3 +103,12 @@ I test di sessione dell'M3 (`GenerationSessionTests`) sono stati resi determinis
 
 - M5: espansione di `~` nei percorsi, una cartella accettata come programma, `PortProbe` che blocca, una riga di log in inglese.
 - M4c: `enableInpainting` in più, LoRA duplicate, preset come sovrapposizioni.
+
+## Rimandi di M8b (contributi dei plug-in)
+
+- **Cosa un plug-in non può ancora contribuire:** il modello (per scelta), le card Avanzate, la forza dell'immagine di partenza e la maschera. Servono messaggi nuovi (additivi: il contratto resta 1).
+- **I segni non si salvano:** al riavvio i valori restano ma non c'è più il teal né la pipeline; il Moodboard di un plug-in diventa «da <plug-in>» senza teal.
+- **`runPipeline` non ha test automatici:** la prova è dal vivo (Task 7); estrarre il ciclo in HubCore con un backend finto lo renderebbe provabile.
+- **Il pop-up mostra i valori lunghi (i prompt) troncati** sul pulsante.
+- **La domanda al modello linguistico non si può annullare** dal plug-in (la risposta può tardare fino a 300 secondi).
+
