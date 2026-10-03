@@ -1,6 +1,6 @@
 # DT Hub — Design dei plug-in scaricabili (M8)
 
-Data: 3 ottobre 2026 · Stato: bozza da approvare · **Sostituisce** nella spec principale (`2026-09-29-dt-hub-core-design.md`) la parte di §4 "Plugins/… un pacchetto per plug-in" e il *modo di consegna* del contratto di §8 (che resta valido per il contenuto: contributi, conflitti, pipeline).
+Data: 3 ottobre 2026 · Stato: M8a realizzata, M8b da fare · **Sostituisce** nella spec principale (`2026-09-29-dt-hub-core-design.md`) la parte di §4 "Plugins/… un pacchetto per plug-in" e il *modo di consegna* del contratto di §8 (che resta valido per il contenuto: contributi, conflitti, pipeline).
 
 ## 1. Scopo
 
@@ -44,9 +44,13 @@ La classe principale (`NSPrincipalClass`, sottoclasse di `NSObject`) risponde a:
 
 - Un elenco dei plug-in installati: nome, versione, stato (**spento**, **acceso**, **non caricabile** con il motivo) e, per ognuno, l'interruttore e "Rimuovi".
 - **Aggiungi…** (scelta del file) o **trascinamento** del `.dthubplugin` sul pannello. DT Hub legge il manifesto, mostra nome, versione e l'avviso "**Questo plug-in esegue codice sul tuo Mac con gli stessi permessi di DT Hub**", e solo dopo la conferma lo copia in `~/Library/Application Support/DT Hub/Plug-ins/<identificatore>.dthubplugin`.
-- Un plug-in appena installato è **spento**. Acceso, si carica **all'avvio successivo** (il codice caricato non si scarica: lo stato mostra "si carica al prossimo avvio"). Spegnerlo o rimuoverlo ha effetto allo stesso modo al prossimo avvio.
+- Un plug-in appena installato è **acceso dall'installazione** (l'utente ha appena confermato: cambiato il 3 ottobre 2026; un aggiornamento lascia l'interruttore com'era). Acceso, si carica **all'avvio successivo** (il codice caricato non si scarica: lo stato mostra "si carica al prossimo avvio"). Spegnerlo o rimuoverlo ha effetto allo stesso modo al prossimo avvio.
 - Se si aggiunge un plug-in con lo stesso identificatore: la versione più alta sostituisce quella installata (dopo conferma), efficace al prossimo avvio; la stessa versione o una più bassa si rifiuta con un messaggio.
 - Dopo la conferma si toglie dalla copia l'attributo di quarantena (`com.apple.quarantine`) lasciato dal download. **Da verificare dal vivo** con un file scaricato davvero (il prototipo non l'ha provato).
+- **Due interruttori, due scopi** (confermato dall'utente): quello delle Preferenze decide se il codice si **carica all'avvio** (spento, il codice non gira mai: serve soprattutto a fermare un plug-in che dà problemi senza cancellarlo); quello del menu dell'header decide se un plug-in già caricato **conta per il lavoro in corso**.
+- **Riavvia DT Hub:** quando una modifica aspetta il riavvio (un plug-in acceso o spento, aggiornato, installato o rimosso mentre era caricato), le Preferenze mostrano il pulsante "Riavvia DT Hub".
+- **Versione:** la riga mostra la versione installata; se quella in uso è più vecchia lo dice ("è in uso la versione X; la Y dal prossimo avvio").
+- **Avvisi dei plug-in:** il banner conta 8 secondi mentre la finestra è quella in uso; l'ultimo avviso di ogni plug-in resta sotto la sua riga nelle Preferenze.
 - Il **link alla pagina GitHub** dei plug-in: un indirizzo nelle Preferenze; compare solo quando è impostato.
 - **Header → menu Plug-in** (spec principale §7): elenca i plug-in **accesi** e li attiva o disattiva per il lavoro in corso (decide se il loro tab e i loro contributi contano); grigio se incompatibile con la famiglia del modello scelto.
 
@@ -54,7 +58,7 @@ La classe principale (`NSPrincipalClass`, sottoclasse di `NSObject`) risponde a:
 
 All'avvio l'app scandisce la cartella dei plug-in. Per ognuno: legge `Info.plist`, controlla `DTHubContract`, l'unicità dell'identificatore e (dopo il caricamento) che il manifesto coincida. Carica (`Bundle.load()`) solo quelli **accesi**. Ogni problema (bundle illeggibile, contratto non supportato, manifesto diverso, classe principale mancante) diventa lo stato "non caricabile" con il motivo, **senza far cadere l'app**.
 
-Il codice di un plug-in gira nel processo dell'app: **un suo crash fa cadere DT Hub**. Rischio accettato, mitigato così: un plug-in nuovo parte spento; tenendo premuto ⌥ all'avvio non si carica nessun plug-in; le Preferenze permettono di spegnere o rimuovere.
+Il codice di un plug-in gira nel processo dell'app: **un suo crash fa cadere DT Hub**. Rischio accettato, mitigato così: l'installazione si conferma con un avviso; tenendo premuto ⌥ all'avvio non si carica nessun plug-in; le Preferenze permettono di spegnere o rimuovere.
 
 ## 6. Firma e permessi
 

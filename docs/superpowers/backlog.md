@@ -22,6 +22,15 @@ Cose decise o chieste e non ancora fatte. Si cancella una voce quando entra in u
 - **Quote del Moodboard** (spec Control §4.1, 2 ottobre 2026): fette di una torta da 100 con barra, cursori ed Equilibra. Non fatte perché sui modelli che leggono il Moodboard Draw Things le ignora (FLUX.2 klein, Qwen Image Edit 2511: ogni valore sopra 0 dà lo stesso risultato; provato in Draw Things dall'utente e dal vivo da DT Hub). Da riprovare con Qwen Image 2.1 (encoder con visione) e con i ControlNet della voce D.
 - **Famiglie che leggono il Moodboard:** Z Image no (misurato); Qwen Image 2.1, Ideogram 4/4.5 e altre da provare; si aggiorna `FamilyTraits.withoutMoodboard`.
 
+## Rimandi di M8a (plug-in scaricabili, revisione indipendente)
+
+- Spegnere un plug-in già caricato lascia l'etichetta "Acceso — caricato" accanto all'interruttore spento, senza dire che sparisce al prossimo avvio; l'interruttore legge il file di impostazioni invece di uno stato osservato. Dopo la sostituzione di un plug-in caricato la riga conserva il vecchio numero di versione senza dire che la nuova vale dal prossimo avvio.
+- Un plug-in acceso che non si carica (dopo `Bundle.load()`) non ha l'interruttore nelle Preferenze e il suo codice si ricarica a ogni avvio: l'unica uscita senza cancellarlo è ⌥. Mostrare l'interruttore ogni volta che il plug-in è tra gli accesi.
+- "Gestisci i plug-in…" dell'header apre le Preferenze ma non sul pannello Plug-in (il `TabView` non ha una selezione).
+- Trascinare sulle Preferenze qualcosa che non è un `.dthubplugin` (un `.zip` scaricato da GitHub, per esempio) non dà nessun messaggio: dovrebbe dire "non è un plug-in leggibile".
+- Il view controller di un plug-in è uno solo: con ⌘N (una seconda finestra che condivide lo stato) il tab del plug-in può restare vuoto nella prima. Disattivare "Nuova finestra" o ospitare la vista solo nella finestra attiva.
+- Fuori perimetro, accettati: crash o blocco dentro il codice del plug-in (rischio accettato nella spec, ⌥ all'avvio); classi Objective-C con lo stesso nome se più plug-in collegano `DTHubPluginKit` in modo statico (solo avvisi nel log); nessuna conferma prima di "Rimuovi"; quarantena da verificare su un file scaricato davvero; menu dell'header che elenca i plug-in caricati e non gli accesi; `context` solo all'attivazione e al cambio di modello.
+
 ## Rimandi della selezione multipla dei Risultati (revisione indipendente, 3 ottobre 2026)
 
 - "Aggiungi al Moodboard" su molte immagini legge i file uno dopo l'altro: se subito dopo si cestinano, quelli già spostati non si leggono; inoltre `useError = firstError` può cancellare il messaggio della cancellazione. Leggere tutto prima di restituire il controllo, o non azzerare l'errore.
