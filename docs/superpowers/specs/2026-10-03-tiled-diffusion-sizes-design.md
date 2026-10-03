@@ -1,6 +1,6 @@
 # DT Hub — Design delle dimensioni fino a 8192 con il Tiled Diffusion
 
-Data: 3 ottobre 2026 · Stato: bozza da approvare · Estende `2026-09-29-dt-hub-core-design.md` (card Dimensioni, Avanzate) e `2026-10-01-tab-control-design.md` (§5 "Adatta le dimensioni")
+Data: 3 ottobre 2026 · Stato: realizzata (M7e) · Estende `2026-09-29-dt-hub-core-design.md` (card Dimensioni, Avanzate) e `2026-10-01-tab-control-design.md` (§5 "Adatta le dimensioni")
 
 ## 1. Scopo
 
@@ -34,7 +34,7 @@ Sessione salvata, preset importati ("custom_configs.json"), "Riprendi parametri"
 
 ## 4. Draw Things
 
-`JobMapper` manda già dimensioni e campi del Tiled: nessuna modifica. Si verifica dal vivo con un server vero che una generazione oltre 2048 con il Tiled Diffusion acceso parta e finisca (SD 1.5, passi pochi), e che i campi dell'invio siano quelli attesi.
+`JobMapper` manda già dimensioni e campi del Tiled: nessuna modifica. Verificato dal vivo il 3 ottobre 2026: SD 1.5 (Juggernaut Reborn), 3072×2048, 8 passi, Tiled Diffusion e Tiled Decoding accesi: il server accetta e restituisce un'immagine della dimensione chiesta.
 
 ## 5. Test e verifiche
 
