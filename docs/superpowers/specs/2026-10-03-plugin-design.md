@@ -66,7 +66,7 @@ Il contenuto è quello della spec principale §8, trasportato dai messaggi `cont
 
 **Come si comporta un campo di Generazione**
 1. Un plug-in manda un valore per il campo: il campo prende un **teal al 30%** e mostra quel valore.
-2. L'utente lo modifica a mano: il teal sparisce e **accanto al suo valore resta, tra parentesi, quello inviato dal plug-in** (per riferimento, per esempio `Passi 30 (24)`). Per i testi lunghi (prompt, negativo) il valore tra parentesi è una sola riga troncata, con il testo intero nel suggerimento.
+2. L'utente lo modifica a mano: il teal sparisce e **accanto al suo valore resta, tra parentesi, quello inviato dal plug-in** (per riferimento, per esempio `Passi 30 (24)`). **Prompt e negativo fanno eccezione: nessun valore tra parentesi**, il campo perde solo il teal.
 3. Lo **stesso plug-in** manda un altro valore: si riparte dal punto 1, anche sopra le modifiche manuali.
 4. **Al Run parte quello che c'è nel campo in quel momento**; il valore tra parentesi è solo un riferimento.
 5. Spegnere un plug-in (dalle Preferenze o dal menu dell'header per questo lavoro) toglie il suo teal e le sue parentesi: i valori restano nei campi come valori manuali.
@@ -74,9 +74,9 @@ Il contenuto è quello della spec principale §8, trasportato dai messaggi `cont
 **Conflitto** (l'unico caso): un plug-in **diverso** manda un valore a un campo che porta ancora il valore di un altro plug-in (campo in teal o con il valore tra parentesi). Compare un **pop-up** con il nome del campo e **due pulsanti**: «<plug-in A> · <valore>» e «<plug-in B> · <valore>»; quello che si sceglie prevale e va nel campo con il teal. Se più campi sono in conflitto insieme, un solo pop-up li elenca tutti, ciascuno con i suoi due pulsanti. Chiuderlo con Esc lascia i campi come sono. Il pop-up è modale: non esiste uno stato "conflitto in sospeso" e il Run non viene mai bloccato per questo.
 
 **Altri contributi, stessa regola**
-- **Immagine di partenza, moodboard, maschera:** nelle schede del tab Control, con la provenienza del plug-in (spec del tab Control §7); se due plug-in propongono lo stesso ingresso vale lo stesso pop-up.
+- **Immagine di partenza e maschera:** nelle schede del tab Control, con la provenienza del plug-in (spec del tab Control §7); sono un solo valore, quindi se due plug-in ne propongono una vale lo stesso pop-up. Le immagini del **Moodboard** invece si sommano (vedi sotto).
 - **Pipeline** (lista ordinata di passaggi: modifiche alla configurazione, ingressi, se l'output precedente diventa l'immagine di partenza): **sul pulsante Run**, che diventa «Run · N passaggi» in teal, con i passaggi elencati nel suggerimento. Se due plug-in ne propongono una, lo stesso pop-up fa scegliere («<plug-in> · N passaggi»). Non essendo un campo, si toglie dal menu contestuale del pulsante («Togli la pipeline»). Senza pipeline, il Run esegue un solo passaggio con la configurazione corrente.
-- **Campi complessi** (la lista dei LoRA): il conflitto si valuta sul campo intero; il dettaglio si fissa nel piano di M8b.
+- **LoRA e Moodboard si sommano** (sono liste): i LoRA e le immagini che arrivano da plug-in diversi si **aggiungono** alla lista, ciascuno col suo teal al 30% (e, per le immagini, la provenienza del plug-in), e non c'è mai un pop-up. Lo stesso LoRA già presente prende il peso dell'ultimo plug-in che lo manda. Spegnere il plug-in toglie il teal e lascia le voci in lista come manuali.
 - Un plug-in non cambia mai il modello e non lancia generazioni da solo.
 Il dettaglio dei messaggi di M8b si scrive nel suo piano.
 
