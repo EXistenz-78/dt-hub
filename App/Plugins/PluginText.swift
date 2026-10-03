@@ -16,6 +16,7 @@ enum PluginText {
     case .loadFailed(let reason): String(format: String(localized: "plugin.error.load"), reason)
     case .notNewer(let installed): String(format: String(localized: "plugin.error.notNewer"), installed)
     case .cannotWrite(let reason): String(format: String(localized: "plugin.error.write"), reason)
+    case .invalidIdentifier(let id): String(format: String(localized: "plugin.error.identifier"), id)
     }
   }
 

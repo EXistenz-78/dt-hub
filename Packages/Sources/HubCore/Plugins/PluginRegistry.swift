@@ -67,12 +67,13 @@ public final class PluginRegistry: PluginHosting {
   /// Scans the folder and loads the plug-ins that are on (none when `skipping`, the ⌥ key at launch).
   public func start(skipping: Bool = false) {
     skipPlugins = skipping
+    try? FileManager.default.createDirectory(at: tempFolder, withIntermediateDirectories: true)
     let enabled = settings.enabled()
     entries = folder.scan().map { slot in
       guard let info = slot.info else {
         return PluginEntry(
-          id: slot.identifier, url: slot.url, name: slot.identifier, version: "", state: .failed(slot.error ?? .unreadable),
-          isActive: false, manifest: nil)
+          id: Self.brokenID(slot.url), url: slot.url, name: slot.identifier, version: "",
+          state: .failed(slot.error ?? .unreadable), isActive: false, manifest: nil)
       }
       var entry = PluginEntry(
         id: info.identifier, url: slot.url, name: info.name, version: info.version, state: .off, isActive: false,
@@ -96,6 +97,9 @@ public final class PluginRegistry: PluginHosting {
     for entry in entries where entry.isActive { send(PluginMessageType.bare(PluginMessageType.activate), to: entry.id) }
   }
 
+  /// The id of a row whose bundle could not be read: it cannot clash with a plug-in's identifier.
+  nonisolated static func brokenID(_ url: URL) -> String { "broken:\(url.lastPathComponent)" }
+
   // MARK: Installing
 
   /// Reads the bundle the user chose and says what would happen; nothing is copied yet.
@@ -116,7 +120,11 @@ public final class PluginRegistry: PluginHosting {
   }
 
   public func remove(_ identifier: String) throws(PluginError) {
-    try folder.remove(identifier)
+    if let row = entries.first(where: { $0.id == identifier }), identifier.hasPrefix("broken:") {
+      try folder.remove(folderAt: row.url)
+    } else {
+      try folder.remove(identifier)
+    }
     var enabled = settings.enabled()
     enabled.remove(identifier)
     settings.save(enabled)
@@ -142,17 +150,17 @@ public final class PluginRegistry: PluginHosting {
   /// Folder scan after an install or a removal, keeping what is loaded.
   private func refreshEntries() {
     let enabled = settings.enabled()
-    let previous = Dictionary(uniqueKeysWithValues: entries.map { ($0.id, $0) })
+    let previous = Dictionary(entries.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
     entries = folder.scan().map { slot in
       guard let info = slot.info else {
         return PluginEntry(
-          id: slot.identifier, url: slot.url, name: slot.identifier, version: "", state: .failed(slot.error ?? .unreadable),
-          isActive: false, manifest: nil)
+          id: Self.brokenID(slot.url), url: slot.url, name: slot.identifier, version: "",
+          state: .failed(slot.error ?? .unreadable), isActive: false, manifest: nil)
       }
-      if let old = previous[info.identifier], old.state == .loaded {
-        var kept = old
-        kept.state = .loaded
-        return kept
+      if let old = previous[info.identifier] {
+        // What is loaded stays; a load that failed stays failed until the bundle changes.
+        if old.state == .loaded { return old }
+        if case .failed = old.state, old.url == slot.url, old.version == info.version { return old }
       }
       var entry = PluginEntry(
         id: info.identifier, url: slot.url, name: info.name, version: info.version, state: .off, isActive: false,

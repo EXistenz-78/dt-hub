@@ -166,6 +166,50 @@ struct PluginRegistryTests {
     #expect(throws: PluginError.unreadable) { try registry.offer(for: PluginFixture.folder()) }
   }
 
+  @Test func aLoadFailureStaysListedAfterAnUnrelatedInstall() throws {
+    try PluginFixture.bundle(in: root, id: "a", name: "A")
+    let loader = FakeLoader()
+    loader.failures["a"] = .noEntryPoint
+    let registry = registry(loader: loader, enabled: ["a"])
+    registry.start()
+    #expect(registry.entries.map(\.state) == [.failed(.noEntryPoint)])
+    let other = try PluginFixture.bundle(in: PluginFixture.folder(), id: "b", name: "B")
+    try registry.install(registry.offer(for: other))
+    #expect(registry.entries.first { $0.id == "a" }?.state == .failed(.noEntryPoint))
+    #expect(registry.entries.first { $0.id == "b" }?.state == .off)
+  }
+
+  @Test func twoFoldersOfOnePluginAreTwoRowsWithDifferentIdsAndNothingCrashes() throws {
+    try PluginFixture.bundle(in: root, id: "com.x.p", version: "1.0", folderName: "Sample.dthubplugin")
+    try PluginFixture.bundle(in: root, id: "com.x.p", version: "1.0", folderName: "com.x.p.dthubplugin")
+    let registry = registry()
+    registry.start()
+    #expect(registry.entries.count == 2 && Set(registry.entries.map(\.id)).count == 2)
+    let newer = try PluginFixture.bundle(in: PluginFixture.folder(), id: "com.x.p", version: "1.1")
+    try registry.install(registry.offer(for: newer))
+    #expect(registry.entries.count == 1 && registry.entries.first?.version == "1.1")
+  }
+
+  @Test func aBrokenRowCanBeRemovedWhateverItsFolderIsCalled() throws {
+    try PluginFixture.bundle(in: root, id: "a", name: "A", contract: 9, folderName: "weird.dthubplugin")
+    let registry = registry()
+    registry.start()
+    let row = try #require(registry.entries.first)
+    try registry.remove(row.id)
+    #expect(registry.entries.isEmpty)
+    #expect(PluginFolder(root: root).scan().isEmpty)
+  }
+
+  @Test func startMakesTheTemporaryFolderThePluginsAreTold() throws {
+    let temp = root.appendingPathComponent("tmp-for-plugins", isDirectory: true)
+    let registry = PluginRegistry(
+      folder: PluginFolder(root: root), settings: PluginSettingsStore(fileURL: settingsFile), loader: FakeLoader(),
+      tempFolder: temp)
+    registry.start()
+    var isDirectory: ObjCBool = false
+    #expect(FileManager.default.fileExists(atPath: temp.path, isDirectory: &isDirectory) && isDirectory.boolValue)
+  }
+
   @Test func removingForgetsThePluginAndItsSwitch() throws {
     try PluginFixture.bundle(in: root, id: "a")
     let registry = registry(enabled: ["a"])
