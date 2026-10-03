@@ -149,8 +149,8 @@ Il file va portato in HubKit, così i plug-in lo usano.
 ├──────────────────────────────────────────────────────────────┤
 │  PROMPT  a tutta larghezza; sotto il prompt, il NEGATIVO      │
 │          (tinta arancio, solo se la famiglia lo usa)          │
-│  (nessuna card Contributi: i campi impostati da un plug-in    │
-│   sono evidenziati in teal, vedi 2026-10-03-plugin-design.md) │
+│  (nessuna card Contributi: i campi dati da un plug-in sono in │
+│   teal al 30%, vedi 2026-10-03-plugin-design.md §7)           │
 │  [ Dimensioni      ] [ Seed e batch   ]  due card per riga,    │
 │  [ Campionamento   ] [ …              ]  alte come la più alta │
 └──────────────────────────────────────────────────────────────┘
@@ -199,7 +199,7 @@ Riceve dal cuore dell'app:
 **I contributi sono sempre visibili prima di RUN.** Un plug-in può:
 - impostare uno o più parametri: compaiono nelle rispettive card, con un segno che indica quale plug-in li ha impostati;
 - scrivere il prompt o il negativo;
-- inserire immagine di partenza, immagini di moodboard o la maschera: compaiono **nelle schede del tab Control**, con la provenienza del plug-in, e l'utente le toglie o le cambia come le altre (design in `2026-10-01-tab-control-design.md`, §7); i parametri e il prompt impostati da un plug-in si evidenziano in teal nei loro campi, la pipeline sta sul pulsante Run (nessuna card Contributi: `2026-10-03-plugin-design.md` §7);
+- inserire immagine di partenza, immagini di moodboard o la maschera: compaiono **nelle schede del tab Control**, con la provenienza del plug-in, e l'utente le toglie o le cambia come le altre (design in `2026-10-01-tab-control-design.md`, §7); i parametri e il prompt dati da un plug-in colorano i loro campi di teal al 30% (restano modificabili), la pipeline sta sul pulsante Run (nessuna card Contributi: `2026-10-03-plugin-design.md` §7);
 - fornire una **pipeline** a più passaggi, che si vede sul pulsante Run ("Run · N passaggi", in teal).
 
 L'utente può modificare o rimuovere ogni contributo prima di RUN. Un plug-in **non cambia mai il modello** e non lancia generazioni da solo.
@@ -285,7 +285,7 @@ Ogni tappa termina con qualcosa di utilizzabile.
 | M5 Server gestito | Modalità "avvia gRPCServerCLI", arresti inattesi e riavvio | DT Hub funziona senza l'app DT aperta |
 | M6 LLM | LLMBridge, scaricamento nella cartella scelta, politica di memoria, prova nelle Preferenze | l'LLM risponde, anche su immagini |
 | M7 Tab Control | **M7a** immagine di partenza e I2I; **M7b** Moodboard e modelli Edit; **M7c** inpaint con pennello (design in `2026-10-01-tab-control-design.md`) | I2I, Moodboard e inpaint funzionano |
-| M8 Plug-in | (rivisto il 3 ottobre 2026, vedi `2026-10-03-plugin-design.md`) **M8a** bundle scaricabili, installazione dalle Preferenze, menu plug-in, plug-in di prova; **M8b** contributi evidenziati in teal, pipeline sul pulsante Run, conflitti | la v1 è completa |
+| M8 Plug-in | (rivisto il 3 ottobre 2026, vedi `2026-10-03-plugin-design.md`) **M8a** bundle scaricabili, installazione dalle Preferenze, menu plug-in, plug-in di prova; **M8b** contributi in teal, pop-up di scelta nei conflitti, pipeline sul pulsante Run | la v1 è completa |
 | Dopo | Tiled Diffusion fino a 8192 → outpaint → PM2 → SLR → Qwen Image 2.1 → Galleria | una spec breve per ciascuno |
 
 M4 si svolge in tre tappe, ognuna con revisione e merge (deciso con l'utente, 30 settembre 2026): **M4a** negativo, LoRA, visibilità per famiglia, ripristino sessione; **M4b** card Avanzate e avviso "valori nascosti attivi"; **M4c** editor JSON, preset, import di `custom_configs.json`.

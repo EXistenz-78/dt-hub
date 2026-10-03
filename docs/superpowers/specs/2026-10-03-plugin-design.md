@@ -62,19 +62,21 @@ L'app ha il *hardened runtime*; per caricare un bundle firmato da altri (o solo 
 
 ## 7. Contributi, conflitti, pipeline (M8b)
 
-Il contenuto è quello della spec principale §8, trasportato dai messaggi `contribute` e `llm`. **Non c'è una card Contributi** (deciso dall'utente il 3 ottobre 2026): i contributi si vedono dove stanno.
+Il contenuto è quello della spec principale §8, trasportato dai messaggi `contribute` e `llm`. **Non c'è una card Contributi** né un "impostato da" (deciso dall'utente il 3 ottobre 2026): i contributi si vedono nei campi stessi. Niente blocchi e niente tasti per sbloccare: **un campo è sempre modificabile**.
 
-**Precedenza.** In ogni campo di Generazione, **il valore dato da un plug-in prevale sempre su quello manuale**; questo non è un conflitto. Finché un plug-in attivo ha contribuito a un campo:
-- il campo mostra il valore del plug-in, **evidenziato in teal**, con il suggerimento "Impostato da <plug-in>";
-- il campo **non si modifica a mano**; a destra del campo c'è un piccolo ✕ con due voci: **"Ripristina il valore di prima"** (torna il valore manuale che c'era prima del contributo) e **"Tieni questo valore"** (il valore resta com'è e diventa manuale). Entrambe liberano il campo: il plug-in non lo riscrive finché non contribuisce di nuovo;
-- spegnere il plug-in (o toglierlo dal menu dell'header per questo lavoro) libera i suoi campi come "Ripristina il valore di prima";
-- se lo stesso plug-in manda un valore nuovo per lo stesso campo, lo aggiorna: nemmeno questo è un conflitto.
+**Come si comporta un campo di Generazione**
+1. Un plug-in manda un valore per il campo: il campo prende un **teal al 30%** e mostra quel valore.
+2. L'utente lo modifica a mano: il teal sparisce e **accanto al suo valore resta, tra parentesi, quello inviato dal plug-in** (per riferimento, per esempio `Passi 30 (24)`). Per i testi lunghi (prompt, negativo) il valore tra parentesi è una sola riga troncata, con il testo intero nel suggerimento.
+3. Lo **stesso plug-in** manda un altro valore: si riparte dal punto 1, anche sopra le modifiche manuali.
+4. **Al Run parte quello che c'è nel campo in quel momento**; il valore tra parentesi è solo un riferimento.
+5. Spegnere un plug-in (dalle Preferenze o dal menu dell'header per questo lavoro) toglie il suo teal e le sue parentesi: i valori restano nei campi come valori manuali.
 
-**Conflitto** (l'unico caso): **due plug-in attivi mandano un valore allo stesso campo** (anche uguale), o **danno entrambi una pipeline**. Il Run si blocca con un messaggio che nomina i due plug-in e il campo (o la pipeline), e il campo in conflitto è evidenziato in rosso. Si risolve spegnendo un plug-in dal menu dell'header o togliendo il contributo con il ✕.
+**Conflitto** (l'unico caso): un plug-in **diverso** manda un valore a un campo che porta ancora il valore di un altro plug-in (campo in teal o con il valore tra parentesi). Compare un **pop-up** con il nome del campo e **due pulsanti**: «<plug-in A> · <valore>» e «<plug-in B> · <valore>»; quello che si sceglie prevale e va nel campo con il teal. Se più campi sono in conflitto insieme, un solo pop-up li elenca tutti, ciascuno con i suoi due pulsanti. Chiuderlo con Esc lascia i campi come sono. Il pop-up è modale: non esiste uno stato "conflitto in sospeso" e il Run non viene mai bloccato per questo.
 
-**Altri contributi**
-- **Immagine di partenza, moodboard, maschera:** nelle schede del tab Control, con la provenienza del plug-in (spec del tab Control §7). Anche qui valgono la stessa precedenza e lo stesso conflitto fra plug-in; l'utente le toglie o le cambia come le altre.
-- **Pipeline** (lista ordinata di passaggi: modifiche alla configurazione, ingressi, se l'output precedente diventa l'immagine di partenza): **sul pulsante Run**, che diventa "Run · N passaggi" in teal, con i passaggi elencati nel suggerimento. Si toglie dal menu contestuale del pulsante ("Togli la pipeline di <plug-in>"). Senza pipeline, il Run esegue un solo passaggio con la configurazione corrente.
+**Altri contributi, stessa regola**
+- **Immagine di partenza, moodboard, maschera:** nelle schede del tab Control, con la provenienza del plug-in (spec del tab Control §7); se due plug-in propongono lo stesso ingresso vale lo stesso pop-up.
+- **Pipeline** (lista ordinata di passaggi: modifiche alla configurazione, ingressi, se l'output precedente diventa l'immagine di partenza): **sul pulsante Run**, che diventa «Run · N passaggi» in teal, con i passaggi elencati nel suggerimento. Se due plug-in ne propongono una, lo stesso pop-up fa scegliere («<plug-in> · N passaggi»). Non essendo un campo, si toglie dal menu contestuale del pulsante («Togli la pipeline»). Senza pipeline, il Run esegue un solo passaggio con la configurazione corrente.
+- **Campi complessi** (la lista dei LoRA): il conflitto si valuta sul campo intero; il dettaglio si fissa nel piano di M8b.
 - Un plug-in non cambia mai il modello e non lancia generazioni da solo.
 Il dettaglio dei messaggi di M8b si scrive nel suo piano.
 
@@ -89,7 +91,7 @@ Il dettaglio dei messaggi di M8b si scrive nel suo piano.
 | Tappa | Contenuto | Esito |
 |---|---|---|
 | **M8a** | `DTHubPluginKit`, bundle di prova, entitlement, scansione e caricamento, installazione/rimozione e Preferenze → Plug-in, messaggi `context`, `activate`, `notice`, il menu Plug-in dell'header | si installa e si accende un plug-in che mostra il proprio tab |
-| **M8b** | Messaggi `contribute` e `llm`, campi evidenziati in teal con ✕ per ripristinare, schede del tab Control con provenienza, conflitti, pipeline sul pulsante Run | un plug-in contribuisce e il Run lo esegue |
+| **M8b** | Messaggi `contribute` e `llm`, campi in teal con il valore del plug-in tra parentesi dopo una modifica manuale, pop-up di scelta nei conflitti, schede del tab Control con provenienza, pipeline sul pulsante Run | un plug-in contribuisce e il Run lo esegue |
 | Poi | Prompt Master, Sphere Light, Qwen Image 2.1: ognuno a parte, come suo `.dthubplugin` | |
 
 ## 10. Fuori e rischi
