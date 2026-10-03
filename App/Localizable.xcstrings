@@ -4948,6 +4948,23 @@
         }
       }
     },
+    "results.selected": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld selected"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld selezionate"
+          }
+        }
+      }
+    },
     "results.showInFinder": {
       "extractionState": "manual",
       "localizations": {
@@ -4978,6 +4995,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Risultati"
+          }
+        }
+      }
+    },
+    "results.trash": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move to Trash"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sposta nel cestino"
+          }
+        }
+      }
+    },
+    "results.trash.help": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moves the selected pictures to the Trash (⌫)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sposta nel Cestino le immagini selezionate (⌫)"
           }
         }
       }

@@ -9,11 +9,23 @@ import Testing
 final class MemoryImageStore: ImageStore, @unchecked Sendable {
   private let lock = NSLock()
   private var saved: [(GenerationJob, Int)] = []
+  private var trashedPaths: [String] = []
   let fails: Bool
+  /// Paths the "Trash" refuses.
+  let refusesToTrash: Set<String>
 
-  init(fails: Bool = false) { self.fails = fails }
+  init(fails: Bool = false, refusesToTrash: Set<String> = []) {
+    self.fails = fails
+    self.refusesToTrash = refusesToTrash
+  }
 
   var count: Int { lock.withLock { saved.count } }
+  var trashed: [String] { lock.withLock { trashedPaths } }
+
+  func trash(_ url: URL) throws {
+    if refusesToTrash.contains(url.path) { throw ImageStoreError.cannotTrash("refused") }
+    lock.withLock { trashedPaths.append(url.path) }
+  }
 
   func save(_ image: CGImage, job: GenerationJob, index: Int, date: Date) throws -> URL {
     if fails { throw ImageStoreError.cannotWrite("disk full") }

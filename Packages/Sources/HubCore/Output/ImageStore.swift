@@ -9,10 +9,25 @@ import UniformTypeIdentifiers
 public protocol ImageStore: Sendable {
   /// Saves one image of a RUN and returns its file.
   func save(_ image: CGImage, job: GenerationJob, index: Int, date: Date) throws -> URL
+  /// Moves a saved file to the Trash (a file that is not there any more counts as done).
+  func trash(_ url: URL) throws
+}
+
+extension ImageStore {
+  public func trash(_ url: URL) throws {
+    do {
+      try FileManager.default.trashItem(at: url, resultingItemURL: nil)
+    } catch let error as CocoaError where error.code == .fileNoSuchFile || error.code == .fileReadNoSuchFile {
+      return
+    } catch {
+      throw ImageStoreError.cannotTrash(error.localizedDescription)
+    }
+  }
 }
 
 public enum ImageStoreError: Error, Equatable, Sendable {
   case cannotWrite(String)
+  case cannotTrash(String)
 }
 
 /// PNG files in `folder/yyyy-MM-dd/HHmmss-<seed>[-<n>].png`. The PNG "Description" holds the
