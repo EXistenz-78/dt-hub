@@ -56,15 +56,39 @@ public final class DTHubHost {
 
   /// Sends a JSON message to the app and waits for its JSON answer.
   public func send(_ message: Data) async -> Data? {
+    await send(message, timeout: 5)
+  }
+
+  /// A question for the language model can take long: it has its own, longer timeout.
+  func send(_ message: Data, timeout: Double) async -> Data? {
     await withCheckedContinuation { continuation in
       let once = Once(continuation)
       let reply: @convention(block) (Data) -> Void = { once.finish($0) }
       _ = object.perform(NSSelectorFromString("dthubSend:reply:"), with: message, with: reply)
       Task {
-        try? await Task.sleep(for: .seconds(5))
+        try? await Task.sleep(for: .seconds(timeout))
         once.finish(nil)
       }
     }
+  }
+
+  /// Sends a `contribute` message — `fields`, `loras`, `moodboard`, `startImage`, `pipeline`; every key is
+  /// optional (see the README) — and returns the app's answer: `{"type":"ok","conflicts":n}` or an `error`.
+  public func contribute(_ body: [String: Any]) async -> [String: Any]? {
+    await sendJSON(body.merging(["type": "contribute"]) { _, new in new })
+  }
+
+  /// Asks the app's language model, which answers in its own time (it may have to load first). Nil when
+  /// there is no answer: no model chosen, the plug-in not active, a timeout.
+  public func askLanguageModel(_ prompt: String, images: [String] = []) async -> String? {
+    let answer = await sendJSON(["type": "llm", "prompt": prompt, "images": images], timeout: 300)
+    return answer?["type"] as? String == "llm" ? answer?["text"] as? String : nil
+  }
+
+  func sendJSON(_ body: [String: Any], timeout: Double = 5) async -> [String: Any]? {
+    guard let data = try? JSONSerialization.data(withJSONObject: body), let reply = await send(data, timeout: timeout)
+    else { return nil }
+    return (try? JSONSerialization.jsonObject(with: reply)) as? [String: Any]
   }
 
   /// Asks the app to show a line to the user.

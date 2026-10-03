@@ -25,5 +25,32 @@ The bundle is added in DT Hub › Preferences › Plug-ins.
 
 ## Messages (contract 1)
 
-JSON objects with a `type`. App → plug-in: `context` (model, family, parameters, a temporary folder), `activate`,
-`deactivate`. Plug-in → app: `notice` (`text`, `isError`). An unknown type gets `{"type":"unsupported"}`.
+JSON objects with a `type`. An unknown type gets `{"type":"unsupported"}`.
+
+**App → plug-in:** `context` (model, family, parameters, `tempFolder`: a folder to exchange picture files through),
+`activate`, `deactivate`.
+
+**Plug-in → app:**
+
+- `notice` — `text`, `isError`: a line shown over the window.
+- `contribute` — what the plug-in puts on the Generation and Control tabs. Every key is optional; what cannot be
+  read is left out; the answer is `{"type":"ok","conflicts":n,"problems":[…]}` or `{"type":"error","text":…}`.
+  Only a plug-in that is on for the job (header menu) can contribute.
+  - `fields`: `prompt`, `negativePrompt` (text); `width`, `height`, `steps`, `cfgZeroInitSteps`, `seed`, `batchSize`,
+    `batchCount` (whole numbers); `guidanceScale`, `shift` (numbers); `cfgZeroStar`, `resolutionDependentShift`,
+    `randomSeed` (true/false); `sampler` (the number of the Draw Things sampler, or its name). Values are limited like
+    the cards limit them. A plug-in never changes the model.
+  - `loras`: `[{"file", "weight", "mode", "trigger"}]`, added to the LoRA card.
+  - `moodboard`: `[{"path", "name"}]`, files in the `tempFolder`, added to the Moodboard. Sending them again replaces
+    the ones this plug-in sent before.
+  - `startImage`: `{"path", "name"}`, the start image of the Control tab.
+  - `pipeline`: `{"name", "steps": [...]}`; each step may have `title`, `fields` (as above), `loras` (replaces the list
+    for the pass; `[]` = none), `moodboard` (replaces the Moodboard for the pass), `startImage`, and
+    `useOutputAsStart` (the picture the previous pass made becomes the start image). RUN then runs the passes one
+    after the other.
+  The fields a plug-in filled turn teal; the user can always change them. If two plug-ins fill the same field, or
+  both propose a start image or a pipeline, the user chooses in a pop-up.
+- `llm` — `{"prompt", "images": [paths]}`: a question for the language model. The answer is
+  `{"type":"llm","text":…}` (it can take a while: the model may have to load) or an `error`.
+
+The Sample plug-in (`Examples/Sample`, `Scripts/build-sample.sh OUT [b]`) sends all of these.

@@ -10,7 +10,7 @@ import Testing
 final class RecordingHost: PluginHosting {
   private(set) var received: [(message: Data, plugin: String)] = []
 
-  func receive(_ message: Data, from pluginID: String) -> Data {
+  func receive(_ message: Data, from pluginID: String) async -> Data {
     received.append((message, pluginID))
     return PluginMessageType.bare(PluginMessageType.ok)
   }
@@ -96,5 +96,35 @@ struct BundlePluginLoaderTests {
     let skipped = registry()
     skipped.start(skipping: true)
     #expect(skipped.entries.map(\.state) == [.skipped])
+  }
+
+  /// The sample sends what a real plug-in would: a `contribute` with fields, a LoRA, a Moodboard picture
+  /// whose file exists; a pipeline; and a question for the language model.
+  @Test func theSampleContributesThroughTheRealChannel() async throws {
+    let bundle = try #require(SampleBundle.make())
+    let host = RecordingHost()
+    let plugin = try BundlePluginLoader().load(bundle, info: info(bundle), host: host)
+    let folder = SampleBundle.work.appendingPathComponent("lent-\(UUID().uuidString)").path
+    let context = try JSONEncoder().encode(
+      PluginContext(model: "m.ckpt", family: "flux2_9b", parameters: GenerationParameters(), tempFolder: folder))
+    _ = await plugin.send(context)
+
+    _ = await plugin.send(Data(#"{"type":"press","button":"plain"}"#.utf8))
+    let plain = try #require(host.received.last { PluginMessageType.of($0.message) == PluginMessageType.contribute })
+    let contribution = try #require(PluginContribution(message: plain.message))
+    #expect(contribution.fields.values[.steps] == .int(4) && contribution.fields.values[.sampler] == .int(16))
+    #expect(contribution.fields.values[.prompt] != nil)
+    #expect(contribution.loras.first?.file == "flux_2_sun_direction_lora_v1_lora_f16.ckpt" && contribution.loras.first?.weight == 0.6)
+    let picture = try #require(contribution.moodboard.first)
+    #expect(FileManager.default.fileExists(atPath: picture.path) && picture.path.hasPrefix(folder))
+
+    _ = await plugin.send(Data(#"{"type":"press","button":"pipeline"}"#.utf8))
+    let piped = try #require(host.received.last { PluginMessageType.of($0.message) == PluginMessageType.contribute })
+    let pipeline = try #require(PluginContribution(message: piped.message)?.pipeline)
+    #expect(pipeline.steps.count == 1 && pipeline.steps[0].moodboard?.count == 1 && pipeline.steps[0].useOutputAsStart == false)
+
+    _ = await plugin.send(Data(#"{"type":"press","button":"ask"}"#.utf8))
+    #expect(host.received.contains { PluginMessageType.of($0.message) == PluginMessageType.llm })
+    #expect(await plugin.send(Data(#"{"type":"press","button":"nothing"}"#.utf8)).flatMap(PluginMessageType.of) == PluginMessageType.unsupported)
   }
 }
