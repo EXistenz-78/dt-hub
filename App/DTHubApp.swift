@@ -2,6 +2,7 @@ import AppKit
 import HubCore
 import HubKit
 import LLMBridge
+import PluginHost
 import SwiftUI
 
 @main
@@ -19,6 +20,7 @@ struct DTHubApp: App {
   @State private var languageModel: LanguageModelManager
   @State private var generation: GenerationController
   @State private var download: LanguageModelDownloadController
+  @State private var plugins: PluginRegistry
 
   init() {
     let connection = DrawThingsConnection()
@@ -35,6 +37,13 @@ struct DTHubApp: App {
     _languageModel = State(initialValue: languageModel)
     _generation = State(initialValue: generation)
     _download = State(initialValue: LanguageModelDownloadController(downloader: HubLanguageModelDownloader()))
+    // Plug-ins load now; holding ⌥ at launch loads none (plug-in design §5).
+    let plugins = PluginRegistry(
+      folder: PluginFolder(root: PluginFolder.defaultRoot),
+      settings: PluginSettingsStore(fileURL: PluginSettingsStore.defaultFileURL), loader: BundlePluginLoader(),
+      tempFolder: FileManager.default.temporaryDirectory.appendingPathComponent("DTHub-plugins", isDirectory: true))
+    plugins.start(skipping: NSEvent.modifierFlags.contains(.option))
+    _plugins = State(initialValue: plugins)
     // A download cut short by quitting leaves a hidden folder with part of a model: remove it.
     let leftovers = URL(fileURLWithPath: languageModel.settings.folder, isDirectory: true)
       .appendingPathComponent(RecommendedLanguageModel.folderName, isDirectory: true).deletingLastPathComponent()
@@ -43,7 +52,7 @@ struct DTHubApp: App {
 
   var body: some Scene {
     WindowGroup(String(localized: "app.title")) {
-      MainWindowView(workspace: workspace, connection: connection, generation: generation)
+      MainWindowView(workspace: workspace, connection: connection, generation: generation, plugins: plugins)
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
           generation.saveSessionNow()
         }
@@ -62,7 +71,8 @@ struct DTHubApp: App {
 
     Settings {
       PreferencesView(
-        connection: connection, generation: generation, languageModel: languageModel, download: download)
+        connection: connection, generation: generation, languageModel: languageModel, download: download,
+        plugins: plugins)
     }
   }
 }
