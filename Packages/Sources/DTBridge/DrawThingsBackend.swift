@@ -19,6 +19,10 @@ public actor DrawThingsBackend: GenerationBackend {
     self.init(host: host, port: port, useTLS: useTLS, sharedSecret: sharedSecret) {}
   }
 
+  /// The ceiling of a request or reply: 1 GiB. The default (256 MiB) stops an image-to-image or an
+  /// inpaint at about 6600 pixels a side (the image is sent as an uncompressed 16-bit tensor).
+  static let maxMessageBytes = 1024 * 1024 * 1024
+
   init(
     host: String, port: Int, useTLS: Bool, sharedSecret: String?,
     onNewClient: @escaping @Sendable () -> Void
@@ -27,6 +31,7 @@ public actor DrawThingsBackend: GenerationBackend {
     options = ConnectionOptions(
       security: useTLS ? .tls() : .plaintext,
       sharedSecret: sharedSecret,
+      maxMessageBytes: Self.maxMessageBytes,
       // The echo doubles as the connection check: fail fast instead of the 30 s default.
       requestTimeout: .seconds(5),
       // Bundled specs only: the remote list would be re-fetched for every unknown file

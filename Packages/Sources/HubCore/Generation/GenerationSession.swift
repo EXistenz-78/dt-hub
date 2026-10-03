@@ -50,6 +50,9 @@ public final class GenerationSession {
 
   /// Longest side of the pictures read back at launch.
   public nonisolated static let restoredThumbnailSize = 512
+  /// The longest side a saved result is kept at in memory for the strip and the preview: the screen
+  /// needs no more, and an 8192-pixel image (Tiled Diffusion) is 256 MiB. The file keeps the original.
+  public nonisolated static let displayPixels = 2048
 
   /// With a `history`, the strip survives the app: it is saved after every RUN and read back by
   /// `restoreHistory`.
@@ -175,11 +178,32 @@ public final class GenerationSession {
       return images.enumerated().map { index, image in
         do {
           let url = try store.save(image, job: job, index: index, date: date)
-          return GeneratedImage(image: image, job: job, date: date, fileURL: url, saveError: nil)
+          return GeneratedImage(image: reduced(image, to: displayPixels), job: job, date: date, fileURL: url, saveError: nil)
         } catch {
           return GeneratedImage(image: image, job: job, date: date, fileURL: nil, saveError: String(describing: error))
         }
       }
     }.value
+  }
+
+  /// The image scaled so that its long side is at most `maxPixel`; the same image when it is smaller
+  /// already (or cannot be scaled).
+  nonisolated static func reduced(_ image: CGImage, to maxPixel: Int) -> CGImage {
+    let long = max(image.width, image.height)
+    guard long > maxPixel else { return image }
+    let scale = Double(maxPixel) / Double(long)
+    let width = max(1, Int((Double(image.width) * scale).rounded()))
+    let height = max(1, Int((Double(image.height) * scale).rounded()))
+    guard
+      let context = CGContext(
+        data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+        space: image.colorSpace ?? CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+        ?? CGContext(
+          data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+          space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+    else { return image }
+    context.interpolationQuality = .high
+    context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+    return context.makeImage() ?? image
   }
 }

@@ -1,6 +1,6 @@
 # DT Hub — Design delle dimensioni fino a 8192 con il Tiled Diffusion
 
-Data: 3 ottobre 2026 · Stato: bozza da approvare · Estende `2026-09-29-dt-hub-core-design.md` (card Dimensioni, Avanzate) e `2026-10-01-tab-control-design.md` (§5 "Adatta le dimensioni")
+Data: 3 ottobre 2026 · Stato: realizzata (M7e) · Estende `2026-09-29-dt-hub-core-design.md` (card Dimensioni, Avanzate) e `2026-10-01-tab-control-design.md` (§5 "Adatta le dimensioni")
 
 ## 1. Scopo
 
@@ -34,7 +34,7 @@ Sessione salvata, preset importati ("custom_configs.json"), "Riprendi parametri"
 
 ## 4. Draw Things
 
-`JobMapper` manda già dimensioni e campi del Tiled: nessuna modifica. Si verifica dal vivo con un server vero che una generazione oltre 2048 con il Tiled Diffusion acceso parta e finisca (SD 1.5, passi pochi), e che i campi dell'invio siano quelli attesi.
+`JobMapper` manda già dimensioni e campi del Tiled: nessuna modifica. Verificato dal vivo il 3 ottobre 2026: SD 1.5 (Juggernaut Reborn), 3072×2048, 8 passi, Tiled Diffusion e Tiled Decoding accesi: il server accetta e restituisce un'immagine della dimensione chiesta.
 
 ## 5. Test e verifiche
 
@@ -54,7 +54,8 @@ Sessione salvata, preset importati ("custom_configs.json"), "Riprendi parametri"
 ## 6. Rischi aperti
 
 - A 8192 la memoria e il tempo di Draw Things possono non bastare: DT Hub non lo sa e non lo avvisa (scelta dell'utente: nessun avviso). Un errore del server arriva come errore del Run.
-- Con le dimensioni sopra 2048 l'anteprima della finestra Risultati e le miniature leggono PNG enormi; la finestra Risultati li decodifica già a 2048 al massimo (`PNGImageStore.image(at:maxPixel:)`).
+- **Memoria dei risultati** (corretto dopo la revisione): un risultato salvato resta in memoria alla dimensione che serve allo schermo (lato lungo al massimo 2048, `GenerationSession.displayPixels`); il file ha l'originale. Un risultato che non si è potuto salvare resta intero. Senza questa riduzione, ogni immagine a 8192 pesava 256 MiB in memoria per tutta la sessione.
+- **Immagini di partenza molto grandi**: Draw Things riceve l'immagine come tensore a 16 bit non compresso (8192² RGB = 384 MiB) più la maschera nello stesso messaggio; il tetto dei messaggi del client è 1 GiB (era 256 MiB, che fermava l'image-to-image e l'inpaint a circa 6600 pixel per lato). Il limite di ricezione del server non è verificato: una generazione da immagine di partenza a 8192² non è stata provata.
 - Il pennello del tab Control a 8192 non è misurato.
 
 ## 7. Tappa

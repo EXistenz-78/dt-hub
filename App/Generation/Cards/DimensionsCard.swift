@@ -17,8 +17,8 @@ struct DimensionsCard: View {
             value: Binding(
               get: { controller.parameters.width },
               set: { controller.parameters.setWidth($0, keepingRatio: controller.lockedRatio) }),
-            range: GenerationParameters.sizeRange, step: 64,
-            commit: { GenerationParameters.snap(Double($0)) })
+            range: GenerationParameters.sizeRange.lowerBound...controller.parameters.sizeLimit, step: 64,
+            commit: { GenerationParameters.snap(Double($0), limit: controller.parameters.sizeLimit) })
         }
         CardRow(label: String(localized: "card.dimensions.height")) {
           IntField(
@@ -26,8 +26,8 @@ struct DimensionsCard: View {
             value: Binding(
               get: { controller.parameters.height },
               set: { controller.parameters.setHeight($0, keepingRatio: controller.lockedRatio) }),
-            range: GenerationParameters.sizeRange, step: 64,
-            commit: { GenerationParameters.snap(Double($0)) })
+            range: GenerationParameters.sizeRange.lowerBound...controller.parameters.sizeLimit, step: 64,
+            commit: { GenerationParameters.snap(Double($0), limit: controller.parameters.sizeLimit) })
         }
         HStack(spacing: DS.controlGap) {
           Menu {

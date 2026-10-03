@@ -239,7 +239,10 @@ struct AdvancedCardView: View {
     if advanced.wrappedValue.tiledDecoding {
       TileRows(width: advanced.decodingTileWidth, height: advanced.decodingTileHeight, overlap: advanced.decodingTileOverlap)
     }
-    Toggle(isOn: advanced.tiledDiffusion) { Text("advanced.field.tiledDiffusion") }
+    Toggle(
+      isOn: Binding(
+        get: { controller.parameters.advanced.tiledDiffusion }, set: { controller.setTiledDiffusion($0) })
+    ) { Text("advanced.field.tiledDiffusion") }
       .toggleStyle(DSCheckboxToggleStyle())
     if advanced.wrappedValue.tiledDiffusion {
       TileRows(width: advanced.diffusionTileWidth, height: advanced.diffusionTileHeight, overlap: advanced.diffusionTileOverlap)

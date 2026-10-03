@@ -270,6 +270,25 @@ struct LiveServerTests {
     #expect(difference > 0.005, "the top margin looks like stretched stripes")
   }
 
+  /// A size above 2048 with the Tiled Diffusion on (and the Tiled Decoding), measured on SD 1.5
+  /// (Juggernaut Reborn): 3072×2048 in 8 steps comes back at the size asked for.
+  @Test(.enabled(if: address != nil))
+  func aSizeAbove2048RunsWithTheTiledDiffusion() async throws {
+    let backend = try await liveBackend()
+    let models = try await backend.fetchCatalog().models
+    let file = try #require(models.first { $0.file.hasPrefix("juggernaut_reborn") }?.file, "needs Juggernaut Reborn")
+    var parameters = GenerationParameters(
+      width: 3072, height: 2048, steps: 8, guidanceScale: 4, sampler: .ddimTrailing, seed: 3, randomSeed: false)
+    parameters.setTiledDiffusion(true)
+    parameters.advanced.tiledDecoding = true
+    #expect(parameters.width == 3072 && parameters.height == 2048)
+    let job = GenerationJob(prompt: "a foggy mountain valley, photograph", model: file, parameters: parameters)
+    let out = try await run(backend, job, .none)
+    await backend.shutdown()
+    print("LIVE tiled: \(out.width)×\(out.height)")
+    #expect(out.width == 3072 && out.height == 2048)
+  }
+
   /// 512×512, the right half transparent (to regenerate), the left half opaque (to keep).
   private func halfMask(size: Int) -> CGImage {
     let context = CGContext(

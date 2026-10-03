@@ -242,9 +242,16 @@ final class GenerationController {
     let previous = Size(width: parameters.width, height: parameters.height)
     let adapted = FramingMath.adaptedSize(
       imageWidth: image.pixelWidth, imageHeight: image.pixelHeight, currentWidth: previous.width,
-      currentHeight: previous.height)
+      currentHeight: previous.height, limit: parameters.sizeLimit)
     restoreDimensions(adapted)
     return previous
+  }
+
+  /// The Tiled Diffusion switch of the Advanced card: turning it off brings the dimensions back within
+  /// 2048, keeping the ratio, and a ratio lock follows the new size.
+  func setTiledDiffusion(_ on: Bool) {
+    parameters.setTiledDiffusion(on)
+    if lockRatio { lockedRatio = currentRatio }
   }
 
   func restoreDimensions(_ size: Size) {
