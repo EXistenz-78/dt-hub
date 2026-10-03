@@ -32,34 +32,67 @@ public struct ReferenceImage: Identifiable, Equatable, Codable, Sendable {
   }
 }
 
-/// How the start image sits in the canvas (spec §5). Only "fill" exists for now; "contain" comes
-/// with the outpaint.
+/// How the start image sits in the canvas (spec: outpaint §3). `zoom` 0 is "fill" (the image fills the
+/// canvas and is cut); below 0 the image is smaller and leaves margins to regenerate (outpaint); above
+/// 0 it is larger and only a part of it is used.
 public struct Framing: Equatable, Codable, Sendable {
-  public enum Mode: String, Codable, Sendable {
-    case fill
-  }
+  public static let zoomRange = -100.0...100.0
 
-  public var mode: Mode
-  /// Where the cut falls on the axis that is cropped: -1 shows the start (left or top) of the
-  /// image, 0 is centered, 1 shows the end.
+  /// −100…+100; 0 fills the canvas.
+  public var zoom: Double
+  /// Where the cut falls on the axis where the image and the canvas do not coincide: -1 puts the
+  /// image against the start (left or top) of the canvas, 0 centres it, 1 against the end.
   public var offsetX: Double
   public var offsetY: Double
 
-  public init(mode: Mode = .fill, offsetX: Double = 0, offsetY: Double = 0) {
-    self.mode = mode
+  public init(zoom: Double = 0, offsetX: Double = 0, offsetY: Double = 0) {
+    self.zoom = zoom
     self.offsetX = offsetX
     self.offsetY = offsetY
   }
 
   public func clamped() -> Framing {
-    Framing(mode: mode, offsetX: min(1, max(-1, offsetX)), offsetY: min(1, max(-1, offsetY)))
+    Framing(
+      zoom: min(Self.zoomRange.upperBound, max(Self.zoomRange.lowerBound, zoom)),
+      offsetX: min(1, max(-1, offsetX)), offsetY: min(1, max(-1, offsetY)))
   }
 
+  /// Lenient: a missing field takes its default and an old `mode` is ignored.
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
-    mode = (try? container.decodeIfPresent(Mode.self, forKey: .mode)) ?? .fill
+    zoom = (try? container.decodeIfPresent(Double.self, forKey: .zoom)) ?? 0
     offsetX = (try? container.decodeIfPresent(Double.self, forKey: .offsetX)) ?? 0
     offsetY = (try? container.decodeIfPresent(Double.self, forKey: .offsetY)) ?? 0
+    self = clamped()
+  }
+}
+
+/// What the outpaint puts in the margins of the canvas (spec: outpaint §4). With `edges` the image's own
+/// edge pixels are stretched outwards and the margins are sent in the mask (inpaint models, and the
+/// Edit models without an outpaint LoRA). The outpaint LoRAs for the Edit models are different:
+/// they are told to fill a flat colour (the Qwen one "the solid gray areas", the Flux one "the green
+/// spaces") and want no mask, so with `gray` or `green` the margins are that colour and nothing is
+/// masked (measured on Qwen Image 2.1 with q21_outpaint_v2: edges + mask kept the stretched stripes).
+public enum MarginFill: String, Codable, Sendable, CaseIterable {
+  case edges
+  case gray
+  case green
+
+  /// Whether the margins go into the mask.
+  public var sendsMask: Bool { self == .edges }
+
+  /// The fill the selected LoRAs ask for: an outpaint LoRA (the word is in its file name or its
+  /// trigger) asks for green when the trigger names the green spaces and for gray otherwise; with
+  /// none, `edges`.
+  public static func automatic(loras: [LoRASelection]) -> MarginFill {
+    for lora in loras {
+      let name = lora.file.lowercased()
+      let trigger = lora.trigger.lowercased()
+      if name.contains("outpaint") || trigger.contains("outpaint") {
+        return trigger.contains("green") ? .green : .gray
+      }
+    }
+    return .edges
   }
 }
 
@@ -158,12 +191,16 @@ public struct ControlInputs: Equatable, Codable, Sendable {
   /// whole), 70 % for the others (at 100 % a normal image-to-image ignores the image). The
   /// user's choice, once made, wins.
   public var strength: Double?
+  /// What fills the margins when the image is smaller than the canvas. nil = automatic: from the
+  /// LoRAs of the job (`MarginFill.automatic`). The user's choice, once made, wins.
+  public var marginFill: MarginFill?
 
   public init(
     image: ReferenceImage? = nil, framing: Framing = Framing(), strength: Double? = nil,
     moodboard: [MoodboardEntry] = [], mask: MaskReference? = nil, maskSettings: MaskSettings = MaskSettings(),
-    paint: PaintReference? = nil
+    paint: PaintReference? = nil, marginFill: MarginFill? = nil
   ) {
+    self.marginFill = marginFill
     self.paint = paint
     self.mask = mask
     self.maskSettings = maskSettings
@@ -173,9 +210,10 @@ public struct ControlInputs: Equatable, Codable, Sendable {
     self.moodboard = moodboard
   }
 
-  /// The strength that is sent and shown, within 0…1.
-  public func effectiveStrength(editModel: Bool) -> Double {
-    min(1, max(0, strength ?? (editModel || mask != nil ? 1.0 : 0.7)))
+  /// The strength that is sent and shown, within 0…1. A mask, or margins to regenerate, make the
+  /// automatic strength 100%.
+  public func effectiveStrength(editModel: Bool, hasMargins: Bool = false) -> Double {
+    min(1, max(0, strength ?? (editModel || mask != nil || hasMargins ? 1.0 : 0.7)))
   }
 
   /// Lenient, like the other saved files: a missing or unreadable field takes its default.
@@ -184,6 +222,7 @@ public struct ControlInputs: Equatable, Codable, Sendable {
     image = try? container.decodeIfPresent(ReferenceImage.self, forKey: .image)
     framing = (try? container.decodeIfPresent(Framing.self, forKey: .framing)) ?? Framing()
     strength = try? container.decodeIfPresent(Double.self, forKey: .strength)
+    marginFill = try? container.decodeIfPresent(MarginFill.self, forKey: .marginFill)
     // A mask belongs to an image: one without it is not kept.
     mask = image == nil ? nil : try? container.decodeIfPresent(MaskReference.self, forKey: .mask)
     maskSettings = (try? container.decodeIfPresent(MaskSettings.self, forKey: .maskSettings)) ?? MaskSettings()

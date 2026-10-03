@@ -51,6 +51,8 @@ struct CanvasStage: View {
           if mode == .draw { tools }
           if mode == .canvas {
             stage(for: image)
+            zoomRow(for: image)
+            if control.hasMargins(canvasWidth: canvasWidth, canvasHeight: canvasHeight) { fillRow }
             caption(for: image)
           } else {
             drawArea(for: image)
@@ -116,8 +118,12 @@ struct CanvasStage: View {
       .frame(maxWidth: .infinity)
   }
 
+  /// The board around the canvas in Canvas mode, as a share of the canvas on each side: what the image
+  /// puts outside the canvas shows there, darkened.
+  private static let boardMargin = 0.12
+
   private func stage(for image: ReferenceImage) -> some View {
-    sized(ratio: Double(image.pixelWidth) / Double(max(image.pixelHeight, 1))) {
+    sized(ratio: Double(canvasWidth) / Double(max(canvasHeight, 1))) {
       stageContent(for: image)
     }
   }
@@ -128,26 +134,33 @@ struct CanvasStage: View {
       let crop = FramingMath.cropRect(
         imageWidth: image.pixelWidth, imageHeight: image.pixelHeight, canvasWidth: canvasWidth,
         canvasHeight: canvasHeight, framing: control.inputs.framing)
-      let rect = CGRect(
-        x: crop.minX / Double(image.pixelWidth) * size.width, y: crop.minY / Double(image.pixelHeight) * size.height,
-        width: crop.width / Double(image.pixelWidth) * size.width,
-        height: crop.height / Double(image.pixelHeight) * size.height)
-      ZStack {
-        if let picture {
-          Image(decorative: picture, scale: 1).resizable().interpolation(.high)
+      let inset = Self.boardMargin / (1 + 2 * Self.boardMargin)
+      let canvas = CGRect(
+        x: size.width * inset, y: size.height * inset, width: size.width * (1 - 2 * inset),
+        height: size.height * (1 - 2 * inset))
+      let scale = canvas.width / crop.width
+      let frame = CGSize(width: Double(image.pixelWidth) * scale, height: Double(image.pixelHeight) * scale)
+      let origin = CGPoint(x: canvas.minX - crop.minX * scale, y: canvas.minY - crop.minY * scale)
+      ZStack(alignment: .topLeading) {
+        Color.primary.opacity(0.08)
+        checkerboard(in: canvas)
+        if picture != nil {
+          imageLayer(picture, origin: origin, size: frame)
         } else {
-          Color.primary.opacity(0.08)
+          Color.primary.opacity(0.08).frame(width: frame.width, height: frame.height).position(
+            x: origin.x + frame.width / 2, y: origin.y + frame.height / 2)
         }
-        if let paintImage = drawing.paintImage { Image(decorative: paintImage, scale: 1).resizable().interpolation(.high) }
-        if let maskImage = drawing.maskImage { Image(decorative: maskImage, scale: 1).resizable().interpolation(.high) }
+        imageLayer(drawing.paintImage, origin: origin, size: frame)
+        imageLayer(drawing.maskImage, origin: origin, size: frame)
         Path { path in
           path.addRect(CGRect(origin: .zero, size: size))
-          path.addRect(rect)
+          path.addRect(canvas)
         }
         .fill(Color.black.opacity(0.55), style: FillStyle(eoFill: true))
-        Rectangle().strokeBorder(DS.accent, lineWidth: 2).frame(width: rect.width, height: rect.height)
-          .position(x: rect.midX, y: rect.midY)
+        Rectangle().strokeBorder(DS.accent, lineWidth: 2).frame(width: canvas.width, height: canvas.height)
+          .position(x: canvas.midX, y: canvas.midY)
       }
+      .frame(width: size.width, height: size.height)
       .clipShape(RoundedRectangle(cornerRadius: DS.boxRadius, style: .continuous))
       .contentShape(Rectangle())
       .gesture(
@@ -155,48 +168,176 @@ struct CanvasStage: View {
           .onChanged { value in
             let start = dragStart ?? control.inputs.framing
             dragStart = start
-            move(from: start, by: value.translation, in: size, image: image, crop: crop)
+            move(from: start, by: value.translation, scale: scale, image: image, crop: crop)
           }
           .onEnded { _ in dragStart = nil })
     }
   }
 
-  /// The cut follows the pointer along the cropped axis; the other axis has nothing to move.
-  private func move(from start: Framing, by translation: CGSize, in size: CGSize, image: ReferenceImage, crop: CGRect) {
+  /// A layer of the image's own size and place in the view.
+  private func imageLayer(_ picture: CGImage?, origin: CGPoint, size: CGSize) -> some View {
+    Group {
+      if let picture { Image(decorative: picture, scale: 1).resizable().interpolation(.high) }
+    }
+    .frame(width: size.width, height: size.height)
+    .position(x: origin.x + size.width / 2, y: origin.y + size.height / 2)
+  }
+
+  /// Squares under the canvas: what the image does not cover shows through them.
+  private func checkerboard(in rect: CGRect) -> some View {
+    Canvas { context, _ in
+      let cell = 10.0
+      context.fill(Path(rect), with: .color(Color(white: 0.86)))
+      var dark = Path()
+      var row = 0
+      var y = rect.minY
+      while y < rect.maxY {
+        var column = 0
+        var x = rect.minX
+        while x < rect.maxX {
+          if (row + column) % 2 == 0 {
+            dark.addRect(CGRect(x: x, y: y, width: min(cell, rect.maxX - x), height: min(cell, rect.maxY - y)))
+          }
+          x += cell
+          column += 1
+        }
+        y += cell
+        row += 1
+      }
+      context.fill(dark, with: .color(Color(white: 0.7)))
+    }
+    .allowsHitTesting(false)
+  }
+
+  /// The image follows the pointer on the axes where it and the canvas do not coincide.
+  private func move(from start: Framing, by translation: CGSize, scale: Double, image: ReferenceImage, crop: CGRect) {
     let slackX = Double(image.pixelWidth) - crop.width
     let slackY = Double(image.pixelHeight) - crop.height
     var x = start.offsetX
     var y = start.offsetY
-    if slackX > 0.5 {
-      x += translation.width * (Double(image.pixelWidth) / size.width) / (slackX / 2)
-    }
-    if slackY > 0.5 {
-      y += translation.height * (Double(image.pixelHeight) / size.height) / (slackY / 2)
-    }
+    if abs(slackX) > 0.5 { x -= 2 * translation.width / scale / slackX }
+    if abs(slackY) > 0.5 { y -= 2 * translation.height / scale / slackY }
     control.setOffset(x: x, y: y)
   }
 
-  @ViewBuilder private func caption(for image: ReferenceImage) -> some View {
-    let loss = FramingMath.loss(
+  /// The zoom: −100 shrinks the image (margins to regenerate), +100 enlarges it. It stops, with a tick,
+  /// at 0 (fill) and where the whole image just fits.
+  private func zoomRow(for image: ReferenceImage) -> some View {
+    let contain = FramingMath.zoomContain(
       imageWidth: image.pixelWidth, imageHeight: image.pixelHeight, canvasWidth: canvasWidth,
       canvasHeight: canvasHeight)
+    let zoom = control.inputs.framing.zoom
+    return CardRow(label: String(localized: "control.stage.zoom")) {
+      Slider(
+        value: Binding(get: { zoom }, set: { setZoom($0, contain: contain) }), in: Framing.zoomRange
+      )
+      .frame(minWidth: 120)
+    } control: {
+      HStack(spacing: 2) {
+        Text(verbatim: Int(zoom.rounded()).formatted(.number.sign(strategy: .always(includingZero: false))))
+          .font(.callout).monospacedDigit().foregroundStyle(.secondary).frame(width: 44, alignment: .trailing)
+        iconButton("arrow.counterclockwise", "control.stage.zoom.reset", enabled: control.inputs.framing != Framing()) {
+          control.resetFraming()
+        }
+      }
+    }
+  }
+
+  /// What fills the margins: automatic follows the LoRAs (an outpaint LoRA asks for a flat grey or green
+  /// and no mask), or the user picks. Shown only when the image leaves margins.
+  private var fillRow: some View {
+    let automatic = MarginFill.automatic(loras: generation.parameters.loras)
+    return CardRow(label: String(localized: "control.stage.fill")) {
+      EmptyView()
+    } control: {
+      Picker(
+        String(localized: "control.stage.fill"),
+        selection: Binding(get: { control.inputs.marginFill }, set: { control.setMarginFill($0) })
+      ) {
+        Text(String(format: String(localized: "control.fill.automatic"), fillName(automatic))).tag(MarginFill?.none)
+        ForEach(MarginFill.allCases, id: \.self) { fill in
+          Text(fillName(fill)).tag(MarginFill?.some(fill))
+        }
+      }
+      .labelsHidden()
+      .pickerStyle(.menu)
+      .fixedSize()
+      .help(String(localized: "control.fill.help"))
+    }
+  }
+
+  private func fillName(_ fill: MarginFill) -> String {
+    switch fill {
+    case .edges: String(localized: "control.fill.edges")
+    case .gray: String(localized: "control.fill.gray")
+    case .green: String(localized: "control.fill.green")
+    }
+  }
+
+  private func setZoom(_ raw: Double, contain: Double) {
+    var value = raw
+    for target in [0.0, contain] where abs(raw - target) < 3 { value = target }
+    if value != raw, value != control.inputs.framing.zoom {
+      NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .now)
+    }
+    control.setZoom(value)
+  }
+
+  @ViewBuilder private func caption(for image: ReferenceImage) -> some View {
+    let framing = control.inputs.framing
+    let margins = FramingMath.margins(
+      imageWidth: image.pixelWidth, imageHeight: image.pixelHeight, canvasWidth: canvasWidth,
+      canvasHeight: canvasHeight, framing: framing)
+    let loss = FramingMath.loss(
+      imageWidth: image.pixelWidth, imageHeight: image.pixelHeight, canvasWidth: canvasWidth,
+      canvasHeight: canvasHeight, zoom: min(0, framing.zoom))
+    let crop = FramingMath.cropRect(
+      imageWidth: image.pixelWidth, imageHeight: image.pixelHeight, canvasWidth: canvasWidth,
+      canvasHeight: canvasHeight, framing: framing)
+    let canMove =
+      abs(Double(image.pixelWidth) - crop.width) > 0.5 || abs(Double(image.pixelHeight) - crop.height) > 0.5
     VStack(alignment: .leading, spacing: 2) {
       Text(
         String(
           format: String(localized: "control.stage.size"), canvasWidth, canvasHeight)
       )
       .font(.caption).foregroundStyle(.secondary)
-      if let axis = loss.axis {
+      if !margins.isEmpty {
+        Text(String(format: String(localized: "control.stage.margins"), marginList(margins)))
+          .font(.caption).foregroundStyle(.secondary)
+      }
+      if framing.zoom > 0 {
+        let share = FramingMath.usedShare(
+          imageWidth: image.pixelWidth, imageHeight: image.pixelHeight, canvasWidth: canvasWidth,
+          canvasHeight: canvasHeight, framing: framing)
+        Text(String(format: String(localized: "control.stage.used"), Int((share * 100).rounded())))
+          .font(.caption).foregroundStyle(.secondary)
+      } else if let axis = loss.axis {
         Text(
           String(
             format: String(localized: axis == .vertical ? "control.stage.loss.vertical" : "control.stage.loss.horizontal"),
             Int((loss.fraction * 100).rounded()))
         )
         .font(.caption).foregroundStyle(loss.fraction > 1.0 / 3.0 ? DS.remove : .secondary)
-        Text("control.stage.drag").font(.caption).foregroundStyle(.secondary)
       }
+      if canMove { Text("control.stage.drag").font(.caption).foregroundStyle(.secondary) }
     }
     .frame(maxWidth: .infinity, alignment: .leading)
+  }
+
+  /// "left 12%, right 12%": the sides that have a margin, as a share of the canvas.
+  private func marginList(_ margins: FramingMath.Margins) -> String {
+    var parts: [String] = []
+    func add(_ key: String.LocalizationValue, _ pixels: Double, of side: Int) {
+      if pixels >= 0.5 {
+        parts.append(String(format: String(localized: key), Int((pixels / Double(max(side, 1)) * 100).rounded())))
+      }
+    }
+    add("control.stage.margin.top", margins.top, of: canvasHeight)
+    add("control.stage.margin.bottom", margins.bottom, of: canvasHeight)
+    add("control.stage.margin.left", margins.left, of: canvasWidth)
+    add("control.stage.margin.right", margins.right, of: canvasWidth)
+    return parts.joined(separator: ", ")
   }
 
   // MARK: Draw mode: tools
@@ -340,11 +481,22 @@ struct CanvasStage: View {
       .frame(width: frame.width, height: frame.height)
       .position(x: origin.x + frame.width / 2, y: origin.y + frame.height / 2)
     }
+    let fill = generation.marginFill
     return ZStack(alignment: .topLeading) {
-      Color.primary.opacity(0.08)
+      if fill == .green { Color(red: 0, green: 1, blue: 0) } else { Color(white: 0.5) }
       layer(picture)
       layer(drawing.paintImage)
       layer(drawing.maskImage)
+      // What the image leaves uncovered is regenerated when it goes in the mask: it shows like the mask.
+      // With a flat grey or green fill (an outpaint LoRA) it shows as that colour, and nothing is masked.
+      if fill.sendsMask {
+        Path { path in
+          path.addRect(CGRect(origin: .zero, size: size))
+          path.addRect(CGRect(origin: origin, size: frame))
+        }
+        .fill(Color(red: 1, green: 140 / 255, blue: 0).opacity(0.55), style: FillStyle(eoFill: true))
+        .allowsHitTesting(false)
+      }
       if let hover {
         let radius = brushSize / 2 * size.width / Double(max(canvasWidth, 1))
         ZStack {

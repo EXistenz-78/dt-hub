@@ -22,6 +22,18 @@ Cose decise o chieste e non ancora fatte. Si cancella una voce quando entra in u
 - **Quote del Moodboard** (spec Control §4.1, 2 ottobre 2026): fette di una torta da 100 con barra, cursori ed Equilibra. Non fatte perché sui modelli che leggono il Moodboard Draw Things le ignora (FLUX.2 klein, Qwen Image Edit 2511: ogni valore sopra 0 dà lo stesso risultato; provato in Draw Things dall'utente e dal vivo da DT Hub). Da riprovare con Qwen Image 2.1 (encoder con visione) e con i ControlNet della voce D.
 - **Famiglie che leggono il Moodboard:** Z Image no (misurato); Qwen Image 2.1, Ideogram 4/4.5 e altre da provare; si aggiorna `FamilyTraits.withoutMoodboard`.
 
+## Rimandi di M7d (outpaint)
+
+- **Controllo di compatibilità LoRA/modello** (3 ottobre 2026): un LoRA di un'altra famiglia (per esempio `flux_outpaint_lora`, Flux.1, su FLUX.2 klein) fa cadere il server in `LoRALoader.mergeLoRA` (trap). DT Hub dovrebbe avvisare o escludere i LoRA non compatibili con il modello scelto, se il catalogo ne dà la famiglia.
+- **Klein e il grigio** (prova dell'utente): con FLUX.2 klein, margini grigi pieni e il prompt "expand the image" (senza accennare al colore) funzionano meglio che bordi estesi + maschera. Il riempimento automatico oggi dà `edges` a Klein senza LoRA; valutare un default diverso per i modelli Edit senza LoRA.
+- Il riempimento automatico riconosce un LoRA di outpaint dalla parola "outpaint" nel nome o nel trigger: un LoRA senza la parola va scelto a mano dal menu.
+- Soglia della maschera sul bordo dei margini diversa di una frazione di pixel (copertura 0,29 invece di 0,5) a seconda che esista una maschera dipinta (`InputComposer.mask`: riempie a 0 e poi disegna la maschera in grigio).
+- `GenerationController` legge `hasMargins` e il riempimento dallo stato attuale dopo la preparazione asincrona del RUN: se lo zoom cambia in quel momento, forza e maschera possono non coincidere. Meglio ricavarli dagli ingressi già composti.
+- L'anteprima dello stage è decodificata una volta a 1400 px: a zoom +100 si vedono circa 350 px ingranditi (sfocata). Decodificare per fascia di zoom o solo la finestra.
+- Sfumatura, Margine e "Conserva l'originale" stanno solo in Disegno e si nascondono con il Pennello senza maschera: chi fa solo outpaint con lo slider può non trovarli.
+- Testi vecchi: la documentazione di `CanvasStage` (dice che il drag muove il ritaglio), il commento di `LiveServerTests` ("grigio nell'immagine") e il nome del test `aRunWithMarginsGetsTheMaskAndTheGreyImage…`.
+- Fuori perimetro, accettati: foto enormi decodificate a piena risoluzione con zoom +100; maschera dipinta tutta fuori dalla finestra; "Riprendi parametri" che salva la forza 1,0 di una corsa con margini; "Adatta le dimensioni" che mantiene lo zoom; Edit e inpainting veri con i margini non provati (`enableInpainting`); pennello nei margini; test flaky dell'M3 `reportsProgressAndPreviewWhileRunning` (fallisce una volta ogni tanto sotto carico).
+
 ## Rimandi di M7c (revisione indipendente, tutti Minor)
 
 - All'avvio, se manca la copia dell'immagine, maschera e disegno restano (`ControlStore.init`): vanno scartati con l'immagine; e l'avviso "immagine mancante" può essere coperto da quello della maschera.
