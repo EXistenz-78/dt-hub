@@ -24,7 +24,7 @@ Cose decise o chieste e non ancora fatte. Si cancella una voce quando entra in u
 
 ## Rimandi di M8a (plug-in scaricabili, revisione indipendente)
 
-- Spegnere un plug-in già caricato lascia l'etichetta "Acceso — caricato" accanto all'interruttore spento, senza dire che sparisce al prossimo avvio; l'interruttore legge il file di impostazioni invece di uno stato osservato. Dopo la sostituzione di un plug-in caricato la riga conserva il vecchio numero di versione senza dire che la nuova vale dal prossimo avvio.
+- Spegnere un plug-in già caricato lascia l'etichetta "Acceso — caricato" accanto all'interruttore spento (il pulsante Riavvia compare, ma l'etichetta non lo dice); l'interruttore legge il file di impostazioni invece di uno stato osservato.
 - Un plug-in acceso che non si carica (dopo `Bundle.load()`) non ha l'interruttore nelle Preferenze e il suo codice si ricarica a ogni avvio: l'unica uscita senza cancellarlo è ⌥. Mostrare l'interruttore ogni volta che il plug-in è tra gli accesi.
 - "Gestisci i plug-in…" dell'header apre le Preferenze ma non sul pannello Plug-in (il `TabView` non ha una selezione).
 - Trascinare sulle Preferenze qualcosa che non è un `.dthubplugin` (un `.zip` scaricato da GitHub, per esempio) non dà nessun messaggio: dovrebbe dire "non è un plug-in leggibile".
