@@ -22,6 +22,13 @@ Cose decise o chieste e non ancora fatte. Si cancella una voce quando entra in u
 - **Quote del Moodboard** (spec Control §4.1, 2 ottobre 2026): fette di una torta da 100 con barra, cursori ed Equilibra. Non fatte perché sui modelli che leggono il Moodboard Draw Things le ignora (FLUX.2 klein, Qwen Image Edit 2511: ogni valore sopra 0 dà lo stesso risultato; provato in Draw Things dall'utente e dal vivo da DT Hub). Da riprovare con Qwen Image 2.1 (encoder con visione) e con i ControlNet della voce D.
 - **Famiglie che leggono il Moodboard:** Z Image no (misurato); Qwen Image 2.1, Ideogram 4/4.5 e altre da provare; si aggiorna `FamilyTraits.withoutMoodboard`.
 
+## Rimandi della selezione multipla dei Risultati (revisione indipendente, 3 ottobre 2026)
+
+- "Aggiungi al Moodboard" su molte immagini legge i file uno dopo l'altro: se subito dopo si cestinano, quelli già spostati non si leggono; inoltre `useError = firstError` può cancellare il messaggio della cancellazione. Leggere tutto prima di restituire il controllo, o non azzerare l'errore.
+- I messaggi di errore del Cestino ripetono il nome del file (Foundation lo include già) e con molti file rifiutati diventano illeggibili in due righe: raggruppare le ragioni uguali e aggiungere il suggerimento (`.help`).
+- Test mancanti: un file rifiutato resta in `results.json`; una voce vecchia dello storico non nella striscia sopravvive a una rimozione.
+- Accettati: nessuna conferma prima del Cestino e nessun annulla (c'è "Rimetti a posto"); ⇧-clic sostituisce la selezione con l'intervallo; un clic destro fuori dalla selezione non la cambia; "Sposta nel cestino" (pulsante) e "Cestino" (suggerimento) con maiuscole diverse.
+
 ## Test con attese a tempo rimasti (3 ottobre 2026)
 
 I test di sessione dell'M3 (`GenerationSessionTests`) sono stati resi deterministici (il finto backend lascia passare un aggiornamento solo quando il test lo decide, il test aspetta la condizione). Restano con pause fisse e margini piccoli, non ancora instabili: `ConnectionMonitorTests` (100 ms), `LanguageModelTests` (100–150 ms), `ManagedServerTests` (60–80 ms). Da convertire allo stesso modo se cominciano a fallire.

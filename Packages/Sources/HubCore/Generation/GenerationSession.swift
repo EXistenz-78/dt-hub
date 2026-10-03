@@ -153,14 +153,48 @@ public final class GenerationSession {
       image: image, job: job, date: entry.date, fileURL: url, saveError: nil, isRestored: true)
   }
 
-  /// Writes the strip's files, newest first, keeping the older entries not read back yet.
-  private func persistHistory() {
+  /// Writes the strip's files, newest first, keeping the older entries not read back yet (but not
+  /// the `removed` ones).
+  private func persistHistory(removing removed: Set<String> = []) {
     guard let history else { return }
     let current = results.compactMap { result in
       result.fileURL.map { ResultsHistoryEntry(path: $0.path, date: result.date) }
     }
     let listed = Set(current.map(\.path))
-    history.save(current + history.load().filter { !listed.contains($0.path) })
+    history.save(current + history.load().filter { !listed.contains($0.path) && !removed.contains($0.path) })
+  }
+
+  /// Takes the images out of the strip and moves their files to the Trash. An image that was never
+  /// saved only leaves the strip. A file the Trash refuses stays in the strip; the reasons come back,
+  /// one per file. The history file forgets what went.
+  @discardableResult
+  public func remove(_ ids: Set<GeneratedImage.ID>) -> [String] {
+    var failures: [String] = []
+    var gone: Set<GeneratedImage.ID> = []
+    var removedPaths: Set<String> = []
+    for result in results where ids.contains(result.id) {
+      guard let url = result.fileURL else {
+        gone.insert(result.id)
+        continue
+      }
+      do {
+        try store.trash(url)
+        gone.insert(result.id)
+        removedPaths.insert(url.path)
+      } catch {
+        failures.append("\(url.lastPathComponent): \((error as? ImageStoreError).map(Self.describe) ?? error.localizedDescription)")
+      }
+    }
+    guard !gone.isEmpty else { return failures }
+    results.removeAll { gone.contains($0.id) }
+    persistHistory(removing: removedPaths)
+    return failures
+  }
+
+  private nonisolated static func describe(_ error: ImageStoreError) -> String {
+    switch error {
+    case .cannotWrite(let reason), .cannotTrash(let reason): reason
+    }
   }
 
   /// Hides a failure message.
