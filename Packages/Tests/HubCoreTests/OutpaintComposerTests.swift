@@ -47,6 +47,22 @@ struct OutpaintComposerTests {
     #expect(isRed(sample(framed, 50, 80)) && isBlue(sample(framed, 50, 120)))
   }
 
+  @Test func aFractionalEdgeLeavesNoGreyInTheSeam() throws {
+    // A solid red image whose left and right edges fall between pixels (x 50.55 and 150.55): the
+    // boundary columns must be red all through, with no blue/grey from anything under the strips.
+    let context = CGContext(
+      data: nil, width: 100, height: 100, bitsPerComponent: 8, bytesPerRow: 0,
+      space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+    context.setFillColor(CGColor(red: 1, green: 0, blue: 0, alpha: 1))
+    context.fill(CGRect(x: 0, y: 0, width: 100, height: 100))
+    let red = context.makeImage()!
+    let framed = try #require(
+      InputComposer.frame(red, toWidth: 200, height: 100, framing: Framing(zoom: -50, offsetX: 0.011)))
+    for x in [49, 50, 51, 150, 151] {
+      #expect(sample(framed, x, 50)[2] < 8, "column \(x) is tinted")
+    }
+  }
+
   @Test func theOffsetMovesTheImageInTheCanvas() throws {
     let framed = try #require(
       InputComposer.frame(halves(vertical: false), toWidth: 200, height: 100, framing: Framing(zoom: -50, offsetX: -1)))

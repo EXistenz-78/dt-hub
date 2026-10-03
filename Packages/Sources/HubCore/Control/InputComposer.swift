@@ -20,10 +20,6 @@ public enum InputComposer {
         space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)
     else { return nil }
     context.interpolationQuality = .high
-    // Neutral grey under the image: it shows where the image leaves margins (the mask regenerates them).
-    context.setFillColorSpace(CGColorSpaceCreateDeviceRGB())
-    context.setFillColor([0.5, 0.5, 0.5, 1])
-    context.fill(CGRect(x: 0, y: 0, width: width, height: height))
     // The image drawn so that the cut fills the canvas (Core Graphics counts from the bottom-left).
     let scale = Double(width) / crop.width
     let drawn = CGRect(
@@ -37,7 +33,9 @@ public enum InputComposer {
 
   /// Fills what the image leaves uncovered with its own edge pixels stretched outwards (and the corner
   /// pixels in the corners). The mask regenerates it anyway; this way the edge Draw Things blends
-  /// back ("keep the original") carries the colours of the picture, not a stripe of grey.
+  /// back ("keep the original") carries the colours of the picture, not a stripe of grey. The corners
+  /// go first, then the sides, each running one pixel under the image and into the corners, so a
+  /// boundary that falls between pixels is covered whole by one strip and nothing shows through.
   private static func extendEdges(of image: CGImage, drawn: CGRect, in context: CGContext, width: Int, height: Int) {
     let canvas = CGRect(x: 0, y: 0, width: width, height: height)
     guard !drawn.contains(canvas), image.width > 0, image.height > 0 else { return }
@@ -52,14 +50,26 @@ public enum InputComposer {
       context.draw(part, in: rect)
     }
     // Core Graphics counts from the bottom-left; the crops count from the top-left.
-    strip(0, 0, 1, h, into: CGRect(x: 0, y: drawn.minY, width: drawn.minX, height: drawn.height))
-    strip(w - 1, 0, 1, h, into: CGRect(x: drawn.maxX, y: drawn.minY, width: right, height: drawn.height))
-    strip(0, 0, w, 1, into: CGRect(x: drawn.minX, y: drawn.maxY, width: drawn.width, height: top))
-    strip(0, h - 1, w, 1, into: CGRect(x: drawn.minX, y: 0, width: drawn.width, height: drawn.minY))
-    strip(0, 0, 1, 1, into: CGRect(x: 0, y: drawn.maxY, width: drawn.minX, height: top))
-    strip(w - 1, 0, 1, 1, into: CGRect(x: drawn.maxX, y: drawn.maxY, width: right, height: top))
-    strip(0, h - 1, 1, 1, into: CGRect(x: 0, y: 0, width: drawn.minX, height: drawn.minY))
-    strip(w - 1, h - 1, 1, 1, into: CGRect(x: drawn.maxX, y: 0, width: right, height: drawn.minY))
+    if drawn.minX > 0 {
+      if top > 0 { strip(0, 0, 1, 1, into: CGRect(x: 0, y: drawn.maxY, width: drawn.minX, height: top)) }
+      if drawn.minY > 0 { strip(0, h - 1, 1, 1, into: CGRect(x: 0, y: 0, width: drawn.minX, height: drawn.minY)) }
+    }
+    if right > 0 {
+      if top > 0 { strip(w - 1, 0, 1, 1, into: CGRect(x: drawn.maxX, y: drawn.maxY, width: right, height: top)) }
+      if drawn.minY > 0 { strip(w - 1, h - 1, 1, 1, into: CGRect(x: drawn.maxX, y: 0, width: right, height: drawn.minY)) }
+    }
+    if drawn.minX > 0 {
+      strip(0, 0, 1, h, into: CGRect(x: 0, y: drawn.minY - 1, width: drawn.minX + 1, height: drawn.height + 2))
+    }
+    if right > 0 {
+      strip(w - 1, 0, 1, h, into: CGRect(x: drawn.maxX - 1, y: drawn.minY - 1, width: right + 1, height: drawn.height + 2))
+    }
+    if top > 0 {
+      strip(0, 0, w, 1, into: CGRect(x: drawn.minX - 1, y: drawn.maxY - 1, width: drawn.width + 2, height: top + 1))
+    }
+    if drawn.minY > 0 {
+      strip(0, h - 1, w, 1, into: CGRect(x: drawn.minX - 1, y: 0, width: drawn.width + 2, height: drawn.minY + 1))
+    }
   }
 
   /// The mask for the canvas, in the same cut as the start image: transparent where the picture is
