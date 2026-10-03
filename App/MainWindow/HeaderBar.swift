@@ -6,7 +6,9 @@ import SwiftUI
 struct HeaderBar: View {
   let connection: DrawThingsConnection
   let generation: GenerationController
+  let plugins: PluginRegistry
   @Environment(\.openWindow) private var openWindow
+  @Environment(\.openSettings) private var openSettings
 
   private var monitor: ConnectionMonitor { connection.monitor }
   private var selection: ModelSelection { connection.selection }
@@ -38,7 +40,20 @@ struct HeaderBar: View {
 
   private var pluginsMenu: some View {
     Menu {
-      Text("header.plugins.none")
+      let loaded = plugins.entries.filter { $0.state == .loaded }
+      if loaded.isEmpty {
+        Text("header.plugins.none")
+      }
+      ForEach(loaded) { entry in
+        Toggle(
+          entry.name,
+          isOn: Binding(get: { entry.isActive }, set: { plugins.setActive(entry.id, $0) })
+        )
+        .disabled(!plugins.isCompatible(entry))
+        .help(plugins.isCompatible(entry) ? "" : String(localized: "header.plugins.incompatible"))
+      }
+      Divider()
+      Button("header.plugins.manage") { openSettings() }
     } label: {
       DSMenuLabel(String(localized: "header.plugins"), systemImage: "puzzlepiece.extension")
     }

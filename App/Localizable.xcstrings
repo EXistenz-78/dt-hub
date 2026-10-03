@@ -3112,6 +3112,40 @@
         }
       }
     },
+    "header.plugins.incompatible": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not for the family of the chosen model"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non adatto alla famiglia del modello scelto"
+          }
+        }
+      }
+    },
+    "header.plugins.manage": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manage plug-ins…"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gestisci i plug-in…"
+          }
+        }
+      }
+    },
     "header.plugins.none": {
       "extractionState": "manual",
       "localizations": {
@@ -3482,6 +3516,210 @@
           "stringUnit": {
             "state": "translated",
             "value": "Scegli prima un modello."
+          }
+        }
+      }
+    },
+    "plugin.error.contract": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Made for plug-in contract %lld, which this DT Hub does not support."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fatto per il contratto %lld dei plug-in, che questo DT Hub non supporta."
+          }
+        }
+      }
+    },
+    "plugin.error.entry": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The plug-in has no valid entry point."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il plug-in non ha un punto d'ingresso valido."
+          }
+        }
+      }
+    },
+    "plugin.error.load": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The plug-in could not be loaded: %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il plug-in non si è caricato: %@"
+          }
+        }
+      }
+    },
+    "plugin.error.mismatch": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The code of the plug-in says it is “%@”, not what its bundle says."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il codice del plug-in dice di essere «%@», diverso da quanto dichiara il bundle."
+          }
+        }
+      }
+    },
+    "plugin.error.missingKey": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The plug-in lacks “%@”."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Al plug-in manca «%@»."
+          }
+        }
+      }
+    },
+    "plugin.error.notNewer": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Version %@ is installed already, the same or newer."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "È già installata la versione %@, uguale o più recente."
+          }
+        }
+      }
+    },
+    "plugin.error.unreadable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This is not a readable plug-in."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non è un plug-in leggibile."
+          }
+        }
+      }
+    },
+    "plugin.error.write": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The plug-in could not be copied: %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non sono riuscito a copiare il plug-in: %@"
+          }
+        }
+      }
+    },
+    "plugin.state.loaded": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On — loaded"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acceso — caricato"
+          }
+        }
+      }
+    },
+    "plugin.state.next": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On — loads at the next launch"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acceso — si carica al prossimo avvio"
+          }
+        }
+      }
+    },
+    "plugin.state.off": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Off"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spento"
+          }
+        }
+      }
+    },
+    "plugin.state.skipped": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On — not loaded at this launch (⌥ was held)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acceso — non caricato in questo avvio (⌥ premuto)"
           }
         }
       }
@@ -4234,6 +4472,193 @@
         }
       }
     },
+    "prefs.plugins.add": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add…"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aggiungi…"
+          }
+        }
+      }
+    },
+    "prefs.plugins.choose": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a plug-in (.dthubplugin)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scegli un plug-in (.dthubplugin)"
+          }
+        }
+      }
+    },
+    "prefs.plugins.confirm.add": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aggiungi"
+          }
+        }
+      }
+    },
+    "prefs.plugins.confirm.cancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annulla"
+          }
+        }
+      }
+    },
+    "prefs.plugins.confirm.message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Version %@. This plug-in runs code on your Mac with the same permissions as DT Hub. Add only plug-ins you trust."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Versione %@. Questo plug-in esegue codice sul tuo Mac con gli stessi permessi di DT Hub. Aggiungi solo plug-in di cui ti fidi."
+          }
+        }
+      }
+    },
+    "prefs.plugins.confirm.replacing": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "It replaces version %@; the change takes effect at the next launch."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sostituisce la versione %@; ha effetto al prossimo avvio."
+          }
+        }
+      }
+    },
+    "prefs.plugins.confirm.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add the plug-in “%@”?"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aggiungere il plug-in «%@»?"
+          }
+        }
+      }
+    },
+    "prefs.plugins.download": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Download plug-ins"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scarica i plug-in"
+          }
+        }
+      }
+    },
+    "prefs.plugins.empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No plug-ins installed. Download a plug-in file and add it here."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessun plug-in installato. Scarica il file di un plug-in e aggiungilo qui."
+          }
+        }
+      }
+    },
+    "prefs.plugins.note": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A plug-in runs code on your Mac with the same permissions as DT Hub: add only plug-ins you trust. Turning one on or off, or removing it, takes effect at the next launch. Hold ⌥ while DT Hub starts to load none."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un plug-in esegue codice sul tuo Mac con gli stessi permessi di DT Hub: aggiungi solo plug-in di cui ti fidi. Accendere, spegnere o rimuovere un plug-in ha effetto al prossimo avvio. Tieni premuto ⌥ all'avvio di DT Hub per non caricarne nessuno."
+          }
+        }
+      }
+    },
+    "prefs.plugins.remove": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rimuovi"
+          }
+        }
+      }
+    },
     "prefs.server.binary": {
       "extractionState": "manual",
       "localizations": {
@@ -4502,6 +4927,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Output"
+          }
+        }
+      }
+    },
+    "prefs.tab.plugins": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plug-ins"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plug-in"
           }
         }
       }
