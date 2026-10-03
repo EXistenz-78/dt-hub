@@ -7,12 +7,23 @@ public enum PluginMessageType {
   public static let activate = "activate"
   public static let deactivate = "deactivate"
   public static let notice = "notice"
+  /// Plug-in → app: values, LoRAs, pictures, a pipeline (`PluginContribution`).
+  public static let contribute = "contribute"
+  /// Plug-in → app: a question for the language model; the answer is `{"type":"llm","text":…}`.
+  public static let llm = "llm"
+  /// The answer to a message the app could not use: `{"type":"error","text":…}`.
+  public static let error = "error"
   public static let unsupported = "unsupported"
   public static let ok = "ok"
 
   /// The `type` of a JSON message, if it is one.
   public static func of(_ data: Data) -> String? {
     (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["type"] as? String
+  }
+
+  /// `{"type":"error","text":text}` as data.
+  public static func failure(_ text: String) -> Data {
+    (try? JSONSerialization.data(withJSONObject: ["type": error, "text": text])) ?? bare(error)
   }
 
   /// `{"type": type}` as data.
