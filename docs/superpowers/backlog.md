@@ -22,6 +22,10 @@ Cose decise o chieste e non ancora fatte. Si cancella una voce quando entra in u
 - **Quote del Moodboard** (spec Control §4.1, 2 ottobre 2026): fette di una torta da 100 con barra, cursori ed Equilibra. Non fatte perché sui modelli che leggono il Moodboard Draw Things le ignora (FLUX.2 klein, Qwen Image Edit 2511: ogni valore sopra 0 dà lo stesso risultato; provato in Draw Things dall'utente e dal vivo da DT Hub). Da riprovare con Qwen Image 2.1 (encoder con visione) e con i ControlNet della voce D.
 - **Famiglie che leggono il Moodboard:** Z Image no (misurato); Qwen Image 2.1, Ideogram 4/4.5 e altre da provare; si aggiorna `FamilyTraits.withoutMoodboard`.
 
+## Test con attese a tempo rimasti (3 ottobre 2026)
+
+I test di sessione dell'M3 (`GenerationSessionTests`) sono stati resi deterministici (il finto backend lascia passare un aggiornamento solo quando il test lo decide, il test aspetta la condizione). Restano con pause fisse e margini piccoli, non ancora instabili: `ConnectionMonitorTests` (100 ms), `LanguageModelTests` (100–150 ms), `ManagedServerTests` (60–80 ms). Da convertire allo stesso modo se cominciano a fallire.
+
 ## Rimandi di M7e (dimensioni fino a 8192)
 
 - `GenerationController.setTiledDiffusion` riscrive il rapporto bloccato anche quando le dimensioni non sono cambiate (un 16:9 arrotondato a 1,7 diventa 5:3 accendendo il Tiled): aggiornarlo solo se la dimensione cambia.
@@ -30,7 +34,6 @@ Cose decise o chieste e non ancora fatte. Si cancella una voce quando entra in u
 - Manca il test di `setHeight` con rapporto bloccato al limite (simmetrico a `setWidth`).
 - **Non provato dal vivo**: un'immagine di partenza (I2I, inpaint, outpaint) a 8192²: il client ora ammette 1 GiB per messaggio, ma il limite di ricezione del server non è verificato.
 - Fuori perimetro, accettati: maschera e disegno a dimensione di lavoro 1024 (a 8192 i bordi sono sgranati), pennello al massimo 512 px (poco su 8192), picco di memoria della maschera al Run a 8192², Tiled Decoding che non si accende insieme al Tiled Diffusion, nessun avviso di memoria.
-- **Test dell'M3 instabili sotto carico** (`GenerationSessionTests`: `reportsProgressAndPreviewWhileRunning`, `reportsWhichBatchIsRunning`, `stopKeepsTheBatchesAlreadyFinished`): falliscono a turno, circa tre esecuzioni su otto; da sistemare (attese temporizzate).
 
 ## Rimandi di M7d (outpaint)
 
@@ -41,7 +44,7 @@ Cose decise o chieste e non ancora fatte. Si cancella una voce quando entra in u
 - L'anteprima dello stage è decodificata una volta a 1400 px: a zoom +100 si vedono circa 350 px ingranditi (sfocata). Decodificare per fascia di zoom o solo la finestra.
 - Sfumatura, Margine e "Conserva l'originale" stanno solo in Disegno e si nascondono con il Pennello senza maschera: chi fa solo outpaint con lo slider può non trovarli.
 - Testi vecchi: la documentazione di `CanvasStage` (dice che il drag muove il ritaglio), il commento di `LiveServerTests` ("grigio nell'immagine") e il nome del test `aRunWithMarginsGetsTheMaskAndTheGreyImage…`.
-- Fuori perimetro, accettati: foto enormi decodificate a piena risoluzione con zoom +100; maschera dipinta tutta fuori dalla finestra; "Riprendi parametri" che salva la forza 1,0 di una corsa con margini; "Adatta le dimensioni" che mantiene lo zoom; Edit e inpainting veri con i margini non provati (`enableInpainting`); pennello nei margini; test flaky dell'M3 `reportsProgressAndPreviewWhileRunning` (fallisce una volta ogni tanto sotto carico).
+- Fuori perimetro, accettati: foto enormi decodificate a piena risoluzione con zoom +100; maschera dipinta tutta fuori dalla finestra; "Riprendi parametri" che salva la forza 1,0 di una corsa con margini; "Adatta le dimensioni" che mantiene lo zoom; Edit e inpainting veri con i margini non provati (`enableInpainting`); pennello nei margini.
 
 ## Rimandi di M7c (revisione indipendente, tutti Minor)
 
@@ -56,7 +59,6 @@ Cose decise o chieste e non ancora fatte. Si cancella una voce quando entra in u
 - Gomma per il disegno del Pennello (oggi: Annulla o "Svuota disegno").
 - Rimisurare la fluidità del pennello con il Tiled Diffusion a 8192 (la dimensione di lavoro resta 1024).
 - Una card chiusa lascia nella colonna uno spazio vuoto alto (`DSCardRow` dà a ogni card l'altezza della riga).
-- Test dell'M3 `GenerationSessionTests.reportsProgressAndPreviewWhileRunning`: a volte fallisce sotto carico (dorme 380 ms contro un passo finto di 150 ms): attendere lo stato invece di dormire.
 - Non provato dal vivo nell'app: un Run con il disegno del Pennello acceso (coperto da test: `aRunGetsTheImageWithTheDrawingOnIt`).
 
 ## Rimandi di M7b (revisione indipendente, tutti Minor)

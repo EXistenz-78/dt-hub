@@ -80,25 +80,30 @@ struct GenerationSessionTests {
   @Test func reportsProgressAndPreviewWhileRunning() async throws {
     let backend = FakeBackend(.success(catalog))
     await backend.setGeneration(
-      [.progress(step: 3, totalSteps: 4), .preview(testImage()), .finished([testImage()])], stepDelay: .milliseconds(150))
+      [.progress(step: 3, totalSteps: 4), .preview(testImage()), .finished([testImage()])], gated: true)
     let monitor = await connected(backend)
     let session = GenerationSession(store: MemoryImageStore())
 
     session.start(job, backend: backend, monitor: monitor)
-    try await Task.sleep(for: .milliseconds(380))
+    await backend.release(2)  // the progress and the preview, not the end
+    #expect(await eventually { session.phase == .running(step: 3, totalSteps: 4) && session.preview != nil })
+    // However slow the machine, nothing moves without a release.
+    try await Task.sleep(for: .milliseconds(300))
     #expect(session.phase == .running(step: 3, totalSteps: 4))
-    #expect(session.preview != nil)
+    await backend.release()
     await session.waitUntilFinished()
+    #expect(session.phase == .idle)
   }
 
   @Test func pausesTheServerChecksWhileRunning() async throws {
     let backend = FakeBackend(.success(catalog))
-    await backend.setGeneration([.finished([testImage()])], stepDelay: .milliseconds(200))
+    await backend.setGeneration([.finished([testImage()])], gated: true)
     let monitor = await connected(backend)
     let session = GenerationSession(store: MemoryImageStore())
 
     session.start(job, backend: backend, monitor: monitor)
     #expect(monitor.isPaused)
+    await backend.release()
     await session.waitUntilFinished()
     #expect(!monitor.isPaused)
   }
@@ -174,26 +179,28 @@ struct GenerationSessionTests {
 
   @Test func reportsWhichBatchIsRunning() async throws {
     let backend = FakeBackend(.success(catalog))
-    await backend.setGeneration([.finished([testImage()])], stepDelay: .milliseconds(200))
+    await backend.setGeneration([.finished([testImage()])], gated: true)
     let monitor = await connected(backend)
     let session = GenerationSession(store: MemoryImageStore())
 
     session.start([job, second(seed: 10)], backend: backend, monitor: monitor)
     #expect(session.batch == .init(index: 1, count: 2))
-    try await Task.sleep(for: .milliseconds(300))
-    #expect(session.batch == .init(index: 2, count: 2))
+    await backend.release()  // the first batch ends
+    #expect(await eventually { session.batch == .init(index: 2, count: 2) })
+    await backend.release()
     await session.waitUntilFinished()
   }
 
   @Test func stopKeepsTheBatchesAlreadyFinished() async throws {
     let backend = FakeBackend(.success(catalog))
-    await backend.setGeneration([.finished([testImage()])], stepDelay: .milliseconds(200))
+    await backend.setGeneration([.finished([testImage()])], gated: true)
     let monitor = await connected(backend)
     let store = MemoryImageStore()
     let session = GenerationSession(store: store)
 
     session.start([job, second(seed: 10), second(seed: 11)], backend: backend, monitor: monitor)
-    try await Task.sleep(for: .milliseconds(300))
+    await backend.release()  // the first batch ends; the second is under way and held
+    #expect(await eventually { await backend.jobs.count == 2 && session.results.count == 1 })
     session.cancel()
     await session.waitUntilFinished()
     #expect(session.phase == .idle)
