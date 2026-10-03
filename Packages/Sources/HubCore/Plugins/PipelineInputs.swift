@@ -33,6 +33,25 @@ public enum PipelineInputs {
   }
 }
 
+extension PipelineInputs {
+  /// The picture a pass made: the newest result, but only if it arrived after `previous` (the newest one
+  /// before the pass started). A stopped pass leaves nothing new, and the older pictures of the strip must
+  /// never become the next pass's start image.
+  @MainActor
+  public static func output(after previous: GeneratedImage.ID?, in results: [GeneratedImage]) -> GeneratedImage? {
+    guard let newest = results.first, newest.id != previous else { return nil }
+    return newest
+  }
+
+  /// The strength of a pass. A pass that replaces the start image does not send the tab's mask or margins, so
+  /// they must not make the automatic strength 100%.
+  public static func strength(tab: ControlInputs, replacesStart: Bool, editModel: Bool, hasMargins: Bool) -> Double {
+    var inputs = tab
+    if replacesStart { inputs.mask = nil }
+    return inputs.effectiveStrength(editModel: editModel, hasMargins: hasMargins && !replacesStart)
+  }
+}
+
 /// Pictures a plug-in leaves in its folder.
 public enum PluginImages {
   /// The picture at the path, no larger than `maxPixel` on its long side; nil when it cannot be read.

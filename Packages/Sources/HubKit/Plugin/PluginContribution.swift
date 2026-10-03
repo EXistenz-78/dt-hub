@@ -130,8 +130,11 @@ public struct PluginContribution: Equatable, Sendable {
   static func loras(_ value: JSONValue?) -> [LoRASelection]? {
     guard case .array(let list)? = value else { return nil }
     return list.compactMap { item in
-      guard let data = try? JSONEncoder().encode(item) else { return nil }
-      return try? JSONDecoder().decode(LoRASelection.self, from: data)
+      guard let data = try? JSONEncoder().encode(item), var lora = try? JSONDecoder().decode(LoRASelection.self, from: data)
+      else { return nil }
+      // The weight is limited like the LoRA card limits it.
+      lora.weight = min(max(lora.weight, LoRASelection.weightRange.lowerBound), LoRASelection.weightRange.upperBound)
+      return lora
     }
   }
 
