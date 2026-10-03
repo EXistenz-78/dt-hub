@@ -316,8 +316,35 @@ public final class ControlStore {
   }
 
   public func setOffset(x: Double, y: Double) {
-    inputs.framing = Framing(mode: inputs.framing.mode, offsetX: x, offsetY: y).clamped()
+    inputs.framing = Framing(zoom: inputs.framing.zoom, offsetX: x, offsetY: y).clamped()
     save()
+  }
+
+  /// The zoom of the image in the canvas (−100…+100; below 0 the margins are regenerated).
+  public func setZoom(_ value: Double) {
+    inputs.framing = Framing(zoom: value, offsetX: inputs.framing.offsetX, offsetY: inputs.framing.offsetY).clamped()
+    save()
+  }
+
+  /// What fills the margins (nil = automatic from the LoRAs).
+  public func setMarginFill(_ fill: MarginFill?) {
+    inputs.marginFill = fill
+    save()
+  }
+
+  /// Back to the fill, centred.
+  public func resetFraming() {
+    inputs.framing = Framing()
+    save()
+  }
+
+  /// Whether the image leaves margins in the canvas (they are regenerated).
+  public func hasMargins(canvasWidth: Int, canvasHeight: Int) -> Bool {
+    guard let image = inputs.image else { return false }
+    return !FramingMath.margins(
+      imageWidth: image.pixelWidth, imageHeight: image.pixelHeight, canvasWidth: canvasWidth,
+      canvasHeight: canvasHeight, framing: inputs.framing
+    ).isEmpty
   }
 
   // MARK: History
@@ -379,10 +406,11 @@ public final class ControlStore {
   public func warnings(canvasWidth: Int, canvasHeight: Int, usesMoodboard: Bool = true) -> [ControlWarning] {
     var warnings: [ControlWarning] = []
     if let image = inputs.image {
+      // With a zoom above 0 the cut is the user's choice: no warning.
       let loss = FramingMath.loss(
         imageWidth: image.pixelWidth, imageHeight: image.pixelHeight, canvasWidth: canvasWidth,
-        canvasHeight: canvasHeight)
-      if loss.fraction > 1.0 / 3.0 { warnings.append(.strongCrop(percent: Int((loss.fraction * 100).rounded()))) }
+        canvasHeight: canvasHeight, zoom: min(0, inputs.framing.zoom))
+      if inputs.framing.zoom <= 0, loss.fraction > 1.0 / 3.0 { warnings.append(.strongCrop(percent: Int((loss.fraction * 100).rounded()))) }
     }
     let on = inputs.moodboard.filter(\.isOn).count
     if on > 0, !usesMoodboard {
@@ -395,12 +423,15 @@ public final class ControlStore {
 
   /// What a RUN needs to prepare its inputs, to be rendered away from the main actor. The Moodboard
   /// goes only when `includeMoodboard` (the model uses it).
-  public func pendingInputs(canvasWidth: Int, canvasHeight: Int, includeMoodboard: Bool = true) -> PendingInputs {
+  public func pendingInputs(
+    canvasWidth: Int, canvasHeight: Int, includeMoodboard: Bool = true, marginFill: MarginFill = .edges
+  ) -> PendingInputs {
     let sent = inputs.moodboard.filter(\.isOn).map { (image: $0.image, weight: 1.0) }
     return PendingInputs(
       storage: storage, image: inputs.image, mask: inputs.image == nil ? nil : inputs.mask,
       paint: inputs.image == nil ? nil : inputs.paint, framing: inputs.framing,
-      canvasWidth: canvasWidth, canvasHeight: canvasHeight, moodboard: includeMoodboard ? sent : [])
+      canvasWidth: canvasWidth, canvasHeight: canvasHeight, moodboard: includeMoodboard ? sent : [],
+      marginFill: marginFill)
   }
 
   // MARK: Private
@@ -440,6 +471,7 @@ public final class ControlStore {
     restored.maskSettings = current.maskSettings
     restored.strength = current.strength
     restored.framing = current.framing
+    restored.marginFill = current.marginFill
   }
 
   nonisolated static func pngData(of image: CGImage) -> Data? {
@@ -495,6 +527,8 @@ public struct PendingInputs: Sendable {
   let canvasHeight: Int
   /// The Moodboard pictures that are on, all with the same weight.
   let moodboard: [(image: ReferenceImage, weight: Double)]
+  /// What fills the margins of the canvas (already resolved: never "automatic").
+  let marginFill: MarginFill
 
   /// Longest side of a Moodboard picture when it is sent.
   static let moodboardPixels = 1024
@@ -511,7 +545,10 @@ public struct PendingInputs: Sendable {
       hints.append(GenerationHint(imageData: data, weight: entry.weight))
     }
     guard let image else { return GenerationInputs(hints: hints) }
-    let scale = max(Double(canvasWidth) / Double(image.pixelWidth), Double(canvasHeight) / Double(image.pixelHeight))
+    let crop = FramingMath.cropRect(
+      imageWidth: image.pixelWidth, imageHeight: image.pixelHeight, canvasWidth: canvasWidth,
+      canvasHeight: canvasHeight, framing: framing)
+    let scale = Double(canvasWidth) / crop.width
     let longest = max(image.pixelWidth, image.pixelHeight)
     let maxPixel = scale < 1 ? Int((Double(longest) * scale).rounded(.up)) + 1 : longest
     var layer: PaintBitmap?
@@ -523,14 +560,26 @@ public struct PendingInputs: Sendable {
     }
     guard let decoded = storage.image(named: image.fileName, maxPixel: maxPixel),
       let framed = InputComposer.frame(
-        decoded, toWidth: canvasWidth, height: canvasHeight, framing: framing, paint: layer)
+        decoded, toWidth: canvasWidth, height: canvasHeight, framing: framing, paint: layer, fill: marginFill)
     else { throw .unreadable(image.name) }
-    guard let mask else { return GenerationInputs(image: framed, hints: hints) }
-    guard let stored = storage.image(named: mask.fileName, maxPixel: MaskBitmap.maxSide),
-      let bitmap = MaskBitmap(image: stored),
+    let margins = !FramingMath.margins(
+      imageWidth: image.pixelWidth, imageHeight: image.pixelHeight, canvasWidth: canvasWidth,
+      canvasHeight: canvasHeight, framing: framing
+    ).isEmpty
+    // Margins make a mask only when they are regenerated; a flat fill is left to the model.
+    let regenerated = margins && marginFill.sendsMask
+    if mask == nil, !regenerated { return GenerationInputs(image: framed, hints: hints) }
+    var bitmap: MaskBitmap?
+    if let mask {
+      guard let stored = storage.image(named: mask.fileName, maxPixel: MaskBitmap.maxSide),
+        let decodedMask = MaskBitmap(image: stored)
+      else { throw .unreadable(image.name) }
+      bitmap = decodedMask
+    }
+    guard
       let scaled = InputComposer.mask(
         bitmap, imageWidth: image.pixelWidth, imageHeight: image.pixelHeight, toWidth: canvasWidth,
-        height: canvasHeight, framing: framing)
+        height: canvasHeight, framing: framing, marginsRegenerated: marginFill.sendsMask)
     else { throw .unreadable(image.name) }
     return GenerationInputs(image: framed, hints: hints, mask: scaled)
   }

@@ -36,9 +36,28 @@ struct ControlContractTests {
     #expect(inputs.effectiveStrength(editModel: false) == 0.0)
   }
 
+  @Test func marginsMakeTheAutomaticStrengthFull() {
+    var inputs = ControlInputs()
+    #expect(inputs.effectiveStrength(editModel: false, hasMargins: true) == 1.0)
+    #expect(inputs.effectiveStrength(editModel: false, hasMargins: false) == 0.7)
+    inputs.strength = 0.4
+    #expect(inputs.effectiveStrength(editModel: false, hasMargins: true) == 0.4)
+  }
+
+  @Test func theZoomIsLimitedAndAnOldFramingStillLoads() throws {
+    #expect(Framing(zoom: 900).clamped().zoom == 100)
+    #expect(Framing(zoom: -900).clamped().zoom == -100)
+    let old = try JSONDecoder().decode(Framing.self, from: Data(#"{"mode": "fill", "offsetX": 0.5}"#.utf8))
+    #expect(old == Framing(zoom: 0, offsetX: 0.5, offsetY: 0))
+    let wild = try JSONDecoder().decode(Framing.self, from: Data(#"{"zoom": 900, "offsetY": -9}"#.utf8))
+    #expect(wild == Framing(zoom: 100, offsetX: 0, offsetY: -1))
+    let text = try JSONDecoder().decode(Framing.self, from: Data(#"{"zoom": "far"}"#.utf8))
+    #expect(text.zoom == 0)
+  }
+
   @Test func theFramingStartsCentered() {
     let framing = Framing()
-    #expect(framing.mode == .fill)
+    #expect(framing.zoom == 0)
     #expect(framing.offsetX == 0)
     #expect(framing.offsetY == 0)
     #expect(Framing(offsetX: 5, offsetY: -5).clamped() == Framing(offsetX: 1, offsetY: -1))
