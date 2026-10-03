@@ -13,7 +13,7 @@ struct ResultsView: View {
   @State private var picks = ResultSelection()
   /// The keys ⌫ and ⌘A act on the strip only after a click in it: this window comes to the front
   /// at every RUN, and the prompt's editing keys must never reach the pictures.
-  @FocusState private var stripFocused: Bool
+  @State private var stripActive = false
   @Environment(\.controlActiveState) private var activeState
   /// Why "Use as image" or the removal did not work.
   @State private var useError: String?
@@ -44,7 +44,8 @@ struct ResultsView: View {
     }
     .onChange(of: session.results.map(\.id)) { picks.keepOnly(order: session.results.map(\.id)) }
     // Coming back to this window (a RUN brings it to the front) the keys are not on the strip.
-    .onChange(of: activeState) { if activeState == .inactive { stripFocused = false } }
+    .onChange(of: activeState) { if activeState == .inactive { stripActive = false } }
+    .background(DeleteKeyMonitor(isActive: stripActive) { trash(selectedResults.map(\.id)) })
     .task(id: selected?.id) {
       // A picture read back at launch is a small one: the chosen one is loaded from its file.
       guard let chosen = selected, chosen.isRestored, let url = chosen.fileURL else { return restoredFull = nil }
@@ -144,17 +145,7 @@ struct ResultsView: View {
     }
     .frame(height: 80)
     .focusable()
-    .focused($stripFocused)
     .focusEffectDisabled()
-    .onKeyPress(keys: [.delete, "a"]) { press in
-      if press.key == .delete {
-        trash(selectedResults.map(\.id))
-        return .handled
-      }
-      guard press.modifiers.contains(.command) else { return .ignored }
-      picks.selectAll(order: session.results.map(\.id))
-      return .handled
-    }
     .onCommand(#selector(NSResponder.selectAll(_:))) { picks.selectAll(order: session.results.map(\.id)) }
   }
 
@@ -204,7 +195,7 @@ struct ResultsView: View {
 
   private func click(_ result: GeneratedImage) {
     let modifiers = NSEvent.modifierFlags
-    stripFocused = true
+    stripActive = true
     picks.click(
       result.id, command: modifiers.contains(.command), shift: modifiers.contains(.shift),
       order: session.results.map(\.id))
@@ -292,6 +283,62 @@ struct ResultsView: View {
       Button("results.trash") { trash(chosen.map(\.id)) }
         .buttonStyle(DSPillButtonStyle())
         .help(String(localized: "results.trash.help"))
+    }
+  }
+}
+
+/// ⌫ and ⌘⌫ while the Results window is the key one and the strip has been clicked: calls `onDelete`
+/// and takes the key. An AppKit monitor, because the key never reached a SwiftUI key handler on the
+/// strip (⌘A, which goes through the menu, did).
+private struct DeleteKeyMonitor: NSViewRepresentable {
+  var isActive: Bool
+  var onDelete: () -> Void
+
+  func makeCoordinator() -> Coordinator { Coordinator() }
+
+  func makeNSView(context: Context) -> NSView {
+    let view = NSView()
+    context.coordinator.view = view
+    context.coordinator.install()
+    return view
+  }
+
+  func updateNSView(_ nsView: NSView, context: Context) {
+    context.coordinator.isActive = isActive
+    context.coordinator.onDelete = onDelete
+  }
+
+  static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) {
+    coordinator.remove()
+  }
+
+  @MainActor
+  final class Coordinator {
+    weak var view: NSView?
+    var isActive = false
+    var onDelete: () -> Void = {}
+    private var monitor: Any?
+
+    func install() {
+      monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+        // Local monitors run on the main thread; the event never leaves it.
+        nonisolated(unsafe) let unsafeEvent = event
+        let taken = MainActor.assumeIsolated { () -> Bool in
+          guard let self, self.isActive, unsafeEvent.keyCode == 51,
+            let window = self.view?.window, unsafeEvent.window === window, window.isKeyWindow
+          else { return false }
+          let flags = unsafeEvent.modifierFlags.intersection(.deviceIndependentFlagsMask)
+          guard flags.isEmpty || flags == .command else { return false }
+          self.onDelete()
+          return true
+        }
+        return taken ? nil : event
+      }
+    }
+
+    func remove() {
+      if let monitor { NSEvent.removeMonitor(monitor) }
+      monitor = nil
     }
   }
 }
