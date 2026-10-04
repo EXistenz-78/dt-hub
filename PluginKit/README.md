@@ -44,12 +44,17 @@ JSON objects with a `type`. An unknown type gets `{"type":"unsupported"}`.
   - `moodboard`: `[{"path", "name"}]`, files in the `tempFolder`, added to the Moodboard. Sending them again replaces
     the ones this plug-in sent before.
   - `startImage`: `{"path", "name"}`, the start image of the Control tab.
-  - `pipeline`: `{"name", "steps": [...]}`; each step may have `title`, `fields` (as above), `loras` (replaces the list
-    for the pass; `[]` = none), `moodboard` (replaces the Moodboard for the pass), `startImage`, and
-    `useOutputAsStart` (the picture the previous pass made becomes the start image). RUN then runs the passes one
-    after the other.
+  - `pipeline`: `{"name", "steps": [...]}`; each step is `{"title", "preset", "moodboard", "startImage",
+    "useOutputAsStart"}`: the name of a preset in the app's Preset menu (its parameters, prompt and negative
+    prompt are applied on the tab's fields, but not its model nor a size), the Moodboard for the pass (replaces the
+    tab's), a start image, and whether the picture the previous pass made becomes the start image. RUN then runs
+    the passes one after the other; if a preset is not in the menu it says so and runs nothing.
   The fields a plug-in filled turn teal; the user can always change them. If two plug-ins fill the same field, or
   both propose a start image or a pipeline, the user chooses in a pop-up.
+- `presets` — `{"presets": [{"name", "fields", "loras"}]}`: presets for the Preset menu (shown as «da <plug-in>»);
+  `fields` has the keys of `contribute` above, the prompt and the negative prompt included; no size, no model. A
+  name the menu has already is never touched (the user may have changed it), so register them whenever you like.
+  The answer is `{"type":"ok","added":n,"existing":m}`.
 - `llm` — `{"prompt", "images": [paths]}`: a question for the language model. The answer is
   `{"type":"llm","text":…}` (it can take a while: the model may have to load) or an `error`.
 
