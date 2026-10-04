@@ -53,6 +53,7 @@ La classe principale (`NSPrincipalClass`, sottoclasse di `NSObject`) risponde a:
 - **Avvisi dei plug-in:** il banner conta 8 secondi mentre la finestra è quella in uso; l'ultimo avviso di ogni plug-in resta sotto la sua riga nelle Preferenze.
 - Il **link alla pagina GitHub** dei plug-in: un indirizzo nelle Preferenze; compare solo quando è impostato.
 - **Header → menu Plug-in** (spec principale §7): elenca i plug-in **accesi** e li attiva o disattiva per il lavoro in corso (decide se il loro tab e i loro contributi contano); grigio se incompatibile con la famiglia del modello scelto.
+- **Barra dei tab** (deciso il 4 ottobre 2026): i tab dei plug-in attivi stanno **prima** di Control e Generazione, nell'ordine di attivazione.
 
 ## 5. Caricamento
 

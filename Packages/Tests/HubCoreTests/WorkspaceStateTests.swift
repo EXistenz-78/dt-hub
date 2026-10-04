@@ -23,10 +23,10 @@ struct WorkspaceStateTests {
     #expect(state.selectedTabID == WorkspaceTab.generationID)
   }
 
-  @Test func pluginTabsFollowGenerationInOrder() {
+  @Test func pluginTabsComeFirstInOrder() {
     let state = state()
     state.setPluginTabs([promptMaster, sphereLight])
-    #expect(state.tabs == [control, generation, promptMaster, sphereLight])
+    #expect(state.tabs == [promptMaster, sphereLight, control, generation])
   }
 
   @Test func selectsAPluginTab() {
@@ -63,14 +63,14 @@ struct WorkspaceStateTests {
     let fakeGeneration = WorkspaceTab(id: WorkspaceTab.generationID, title: "Fake", systemImage: "xmark")
     let fakeControl = WorkspaceTab(id: WorkspaceTab.controlID, title: "Fake", systemImage: "xmark")
     state.setPluginTabs([fakeGeneration, fakeControl, promptMaster])
-    #expect(state.tabs == [control, generation, promptMaster])
+    #expect(state.tabs == [promptMaster, control, generation])
   }
 
   @Test func duplicatePluginIDsKeepTheFirst() {
     let state = state()
     let duplicate = WorkspaceTab(id: promptMaster.id, title: "Other", systemImage: "xmark")
     state.setPluginTabs([promptMaster, duplicate])
-    #expect(state.tabs == [control, generation, promptMaster])
+    #expect(state.tabs == [promptMaster, control, generation])
   }
 
   @Test func theLastTabUsedOpensAtTheNextLaunch() {
