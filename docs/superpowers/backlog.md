@@ -120,3 +120,12 @@ I test di sessione dell'M3 (`GenerationSessionTests`) sono stati resi determinis
 - **`run(with:)` e `runPipeline` non hanno test automatici** (vedi M8b): estrarre il ciclo in HubCore con un backend finto.
 - **I valori di un passaggio non si vedono nel pulsante Run**: il suggerimento mostra solo i nomi dei preset.
 
+## Rimandi di P3 (un file per preset)
+
+- **Il menu Preset si aggiorna all'apparire della barra e quando l'app torna attiva**, non ogni volta che si apre il menu (SwiftUI non dà l'evento): un file aggiunto a mano mentre l'app è già in primo piano compare al giro successivo.
+- **Il Salva non dice nulla se la scrittura fallisce** (disco pieno, permessi): `try?` ignora `cannotWrite`.
+- **L'import conta come importati anche i preset scartati** (nome non valido, scrittura fallita).
+- **Due file `Foo.json` e `Foo.JSON`** su un volume che distingue le maiuscole darebbero identificatori doppi nel menu.
+- **Nessuna cache dell'elenco:** con migliaia di preset ogni lettura scansiona la cartella.
+- **Prova dal vivo di P3 non completata dall'esecutore:** schermo bloccato durante la prova (modifica a mano di un file con l'app aperta, preset cancellato e Run, «Togli la pipeline»).
+
