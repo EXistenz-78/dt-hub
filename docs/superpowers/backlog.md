@@ -112,3 +112,11 @@ I test di sessione dell'M3 (`GenerationSessionTests`) sono stati resi determinis
 - **Il pop-up mostra i valori lunghi (i prompt) troncati** sul pulsante.
 - **La domanda al modello linguistico non si può annullare** dal plug-in (la risposta può tardare fino a 300 secondi).
 
+## Rimandi di prompt nei preset e pipeline di preset
+
+- **Passaggi con valori propri** (per esempio uno slider del plug-in per il peso del LoRA): per scelta no; l'utente cambia il preset.
+- **Il menu «Gestisci preset…» non segna i preset dei plug-in** (lo fa solo il menu a tendina).
+- **I preset di fabbrica di un plug-in non si ripristinano da soli**: per riaverli si cancella il preset e il plug-in lo ricrea al prossimo messaggio `presets`.
+- **`run(with:)` e `runPipeline` non hanno test automatici** (vedi M8b): estrarre il ciclo in HubCore con un backend finto.
+- **I valori di un passaggio non si vedono nel pulsante Run**: il suggerimento mostra solo i nomi dei preset.
+
