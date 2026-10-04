@@ -81,6 +81,29 @@ public final class PresetStore {
     commit()
   }
 
+  /// Adds the presets a plug-in brought (each already marked with its `origin`). A name that is taken, by the
+  /// user's own preset or by an earlier one of the plug-in, is never touched: the user may have changed it.
+  /// Returns how many were added and how many were there already.
+  @discardableResult
+  public func add(fromPlugin newPresets: [Preset]) -> (added: Int, existing: Int) {
+    var added = 0
+    var existing = 0
+    for preset in newPresets {
+      let name = preset.name.trimmingCharacters(in: .whitespacesAndNewlines)
+      if name.isEmpty || presets.contains(where: { Self.same($0.name, name) }) {
+        existing += 1
+        continue
+      }
+      var copy = preset.withoutSize()
+      copy.name = name
+      copy.id = UUID()
+      presets.append(copy)
+      added += 1
+    }
+    if added > 0 { commit() }
+    return (added, existing)
+  }
+
   private func commit() {
     presets = Self.sorted(presets)
     do {
