@@ -84,7 +84,7 @@ final class GenerationController {
   }
 
   /// The saved presets (spec §6).
-  let presets = PresetStore(fileURL: PresetStore.defaultFileURL)
+  let presets = PresetStore(folder: PresetStore.defaultFolder)
   /// Reads and writes the Draw Things configuration JSON (spec §6, level 3).
   @ObservationIgnored let codec: any ConfigurationCodec = DrawThingsConfigurationCodec()
 
@@ -109,10 +109,10 @@ final class GenerationController {
   }
 
   /// Saves the tab as a preset (parameters but not the size, model, prompt and negative prompt). Whoever does
-  /// not want the prompt in it empties the field first. False when the name is empty.
-  @discardableResult
-  func savePreset(named name: String, with connection: DrawThingsConnection) -> Bool {
-    presets.save(
+  /// not want the prompt in it empties the field first. Throws `invalidName` for a name the file system does
+  /// not take (empty, "/", ":").
+  func savePreset(named name: String, with connection: DrawThingsConnection) throws(PresetError) {
+    try presets.save(
       Preset(
         name: name, model: connection.selection.selectedFile ?? "", prompt: prompt, negativePrompt: negativePrompt,
         parameters: parameters))
@@ -120,7 +120,17 @@ final class GenerationController {
 
   /// Puts a preset on the tab: its parameters (the canvas size stays), its prompt and negative prompt when it
   /// has them, its model when it names one.
-  func load(_ preset: Preset, with connection: DrawThingsConnection) {
+  /// The preset's file is read now; nil when it was loaded, the reason when it was not.
+  func loadPreset(named name: String, with connection: DrawThingsConnection) -> PresetError? {
+    do {
+      load(try presets.load(named: name), with: connection)
+      return nil
+    } catch {
+      return error
+    }
+  }
+
+  private func load(_ preset: Preset, with connection: DrawThingsConnection) {
     let load = PresetLoad.of(preset, current: fields, catalog: connection.monitor.catalog)
     parameters = load.parameters
     prompt = load.prompt
@@ -182,23 +192,33 @@ final class GenerationController {
   @discardableResult
   func run(with connection: DrawThingsConnection) -> Bool {
     guard canRun(with: connection) else { return false }
-    // A pipeline whose presets are not all in the Preset menu does not start.
+    // A pipeline reads the presets it names now, once; if one is missing or is not a preset, nothing starts.
+    var passes: [PipelineStep]?
+    var loadedPresets: [String: Preset] = [:]
     if let pipeline = contributions?.pipeline?.pipeline {
-      let missing = PipelinePresets.missing(in: pipeline, store: presets)
-      if !missing.isEmpty {
-        session.fail(
-          with: .generationFailed(String(format: String(localized: "pipeline.missingPreset"), missing.joined(separator: ", "))))
+      switch PipelinePresets.load(pipeline, from: presets) {
+      case .success(let loaded):
+        loadedPresets = loaded
+        passes = pipeline.steps
+      case .failure(let problem):
+        var lines: [String] = []
+        if !problem.missing.isEmpty {
+          lines.append(String(format: String(localized: "pipeline.missingPreset"), problem.missing.joined(separator: ", ")))
+        }
+        if !problem.unreadable.isEmpty {
+          lines.append(String(format: String(localized: "pipeline.unreadablePreset"), problem.unreadable.joined(separator: ", ")))
+        }
+        session.fail(with: .generationFailed(lines.joined(separator: "\n")))
         return true
       }
     }
     isPreparing = true
-    let passes = contributions?.pipeline?.pipeline.steps
     preparation = Task {
       // Memory first: the language model leaves, a server parked for it comes back.
       await languageModel.prepareForRun()
       await connection.ensureServerForRun()
       if let passes {
-        await runPipeline(passes, with: connection)
+        await runPipeline(passes, presets: loadedPresets, with: connection)
         return
       }
       let inputs = await renderInputs(in: connection, parameters: parameters)
@@ -213,7 +233,9 @@ final class GenerationController {
   /// The passes of a pipeline, one after the other (plug-in design §7, preset design §4). Each pass runs the
   /// tab's fields with its preset on them; the picture a pass makes can be the next one's start image. A failed or stopped
   /// pass ends the pipeline; the pictures already made stay in the strip.
-  private func runPipeline(_ passes: [PipelineStep], with connection: DrawThingsConnection) async {
+  private func runPipeline(
+    _ passes: [PipelineStep], presets loaded: [String: Preset], with connection: DrawThingsConnection
+  ) async {
     defer {
       isPreparing = false
       pipelinePass = nil
@@ -223,8 +245,7 @@ final class GenerationController {
     for (index, pass) in passes.enumerated() {
       guard !Task.isCancelled else { return }
       pipelinePass = (index + 1, passes.count)
-      let used = PipelinePresets.fields(
-        for: pass, over: fields, store: presets, catalog: connection.monitor.catalog)
+      let used = PipelinePresets.fields(for: pass, over: fields, presets: loaded, catalog: connection.monitor.catalog)
       guard let base = await renderInputs(in: connection, parameters: used.parameters) else { return }
       guard !Task.isCancelled, let backend = connection.monitor.backend, let model = connection.selection.selectedFile,
         RunAvailability.blocker(

@@ -13,19 +13,22 @@ struct PresetBar: View {
   @State private var managing = false
   @State private var editingJSON = false
   @State private var importMessage: String?
-  @Environment(PluginRegistry.self) private var plugins: PluginRegistry?
 
   var body: some View {
     HStack(spacing: DS.controlGap) {
       Menu {
-        if controller.presets.presets.isEmpty {
+        if controller.presets.names.isEmpty {
           Text("preset.none")
         }
-        ForEach(controller.presets.presets) { preset in
+        ForEach(controller.presets.names, id: \.self) { name in
           Button {
-            controller.load(preset, with: connection)
+            if let error = controller.loadPreset(named: name, with: connection) {
+              importMessage = Self.text(of: error)
+            } else {
+              importMessage = nil
+            }
           } label: {
-            Text(verbatim: title(of: preset))
+            Text(verbatim: name)
           }
         }
         Divider()
@@ -39,7 +42,7 @@ struct PresetBar: View {
         } label: {
           Text("preset.manage")
         }
-        .disabled(controller.presets.presets.isEmpty)
+        .disabled(controller.presets.names.isEmpty)
         Button {
           importFile()
         } label: {
@@ -75,6 +78,11 @@ struct PresetBar: View {
       }
       Spacer(minLength: 0)
     }
+    // The list is the folder's: files added or changed by hand show up when the window comes back.
+    .onAppear { controller.presets.refresh() }
+    .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+      controller.presets.refresh()
+    }
     .sheet(isPresented: $saving) {
       SavePresetSheet(controller: controller, connection: connection)
     }
@@ -86,11 +94,15 @@ struct PresetBar: View {
     }
   }
 
-  /// The name, and "da <plug-in>" for a preset a plug-in brought.
-  private func title(of preset: Preset) -> String {
-    guard let origin = preset.origin else { return preset.name }
-    let plugin = plugins?.entries.first { $0.id == origin }?.name ?? origin
-    return preset.name + " · " + String(format: String(localized: "control.source.plugin"), plugin)
+  /// What went wrong loading a preset.
+  static func text(of error: PresetError) -> String {
+    switch error {
+    case .unreadable(let name): String(format: String(localized: "preset.load.unreadable"), name)
+    case .notFound(let name): String(format: String(localized: "pipeline.missingPreset"), name)
+    case .invalidName: String(localized: "preset.save.invalidName")
+    case .nameTaken: String(localized: "preset.rename.taken")
+    case .cannotWrite(let reason): reason
+    }
   }
 
   /// Asks for a file with a list of presets; the result is told in the bar.

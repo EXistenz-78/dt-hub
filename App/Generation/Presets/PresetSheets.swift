@@ -10,9 +10,10 @@ struct SavePresetSheet: View {
   @Environment(\.dismiss) private var dismiss
   @State private var name = ""
 
-  private var replaces: Bool {
-    controller.presets.preset(named: name.trimmingCharacters(in: .whitespacesAndNewlines)) != nil
-  }
+  private var trimmed: String { name.trimmingCharacters(in: .whitespacesAndNewlines) }
+  private var replaces: Bool { controller.presets.contains(trimmed) }
+  /// A name the file system does not take: shown as soon as it is typed.
+  private var invalid: Bool { !trimmed.isEmpty && !PresetStore.isValidName(trimmed) }
 
   var body: some View {
     VStack(alignment: .leading, spacing: DS.rowGap) {
@@ -24,7 +25,11 @@ struct SavePresetSheet: View {
       Text("preset.save.contents")
         .font(.caption)
         .foregroundStyle(.secondary)
-      if replaces {
+      if invalid {
+        Text("preset.save.invalidName")
+          .font(.caption)
+          .foregroundStyle(DS.remove)
+      } else if replaces {
         Text("preset.save.replaces")
           .font(.caption)
           .foregroundStyle(DS.remove)
@@ -43,7 +48,7 @@ struct SavePresetSheet: View {
         }
         .buttonStyle(DSPillButtonStyle(prominent: true))
         .keyboardShortcut(.defaultAction)
-        .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        .disabled(trimmed.isEmpty || invalid)
       }
     }
     .padding(20)
@@ -53,7 +58,7 @@ struct SavePresetSheet: View {
   }
 
   private func save() {
-    if controller.savePreset(named: name, with: connection) { dismiss() }
+    if (try? controller.savePreset(named: name, with: connection)) != nil { dismiss() }
   }
 }
 
@@ -66,14 +71,14 @@ struct ManagePresetsSheet: View {
     VStack(alignment: .leading, spacing: DS.rowGap) {
       Text("preset.manage.title")
         .font(.headline)
-      if controller.presets.presets.isEmpty {
+      if controller.presets.names.isEmpty {
         Text("preset.none")
           .foregroundStyle(.secondary)
       }
       ScrollView {
         VStack(spacing: DS.controlGap) {
-          ForEach(controller.presets.presets) { preset in
-            PresetRow(preset: preset, store: controller.presets)
+          ForEach(controller.presets.names, id: \.self) { name in
+            PresetRow(presetName: name, store: controller.presets)
           }
         }
       }
@@ -97,10 +102,11 @@ struct ManagePresetsSheet: View {
 }
 
 private struct PresetRow: View {
-  let preset: Preset
+  let presetName: String
   let store: PresetStore
   @State private var name = ""
-  @State private var taken = false
+  @State private var model = ""
+  @State private var problem: String?
 
   var body: some View {
     HStack(spacing: DS.controlGap) {
@@ -108,12 +114,12 @@ private struct PresetRow: View {
         TextField(String(localized: "preset.save.name"), text: $name)
           .textFieldStyle(.roundedBorder)
           .onSubmit(rename)
-        if taken {
-          Text("preset.rename.taken")
+        if let problem {
+          Text(verbatim: problem)
             .font(.caption)
             .foregroundStyle(DS.remove)
-        } else if !preset.model.isEmpty {
-          Text(verbatim: preset.model)
+        } else if !model.isEmpty {
+          Text(verbatim: model)
             .font(.caption)
             .foregroundStyle(.secondary)
             .lineLimit(1)
@@ -121,7 +127,7 @@ private struct PresetRow: View {
         }
       }
       Button {
-        store.delete(preset.id)
+        store.delete(named: presetName)
       } label: {
         Image(systemName: "trash")
           .foregroundStyle(DS.remove)
@@ -130,11 +136,19 @@ private struct PresetRow: View {
       .help(String(localized: "preset.delete"))
       .accessibilityLabel(String(localized: "preset.delete"))
     }
-    .onAppear { name = preset.name }
+    .onAppear {
+      name = presetName
+      model = store.preset(named: presetName)?.model ?? ""
+    }
   }
 
   private func rename() {
-    taken = !store.rename(preset.id, to: name)
-    if taken { name = preset.name }
+    do {
+      try store.rename(presetName, to: name)
+      problem = nil
+    } catch {
+      problem = PresetBar.text(of: error)
+      name = presetName
+    }
   }
 }
