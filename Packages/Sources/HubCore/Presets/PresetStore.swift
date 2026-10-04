@@ -22,9 +22,12 @@ public final class PresetStore {
   /// The names of the presets, sorted; read from the folder by `refresh()`.
   public private(set) var names: [String] = []
   @ObservationIgnored private let folder: URL
+  /// Moves a file; the tests give one that fails.
+  @ObservationIgnored private let move: (URL, URL) throws -> Void
 
-  public init(folder: URL) {
+  public init(folder: URL, move: @escaping (URL, URL) throws -> Void = { try FileManager.default.moveItem(at: $0, to: $1) }) {
     self.folder = folder
+    self.move = move
     refresh()
   }
 
@@ -45,17 +48,21 @@ public final class PresetStore {
     if list != names { names = list }
   }
 
-  /// A name the file system takes: not empty once trimmed, no "/" or ":", not starting with a dot.
+  /// A name the file system takes: not empty once trimmed, no "/" or ":", not starting with a dot, at most 120
+  /// characters and 240 bytes (the file system's limit is 255 bytes, ".json" included).
   public static func isValidName(_ raw: String) -> Bool {
     let name = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-    return !name.isEmpty && name.count <= 120 && !name.hasPrefix(".") && !name.contains("/") && !name.contains(":")
+    return !name.isEmpty && name.count <= 120 && name.utf8.count <= 240 && !name.hasPrefix(".") && !name.contains("/")
+      && !name.contains(":")
   }
 
-  /// The name as it is written in the folder, if a preset has this name (capitals and accents aside).
+  /// The name as it is written in the folder, if a preset has this name. The exact name wins; then the name
+  /// without the spaces at its ends; then a name that differs only by capitals or accents. (The file system
+  /// keeps apart two files that differ only by an accent, if someone put them there by hand.)
   public func existingName(for name: String) -> String? {
     refresh()
     let wanted = name.trimmingCharacters(in: .whitespacesAndNewlines)
-    return names.first { Self.same($0, wanted) }
+    return names.first { $0 == name } ?? names.first { $0 == wanted } ?? names.first { Self.same($0, wanted) }
   }
 
   public func contains(_ name: String) -> Bool { existingName(for: name) != nil }
@@ -90,14 +97,21 @@ public final class PresetStore {
     let name = newName.trimmingCharacters(in: .whitespacesAndNewlines)
     guard Self.isValidName(name) else { throw .invalidName }
     guard let actual = existingName(for: old) else { throw .notFound(old) }
-    if let other = existingName(for: name), !Self.same(other, actual) { throw .nameTaken }
+    if let other = existingName(for: name), other != actual { throw .nameTaken }
     guard actual != name else { return }
+    // Two steps: on a file system that ignores capitals a one-step move to a name that differs only by them can fail.
+    let temporary = folder.appendingPathComponent(".renaming-\(UUID().uuidString).json")
     do {
-      // Two steps: on a file system that ignores capitals a one-step move to a name that differs only by them can fail.
-      let temporary = folder.appendingPathComponent(".renaming-\(UUID().uuidString).json")
-      try FileManager.default.moveItem(at: url(actual), to: temporary)
-      try FileManager.default.moveItem(at: temporary, to: url(name))
+      try move(url(actual), temporary)
     } catch {
+      throw .cannotWrite(error.localizedDescription)
+    }
+    do {
+      try move(temporary, url(name))
+    } catch {
+      // The preset goes back where it was: a file left under the temporary name would be hidden from the list.
+      try? move(temporary, url(actual))
+      refresh()
       throw .cannotWrite(error.localizedDescription)
     }
     refresh()

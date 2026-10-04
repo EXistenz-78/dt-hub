@@ -5498,13 +5498,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "A preset name cannot be empty or contain “/” or “:”."
+            "value": "A preset name cannot be empty, start with a dot, be very long or contain “/” or “:”."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Il nome di un preset non può essere vuoto né contenere «/» o «:»."
+            "value": "Il nome di un preset non può essere vuoto, cominciare con un punto, essere molto lungo né contenere «/» o «:»."
           }
         }
       }
