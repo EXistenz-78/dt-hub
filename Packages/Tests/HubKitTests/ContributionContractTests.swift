@@ -60,8 +60,8 @@ struct ContributionContractTests {
        "moodboard":[{"path":"/tmp/a.png","name":"Sphere"},{"path":"/tmp/b.png"},{"name":"no path"}],
        "startImage":{"path":"/tmp/s.png"},
        "pipeline":{"name":"Match","steps":[
-         {"title":"Overcast","fields":{"steps":4},"loras":[]},
-         {"fields":{"guidanceScale":1},"moodboard":[{"path":"/tmp/a.png"}],"useOutputAsStart":true},
+         {"title":"Overcast","preset":" Sample · Overcast "},
+         {"preset":"Sample · Match","moodboard":[{"path":"/tmp/a.png"}],"useOutputAsStart":true},
          "junk"]}}
       """.utf8)
     let contribution = try #require(PluginContribution(message: message))
@@ -74,9 +74,9 @@ struct ContributionContractTests {
     #expect(pipeline.name == "Match")
     #expect(pipeline.steps.count == 2)
     #expect(pipeline.steps[0].title == "Overcast")
-    #expect(pipeline.steps[0].loras == [])
-    #expect(pipeline.steps[0].useOutputAsStart == false)
-    #expect(pipeline.steps[1].loras == nil)
+    #expect(pipeline.steps[0].preset == "Sample · Overcast")
+    #expect(pipeline.steps[0].useOutputAsStart == false && pipeline.steps[0].moodboard == nil)
+    #expect(pipeline.steps[1].preset == "Sample · Match")
     #expect(pipeline.steps[1].moodboard?.count == 1)
     #expect(pipeline.steps[1].useOutputAsStart)
   }
@@ -95,22 +95,26 @@ struct ContributionContractTests {
   }
 }
 
-struct PipelineStepTests {
-  @Test func aPassPutsItsChangesOnTheTabsFields() {
-    var base = GenerationFields(prompt: "tab prompt")
-    base.parameters.loras = [LoRASelection(file: "tab.ckpt")]
-    base.parameters.steps = 20
-    let step = PipelineStep(fields: FieldOverlay([.steps: .int(4), .prompt: .text("pass prompt")]))
-    let result = step.fields(over: base)
-    #expect(result.parameters.steps == 4)
-    #expect(result.prompt == "pass prompt")
-    #expect(result.parameters.loras.map(\.file) == ["tab.ckpt"])
+struct PluginPresetsTests {
+  @Test func presetsAreReadWithTheirFieldsAndLoRAsAndMarkedAsThePlugins() throws {
+    let message = Data(
+      """
+      {"type":"presets","presets":[
+        {"name":" Sample · Match ","fields":{"prompt":"match the light","negativePrompt":"blur","steps":4,"width":512,"model":"x.ckpt"},
+         "loras":[{"file":"sun.ckpt","weight":0.6}]},
+        {"name":"  "}, {"fields":{"steps":2}}, "junk"]}
+      """.utf8)
+    let presets = try #require(PluginPresets(message: message, origin: "com.x")).presets
+    #expect(presets.count == 1)
+    let preset = presets[0]
+    #expect(preset.name == "Sample · Match" && preset.origin == "com.x" && preset.model.isEmpty)
+    #expect(preset.prompt == "match the light" && preset.negativePrompt == "blur")
+    #expect(preset.parameters.steps == 4 && preset.parameters.loras.map(\.file) == ["sun.ckpt"])
   }
 
-  @Test func aPassWithLoRAsReplacesTheListAndAnEmptyListClearsIt() {
-    var base = GenerationFields()
-    base.parameters.loras = [LoRASelection(file: "tab.ckpt")]
-    #expect(PipelineStep(loras: [LoRASelection(file: "sun.ckpt", weight: 0.6)]).fields(over: base).parameters.loras.map(\.file) == ["sun.ckpt"])
-    #expect(PipelineStep(loras: []).fields(over: base).parameters.loras.isEmpty)
+  @Test func aMessageWithoutAPresetsListIsRefused() {
+    #expect(PluginPresets(message: Data(#"{"type":"presets"}"#.utf8), origin: "a") == nil)
+    #expect(PluginPresets(message: Data("[1]".utf8), origin: "a") == nil)
+    #expect(PluginPresets(message: Data(#"{"presets":[]}"#.utf8), origin: "a")?.presets.isEmpty == true)
   }
 }

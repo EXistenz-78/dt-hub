@@ -21,25 +21,24 @@ public struct PluginImageRef: Equatable, Sendable {
   }
 }
 
-/// One pass of a pipeline: changes to the configuration, the inputs, and whether the picture the previous
-/// pass made becomes the start image (plug-in design §7).
+/// One pass of a pipeline (`2026-10-04-preset-pipeline-design.md` §4): a preset to run, by name, and the inputs a
+/// preset does not hold. The preset's values are the user's to see and change in the Preset menu.
 public struct PipelineStep: Equatable, Sendable {
   public var title: String
-  public var fields: FieldOverlay
-  /// The LoRAs of this pass; nil keeps the ones on the tab.
-  public var loras: [LoRASelection]?
+  /// The preset to run; empty runs the tab's fields as they are.
+  public var preset: String
   /// The Moodboard of this pass; nil keeps the one on the tab.
   public var moodboard: [PluginImageRef]?
   public var startImage: PluginImageRef?
+  /// The picture the previous pass made becomes the start image of this one.
   public var useOutputAsStart: Bool
 
   public init(
-    title: String = "", fields: FieldOverlay = FieldOverlay(), loras: [LoRASelection]? = nil,
-    moodboard: [PluginImageRef]? = nil, startImage: PluginImageRef? = nil, useOutputAsStart: Bool = false
+    title: String = "", preset: String = "", moodboard: [PluginImageRef]? = nil, startImage: PluginImageRef? = nil,
+    useOutputAsStart: Bool = false
   ) {
     self.title = title
-    self.fields = fields
-    self.loras = loras
+    self.preset = preset
     self.moodboard = moodboard
     self.startImage = startImage
     self.useOutputAsStart = useOutputAsStart
@@ -48,24 +47,13 @@ public struct PipelineStep: Equatable, Sendable {
   init(_ object: [String: JSONValue]) {
     var title = ""
     if case .string(let text)? = object["title"] { title = text }
-    var fields = FieldOverlay()
-    if case .object(let json)? = object["fields"] { fields = FieldOverlay(json: json) }
+    var preset = ""
+    if case .string(let text)? = object["preset"] { preset = text.trimmingCharacters(in: .whitespacesAndNewlines) }
     var useOutput = false
     if case .bool(let flag)? = object["useOutputAsStart"] { useOutput = flag }
     self.init(
-      title: title, fields: fields, loras: PluginContribution.loras(object["loras"]),
-      moodboard: PluginContribution.images(object["moodboard"]), startImage: PluginImageRef(object["startImage"]),
-      useOutputAsStart: useOutput)
-  }
-}
-
-extension PipelineStep {
-  /// What this pass runs with: the tab's fields with the pass's changes on top, and its own LoRAs when it
-  /// has some (an empty list means no LoRA at all).
-  public func fields(over base: GenerationFields) -> GenerationFields {
-    var result = fields.applied(to: base)
-    if let loras { result.parameters.loras = loras }
-    return result
+      title: title, preset: preset, moodboard: PluginContribution.images(object["moodboard"]),
+      startImage: PluginImageRef(object["startImage"]), useOutputAsStart: useOutput)
   }
 }
 
