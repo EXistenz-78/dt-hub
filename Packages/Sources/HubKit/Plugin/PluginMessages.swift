@@ -9,6 +9,8 @@ public enum PluginMessageType {
   public static let notice = "notice"
   /// Plug-in → app: values, LoRAs, pictures, a pipeline (`PluginContribution`).
   public static let contribute = "contribute"
+  /// Plug-in → app: presets to add to the Preset menu (`PluginPresets`).
+  public static let presets = "presets"
   /// Plug-in → app: a question for the language model; the answer is `{"type":"llm","text":…}`.
   public static let llm = "llm"
   /// The answer to a message the app could not use: `{"type":"error","text":…}`.
