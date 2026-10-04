@@ -93,7 +93,7 @@ struct PluginsPreferencesView: View {
   private func choose() {
     let panel = NSOpenPanel()
     panel.canChooseFiles = true
-    panel.canChooseDirectories = true  // a .dthubplugin is a folder
+    panel.canChooseDirectories = true  // a .dthubplugin is a package, a folder on disk (older macOS records may still treat it as one)
     panel.allowsMultipleSelection = false
     panel.message = String(localized: "prefs.plugins.choose")
     if panel.runModal() == .OK, let url = panel.url { propose(url) }
