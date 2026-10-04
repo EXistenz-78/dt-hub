@@ -122,13 +122,13 @@ struct BundlePluginLoaderTests {
     let piped = try #require(host.received.last { PluginMessageType.of($0.message) == PluginMessageType.contribute })
     let pipeline = try #require(PluginContribution(message: piped.message)?.pipeline)
     #expect(pipeline.steps.count == 1 && pipeline.steps[0].moodboard?.count == 1 && pipeline.steps[0].useOutputAsStart == false)
-    #expect(pipeline.steps[0].preset == "Sample · Match the sun")
+    #expect(pipeline.steps[0].preset == "SMP · Match the sun")
 
     // The presets the pipeline names are offered before the pipeline (and on request).
     _ = await plugin.send(Data(#"{"type":"press","button":"presets"}"#.utf8))
     let offered = try #require(host.received.last { PluginMessageType.of($0.message) == PluginMessageType.presets })
     let list = try #require(PluginPresets(message: offered.message)).presets
-    #expect(list.map(\.name) == ["Sample · Overcast", "Sample · Match the sun"])
+    #expect(list.map(\.name) == ["SMP · Overcast", "SMP · Match the sun"])
     #expect(list[1].parameters.loras.first?.weight == 0.6 && list[0].parameters.loras.isEmpty)
     #expect(list[1].prompt.hasPrefix("match light direction"))
 

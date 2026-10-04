@@ -51,10 +51,13 @@ JSON objects with a `type`. An unknown type gets `{"type":"unsupported"}`.
     the passes one after the other; if a preset is not in the menu it says so and runs nothing.
   The fields a plug-in filled turn teal; the user can always change them. If two plug-ins fill the same field, or
   both propose a start image or a pipeline, the user chooses in a pop-up.
-- `presets` — `{"presets": [{"name", "fields", "loras"}]}`: presets for the Preset menu (shown as «da <plug-in>»);
-  `fields` has the keys of `contribute` above, the prompt and the negative prompt included; no size, no model. A
-  name the menu has already is never touched (the user may have changed it), so register them whenever you like.
-  The answer is `{"type":"ok","added":n,"existing":m}`.
+- `presets` — `{"presets": [{"name", "fields", "loras"}]}`: presets for the Preset menu. Each is a
+  file in the app's Presets folder, named after the preset. **Name them with your own acronym** (2–4 letters), a
+  middle dot and the name — `SMP · Overcast`, `SLR · Match the sun` — because that is the only sign of where a
+  preset comes from. A name cannot contain `/` or `:` (file system rules); capitals and accents do not tell two
+  names apart. `fields` has the keys of `contribute` above, the prompt and the negative prompt included; no size,
+  no model. A name the menu has already is never touched (the user may have changed it), so register them
+  whenever you like. The answer is `{"type":"ok","added":n,"existing":m,"rejected":k}`.
 - `llm` — `{"prompt", "images": [paths]}`: a question for the language model. The answer is
   `{"type":"llm","text":…}` (it can take a while: the model may have to load) or an `error`.
 

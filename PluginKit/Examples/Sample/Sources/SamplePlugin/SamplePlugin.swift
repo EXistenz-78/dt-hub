@@ -7,6 +7,8 @@ import SwiftUI
   private enum Variant {
     static let id = "com.example.dthub.sample.b"
     static let name = "Sample B"
+    /// The prefix of the names of its presets (2–4 letters): the Preset menu shows nothing else about where a preset comes from.
+    static let acronym = "SMB"
     static let symbol = "star.fill"
     static let prompt = "a lighthouse in a storm, dramatic light"
     static let steps = 8
@@ -17,6 +19,8 @@ import SwiftUI
   private enum Variant {
     static let id = "com.example.dthub.sample"
     static let name = "Sample"
+    /// The prefix of the names of its presets (2–4 letters): the Preset menu shows nothing else about where a preset comes from.
+    static let acronym = "SMP"
     static let symbol = "star"
     static let prompt = "match light direction, colors and intensity from the reference image 2"
     static let steps = 4
@@ -110,8 +114,8 @@ final class SamplePlugin: DTHubPlugin {
 
   private var sunLora: [String: Any] { ["file": Variant.lora, "weight": 0.6] }
 
-  private var overcastPreset: String { "\(Variant.name) · Overcast" }
-  private var matchPreset: String { "\(Variant.name) · Match the sun" }
+  private var overcastPreset: String { "\(Variant.acronym) · Overcast" }
+  private var matchPreset: String { "\(Variant.acronym) · Match the sun" }
 
   /// The two presets of the pipeline, in the app's Preset menu: the user sees them, changes them (the LoRA
   /// weight, the steps…) and saves them under the same name. The app never overwrites a name it has.
