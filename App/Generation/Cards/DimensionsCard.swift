@@ -11,7 +11,7 @@ struct DimensionsCard: View {
       isExpanded: controller.cards.binding("dimensions")
     ) {
       VStack(spacing: DS.rowGap) {
-        CardRow(label: String(localized: "card.dimensions.width")) {
+        CardRow(label: String(localized: "card.dimensions.width"), fields: [.width]) {
           IntField(
             label: String(localized: "card.dimensions.width"),
             value: Binding(
@@ -20,7 +20,7 @@ struct DimensionsCard: View {
             range: GenerationParameters.sizeRange.lowerBound...controller.parameters.sizeLimit, step: 64,
             commit: { GenerationParameters.snap(Double($0), limit: controller.parameters.sizeLimit) })
         }
-        CardRow(label: String(localized: "card.dimensions.height")) {
+        CardRow(label: String(localized: "card.dimensions.height"), fields: [.height]) {
           IntField(
             label: String(localized: "card.dimensions.height"),
             value: Binding(

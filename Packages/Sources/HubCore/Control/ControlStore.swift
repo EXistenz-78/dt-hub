@@ -97,7 +97,8 @@ public final class ControlStore {
 
   /// Takes a picture from its bytes: copies it, describes it, and makes it the start image
   /// (the one there was, if any, can be brought back with `undo`). The framing starts centered.
-  public func setImage(data: Data, name: String, source: ReferenceImage.Source) throws(ControlError) {
+  @discardableResult
+  public func setImage(data: Data, name: String, source: ReferenceImage.Source) throws(ControlError) -> UUID {
     let image = try reference(from: data, name: name, source: source)
     var next = inputs
     next.image = image
@@ -107,6 +108,7 @@ public final class ControlStore {
     let replaced = inputs.image
     commit(next)
     notice = replaced.map { .replaced(name: $0.name) }
+    return image.id
   }
 
   /// A picture that only exists in memory (a result that could not be saved): stored as PNG.
@@ -228,11 +230,13 @@ public final class ControlStore {
   // MARK: Moodboard
 
   /// Adds a picture to the Moodboard (on, at the end).
-  public func addMoodboardImage(data: Data, name: String, source: ReferenceImage.Source) throws(ControlError) {
+  @discardableResult
+  public func addMoodboardImage(data: Data, name: String, source: ReferenceImage.Source) throws(ControlError) -> UUID {
     let image = try reference(from: data, name: name, source: source)
     var next = inputs
     next.moodboard.append(MoodboardEntry(image: image))
     commit(next)
+    return image.id
   }
 
   public func addMoodboardImage(_ image: CGImage, name: String, source: ReferenceImage.Source) throws(ControlError) {

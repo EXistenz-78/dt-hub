@@ -1,6 +1,6 @@
 # DT Hub — Design dei plug-in scaricabili (M8)
 
-Data: 3 ottobre 2026 · Stato: M8a realizzata, M8b da fare · **Sostituisce** nella spec principale (`2026-09-29-dt-hub-core-design.md`) la parte di §4 "Plugins/… un pacchetto per plug-in" e il *modo di consegna* del contratto di §8 (che resta valido per il contenuto: contributi, conflitti, pipeline).
+Data: 3 ottobre 2026 · Stato: M8a e M8b realizzate · **Sostituisce** nella spec principale (`2026-09-29-dt-hub-core-design.md`) la parte di §4 "Plugins/… un pacchetto per plug-in" e il *modo di consegna* del contratto di §8 (che resta valido per il contenuto: contributi, conflitti, pipeline).
 
 ## 1. Scopo
 
@@ -122,3 +122,6 @@ Il contratto resta la **versione 1**: i nuovi messaggi sono aggiunte, e un'app c
 - La pipeline resta sul pulsante Run finché non la si toglie («Togli la pipeline», menu contestuale del pulsante) o il plug-in si spegne: non si consuma al Run. Ogni passaggio è una generazione normale e le sue immagini vanno nella striscia dei Risultati; un passaggio che fallisce o Stop fermano la pipeline; il campo Seed non si aggiorna.
 - **Più plug-in nello stesso processo:** ognuno porta la propria copia di `DTHubPluginKit`; due copie con lo stesso nome di modulo definiscono due volte le stesse classi Objective-C ("Class … is implemented in both"). Ogni plug-in deve dare alla propria copia un nome di modulo suo con `moduleAliases` in `Package.swift` (il sorgente continua a fare `import DTHubPluginKit`); il plug-in di esempio lo fa e il README lo dice.
 - Il plug-in di esempio 1.2 (e la sua variante B, per provare i conflitti) manda tutto questo e risponde a un messaggio `press` (come premere un pulsante), usato dai test.
+
+> **Aggiornato il 4 ottobre 2026:** i passaggi della pipeline con `fields` e `loras` qui sopra sono sostituiti da passaggi che nominano un preset (`2026-10-04-preset-pipeline-design.md`).
+- **`presets`** (plug-in → app): preset per il menu Preset, con la risposta `{"type":"ok","added":n,"existing":m,"rejected":k}`; il contratto è in `2026-10-04-preset-pipeline-design.md` §3 e nel README del kit.

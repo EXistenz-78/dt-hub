@@ -25,5 +25,40 @@ The bundle is added in DT Hub › Preferences › Plug-ins.
 
 ## Messages (contract 1)
 
-JSON objects with a `type`. App → plug-in: `context` (model, family, parameters, a temporary folder), `activate`,
-`deactivate`. Plug-in → app: `notice` (`text`, `isError`). An unknown type gets `{"type":"unsupported"}`.
+JSON objects with a `type`. An unknown type gets `{"type":"unsupported"}`.
+
+**App → plug-in:** `context` (model, family, parameters, `tempFolder`: a folder to exchange picture files through),
+`activate`, `deactivate`.
+
+**Plug-in → app:**
+
+- `notice` — `text`, `isError`: a line shown over the window.
+- `contribute` — what the plug-in puts on the Generation and Control tabs. Every key is optional; what cannot be
+  read is left out; the answer is `{"type":"ok","conflicts":n,"problems":[…]}` or `{"type":"error","text":…}`.
+  Only a plug-in that is on for the job (header menu) can contribute.
+  - `fields`: `prompt`, `negativePrompt` (text); `width`, `height`, `steps`, `cfgZeroInitSteps`, `seed`, `batchSize`,
+    `batchCount` (whole numbers); `guidanceScale`, `shift` (numbers); `cfgZeroStar`, `resolutionDependentShift`,
+    `randomSeed` (true/false); `sampler` (the number of the Draw Things sampler, or its name). Values are limited like
+    the cards limit them. A plug-in never changes the model.
+  - `loras`: `[{"file", "weight", "mode", "trigger"}]`, added to the LoRA card.
+  - `moodboard`: `[{"path", "name"}]`, files in the `tempFolder`, added to the Moodboard. Sending them again replaces
+    the ones this plug-in sent before.
+  - `startImage`: `{"path", "name"}`, the start image of the Control tab.
+  - `pipeline`: `{"name", "steps": [...]}`; each step is `{"title", "preset", "moodboard", "startImage",
+    "useOutputAsStart"}`: the name of a preset in the app's Preset menu (its parameters, prompt and negative
+    prompt are applied on the tab's fields, but not its model nor a size), the Moodboard for the pass (replaces the
+    tab's), a start image, and whether the picture the previous pass made becomes the start image. RUN then runs
+    the passes one after the other; if a preset is not in the menu it says so and runs nothing.
+  The fields a plug-in filled turn teal; the user can always change them. If two plug-ins fill the same field, or
+  both propose a start image or a pipeline, the user chooses in a pop-up.
+- `presets` — `{"presets": [{"name", "fields", "loras"}]}`: presets for the Preset menu. Each is a
+  file in the app's Presets folder, named after the preset. **Name them with your own acronym** (2–4 letters), a
+  middle dot and the name — `SMP · Overcast`, `SLR · Match the sun` — because that is the only sign of where a
+  preset comes from. A name cannot contain `/` or `:`, start with a dot or be longer than 120 characters (file system rules); capitals and accents do not tell two
+  names apart. `fields` has the keys of `contribute` above, the prompt and the negative prompt included; no size,
+  no model. A name the menu has already is never touched (the user may have changed it), so register them
+  whenever you like. The answer is `{"type":"ok","added":n,"existing":m,"rejected":k}`.
+- `llm` — `{"prompt", "images": [paths]}`: a question for the language model. The answer is
+  `{"type":"llm","text":…}` (it can take a while: the model may have to load) or an `error`.
+
+The Sample plug-in (`Examples/Sample`, `Scripts/build-sample.sh OUT [b]`) sends all of these.

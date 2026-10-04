@@ -11,6 +11,8 @@ struct ImageCard: View {
   let report: (ControlMessage) -> Void
   @State private var thumbnail: CGImage?
   @State private var isTargeted = false
+  @Environment(PluginRegistry.self) private var plugins: PluginRegistry?
+  @Environment(ContributionStore.self) private var contributions: ContributionStore?
 
   private var control: ControlStore { generation.control }
 
@@ -21,7 +23,7 @@ struct ImageCard: View {
     ) {
       VStack(alignment: .leading, spacing: DS.rowGap) {
         if let image = control.inputs.image {
-          loaded(image)
+          loaded(image).contributed(contributions?.startImage?.id == image.id)
           strengthRow
         } else {
           emptyZone
@@ -69,7 +71,7 @@ struct ImageCard: View {
         Text(
           String(
             format: String(localized: "control.image.info"), image.pixelWidth, image.pixelHeight,
-            ControlText.source(image.source))
+            ControlText.source(image.source, plugins: plugins))
         )
         .font(.caption).foregroundStyle(.secondary)
         HStack(spacing: DS.controlGap) {
