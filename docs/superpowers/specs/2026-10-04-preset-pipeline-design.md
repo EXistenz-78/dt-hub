@@ -29,10 +29,10 @@ Fuori: passaggi con valori propri; preset condivisi tra plug-in; esportare i pre
 
 ## 3. Preset che vengono da un plug-in
 
-- Messaggio **`presets`** (plug-in → app): `{"presets":[{"name", "prompt", "negativePrompt", "fields":{…}, "loras":[…]}]}`. `fields` ha le stesse chiavi di `contribute` (il prompt è il campo `prompt` del preset; `width` e `height` si ignorano); il resto parte dai valori predefiniti. Un preset di un plug-in non ha modello. Risposta `{"type":"ok","added":n,"existing":m}`.
+- Messaggio **`presets`** (plug-in → app): `{"presets":[{"name", "fields":{…}, "loras":[…]}]}`. `fields` ha le stesse chiavi di `contribute`, `prompt` e `negativePrompt` compresi (`width` e `height` si ignorano); il resto parte dai valori predefiniti. Un preset di un plug-in non ha modello. Risposta `{"type":"ok","added":n,"existing":m}`.
 - Il preset porta l'**origine** (`origin`: l'identificatore del plug-in). Il menu Preset lo mostra con un segno e «da <plug-in>». Resta un preset come gli altri: l'utente lo apre, lo cambia, lo salva con lo stesso nome (sovrascrive, e continua a essere del plug-in) o lo cancella.
 - **Mai sovrascritto dal plug-in:** un nome già presente non si tocca, né se l'ha modificato l'utente né se è identico. Quindi un plug-in aggiornato che cambia i suoi valori di fabbrica non cambia i preset già nel menu; per riavere quelli di fabbrica l'utente cancella il preset e il plug-in lo ricrea. Un nome occupato da un preset **dell'utente** (senza origine) non si tocca e conta come «existing».
-- Il plug-in manda `presets` quando vuole (di norma all'attivazione e prima di mandare la pipeline); solo un plug-in attivo, come per `contribute`.
+- Il plug-in manda `presets` quando vuole (di norma quando riceve `activate` e prima di mandare la pipeline); solo un plug-in attivo, come per `contribute`.
 - Spegnere un plug-in non toglie i suoi preset.
 
 ## 4. La pipeline di preset
@@ -42,7 +42,7 @@ Fuori: passaggi con valori propri; preset condivisi tra plug-in; esportare i pre
 2. cerca il preset per nome: i **parametri** del preset (sampler, passi, guidance, shift, seed e batch, LoRA, card Avanzate…) sostituiscono quelli del tab (il formato non è nel preset, §2); il **negativo** e il **prompt** del preset, se non sono vuoti, sostituiscono quelli del tab; il **modello** si ignora. Un passaggio senza `preset` esegue i campi del tab com'è;
 3. gli ingressi come in M8b: `moodboard` e `startImage` del passaggio sostituiscono quelli del tab per quel passaggio (maschera del tab esclusa se la partenza è sostituita), `useOutputAsStart` prende il risultato del passaggio precedente.
 
-**Prima di partire** il Run controlla che tutti i preset della pipeline esistano; se ne manca uno, avviso «<nome> non trovato» (nella finestra principale, come gli altri messaggi di Run) e nessuna generazione parte. Il suggerimento del pulsante Run elenca i passaggi con il nome del preset, e per ognuno se parte dall'output precedente. Il pulsante «Run · N passaggi» e «Togli la pipeline» restano.
+**Prima di partire** il Run controlla che tutti i preset della pipeline esistano; se ne manca uno, avviso «Preset non trovato: <nomi>» (come gli altri errori di Run, nella finestra Risultati che il Run apre) e nessuna generazione parte. Il suggerimento del pulsante Run elenca i passaggi con il nome del preset, e per ognuno se parte dall'output precedente. Il pulsante «Run · N passaggi» e «Togli la pipeline» restano.
 
 ## 5. Plug-in di esempio
 
