@@ -54,7 +54,7 @@ JSON objects with a `type`. An unknown type gets `{"type":"unsupported"}`.
 - `presets` — `{"presets": [{"name", "fields", "loras"}]}`: presets for the Preset menu. Each is a
   file in the app's Presets folder, named after the preset. **Name them with your own acronym** (2–4 letters), a
   middle dot and the name — `SMP · Overcast`, `SLR · Match the sun` — because that is the only sign of where a
-  preset comes from. A name cannot contain `/` or `:` (file system rules); capitals and accents do not tell two
+  preset comes from. A name cannot contain `/` or `:`, start with a dot or be longer than 120 characters (file system rules); capitals and accents do not tell two
   names apart. `fields` has the keys of `contribute` above, the prompt and the negative prompt included; no size,
   no model. A name the menu has already is never touched (the user may have changed it), so register them
   whenever you like. The answer is `{"type":"ok","added":n,"existing":m,"rejected":k}`.

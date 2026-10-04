@@ -189,3 +189,70 @@ struct PresetLoadTests {
     #expect(PresetLoad.of(preset, current: GenerationFields(), catalog: catalog).parameters.steps == 150)
   }
 }
+
+@MainActor
+struct PresetStoreReviewTests {
+  func tempFolder() -> URL {
+    FileManager.default.temporaryDirectory.appendingPathComponent("PresetStoreReview-\(UUID())", isDirectory: true)
+  }
+
+  func write(_ json: String, as name: String, in folder: URL) throws {
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    try Data(json.utf8).write(to: folder.appendingPathComponent(name + ".json"))
+  }
+
+  @Test func twoFilesThatDifferOnlyByAnAccentAreTwoPresetsAndTheExactNameWins() throws {
+    let folder = tempFolder()
+    try write(#"{"prompt":"plain"}"#, as: "Cafe", in: folder)
+    try write(#"{"prompt":"accent"}"#, as: "Caf\u{E9}", in: folder)
+    let store = PresetStore(folder: folder)
+    #expect(store.names.count == 2)
+    #expect(try store.load(named: "Caf\u{E9}").prompt == "accent")
+    #expect(try store.load(named: "Cafe").prompt == "plain")
+    store.delete(named: "Caf\u{E9}")
+    #expect(store.names == ["Cafe"])
+    #expect(try store.load(named: "cafe").prompt == "plain")
+  }
+
+  @Test func renamingOntoAnAccentVariantThatExistsIsRefusedAndNothingMoves() throws {
+    let folder = tempFolder()
+    try write(#"{"prompt":"plain"}"#, as: "Cafe", in: folder)
+    try write(#"{"prompt":"accent"}"#, as: "Caf\u{E9}", in: folder)
+    let store = PresetStore(folder: folder)
+    #expect(throws: PresetError.nameTaken) { try store.rename("Cafe", to: "Caf\u{E9}") }
+    #expect(store.names.count == 2)
+  }
+
+  @Test func aNameWithASpaceBeforeTheExtensionCanBeLoadedByItsExactName() throws {
+    let folder = tempFolder()
+    try write(#"{"prompt":"spaced"}"#, as: "Foo ", in: folder)
+    let store = PresetStore(folder: folder)
+    #expect(store.names == ["Foo "])
+    #expect(try store.load(named: "Foo ").prompt == "spaced")
+    store.delete(named: "Foo ")
+    #expect(store.names.isEmpty)
+  }
+
+  @Test func aRenameThatFailsHalfwayPutsThePresetBack() throws {
+    let folder = tempFolder()
+    var moves = 0
+    let store = PresetStore(folder: folder) { from, to in
+      moves += 1
+      if moves == 2 { throw CocoaError(.fileWriteUnknown) }
+      try FileManager.default.moveItem(at: from, to: to)
+    }
+    try store.save(Preset(name: "A", prompt: "mine"))
+    #expect(throws: PresetError.self) { try store.rename("A", to: "B") }
+    #expect(store.names == ["A"])
+    #expect(try store.load(named: "A").prompt == "mine")
+    #expect(((try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []).sorted() == ["A.json"])
+  }
+
+  @Test func aNameLongerThanTheFileSystemTakesIsRefused() {
+    let store = PresetStore(folder: tempFolder())
+    let tooLong = String(repeating: "\u{6F22}", count: 100)  // 100 characters, 300 bytes
+    #expect(!PresetStore.isValidName(tooLong))
+    #expect(throws: PresetError.invalidName) { try store.save(Preset(name: tooLong)) }
+    #expect(PresetStore.isValidName(String(repeating: "a", count: 120)))
+  }
+}
