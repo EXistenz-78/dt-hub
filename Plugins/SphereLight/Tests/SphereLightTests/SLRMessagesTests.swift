@@ -19,6 +19,8 @@ struct SLRMessagesTests {
       #expect(fields["sampler"] as? Int == 16)
       #expect(fields["shift"] as? Int == 3)
       #expect(fields["cfgZeroStar"] as? Bool == false)
+      // The shift of the script only counts with the "resolution dependent shift" switch off (a preset leaves it on otherwise).
+      #expect(fields["resolutionDependentShift"] as? Bool == false)
       // No size and no model: those are the user's.
       #expect(fields["width"] == nil && fields["height"] == nil && preset["model"] == nil)
     }
