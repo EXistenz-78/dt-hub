@@ -30,7 +30,6 @@ final class SampleState: ObservableObject {
   @Published var model = "—"
   @Published var active = false
   @Published var azimuth = 45.0
-  @Published var loraWeight = 60.0
   @Published var overcast = false
   @Published var answer = ""
   @Published var status = ""
@@ -40,7 +39,7 @@ final class SampleState: ObservableObject {
 
 @MainActor
 final class SamplePlugin: DTHubPlugin {
-  let manifest = DTHubManifest(id: Variant.id, name: Variant.name, version: "1.2", symbol: Variant.symbol)
+  let manifest = DTHubManifest(id: Variant.id, name: Variant.name, version: "1.3", symbol: Variant.symbol)
   private let state = SampleState()
   private var host: DTHubHost?
 
@@ -68,6 +67,8 @@ final class SamplePlugin: DTHubPlugin {
       return nil
     case "activate":
       state.active = true
+      // The app only listens to a plug-in that is on: the presets are offered now.
+      Task { await registerPresets() }
       return nil
     case "deactivate":
       state.active = false
@@ -78,6 +79,7 @@ final class SamplePlugin: DTHubPlugin {
       switch button {
       case "plain": await sendPlain()
       case "pipeline": await sendPipeline()
+      case "presets": await registerPresets()
       case "startImage": await sendStartImage()
       case "ask": await askModel()
       default: return DTHubMessage.bare("unsupported")
@@ -98,7 +100,7 @@ final class SamplePlugin: DTHubPlugin {
     return (try? data.write(to: URL(fileURLWithPath: path))) == nil ? nil : path
   }
 
-  /// The settings of the sun-direction pass of the Light Direction companion script.
+  /// The settings of the sun-direction passes of the Light Direction companion script.
   private func sunFields(prompt: String) -> [String: Any] {
     [
       "prompt": prompt, "steps": Variant.steps, "guidanceScale": Variant.guidance, "shift": 3, "sampler": 16,
@@ -106,7 +108,20 @@ final class SamplePlugin: DTHubPlugin {
     ]
   }
 
-  private var sunLora: [String: Any] { ["file": Variant.lora, "weight": state.loraWeight / 100] }
+  private var sunLora: [String: Any] { ["file": Variant.lora, "weight": 0.6] }
+
+  private var overcastPreset: String { "\(Variant.name) · Overcast" }
+  private var matchPreset: String { "\(Variant.name) · Match the sun" }
+
+  /// The two presets of the pipeline, in the app's Preset menu: the user sees them, changes them (the LoRA
+  /// weight, the steps…) and saves them under the same name. The app never overwrites a name it has.
+  func registerPresets() async {
+    let answer = await host?.registerPresets([
+      ["name": overcastPreset, "fields": sunFields(prompt: "make it an overcast day, remove the shadows")],
+      ["name": matchPreset, "fields": sunFields(prompt: Variant.prompt), "loras": [sunLora]],
+    ])
+    if let answer, answer["type"] as? String == "error" { state.status = answer["text"] as? String ?? "Error" }
+  }
 
   /// A prompt, parameters, a LoRA and a picture for the Moodboard.
   func sendPlain() async {
@@ -118,18 +133,16 @@ final class SamplePlugin: DTHubPlugin {
     report(answer)
   }
 
-  /// The two passes of the script: flatten the shadows (optional), then match the sun.
+  /// The two passes of the script, as presets: flatten the shadows (optional), then match the sun with the
+  /// sphere in the Moodboard and the first pass's picture as the start image.
   func sendPipeline() async {
     guard let sphere = spherePath() else { return state.status = "No picture folder yet: switch the plug-in on first." }
+    await registerPresets()
     var steps: [[String: Any]] = []
-    if state.overcast {
-      steps.append([
-        "title": "Overcast", "fields": sunFields(prompt: "make it an overcast day, remove the shadows"), "loras": [[String: Any]](),
-      ])
-    }
+    if state.overcast { steps.append(["title": "Overcast", "preset": overcastPreset]) }
     steps.append([
-      "title": "Match the sun", "fields": sunFields(prompt: Variant.prompt), "loras": [sunLora],
-      "moodboard": [["name": "Sphere light", "path": sphere]], "useOutputAsStart": state.overcast,
+      "title": "Match the sun", "preset": matchPreset, "moodboard": [["name": "Sphere light", "path": sphere]],
+      "useOutputAsStart": state.overcast,
     ])
     report(await host?.contribute(["pipeline": ["name": "Sun direction", "steps": steps]]))
   }
@@ -166,7 +179,7 @@ struct SampleView: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
-      Text("\(Variant.name) plug-in 1.2").font(.title2)
+      Text("\(Variant.name) plug-in 1.3").font(.title2)
       Text("Model: \(state.model)")
       Text(state.active ? "active" : "not active").foregroundStyle(.secondary)
       Divider()
@@ -174,11 +187,6 @@ struct SampleView: View {
         Text("Light from")
         Slider(value: $state.azimuth, in: 0...360)
         Text("\(Int(state.azimuth))°").monospacedDigit().frame(width: 44, alignment: .trailing)
-      }
-      HStack {
-        Text("LoRA weight")
-        Slider(value: $state.loraWeight, in: -100...100)
-        Text("\(Int(state.loraWeight))").monospacedDigit().frame(width: 44, alignment: .trailing)
       }
       Toggle("Overcast shadows (adds a pass)", isOn: $state.overcast)
       HStack {

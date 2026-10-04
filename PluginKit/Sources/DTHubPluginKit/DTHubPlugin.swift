@@ -78,6 +78,13 @@ public final class DTHubHost {
     await sendJSON(body.merging(["type": "contribute"]) { _, new in new })
   }
 
+  /// Sends a `presets` message: presets for the app's Preset menu, each `{"name", "fields", "loras"}` (the keys of
+  /// `contribute`; the prompt and the negative prompt go in `fields`; a preset has no size and no model). A
+  /// name that is in the menu already is never touched. The answer is `{"type":"ok","added":n,"existing":m}`.
+  public func registerPresets(_ presets: [[String: Any]]) async -> [String: Any]? {
+    await sendJSON(["type": "presets", "presets": presets])
+  }
+
   /// Asks the app's language model, which answers in its own time (it may have to load first). Nil when
   /// there is no answer: no model chosen, the plug-in not active, a timeout.
   public func askLanguageModel(_ prompt: String, images: [String] = []) async -> String? {
