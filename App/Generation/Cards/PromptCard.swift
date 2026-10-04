@@ -1,3 +1,4 @@
+import HubCore
 import HubKit
 import SwiftUI
 
@@ -6,6 +7,7 @@ import SwiftUI
 struct PromptCard: View {
   @Bindable var controller: GenerationController
   let connection: DrawThingsConnection
+  @Environment(ContributionStore.self) private var contributions: ContributionStore?
 
   var body: some View {
     DSCollapsibleCard(
@@ -15,11 +17,13 @@ struct PromptCard: View {
       VStack(alignment: .leading, spacing: DS.rowGap) {
         PromptEditor(
           text: $controller.prompt, placeholder: String(localized: "card.prompt.placeholder"),
-          accessibilityLabel: String(localized: "card.prompt"), tint: DS.accent, minHeight: 140)
+          accessibilityLabel: String(localized: "card.prompt"), tint: DS.accent, minHeight: 140,
+          isContributed: contributions?.marks[.prompt]?.isOverridden == false)
         if controller.traits(in: connection).usesNegativePrompt {
           PromptEditor(
             text: $controller.negativePrompt, placeholder: String(localized: "card.prompt.negative.placeholder"),
-            accessibilityLabel: String(localized: "card.prompt.negative"), tint: DS.remove, minHeight: 60)
+            accessibilityLabel: String(localized: "card.prompt.negative"), tint: DS.remove, minHeight: 60,
+            isContributed: contributions?.marks[.negativePrompt]?.isOverridden == false)
           if !controller.negativePrompt.isEmpty, controller.parameters.guidanceScale <= 1 {
             Text("card.prompt.negative.noEffect")
               .font(.caption)
@@ -38,6 +42,8 @@ private struct PromptEditor: View {
   let accessibilityLabel: String
   let tint: Color
   let minHeight: CGFloat
+  /// A plug-in wrote this prompt and it has not been changed since: teal at 30%.
+  var isContributed = false
 
   var body: some View {
     TextEditor(text: $text)
@@ -48,7 +54,7 @@ private struct PromptEditor: View {
       .frame(minHeight: minHeight)
       .background(
         RoundedRectangle(cornerRadius: DS.boxRadius, style: .continuous)
-          .fill(tint == DS.accent ? Color.primary.opacity(0.06) : tint.opacity(0.08))
+          .fill(isContributed ? DS.accent.opacity(0.3) : tint == DS.accent ? Color.primary.opacity(0.06) : tint.opacity(0.08))
       )
       .overlay(
         RoundedRectangle(cornerRadius: DS.boxRadius, style: .continuous)

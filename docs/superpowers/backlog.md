@@ -103,3 +103,37 @@ I test di sessione dell'M3 (`GenerationSessionTests`) sono stati resi determinis
 
 - M5: espansione di `~` nei percorsi, una cartella accettata come programma, `PortProbe` che blocca, una riga di log in inglese.
 - M4c: `enableInpainting` in più, LoRA duplicate, preset come sovrapposizioni.
+
+## Rimandi di M8b (contributi dei plug-in)
+
+- **Cosa un plug-in non può ancora contribuire:** il modello (per scelta), le card Avanzate, la forza dell'immagine di partenza e la maschera. Servono messaggi nuovi (additivi: il contratto resta 1).
+- **I segni non si salvano:** al riavvio i valori restano ma non c'è più il teal né la pipeline; il Moodboard di un plug-in diventa «da <plug-in>» senza teal.
+- **`runPipeline` non ha test automatici:** la prova è dal vivo (Task 7); estrarre il ciclo in HubCore con un backend finto lo renderebbe provabile.
+- **Il pop-up mostra i valori lunghi (i prompt) troncati** sul pulsante.
+- **La domanda al modello linguistico non si può annullare** dal plug-in (la risposta può tardare fino a 300 secondi).
+
+## Rimandi di prompt nei preset e pipeline di preset
+
+- **Passaggi con valori propri** (per esempio uno slider del plug-in per il peso del LoRA): per scelta no; l'utente cambia il preset.
+- **Il menu «Gestisci preset…» non segna i preset dei plug-in** (lo fa solo il menu a tendina).
+- **I preset di fabbrica di un plug-in non si ripristinano da soli**: per riaverli si cancella il preset e il plug-in lo ricrea al prossimo messaggio `presets`.
+- **`run(with:)` e `runPipeline` non hanno test automatici** (vedi M8b): estrarre il ciclo in HubCore con un backend finto.
+- **I valori di un passaggio non si vedono nel pulsante Run**: il suggerimento mostra solo i nomi dei preset.
+
+## Rimandi di P3 (un file per preset)
+
+- **Il menu Preset si aggiorna all'apparire della barra e quando l'app torna attiva**, non ogni volta che si apre il menu (SwiftUI non dà l'evento): un file aggiunto a mano mentre l'app è già in primo piano compare al giro successivo.
+- **Il Salva non dice nulla se la scrittura fallisce** (disco pieno, permessi): `try?` ignora `cannotWrite`.
+- **L'import conta come importati anche i preset scartati** (nome non valido, scrittura fallita).
+- **Due file `Foo.json` e `Foo.JSON`** su un volume che distingue le maiuscole darebbero identificatori doppi nel menu.
+- **Nessuna cache dell'elenco:** con migliaia di preset ogni lettura scansiona la cartella.
+- **Prova dal vivo di P3 non completata dall'esecutore:** schermo bloccato durante la prova (modifica a mano di un file con l'app aperta, preset cancellato e Run, «Togli la pipeline»).
+
+## Rimandi della revisione di M8b
+
+- **«Run · 1 passaggi» / «Run · 1 passes»:** manca il plurale nel catalogo (il Sample con «Overcast» spento manda una pipeline di un passaggio).
+- **Nessun test carica insieme Sample e Sample B** (la coesistenza con `moduleAliases` è provata solo dal vivo).
+- **Un plug-in che rimanda il Moodboard** perde le immagini di prima anche se tutti i percorsi nuovi sono illeggibili.
+- **`runPipeline` decodifica e ricodifica le immagini dei passaggi sul thread principale**, e `contribute` legge i file del plug-in sul thread principale: a canvas di 8192 l'interfaccia si ferma per qualche centinaio di millisecondi.
+- **Un plug-in già caricato e spento dalle Preferenze** diventa inattivo per il lavoro subito, ma il codice resta caricato fino al riavvio (dal menu dell'header si può riattivare).
+

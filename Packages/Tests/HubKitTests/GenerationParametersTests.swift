@@ -259,9 +259,9 @@ struct JSONValueTests {
   }
 
   @Test func aPresetLoadsLeniently() throws {
-    let preset = try JSONDecoder().decode(Preset.self, from: Data(#"{"name": "Fast"}"#.utf8))
-    #expect(preset.name == "Fast")
-    #expect(preset.model == "" && preset.negativePrompt == "")
+    let preset = try JSONDecoder().decode(Preset.self, from: Data(#"{"model": 3, "steps": "x"}"#.utf8))
+    #expect(preset.name.isEmpty, "the name is the file's, not the JSON's")
+    #expect(preset.model == "" && preset.prompt == "" && preset.negativePrompt == "")
     #expect(preset.parameters == .default)
   }
 }

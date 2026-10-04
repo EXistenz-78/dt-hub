@@ -252,19 +252,19 @@ struct PluginRegistryTests {
     #expect(registry.needsRestart, "a loaded plug-in removed is still running until then")
   }
 
-  @Test func theNoticesOfAPluginAreKeptNewestFirstEvenAfterTheBannerIsClosed() throws {
+  @Test func theNoticesOfAPluginAreKeptNewestFirstEvenAfterTheBannerIsClosed() async throws {
     try PluginFixture.bundle(in: root, id: "a", name: "Alpha")
     let loader = FakeLoader()
     let registry = registry(loader: loader, enabled: ["a"])
     registry.start()
     let host = try #require(loader.host)
-    _ = host.receive(Data(#"{"type":"notice","text":"one"}"#.utf8), from: "a")
-    _ = host.receive(Data(#"{"type":"notice","text":"two"}"#.utf8), from: "a")
+    _ = await host.receive(Data(#"{"type":"notice","text":"one"}"#.utf8), from: "a")
+    _ = await host.receive(Data(#"{"type":"notice","text":"two"}"#.utf8), from: "a")
     #expect(registry.lastNotice(of: "a")?.text == "two")
     registry.dismissNotice()
     #expect(registry.latestNotice == nil && registry.lastNotice(of: "a")?.text == "two")
     #expect(registry.lastNotice(of: "zzz") == nil)
-    for index in 0..<30 { _ = host.receive(Data(#"{"type":"notice","text":"n\#(index)"}"#.utf8), from: "a") }
+    for index in 0..<30 { _ = await host.receive(Data(#"{"type":"notice","text":"n\#(index)"}"#.utf8), from: "a") }
     #expect(registry.notices.count == 20 && registry.notices.first?.text == "n29")
   }
 
@@ -287,18 +287,18 @@ struct PluginRegistryTests {
     #expect(registry.entries.first?.isActive == true)
   }
 
-  @Test func aNoticeFromAPluginIsShownWithItsName() throws {
+  @Test func aNoticeFromAPluginIsShownWithItsName() async throws {
     try PluginFixture.bundle(in: root, id: "a", name: "Alpha")
     let loader = FakeLoader()
     let registry = registry(loader: loader, enabled: ["a"])
     registry.start()
-    let reply = try #require(loader.host).receive(Data(#"{"type":"notice","text":"Ready","isError":true}"#.utf8), from: "a")
+    let reply = await (try #require(loader.host)).receive(Data(#"{"type":"notice","text":"Ready","isError":true}"#.utf8), from: "a")
     #expect(PluginMessageType.of(reply) == PluginMessageType.ok)
     #expect(registry.latestNotice?.pluginName == "Alpha" && registry.latestNotice?.text == "Ready")
     #expect(registry.latestNotice?.isError == true)
     registry.dismissNotice()
     #expect(registry.latestNotice == nil)
-    let unknown = try #require(loader.host).receive(Data(#"{"type":"fly"}"#.utf8), from: "a")
+    let unknown = await (try #require(loader.host)).receive(Data(#"{"type":"fly"}"#.utf8), from: "a")
     #expect(PluginMessageType.of(unknown) == PluginMessageType.unsupported)
   }
 }

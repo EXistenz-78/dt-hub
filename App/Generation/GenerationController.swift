@@ -11,14 +11,23 @@ import Observation
 @Observable
 final class GenerationController {
   var prompt = "" {
-    didSet { scheduleSessionSave() }
+    didSet {
+      scheduleSessionSave()
+      contributions?.reconcile()
+    }
   }
   /// Sent only when the model's family uses it (`JobComposer`).
   var negativePrompt = "" {
-    didSet { scheduleSessionSave() }
+    didSet {
+      scheduleSessionSave()
+      contributions?.reconcile()
+    }
   }
   var parameters = GenerationParameters.default {
-    didSet { scheduleSessionSave() }
+    didSet {
+      scheduleSessionSave()
+      contributions?.reconcile()
+    }
   }
   /// When on, width and height move together to keep `lockedRatio`.
   var lockRatio = false {
@@ -39,8 +48,12 @@ final class GenerationController {
   /// The Control tab's images (tab Control spec): the start image goes with every RUN.
   @ObservationIgnored let control: ControlStore
   /// True between pressing RUN and the generation starting: the language model is being freed
-  /// and a parked server brought back.
+  /// and a parked server brought back. Also true all through a pipeline, between its passes.
   private(set) var isPreparing = false
+  /// The pass of a plug-in's pipeline that is running (1-based), nil outside one.
+  private(set) var pipelinePass: (index: Int, count: Int)?
+  /// What the plug-ins contributed (teal fields, conflicts, the pipeline); set by `attach`.
+  @ObservationIgnored private(set) var contributions: ContributionStore?
 
   @ObservationIgnored private let outputSettings = OutputSettingsStore()
   @ObservationIgnored private let sessionStore: SessionStore
@@ -71,7 +84,7 @@ final class GenerationController {
   }
 
   /// The saved presets (spec §6).
-  let presets = PresetStore(fileURL: PresetStore.defaultFileURL)
+  let presets = PresetStore(folder: PresetStore.defaultFolder)
   /// Reads and writes the Draw Things configuration JSON (spec §6, level 3).
   @ObservationIgnored let codec: any ConfigurationCodec = DrawThingsConfigurationCodec()
 
@@ -95,20 +108,32 @@ final class GenerationController {
     }
   }
 
-  /// Saves the tab as a preset (parameters, model, negative prompt; never the prompt).
-  /// False when the name is empty.
-  @discardableResult
-  func savePreset(named name: String, with connection: DrawThingsConnection) -> Bool {
-    presets.save(
+  /// Saves the tab as a preset (parameters but not the size, model, prompt and negative prompt). Whoever does
+  /// not want the prompt in it empties the field first. Throws `invalidName` for a name the file system does
+  /// not take (empty, "/", ":").
+  func savePreset(named name: String, with connection: DrawThingsConnection) throws(PresetError) {
+    try presets.save(
       Preset(
-        name: name, model: connection.selection.selectedFile ?? "", negativePrompt: negativePrompt,
+        name: name, model: connection.selection.selectedFile ?? "", prompt: prompt, negativePrompt: negativePrompt,
         parameters: parameters))
   }
 
-  /// Puts a preset on the tab; the prompt stays.
-  func load(_ preset: Preset, with connection: DrawThingsConnection) {
-    let load = PresetLoad.of(preset, currentNegativePrompt: negativePrompt, catalog: connection.monitor.catalog)
+  /// Puts a preset on the tab: its parameters (the canvas size stays), its prompt and negative prompt when it
+  /// has them, its model when it names one.
+  /// The preset's file is read now; nil when it was loaded, the reason when it was not.
+  func loadPreset(named name: String, with connection: DrawThingsConnection) -> PresetError? {
+    do {
+      load(try presets.load(named: name), with: connection)
+      return nil
+    } catch {
+      return error
+    }
+  }
+
+  private func load(_ preset: Preset, with connection: DrawThingsConnection) {
+    let load = PresetLoad.of(preset, current: fields, catalog: connection.monitor.catalog)
     parameters = load.parameters
+    prompt = load.prompt
     negativePrompt = load.negativePrompt
     if lockRatio { lockedRatio = currentRatio }
     if let model = load.model { connection.selection.select(model) }
@@ -162,22 +187,89 @@ final class GenerationController {
   }
 
   /// Starts a RUN, split into its batches (`batchesForRun`). With a random seed, the seed
-  /// drawn for the first batch is shown in the Seed field.
+  /// drawn for the first batch is shown in the Seed field. When a plug-in proposed a pipeline, the RUN is
+  /// its passes, one after the other.
   @discardableResult
   func run(with connection: DrawThingsConnection) -> Bool {
     guard canRun(with: connection) else { return false }
+    // A pipeline reads the presets it names now, once; if one is missing or is not a preset, nothing starts.
+    var passes: [PipelineStep]?
+    var loadedPresets: [String: Preset] = [:]
+    if let pipeline = contributions?.pipeline?.pipeline {
+      switch PipelinePresets.load(pipeline, from: presets) {
+      case .success(let loaded):
+        loadedPresets = loaded
+        passes = pipeline.steps
+      case .failure(let problem):
+        var lines: [String] = []
+        if !problem.missing.isEmpty {
+          lines.append(String(format: String(localized: "pipeline.missingPreset"), problem.missing.joined(separator: ", ")))
+        }
+        if !problem.unreadable.isEmpty {
+          lines.append(String(format: String(localized: "pipeline.unreadablePreset"), problem.unreadable.joined(separator: ", ")))
+        }
+        session.fail(with: .generationFailed(lines.joined(separator: "\n")))
+        return true
+      }
+    }
     isPreparing = true
     preparation = Task {
       // Memory first: the language model leaves, a server parked for it comes back.
       await languageModel.prepareForRun()
       await connection.ensureServerForRun()
-      let inputs = await renderInputs(in: connection)
+      if let passes {
+        await runPipeline(passes, presets: loadedPresets, with: connection)
+        return
+      }
+      let inputs = await renderInputs(in: connection, parameters: parameters)
       isPreparing = false
       preparation = nil
       guard !Task.isCancelled, let inputs else { return }
       start(with: connection, inputs: inputs)
     }
     return true
+  }
+
+  /// The passes of a pipeline, one after the other (plug-in design §7, preset design §4). Each pass runs the
+  /// tab's fields with its preset on them; the picture a pass makes can be the next one's start image. A failed or stopped
+  /// pass ends the pipeline; the pictures already made stay in the strip.
+  private func runPipeline(
+    _ passes: [PipelineStep], presets loaded: [String: Preset], with connection: DrawThingsConnection
+  ) async {
+    defer {
+      isPreparing = false
+      pipelinePass = nil
+      preparation = nil
+    }
+    var previous: CGImage?
+    for (index, pass) in passes.enumerated() {
+      guard !Task.isCancelled else { return }
+      pipelinePass = (index + 1, passes.count)
+      let used = PipelinePresets.fields(for: pass, over: fields, presets: loaded, catalog: connection.monitor.catalog)
+      guard let base = await renderInputs(in: connection, parameters: used.parameters) else { return }
+      guard !Task.isCancelled, let backend = connection.monitor.backend, let model = connection.selection.selectedFile,
+        RunAvailability.blocker(
+          connection: connection.monitor.status, selectedModel: model, catalog: connection.monitor.catalog) == nil
+      else { return }
+      let inputs = PipelineInputs.inputs(
+        for: pass, base: base, previousOutput: previous, canvasWidth: used.parameters.width,
+        canvasHeight: used.parameters.height, usesMoodboard: FamilyTraits.of(family(in: connection)).usesMoodboard)
+      let replacesStart = inputs.image != nil && inputs.image !== base.image
+      let batches = JobComposer.batches(
+        prompt: used.prompt, negativePrompt: used.negativePrompt, model: model, family: family(in: connection),
+        parameters: used.parameters, catalog: connection.monitor.catalog,
+        imageStrength: inputs.image == nil ? nil : PipelineInputs.strength(
+          tab: control.inputs, replacesStart: replacesStart, editModel: isEditModel(in: connection),
+          hasMargins: control.hasMargins(canvasWidth: used.parameters.width, canvasHeight: used.parameters.height)),
+        moodboardCount: inputs.hints.count, maskSettings: inputs.mask == nil ? nil : control.inputs.maskSettings)
+      let before = session.results.first?.id
+      session.start(batches, inputs: inputs, backend: backend, monitor: connection.monitor)
+      await session.waitUntilFinished()
+      if case .failed = session.phase { return }
+      // Stopped from anywhere (the Results window too), or no picture: the pipeline ends here.
+      guard !Task.isCancelled, let made = PipelineInputs.output(after: before, in: session.results) else { return }
+      previous = made.fileURL.flatMap { PNGImageStore.image(at: $0, maxPixel: 4096) } ?? made.image
+    }
   }
 
   /// Stop (button and ⌘.): ends the preparation that is under way, or the generation.
@@ -208,11 +300,12 @@ final class GenerationController {
 
   /// The Control tab's images framed to the canvas, decoded away from the main actor. A failure
   /// is shown as the RUN's failure, and nothing starts.
-  private func renderInputs(in connection: DrawThingsConnection) async -> GenerationInputs? {
+  private func renderInputs(in connection: DrawThingsConnection, parameters: GenerationParameters) async -> GenerationInputs? {
     // The Moodboard goes only to a model that uses it (the old families would need an adapter).
     let pending = control.pendingInputs(
       canvasWidth: parameters.width, canvasHeight: parameters.height,
-      includeMoodboard: FamilyTraits.of(family(in: connection)).usesMoodboard, marginFill: marginFill)
+      includeMoodboard: FamilyTraits.of(family(in: connection)).usesMoodboard,
+      marginFill: control.inputs.marginFill ?? MarginFill.automatic(loras: parameters.loras))
     do {
       var inputs = try await Task.detached { try pending.render() }.value
       inputs.enableInpainting = selectedModel(in: connection)?.capabilities.needsInpaintControl ?? false
@@ -227,6 +320,12 @@ final class GenerationController {
   /// What fills the margins of the canvas: the user's choice, or what the LoRAs of the job ask for.
   var marginFill: MarginFill {
     control.inputs.marginFill ?? MarginFill.automatic(loras: parameters.loras)
+  }
+
+  /// The plug-ins' contributions land here; the fields leaving their value are told to the store.
+  func attach(_ store: ContributionStore) {
+    contributions = store
+    store.target = self
   }
 
   /// True when the chosen model is an Edit model (the canvas image is the one to modify).
@@ -297,5 +396,56 @@ final class GenerationController {
 struct CurrentFolderImageStore: ImageStore {
   func save(_ image: CGImage, job: GenerationJob, index: Int, date: Date) throws -> URL {
     try PNGImageStore(folder: OutputSettingsStore().folder()).save(image, job: job, index: index, date: date)
+  }
+}
+
+// MARK: Plug-in contributions
+
+extension GenerationController: ContributionTarget {
+  /// The prompt, the negative prompt and the parameters, as one value. A change keeps a ratio lock on
+  /// the new size.
+  var fields: GenerationFields {
+    get { GenerationFields(prompt: prompt, negativePrompt: negativePrompt, parameters: parameters) }
+    set {
+      if prompt != newValue.prompt { prompt = newValue.prompt }
+      if negativePrompt != newValue.negativePrompt { negativePrompt = newValue.negativePrompt }
+      if parameters != newValue.parameters {
+        parameters = newValue.parameters
+        if lockRatio { lockedRatio = currentRatio }
+      }
+    }
+  }
+
+  var loraFiles: Set<String> { Set(parameters.loras.map(\.file)) }
+
+  func addLoRA(_ lora: LoRASelection) {
+    if parameters.loras.contains(where: { $0.file == lora.file }) {
+      parameters.updateLoRA(lora)
+    } else {
+      parameters.loras.append(lora)
+    }
+  }
+
+  var moodboardIDs: Set<UUID> { Set(control.inputs.moodboard.map(\.id)) }
+  var startImageID: UUID? { control.inputs.image?.id }
+
+  func addMoodboardImage(_ image: PluginImageRef, from pluginID: String) throws -> UUID {
+    let data = try Self.read(image)
+    return try control.addMoodboardImage(data: data, name: image.name, source: .plugin(id: pluginID))
+  }
+
+  func removeMoodboardImage(_ id: UUID) { control.removeMoodboardImage(id: id) }
+
+  func setStartImage(_ image: PluginImageRef, from pluginID: String) throws -> UUID {
+    let data = try Self.read(image)
+    return try control.setImage(data: data, name: image.name, source: .plugin(id: pluginID))
+  }
+
+  private static func read(_ image: PluginImageRef) throws -> Data {
+    do {
+      return try Data(contentsOf: URL(fileURLWithPath: image.path))
+    } catch {
+      throw ControlError.unreadable(image.name)
+    }
   }
 }

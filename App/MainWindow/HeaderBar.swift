@@ -131,6 +131,9 @@ struct HeaderBar: View {
             .font(.system(size: 14, weight: .semibold))
             .accessibilityHidden(true)
           Text("header.stop")
+          if let pass = generation.pipelinePass {
+            Text(verbatim: String(format: String(localized: "header.stop.pass"), pass.index, pass.count))
+          }
           if let step = progress?.step, let total = progress?.total {
             Text(verbatim: "\(step)/\(total)")
               .monospacedDigit()
@@ -140,6 +143,7 @@ struct HeaderBar: View {
       .buttonStyle(DSPillButtonStyle(prominent: true))
       .help(String(localized: "header.stop.help"))
     } else {
+      let pipeline = plugins.contributions.pipeline
       Button {
         if generation.run(with: connection) { openWindow(id: ResultsWindow.id) }
       } label: {
@@ -147,12 +151,21 @@ struct HeaderBar: View {
           Image(systemName: "play.fill")
             .font(.system(size: 14, weight: .semibold))
             .accessibilityHidden(true)
-          Text("header.run")
+          if let pipeline {
+            Text(verbatim: ContributionText.runTitle(passes: pipeline.pipeline.steps.count))
+          } else {
+            Text("header.run")
+          }
         }
       }
       .buttonStyle(DSPillButtonStyle(prominent: true))
       .disabled(runBlocker != nil || generation.isPreparing)
-      .help(runHelp)
+      .help(runBlocker == nil ? (pipeline.map { ContributionText.pipelineHelp($0, plugins: plugins) } ?? runHelp) : runHelp)
+      .contextMenu {
+        if pipeline != nil {
+          Button("header.run.removePipeline") { plugins.contributions.removePipeline() }
+        }
+      }
     }
   }
 

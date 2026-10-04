@@ -1650,6 +1650,176 @@
         }
       }
     },
+    "contribution.conflict.dismiss": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leave as is"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lascia com'è"
+          }
+        }
+      }
+    },
+    "contribution.conflict.hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pick the one to keep. Esc leaves everything as it is."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scegli quale tenere. Esc lascia tutto com'è."
+          }
+        }
+      }
+    },
+    "contribution.conflict.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Two plug-ins want the same thing"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Due plug-in vogliono la stessa cosa"
+          }
+        }
+      }
+    },
+    "contribution.fromPrevious": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "from the previous result"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "dal risultato precedente"
+          }
+        }
+      }
+    },
+    "contribution.off": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "off"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "spento"
+          }
+        }
+      }
+    },
+    "contribution.on": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "on"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "acceso"
+          }
+        }
+      }
+    },
+    "contribution.pass": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pass %lld"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passaggio %lld"
+          }
+        }
+      }
+    },
+    "contribution.passes": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld passes"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld passaggi"
+          }
+        }
+      }
+    },
+    "contribution.pipeline": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pipeline"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pipeline"
+          }
+        }
+      }
+    },
+    "contribution.startImage": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start image"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Immagine di partenza"
+          }
+        }
+      }
+    },
     "control.adapted": {
       "extractionState": "manual",
       "localizations": {
@@ -3214,6 +3384,40 @@
         }
       }
     },
+    "header.run.pipeline": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Run · %lld passes"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Run · %lld passaggi"
+          }
+        }
+      }
+    },
+    "header.run.removePipeline": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove the pipeline"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Togli la pipeline"
+          }
+        }
+      }
+    },
     "header.stop": {
       "extractionState": "manual",
       "localizations": {
@@ -3244,6 +3448,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Interrompi la generazione (⌘.)"
+          }
+        }
+      }
+    },
+    "header.stop.pass": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pass %lld/%lld"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passaggio %lld/%lld"
           }
         }
       }
@@ -3516,6 +3737,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Scegli prima un modello."
+          }
+        }
+      }
+    },
+    "pipeline.missingPreset": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preset not found: %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preset non trovato: %@"
+          }
+        }
+      }
+    },
+    "pipeline.unreadablePreset": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preset not readable: %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preset non leggibile: %@"
           }
         }
       }
@@ -5101,6 +5356,23 @@
         }
       }
     },
+    "preset.load.unreadable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The preset “%@” cannot be read."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il preset «%@» non si può leggere."
+          }
+        }
+      }
+    },
     "preset.manage": {
       "extractionState": "manual",
       "localizations": {
@@ -5209,13 +5481,30 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Saves the model, the settings and the negative prompt, not the prompt."
+            "value": "Saves the model, the settings, the prompt and the negative prompt, not the size of the canvas."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Salva il modello, le impostazioni e il prompt negativo, non il prompt."
+            "value": "Salva il modello, le impostazioni, il prompt e il prompt negativo, non le dimensioni del canvas."
+          }
+        }
+      }
+    },
+    "preset.save.invalidName": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A preset name cannot be empty, start with a dot, be very long or contain “/” or “:”."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il nome di un preset non può essere vuoto, cominciare con un punto, essere molto lungo né contenere «/» o «:»."
           }
         }
       }

@@ -32,6 +32,14 @@ struct MainWindowView: View {
     .background(DSWindowConfigurator())
     .tint(DS.accent)
     .overlay(alignment: .bottom) { PluginNoticeBanner(plugins: plugins) }
+    .environment(plugins)
+    .environment(plugins.contributions)
+    .sheet(
+      isPresented: Binding(
+        get: { !plugins.contributions.conflicts.isEmpty }, set: { if !$0 { plugins.contributions.dismissConflicts() } })
+    ) {
+      ContributionConflictSheet(plugins: plugins)
+    }
     .task(id: contextKey) {
       plugins.updateContext(model: contextKey[0], family: contextKey[1], parameters: generation.parameters)
       workspace.setPluginTabs(plugins.activeTabs)
