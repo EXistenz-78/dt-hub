@@ -141,14 +141,14 @@ struct PresetLoadTests {
   @Test func loadingAPresetKeepsTheNegativePromptItDoesNotHave() {
     let withNegative = Preset(name: "a", model: "m.ckpt", negativePrompt: "blurry")
     let without = Preset(name: "b")
-    #expect(PresetLoad.of(withNegative, currentNegativePrompt: "mine", catalog: catalog).negativePrompt == "blurry")
-    #expect(PresetLoad.of(withNegative, currentNegativePrompt: "mine", catalog: catalog).model == "m.ckpt")
-    #expect(PresetLoad.of(without, currentNegativePrompt: "mine", catalog: catalog).negativePrompt == "mine")
-    #expect(PresetLoad.of(without, currentNegativePrompt: "mine", catalog: catalog).model == nil)
+    #expect(PresetLoad.of(withNegative, current: GenerationFields(negativePrompt: "mine"), catalog: catalog).negativePrompt == "blurry")
+    #expect(PresetLoad.of(withNegative, current: GenerationFields(negativePrompt: "mine"), catalog: catalog).model == "m.ckpt")
+    #expect(PresetLoad.of(without, current: GenerationFields(negativePrompt: "mine"), catalog: catalog).negativePrompt == "mine")
+    #expect(PresetLoad.of(without, current: GenerationFields(negativePrompt: "mine"), catalog: catalog).model == nil)
   }
 
   @Test func loadedParametersAreClamped() {
     let preset = Preset(name: "wild", parameters: GenerationParameters(steps: 9999))
-    #expect(PresetLoad.of(preset, currentNegativePrompt: "", catalog: catalog).parameters.steps == 150)
+    #expect(PresetLoad.of(preset, current: GenerationFields(), catalog: catalog).parameters.steps == 150)
   }
 }
