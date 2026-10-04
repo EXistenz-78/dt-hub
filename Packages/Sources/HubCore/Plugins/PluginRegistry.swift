@@ -62,6 +62,8 @@ public final class PluginRegistry: PluginHosting {
 
   /// What the active plug-ins contributed (teal fields, conflicts, the pipeline); the app sets its `target`.
   public let contributions = ContributionStore()
+  /// The Preset menu's store, where the presets a plug-in brings go; set by the app.
+  @ObservationIgnored public var presetStore: PresetStore?
   /// Answers a plug-in's question to the language model (`llm` message); nil = no language model.
   @ObservationIgnored public var askLanguageModel: (@MainActor (_ prompt: String, _ images: [URL]) async throws -> String)?
 
@@ -286,6 +288,8 @@ public final class PluginRegistry: PluginHosting {
     switch PluginMessageType.of(message) {
     case PluginMessageType.contribute:
       return contribute(message, from: pluginID)
+    case PluginMessageType.presets:
+      return addPresets(message, from: pluginID)
     case PluginMessageType.llm:
       return await askModel(message, from: pluginID)
     case PluginMessageType.notice:
@@ -315,6 +319,18 @@ public final class PluginRegistry: PluginHosting {
     let problems = contributions.receive(contribution, from: pluginID)
     var answer: [String: Any] = ["type": PluginMessageType.ok, "conflicts": contributions.conflicts.count]
     if !problems.isEmpty { answer["problems"] = problems }
+    return (try? JSONSerialization.data(withJSONObject: answer)) ?? PluginMessageType.bare(PluginMessageType.ok)
+  }
+
+  /// Presets for the Preset menu; a name already there is left alone. `{"type":"ok","added":n,"existing":m}`.
+  private func addPresets(_ message: Data, from pluginID: String) -> Data {
+    guard isActive(pluginID) else { return PluginMessageType.failure("The plug-in is not active.") }
+    guard let store = presetStore else { return PluginMessageType.failure("There is no preset store.") }
+    guard let parsed = PluginPresets(message: message, origin: pluginID) else {
+      return PluginMessageType.failure("The message has no presets list.")
+    }
+    let result = store.add(fromPlugin: parsed.presets)
+    let answer: [String: Any] = ["type": PluginMessageType.ok, "added": result.added, "existing": result.existing]
     return (try? JSONSerialization.data(withJSONObject: answer)) ?? PluginMessageType.bare(PluginMessageType.ok)
   }
 
