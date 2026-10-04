@@ -43,60 +43,14 @@ struct PresetPromptTests {
     #expect(PresetLoad.of(tiled, current: tab, catalog: catalog).parameters.width == 4096)
   }
 
-  @Test func theSavedPresetKeepsPromptAndOriginButNoSize() {
-    let file = tempFile()
-    let store = PresetStore(fileURL: file)
-    store.save(Preset(name: "P", prompt: "a cat", parameters: GenerationParameters(width: 512, height: 1536), origin: "com.x"))
-    let again = PresetStore(fileURL: file).preset(named: "p")
-    #expect(again?.prompt == "a cat" && again?.origin == "com.x")
-    #expect(again?.parameters.width == GenerationParameters.default.width)
-    #expect(again?.parameters.height == GenerationParameters.default.height)
-  }
-
-  @Test func aFileSavedBeforeHasNoPromptAndNoOrigin() throws {
-    let file = tempFile()
-    try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
-    try Data(#"[{"name":"old","model":"m.ckpt","negativePrompt":"blur","parameters":{"steps":9,"width":512}}]"#.utf8).write(to: file)
-    let old = try #require(PresetStore(fileURL: file).preset(named: "old"))
-    #expect(old.prompt.isEmpty && old.origin == nil && old.parameters.steps == 9)
-  }
-}
-
-@MainActor
-struct PresetReviewTests {
-  func tempFile() -> URL {
-    FileManager.default.temporaryDirectory
-      .appendingPathComponent("PresetReviewTests-\(UUID())", isDirectory: true).appendingPathComponent("presets.json")
-  }
-
-  @Test func savingOverAPluginsPresetWithoutAnOriginKeepsItsOrigin() {
-    let store = PresetStore(fileURL: tempFile())
-    store.add(fromPlugin: [Preset(name: "Match", parameters: GenerationParameters(steps: 4), origin: "com.x")])
-    // What the Save sheet does: a new Preset with the same name and no origin.
-    store.save(Preset(name: "match", parameters: GenerationParameters(steps: 9)))
-    #expect(store.preset(named: "Match")?.origin == "com.x" && store.preset(named: "Match")?.parameters.steps == 9)
-    // A user's own preset stays the user's.
-    store.save(Preset(name: "Mine"))
-    store.save(Preset(name: "Mine", parameters: GenerationParameters(steps: 3)))
-    #expect(store.preset(named: "Mine")?.origin == nil)
-  }
-
-  @Test func anUnreadablePresetFileIsKeptAsideNotOverwrittenByThePluginsPresets() throws {
-    let file = tempFile()
-    try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
-    try Data("this is {not json".utf8).write(to: file)
-    let store = PresetStore(fileURL: file)
-    #expect(store.presets.isEmpty)
-    store.add(fromPlugin: [Preset(name: "One", origin: "com.x")])
-    let aside = file.deletingLastPathComponent().appendingPathComponent("presets.unreadable.json")
-    #expect(try String(contentsOf: aside, encoding: .utf8) == "this is {not json")
-    #expect(PresetStore(fileURL: file).presets.map(\.name) == ["One"])
-  }
-
-  @Test func aReadableFileIsNotMovedAside() throws {
-    let file = tempFile()
-    PresetStore(fileURL: file).save(Preset(name: "A"))
-    _ = PresetStore(fileURL: file)
-    #expect(!FileManager.default.fileExists(atPath: file.deletingLastPathComponent().appendingPathComponent("presets.unreadable.json").path))
+  @Test func aSavedPresetKeepsItsPromptAndAFileWithoutOneHasNone() throws {
+    let folder = FileManager.default.temporaryDirectory.appendingPathComponent("PresetPromptTests-\(UUID())", isDirectory: true)
+    let store = PresetStore(folder: folder)
+    try store.save(Preset(name: "P", prompt: "a cat"))
+    try Data(#"{"model":"m.ckpt","negativePrompt":"blur","parameters":{"steps":9,"width":512}}"#.utf8)
+      .write(to: folder.appendingPathComponent("Old.json"))
+    #expect(store.preset(named: "p")?.prompt == "a cat")
+    let old = try #require(store.preset(named: "old"))
+    #expect(old.prompt.isEmpty && old.parameters.steps == 9 && old.name == "Old")
   }
 }

@@ -322,15 +322,18 @@ public final class PluginRegistry: PluginHosting {
     return (try? JSONSerialization.data(withJSONObject: answer)) ?? PluginMessageType.bare(PluginMessageType.ok)
   }
 
-  /// Presets for the Preset menu; a name already there is left alone. `{"type":"ok","added":n,"existing":m}`.
+  /// Presets for the Preset menu; a name already there is left alone, a name the file system does not take is
+  /// refused. `{"type":"ok","added":n,"existing":m,"rejected":k}`.
   private func addPresets(_ message: Data, from pluginID: String) -> Data {
     guard isActive(pluginID) else { return PluginMessageType.failure("The plug-in is not active.") }
     guard let store = presetStore else { return PluginMessageType.failure("There is no preset store.") }
-    guard let parsed = PluginPresets(message: message, origin: pluginID) else {
+    guard let parsed = PluginPresets(message: message) else {
       return PluginMessageType.failure("The message has no presets list.")
     }
     let result = store.add(fromPlugin: parsed.presets)
-    let answer: [String: Any] = ["type": PluginMessageType.ok, "added": result.added, "existing": result.existing]
+    let answer: [String: Any] = [
+      "type": PluginMessageType.ok, "added": result.added, "existing": result.existing, "rejected": result.rejected,
+    ]
     return (try? JSONSerialization.data(withJSONObject: answer)) ?? PluginMessageType.bare(PluginMessageType.ok)
   }
 

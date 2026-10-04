@@ -127,7 +127,7 @@ struct BundlePluginLoaderTests {
     // The presets the pipeline names are offered before the pipeline (and on request).
     _ = await plugin.send(Data(#"{"type":"press","button":"presets"}"#.utf8))
     let offered = try #require(host.received.last { PluginMessageType.of($0.message) == PluginMessageType.presets })
-    let list = try #require(PluginPresets(message: offered.message, origin: "x")).presets
+    let list = try #require(PluginPresets(message: offered.message)).presets
     #expect(list.map(\.name) == ["Sample · Overcast", "Sample · Match the sun"])
     #expect(list[1].parameters.loras.first?.weight == 0.6 && list[0].parameters.loras.isEmpty)
     #expect(list[1].prompt.hasPrefix("match light direction"))

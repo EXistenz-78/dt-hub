@@ -23,78 +23,115 @@ struct FakeCodec: ConfigurationCodec {
 
 @MainActor
 struct PresetStoreTests {
-  func tempFile() -> URL {
-    FileManager.default.temporaryDirectory
-      .appendingPathComponent("PresetStoreTests-\(UUID())", isDirectory: true)
-      .appendingPathComponent("presets.json")
+  func tempFolder() -> URL {
+    FileManager.default.temporaryDirectory.appendingPathComponent("PresetStoreTests-\(UUID())", isDirectory: true)
   }
 
-  @Test func startsEmptyWithoutAFile() {
-    #expect(PresetStore(fileURL: tempFile()).presets.isEmpty)
+  func files(_ folder: URL) -> [String] {
+    ((try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []).sorted()
   }
 
-  @Test func remembersPresetsAcrossLaunchesByName() {
-    let file = tempFile()
-    let store = PresetStore(fileURL: file)
-    store.save(Preset(name: "Zeta", model: "m.ckpt", negativePrompt: "blurry", parameters: GenerationParameters(steps: 20)))
-    store.save(Preset(name: "alpha"))
-    let again = PresetStore(fileURL: file)
-    #expect(again.presets.map(\.name) == ["alpha", "Zeta"])
+  @Test func startsEmptyWithoutAFolder() {
+    #expect(PresetStore(folder: tempFolder()).names.isEmpty)
+  }
+
+  @Test func eachPresetIsAFileNamedAfterItAndTheNameIsNotInTheJSON() throws {
+    let folder = tempFolder()
+    let store = PresetStore(folder: folder)
+    try store.save(Preset(name: "Zeta", model: "m.ckpt", negativePrompt: "blurry", parameters: GenerationParameters(steps: 20)))
+    try store.save(Preset(name: "alpha"))
+    #expect(files(folder) == ["Zeta.json", "alpha.json"])
+    #expect(store.names == ["alpha", "Zeta"])
+    #expect(!(try String(contentsOf: folder.appendingPathComponent("Zeta.json"), encoding: .utf8)).contains("\"name\""))
+    let again = PresetStore(folder: folder)
     #expect(again.preset(named: "zeta")?.parameters.steps == 20)
     #expect(again.preset(named: "ZETA")?.negativePrompt == "blurry")
+    #expect(again.preset(named: "zeta")?.name == "Zeta")
   }
 
-  @Test func savingUnderAnExistingNameReplacesIt() {
-    let store = PresetStore(fileURL: tempFile())
-    store.save(Preset(name: "Fast", parameters: GenerationParameters(steps: 4)))
-    let id = store.presets[0].id
-    store.save(Preset(name: "fast", parameters: GenerationParameters(steps: 8)))
-    #expect(store.presets.count == 1)
-    #expect(store.presets[0].id == id)
-    #expect(store.presets[0].parameters.steps == 8)
+  @Test func savingUnderAnExistingNameReplacesTheFileEvenIfOnlyTheCapitalsDiffer() throws {
+    let folder = tempFolder()
+    let store = PresetStore(folder: folder)
+    try store.save(Preset(name: "Fast", parameters: GenerationParameters(steps: 4)))
+    try store.save(Preset(name: "fast", parameters: GenerationParameters(steps: 8)))
+    #expect(files(folder) == ["Fast.json"] && store.names == ["Fast"])
+    #expect(store.preset(named: "Fast")?.parameters.steps == 8)
   }
 
-  @Test func anEmptyNameIsRefused() {
-    let store = PresetStore(fileURL: tempFile())
-    #expect(!store.save(Preset(name: "   ")))
-    #expect(store.presets.isEmpty)
+  @Test func namesTheFileSystemDoesNotTakeAreRefused() {
+    let folder = tempFolder()
+    let store = PresetStore(folder: folder)
+    for bad in ["   ", "a/b", "a:b", ".hidden"] {
+      #expect(throws: PresetError.invalidName) { try store.save(Preset(name: bad)) }
+    }
+    #expect(store.names.isEmpty && files(folder).isEmpty)
+    #expect(PresetStore.isValidName("SMP · Overcast") && !PresetStore.isValidName("a:b"))
   }
 
-  @Test func renamesAndDeletes() {
-    let store = PresetStore(fileURL: tempFile())
-    store.save(Preset(name: "A"))
-    store.save(Preset(name: "B"))
-    let a = store.preset(named: "A")!.id
-    #expect(!store.rename(a, to: "b"))
-    #expect(!store.rename(a, to: " "))
-    #expect(store.rename(a, to: "C"))
-    #expect(store.presets.map(\.name) == ["B", "C"])
-    store.delete(a)
-    #expect(store.presets.map(\.name) == ["B"])
+  @Test func theSizeIsNotKeptInTheFile() throws {
+    let store = PresetStore(folder: tempFolder())
+    try store.save(Preset(name: "P", parameters: GenerationParameters(width: 512, height: 1536)))
+    #expect(store.preset(named: "P")?.parameters.width == GenerationParameters.default.width)
+    #expect(store.preset(named: "P")?.parameters.height == GenerationParameters.default.height)
   }
 
-  @Test func importedPresetsNeverReplaceSavedOnes() {
-    let store = PresetStore(fileURL: tempFile())
-    store.save(Preset(name: "Qwen Image 2.1", parameters: GenerationParameters(steps: 99)))
-    store.add(imported: [Preset(name: "Qwen Image 2.1"), Preset(name: "Qwen Image 2.1"), Preset(name: "Flux")])
-    #expect(store.presets.map(\.name) == ["Flux", "Qwen Image 2.1", "Qwen Image 2.1 (2)", "Qwen Image 2.1 (3)"])
+  @Test func renamesAndDeletesTheFile() throws {
+    let folder = tempFolder()
+    let store = PresetStore(folder: folder)
+    try store.save(Preset(name: "A"))
+    try store.save(Preset(name: "B"))
+    #expect(throws: PresetError.nameTaken) { try store.rename("A", to: "b") }
+    #expect(throws: PresetError.invalidName) { try store.rename("A", to: " ") }
+    #expect(throws: PresetError.notFound("Z")) { try store.rename("Z", to: "Y") }
+    try store.rename("A", to: "C")
+    #expect(store.names == ["B", "C"] && files(folder) == ["B.json", "C.json"])
+    try store.rename("C", to: "c")
+    #expect(store.names == ["B", "c"])
+    store.delete(named: "B")
+    #expect(store.names == ["c"] && files(folder) == ["c.json"])
+  }
+
+  @Test func importedPresetsNeverReplaceSavedOnesAndTheirNamesBecomeValid() throws {
+    let store = PresetStore(folder: tempFolder())
+    try store.save(Preset(name: "Qwen Image 2.1", parameters: GenerationParameters(steps: 99)))
+    store.add(imported: [Preset(name: "Qwen Image 2.1"), Preset(name: "Qwen Image 2.1"), Preset(name: "Flux 1/2: fast")])
+    #expect(store.names == ["Flux 1-2- fast", "Qwen Image 2.1", "Qwen Image 2.1 (2)", "Qwen Image 2.1 (3)"])
     #expect(store.preset(named: "Qwen Image 2.1")?.parameters.steps == 99)
   }
 
-  @Test func aDamagedPresetDoesNotTakeTheOthers() throws {
-    let file = tempFile()
-    try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
-    try Data(#"[{"name": "Good", "parameters": {"steps": 5}}, {"model": "no name"}, 7]"#.utf8).write(to: file)
-    let store = PresetStore(fileURL: file)
-    #expect(store.presets.map(\.name) == ["Good"])
-    #expect(store.presets[0].parameters.steps == 5)
+  @Test func aDamagedFileIsListedFailsWhenLoadedAndDoesNotTakeTheOthers() throws {
+    let folder = tempFolder()
+    let store = PresetStore(folder: folder)
+    try store.save(Preset(name: "Good", parameters: GenerationParameters(steps: 5)))
+    try Data("garbage".utf8).write(to: folder.appendingPathComponent("Bad.json"))
+    store.refresh()
+    #expect(store.names == ["Bad", "Good"])
+    #expect(throws: PresetError.unreadable("Bad")) { try store.load(named: "bad") }
+    #expect(store.preset(named: "Bad") == nil)
+    #expect(store.preset(named: "Good")?.parameters.steps == 5)
   }
 
-  @Test func anUnreadableFileMeansNoPresets() throws {
-    let file = tempFile()
-    try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
-    try Data("garbage".utf8).write(to: file)
-    #expect(PresetStore(fileURL: file).presets.isEmpty)
+  @Test func aFileAddedOrEditedByHandIsSeenWithoutARestart() throws {
+    let folder = tempFolder()
+    let store = PresetStore(folder: folder)
+    try store.save(Preset(name: "A", parameters: GenerationParameters(steps: 4)))
+    try Data(#"{"parameters":{"steps":7},"prompt":"by hand"}"#.utf8).write(to: folder.appendingPathComponent("Hand.json"))
+    var edited = try JSONSerialization.jsonObject(with: Data(contentsOf: folder.appendingPathComponent("A.json"))) as! [String: Any]
+    edited["prompt"] = "edited"
+    try JSONSerialization.data(withJSONObject: edited).write(to: folder.appendingPathComponent("A.json"))
+    #expect(store.preset(named: "Hand")?.parameters.steps == 7 && store.preset(named: "Hand")?.prompt == "by hand")
+    #expect(store.preset(named: "A")?.prompt == "edited")
+    #expect(store.names == ["A", "Hand"])
+  }
+
+  @Test func filesThatAreNotJSONOrAreHiddenAreNotPresets() throws {
+    let folder = tempFolder()
+    let store = PresetStore(folder: folder)
+    try store.save(Preset(name: "A"))
+    try Data("x".utf8).write(to: folder.appendingPathComponent("notes.txt"))
+    try Data("{}".utf8).write(to: folder.appendingPathComponent(".hidden.json"))
+    store.refresh()
+    #expect(store.names == ["A"])
   }
 }
 

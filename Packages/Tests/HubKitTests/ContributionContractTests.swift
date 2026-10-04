@@ -96,7 +96,7 @@ struct ContributionContractTests {
 }
 
 struct PluginPresetsTests {
-  @Test func presetsAreReadWithTheirFieldsAndLoRAsAndMarkedAsThePlugins() throws {
+  @Test func presetsAreReadWithTheirFieldsAndLoRAs() throws {
     let message = Data(
       """
       {"type":"presets","presets":[
@@ -104,17 +104,17 @@ struct PluginPresetsTests {
          "loras":[{"file":"sun.ckpt","weight":0.6}]},
         {"name":"  "}, {"fields":{"steps":2}}, "junk"]}
       """.utf8)
-    let presets = try #require(PluginPresets(message: message, origin: "com.x")).presets
+    let presets = try #require(PluginPresets(message: message)).presets
     #expect(presets.count == 1)
     let preset = presets[0]
-    #expect(preset.name == "Sample · Match" && preset.origin == "com.x" && preset.model.isEmpty)
+    #expect(preset.name == "Sample · Match" && preset.model.isEmpty)
     #expect(preset.prompt == "match the light" && preset.negativePrompt == "blur")
     #expect(preset.parameters.steps == 4 && preset.parameters.loras.map(\.file) == ["sun.ckpt"])
   }
 
   @Test func aMessageWithoutAPresetsListIsRefused() {
-    #expect(PluginPresets(message: Data(#"{"type":"presets"}"#.utf8), origin: "a") == nil)
-    #expect(PluginPresets(message: Data("[1]".utf8), origin: "a") == nil)
-    #expect(PluginPresets(message: Data(#"{"presets":[]}"#.utf8), origin: "a")?.presets.isEmpty == true)
+    #expect(PluginPresets(message: Data(#"{"type":"presets"}"#.utf8)) == nil)
+    #expect(PluginPresets(message: Data("[1]".utf8)) == nil)
+    #expect(PluginPresets(message: Data(#"{"presets":[]}"#.utf8))?.presets.isEmpty == true)
   }
 }
