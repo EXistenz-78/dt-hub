@@ -33,7 +33,7 @@ public final class PresetStore {
   /// Saves under `preset.name`, replacing the preset of the same name. An empty name is refused.
   @discardableResult
   public func save(_ preset: Preset) -> Bool {
-    var preset = preset
+    var preset = preset.withoutSize()
     preset.name = preset.name.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !preset.name.isEmpty else { return false }
     if let index = presets.firstIndex(where: { Self.same($0.name, preset.name) }) {
@@ -100,6 +100,16 @@ public final class PresetStore {
 
   private static func sorted(_ presets: [Preset]) -> [Preset] {
     presets.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+  }
+}
+
+extension Preset {
+  /// The preset with the size of a new `GenerationParameters`: a preset does not keep one.
+  fileprivate func withoutSize() -> Preset {
+    var copy = self
+    copy.parameters.width = GenerationParameters.default.width
+    copy.parameters.height = GenerationParameters.default.height
+    return copy
   }
 }
 

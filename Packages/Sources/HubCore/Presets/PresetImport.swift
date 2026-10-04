@@ -57,17 +57,24 @@ extension GenerationParameters {
 
 /// What loading a preset puts on the tab.
 public struct PresetLoad: Equatable, Sendable {
-  public var parameters: GenerationParameters
+  public var prompt: String
   public var negativePrompt: String
+  public var parameters: GenerationParameters
   /// nil when the preset names no model: the chosen one stays.
   public var model: String?
 
-  /// The preset's parameters (clamped, triggers filled in), its negative prompt when it has
-  /// one, its model when it names one. The prompt is never touched.
-  public static func of(_ preset: Preset, currentNegativePrompt: String, catalog: ModelCatalog) -> PresetLoad {
-    PresetLoad(
-      parameters: preset.parameters.clamped().fillingTriggers(from: catalog),
-      negativePrompt: preset.negativePrompt.isEmpty ? currentNegativePrompt : preset.negativePrompt,
-      model: preset.model.isEmpty ? nil : preset.model)
+  /// The tab with the preset on it: the preset's parameters (clamped, triggers filled in) but the tab's own
+  /// width and height; the preset's prompt and negative prompt when it has them, the tab's otherwise; its
+  /// model when it names one. A side beyond the limit the preset's Tiled Diffusion setting allows comes back
+  /// within it, keeping the ratio.
+  public static func of(_ preset: Preset, current: GenerationFields, catalog: ModelCatalog) -> PresetLoad {
+    var parameters = preset.parameters.clamped().fillingTriggers(from: catalog)
+    parameters.width = current.parameters.width
+    parameters.height = current.parameters.height
+    parameters.fitSizeToLimit()
+    return PresetLoad(
+      prompt: preset.prompt.isEmpty ? current.prompt : preset.prompt,
+      negativePrompt: preset.negativePrompt.isEmpty ? current.negativePrompt : preset.negativePrompt,
+      parameters: parameters, model: preset.model.isEmpty ? nil : preset.model)
   }
 }

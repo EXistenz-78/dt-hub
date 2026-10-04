@@ -108,20 +108,22 @@ final class GenerationController {
     }
   }
 
-  /// Saves the tab as a preset (parameters, model, negative prompt; never the prompt).
-  /// False when the name is empty.
+  /// Saves the tab as a preset (parameters but not the size, model, prompt and negative prompt). Whoever does
+  /// not want the prompt in it empties the field first. False when the name is empty.
   @discardableResult
   func savePreset(named name: String, with connection: DrawThingsConnection) -> Bool {
     presets.save(
       Preset(
-        name: name, model: connection.selection.selectedFile ?? "", negativePrompt: negativePrompt,
+        name: name, model: connection.selection.selectedFile ?? "", prompt: prompt, negativePrompt: negativePrompt,
         parameters: parameters))
   }
 
-  /// Puts a preset on the tab; the prompt stays.
+  /// Puts a preset on the tab: its parameters (the canvas size stays), its prompt and negative prompt when it
+  /// has them, its model when it names one.
   func load(_ preset: Preset, with connection: DrawThingsConnection) {
-    let load = PresetLoad.of(preset, currentNegativePrompt: negativePrompt, catalog: connection.monitor.catalog)
+    let load = PresetLoad.of(preset, current: fields, catalog: connection.monitor.catalog)
     parameters = load.parameters
+    prompt = load.prompt
     negativePrompt = load.negativePrompt
     if lockRatio { lockedRatio = currentRatio }
     if let model = load.model { connection.selection.select(model) }

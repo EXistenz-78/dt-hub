@@ -5413,13 +5413,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Saves the model, the settings and the negative prompt, not the prompt."
+            "value": "Saves the model, the settings, the prompt and the negative prompt, not the size of the canvas."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Salva il modello, le impostazioni e il prompt negativo, non il prompt."
+            "value": "Salva il modello, le impostazioni, il prompt e il prompt negativo, non le dimensioni del canvas."
           }
         }
       }
