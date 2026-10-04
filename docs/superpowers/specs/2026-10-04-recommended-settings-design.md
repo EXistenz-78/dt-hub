@@ -1,6 +1,6 @@
 # DT Hub — Design delle impostazioni consigliate per modello
 
-Data: 4 ottobre 2026 · Stato: da approvare · Estende `2026-09-29-dt-hub-core-design.md` (§5 modelli, §6 parametri)
+Data: 4 ottobre 2026 · Stato: realizzata · Estende `2026-09-29-dt-hub-core-design.md` (§5 modelli, §6 parametri)
 
 ## 1. Scopo
 
