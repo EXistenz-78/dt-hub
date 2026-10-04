@@ -121,7 +121,7 @@ La configurazione di DT (`GenerationConfiguration`) ha 97 campi. Un campo si mos
 - la configurazione completa nel formato "Copy Configuration" di DT, con import ed export e fusione di una configurazione parziale incollata;
 - tutti i 97 campi sono raggiungibili qui, compresi video, campi deprecati e modelli datati (image prior di Kandinsky, stage 2 di Würstchen).
 
-**Preset:**
+**Preset** (aggiornato il 4 ottobre 2026: il preset contiene anche il prompt e non ha più le dimensioni; `2026-10-04-preset-pipeline-design.md`):
 - salvataggio e caricamento di configurazioni con un nome;
 - import da file: un elenco JSON di `{name, configuration}` (la forma di `custom_configs.json` e della lista pubblica di Draw Things), scelto con il pannello di apertura. `custom_configs.json` non esiste nelle versioni recenti di Draw Things, che tengono le configurazioni dell'utente in un database interno: i preset personali si portano con "Copy Configuration" incollato nell'editor JSON (verificato il 1 ottobre 2026).
 

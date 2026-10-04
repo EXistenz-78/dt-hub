@@ -1,6 +1,6 @@
 # DT Hub — Design del prompt nei preset e della pipeline di preset
 
-Data: 4 ottobre 2026 · Stato: da approvare · Estende `2026-09-29-dt-hub-core-design.md` (§6 Preset) e `2026-10-03-plugin-design.md` (§7, §11: **sostituisce** i passaggi con `fields` e `loras` della pipeline)
+Data: 4 ottobre 2026 · Stato: realizzata (P1 e P2) · Estende `2026-09-29-dt-hub-core-design.md` (§6 Preset) e `2026-10-03-plugin-design.md` (§7, §11: **sostituisce** i passaggi con `fields` e `loras` della pipeline)
 
 ## 1. Scopo
 
