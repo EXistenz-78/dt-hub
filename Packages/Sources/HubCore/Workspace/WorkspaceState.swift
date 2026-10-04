@@ -1,8 +1,8 @@
 import Foundation
 import Observation
 
-/// The tab bar under the header: the built-in Control and Generation tabs first, then one tab
-/// per active plug-in, in activation order (spec §7, tab Control spec §3).
+/// The tab bar under the header: one tab per active plug-in, in activation order, then the built-in
+/// Control and Generation tabs (spec §7, tab Control spec §3; plug-ins first since 4 October 2026).
 @MainActor
 @Observable
 public final class WorkspaceState {
@@ -24,7 +24,7 @@ public final class WorkspaceState {
     selectedTabID = saved == controlTab.id ? controlTab.id : generationTab.id
   }
 
-  public var tabs: [WorkspaceTab] { [controlTab, generationTab] + pluginTabs }
+  public var tabs: [WorkspaceTab] { pluginTabs + [controlTab, generationTab] }
 
   /// Replaces the plug-in tabs. A tab reusing a built-in id, or an id already listed, is
   /// dropped. If the selected tab disappears, Generation is selected.
