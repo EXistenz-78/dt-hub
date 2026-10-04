@@ -1701,6 +1701,23 @@
         }
       }
     },
+    "contribution.fromPrevious": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "from the previous result"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "dal risultato precedente"
+          }
+        }
+      }
+    },
     "contribution.off": {
       "extractionState": "manual",
       "localizations": {
@@ -3720,6 +3737,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Scegli prima un modello."
+          }
+        }
+      }
+    },
+    "pipeline.missingPreset": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preset not found: %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preset non trovato: %@"
           }
         }
       }

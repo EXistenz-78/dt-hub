@@ -13,6 +13,7 @@ struct PresetBar: View {
   @State private var managing = false
   @State private var editingJSON = false
   @State private var importMessage: String?
+  @Environment(PluginRegistry.self) private var plugins: PluginRegistry?
 
   var body: some View {
     HStack(spacing: DS.controlGap) {
@@ -24,7 +25,7 @@ struct PresetBar: View {
           Button {
             controller.load(preset, with: connection)
           } label: {
-            Text(verbatim: preset.name)
+            Text(verbatim: title(of: preset))
           }
         }
         Divider()
@@ -83,6 +84,13 @@ struct PresetBar: View {
     .sheet(isPresented: $editingJSON) {
       JSONEditorSheet(controller: controller, connection: connection)
     }
+  }
+
+  /// The name, and "da <plug-in>" for a preset a plug-in brought.
+  private func title(of preset: Preset) -> String {
+    guard let origin = preset.origin else { return preset.name }
+    let plugin = plugins?.entries.first { $0.id == origin }?.name ?? origin
+    return preset.name + " · " + String(format: String(localized: "control.source.plugin"), plugin)
   }
 
   /// Asks for a file with a list of presets; the result is told in the bar.
