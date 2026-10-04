@@ -124,3 +124,4 @@ Il contratto resta la **versione 1**: i nuovi messaggi sono aggiunte, e un'app c
 - Il plug-in di esempio 1.2 (e la sua variante B, per provare i conflitti) manda tutto questo e risponde a un messaggio `press` (come premere un pulsante), usato dai test.
 
 > **Aggiornato il 4 ottobre 2026:** i passaggi della pipeline con `fields` e `loras` qui sopra sono sostituiti da passaggi che nominano un preset (`2026-10-04-preset-pipeline-design.md`).
+- **`presets`** (plug-in → app): preset per il menu Preset, con la risposta `{"type":"ok","added":n,"existing":m,"rejected":k}`; il contratto è in `2026-10-04-preset-pipeline-design.md` §3 e nel README del kit.
