@@ -6,8 +6,13 @@ let package = Package(
   name: "SphereLight",
   platforms: [.macOS(.v26)],
   products: [.library(name: "SphereLight", type: .dynamic, targets: ["SphereLight"])],
+  dependencies: [.package(name: "PluginKit", path: "../../PluginKit")],
   targets: [
-    .target(name: "SphereLight"),
+    // Every plug-in carries its own copy of the kit; `moduleAliases` gives it a name of its own, so two plug-ins
+    // do not define the same Objective-C classes twice in one process.
+    .target(
+      name: "SphereLight",
+      dependencies: [.product(name: "DTHubPluginKit", package: "PluginKit", moduleAliases: ["DTHubPluginKit": "SphereLightKit"])]),
     .testTarget(name: "SphereLightTests", dependencies: ["SphereLight"]),
   ]
 )
