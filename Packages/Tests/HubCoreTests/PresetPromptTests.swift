@@ -61,3 +61,42 @@ struct PresetPromptTests {
     #expect(old.prompt.isEmpty && old.origin == nil && old.parameters.steps == 9)
   }
 }
+
+@MainActor
+struct PresetReviewTests {
+  func tempFile() -> URL {
+    FileManager.default.temporaryDirectory
+      .appendingPathComponent("PresetReviewTests-\(UUID())", isDirectory: true).appendingPathComponent("presets.json")
+  }
+
+  @Test func savingOverAPluginsPresetWithoutAnOriginKeepsItsOrigin() {
+    let store = PresetStore(fileURL: tempFile())
+    store.add(fromPlugin: [Preset(name: "Match", parameters: GenerationParameters(steps: 4), origin: "com.x")])
+    // What the Save sheet does: a new Preset with the same name and no origin.
+    store.save(Preset(name: "match", parameters: GenerationParameters(steps: 9)))
+    #expect(store.preset(named: "Match")?.origin == "com.x" && store.preset(named: "Match")?.parameters.steps == 9)
+    // A user's own preset stays the user's.
+    store.save(Preset(name: "Mine"))
+    store.save(Preset(name: "Mine", parameters: GenerationParameters(steps: 3)))
+    #expect(store.preset(named: "Mine")?.origin == nil)
+  }
+
+  @Test func anUnreadablePresetFileIsKeptAsideNotOverwrittenByThePluginsPresets() throws {
+    let file = tempFile()
+    try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try Data("this is {not json".utf8).write(to: file)
+    let store = PresetStore(fileURL: file)
+    #expect(store.presets.isEmpty)
+    store.add(fromPlugin: [Preset(name: "One", origin: "com.x")])
+    let aside = file.deletingLastPathComponent().appendingPathComponent("presets.unreadable.json")
+    #expect(try String(contentsOf: aside, encoding: .utf8) == "this is {not json")
+    #expect(PresetStore(fileURL: file).presets.map(\.name) == ["One"])
+  }
+
+  @Test func aReadableFileIsNotMovedAside() throws {
+    let file = tempFile()
+    PresetStore(fileURL: file).save(Preset(name: "A"))
+    _ = PresetStore(fileURL: file)
+    #expect(!FileManager.default.fileExists(atPath: file.deletingLastPathComponent().appendingPathComponent("presets.unreadable.json").path))
+  }
+}

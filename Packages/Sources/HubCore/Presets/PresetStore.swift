@@ -14,8 +14,15 @@ public final class PresetStore {
   public init(fileURL: URL) {
     self.fileURL = fileURL
     let data = try? Data(contentsOf: fileURL)
-    presets = (data.flatMap { try? JSONDecoder().decode([LossyPreset].self, from: $0) } ?? [])
-      .compactMap(\.preset)
+    let decoded = data.flatMap { try? JSONDecoder().decode([LossyPreset].self, from: $0) }
+    if data != nil, decoded == nil {
+      // A file that is not a list of presets (edited by hand, damaged) is kept beside, not overwritten by the
+      // next save or by the presets a plug-in adds.
+      let aside = fileURL.deletingLastPathComponent().appendingPathComponent("presets.unreadable.json")
+      try? FileManager.default.removeItem(at: aside)
+      try? FileManager.default.moveItem(at: fileURL, to: aside)
+    }
+    presets = (decoded ?? []).compactMap(\.preset)
     presets = Self.sorted(presets)
   }
 
@@ -38,6 +45,8 @@ public final class PresetStore {
     guard !preset.name.isEmpty else { return false }
     if let index = presets.firstIndex(where: { Self.same($0.name, preset.name) }) {
       preset.id = presets[index].id
+      // A plug-in's preset the user saves again under its name stays the plug-in's.
+      preset.origin = preset.origin ?? presets[index].origin
       presets[index] = preset
     } else {
       presets.append(preset)
