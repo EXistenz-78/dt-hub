@@ -147,3 +147,12 @@ I test di sessione dell'M3 (`GenerationSessionTests`) sono stati resi determinis
 - **Un sampler sconosciuto** in una voce: lo script lo accetta, Swift scarta la voce e il modello ricade sulla famiglia. Lo script dovrebbe rifiutare i sampler fuori da 0–19, o Swift non ripiegare quando la chiave del modello c'è.
 - **`applying` riduce anche `cfgZeroInitSteps`** (via `clamped()`) e tornando a un modello con più passi non lo ripristina.
 - **`selectingWithoutChoosingKeepsTheValues`** controlla solo il file scelto, non i parametri.
+
+## Rimandi del plug-in Sphere Light
+
+- **Non è firmato né notarizzato** e non c'è una pagina di download: la distribuzione ad altri è un lavoro a parte.
+- **Il LoRA e Klein 9B devono essere installati:** il plug-in non li controlla (se mancano lo dice Draw Things).
+- **La colla** (`SLRState`, le viste, `SphereLightPlugin`) non ha test automatici; la logica sta in `SphereSender`, `SLRMessages`, `SLRStore` e `DesktopSaver`.
+- **«Run · 1 passaggi»** quando la pipeline ha un solo passaggio: la stringa `header.run.pipeline` dell'app non ha il singolare.
+- **L'app standalone `LightDirectionApp`** resta com'è e non si sviluppa più: le correzioni al renderer vanno fatte nel plug-in.
+

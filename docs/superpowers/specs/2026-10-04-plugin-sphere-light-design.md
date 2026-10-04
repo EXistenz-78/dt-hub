@@ -1,6 +1,6 @@
 # DT Hub — Plug-in Sphere Light Reference (SLR)
 
-Data: 4 ottobre 2026 · Stato: bozza da approvare · Primo plug-in vero; usa il contratto 1 così com'è (`2026-10-03-plugin-design.md`, `2026-10-04-preset-pipeline-design.md`)
+Data: 4 ottobre 2026 · Stato: realizzata · Primo plug-in vero; usa il contratto 1 così com'è (`2026-10-03-plugin-design.md`, `2026-10-04-preset-pipeline-design.md`)
 
 ## 1. Scopo
 
