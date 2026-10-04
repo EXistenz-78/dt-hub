@@ -155,4 +155,10 @@ I test di sessione dell'M3 (`GenerationSessionTests`) sono stati resi determinis
 - **La colla** (`SLRState`, le viste, `SphereLightPlugin`) non ha test automatici; la logica sta in `SphereSender`, `SLRMessages`, `SLRStore` e `DesktopSaver`.
 - **«Run · 1 passaggi»** quando la pipeline ha un solo passaggio: la stringa `header.run.pipeline` dell'app non ha il singolare.
 - **L'app standalone `LightDirectionApp`** resta com'è e non si sviluppa più: le correzioni al renderer vanno fatte nel plug-in.
+- **Lo `strength` 1 dello script non si riproduce:** il contratto 1 non ha una chiave per lo strength; un valore esplicito nel tab Control vale per entrambi i passaggi (Klein è un modello Edit e lo forza al 100%).
+- **Il passaggio «Overcast» usa il Moodboard del tab** (come lo script): con una sfera già nel Moodboard, Klein la legge come riferimento nel primo passaggio. Si può dare al passaggio `"moodboard": []` se l'app lo tratta come «nessuno» (da verificare).
+- **«Invia a Generazione» e «Solo la sfera» scrivono lo stesso file:** una pipeline in attesa gira con l'ultima sfera mandata.
+- **`SphereSender.describe`** ignora i `problems` della risposta di `contribute` e un `error` senza testo dice «Nessuna risposta»; un errore di scrittura nella cartella delle immagini dice «Calcolo non riuscito».
+- **`DesktopSaver`** va in overflow con un file chiamato `Sphere Light 9223372036854775807.png` (usare `addingReportingOverflow`).
+- **Stringhe `active`/`inactive`** di `Strings.swift` inutilizzate; test da rafforzare: l'ordine preset → pipeline, i segnaposto uguali nelle due lingue, `describe` con `problems`, valori salvati fuori intervallo.
 

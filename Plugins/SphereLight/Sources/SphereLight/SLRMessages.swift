@@ -19,6 +19,8 @@ enum SLRMessages {
     [
       "prompt": prompt, "steps": 4, "guidanceScale": 1.0, "shift": 3, "sampler": 16,
       "batchSize": 1, "batchCount": 1, "cfgZeroStar": false,
+      // A preset leaves this switch on unless it says otherwise, and with it on Draw Things ignores the shift.
+      "resolutionDependentShift": false,
     ]
   }
 
