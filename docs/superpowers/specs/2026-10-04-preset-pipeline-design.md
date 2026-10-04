@@ -25,7 +25,7 @@ Fuori: passaggi con valori propri; preset condivisi tra plug-in; esportare i pre
 
 **Dimensioni.** Caricare un preset lascia larghezza e altezza del tab come sono (`PresetLoad` le ripete dal tab; se il preset spegne il Tiled Diffusion e il lato supera 2048, `fitSizeToLimit` come sempre). Salvare non le scrive più; quelle presenti nei file già salvati e negli import restano nel file ma non si usano. Le sessioni, «Riprendi parametri» e l'editor JSON non cambiano: quelli sono parametri, non preset.
 
-`Preset` ottiene `prompt: String` (vuoto = nessuno). Salvare un preset salva il prompt del tab; caricarlo lo rimette solo se non è vuoto. `PresetLoad` ottiene `prompt: String?` (nil = il tab resta com'è). La lettura dei file è tollerante: un preset salvato prima non ha il campo e vale vuoto. La spec principale §6 («mai il prompt») si aggiorna. L'import di `custom_configs.json` non cambia (nessun prompt).
+`Preset` ottiene `prompt: String` (vuoto = nessuno). Salvare un preset salva il prompt del tab; caricarlo lo rimette solo se non è vuoto. `PresetLoad` ottiene `prompt: String` (il prompt del preset se non è vuoto, altrimenti quello del tab). La lettura dei file è tollerante: un preset salvato prima non ha il campo e vale vuoto. La spec principale §6 («mai il prompt») si aggiorna. L'import di `custom_configs.json` non cambia (nessun prompt).
 
 ## 3. Preset che vengono da un plug-in
 
@@ -66,11 +66,11 @@ Fuori: passaggi con valori propri; preset condivisi tra plug-in; esportare i pre
 
 Al posto di `presets.json` c'è una **cartella `Presets/`** (nella cartella di supporto dell'app) con **un file `<nome>.json` per preset**. Nessuna migrazione: l'app non è ancora uscita e `presets.json` non si legge più.
 - **Il nome del preset è il nome del file**, senza `.json`; nel JSON non c'è il campo `name` (né `id`, né `origin`). I nomi seguono le regole del file system di macOS: **non possono contenere `/` né `:`** (un salvataggio con quel nome è rifiutato con un messaggio; un plug-in che lo manda lo vede contato tra gli scartati) e **maiuscole e accenti non li distinguono** (due nomi uguali a meno di questi sono lo stesso preset).
-- **L'elenco** (il menu Preset, «Gestisci preset…») si ricava dai **nomi dei file**, rileggendo la cartella a ogni apertura: l'app non tiene i preset in memoria.
+- **L'elenco** (il menu Preset, «Gestisci preset…») si ricava dai **nomi dei file**; la cartella si rilegge all'avvio, dopo ogni modifica fatta dall'app, quando la finestra torna attiva e prima di ogni lettura di un preset: l'app non tiene il contenuto dei preset in memoria.
 - **Il contenuto** si legge solo quando serve: caricando un preset si legge quel file, quel momento; un file modificato a mano vale subito. Un file che non si decodifica compare nell'elenco e dà un errore («Preset non leggibile: <nome>») quando lo si carica; gli altri non sono toccati.
 - **La pipeline**: al Run l'app legge **solo i preset che la pipeline nomina** e li tiene in memoria per tutto il Run. Se uno manca («Preset non trovato: <nomi>») o non si legge («Preset non leggibile: <nomi>») non parte nessun passaggio. Un preset cancellato o cambiato durante il Run non cambia più nulla: vale la copia letta all'inizio.
 - Salvare scrive il file (sostituendo quello dello stesso nome), rinominare rinomina il file, cancellare lo toglie. Un plug-in aggiunge un preset solo se il file non esiste.
-- Fuori: controllare la cartella mentre l'app è aperta (la rilettura avviene a ogni apertura del menu e a ogni Run); una cache dell'elenco.
+- Fuori: controllare la cartella mentre l'app è aperta (la rilettura avviene come sopra); una cache dell'elenco.
 
 ## 9. Tappe (sullo stesso branch `m8b-plugin`, un solo merge alla fine, deciso con l'utente)
 
