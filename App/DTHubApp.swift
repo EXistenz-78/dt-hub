@@ -44,6 +44,7 @@ struct DTHubApp: App {
       tempFolder: FileManager.default.temporaryDirectory.appendingPathComponent("DTHub-plugins", isDirectory: true))
     // Contributions land on the Generation tab; a plug-in's question goes to the language model.
     generation.attach(plugins.contributions)
+    plugins.presetStore = generation.presets
     plugins.askLanguageModel = { prompt, images in try await languageModel.respond(to: prompt, images: images) }
     plugins.start(skipping: NSEvent.modifierFlags.contains(.option))
     _plugins = State(initialValue: plugins)

@@ -67,7 +67,10 @@ enum ContributionText {
   static func pipelineHelp(_ contribution: PipelineContribution, plugins: PluginRegistry) -> String {
     let plugin = plugins.entries.first { $0.id == contribution.pluginID }?.name ?? contribution.pluginID
     let list = contribution.pipeline.steps.enumerated().map { index, step in
-      "\(index + 1). " + (step.title.isEmpty ? String(format: String(localized: "contribution.pass"), index + 1) : step.title)
+      var line = "\(index + 1). " + (step.title.isEmpty ? String(format: String(localized: "contribution.pass"), index + 1) : step.title)
+      if !step.preset.isEmpty { line += " — " + step.preset }
+      if step.useOutputAsStart { line += " ← " + String(localized: "contribution.fromPrevious") }
+      return line
     }
     return ([plugin + (contribution.pipeline.name.isEmpty ? "" : " · " + contribution.pipeline.name)] + list).joined(separator: "\n")
   }

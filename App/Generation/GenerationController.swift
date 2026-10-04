@@ -182,6 +182,15 @@ final class GenerationController {
   @discardableResult
   func run(with connection: DrawThingsConnection) -> Bool {
     guard canRun(with: connection) else { return false }
+    // A pipeline whose presets are not all in the Preset menu does not start.
+    if let pipeline = contributions?.pipeline?.pipeline {
+      let missing = PipelinePresets.missing(in: pipeline, store: presets)
+      if !missing.isEmpty {
+        session.fail(
+          with: .generationFailed(String(format: String(localized: "pipeline.missingPreset"), missing.joined(separator: ", "))))
+        return true
+      }
+    }
     isPreparing = true
     let passes = contributions?.pipeline?.pipeline.steps
     preparation = Task {
@@ -201,8 +210,8 @@ final class GenerationController {
     return true
   }
 
-  /// The passes of a pipeline, one after the other (plug-in design §7). Each pass runs the tab's fields with
-  /// its own changes on top; the picture a pass makes can be the next one's start image. A failed or stopped
+  /// The passes of a pipeline, one after the other (plug-in design §7, preset design §4). Each pass runs the
+  /// tab's fields with its preset on them; the picture a pass makes can be the next one's start image. A failed or stopped
   /// pass ends the pipeline; the pictures already made stay in the strip.
   private func runPipeline(_ passes: [PipelineStep], with connection: DrawThingsConnection) async {
     defer {
@@ -214,7 +223,8 @@ final class GenerationController {
     for (index, pass) in passes.enumerated() {
       guard !Task.isCancelled else { return }
       pipelinePass = (index + 1, passes.count)
-      let used = pass.fields(over: fields)
+      let used = PipelinePresets.fields(
+        for: pass, over: fields, store: presets, catalog: connection.monitor.catalog)
       guard let base = await renderInputs(in: connection, parameters: used.parameters) else { return }
       guard !Task.isCancelled, let backend = connection.monitor.backend, let model = connection.selection.selectedFile,
         RunAvailability.blocker(
