@@ -84,7 +84,7 @@ struct HeaderBar: View {
             Toggle(
               isOn: Binding(
                 get: { selection.selectedFile == model.file },
-                set: { _ in selection.select(model.file) })
+                set: { _ in generation.chooseModel(model.file, in: connection) })
             ) {
               Text(verbatim: model.name)
             }

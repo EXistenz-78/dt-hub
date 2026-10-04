@@ -83,6 +83,24 @@ final class GenerationController {
     pendingSave = nil
   }
 
+  /// The recommended values per model, from the file the app ships (`RecommendedSettings.json`).
+  @ObservationIgnored let recommended: RecommendedSettings = {
+    guard let url = Bundle.main.url(forResource: "RecommendedSettings", withExtension: "json"),
+      let data = try? Data(contentsOf: url)
+    else { return .empty }
+    return RecommendedSettings(data: data)
+  }()
+
+  /// The model chosen in the header: selected, and the tab takes its recommended steps, guidance, sampler and
+  /// shift when the model changes (a model the table does not know leaves the values as they are).
+  func chooseModel(_ file: String, in connection: DrawThingsConnection) {
+    if let values = connection.selection.choose(
+      file, applyingTo: parameters, from: recommended, in: connection.monitor.catalog)
+    {
+      parameters = values
+    }
+  }
+
   /// The saved presets (spec §6).
   let presets = PresetStore(folder: PresetStore.defaultFolder)
   /// Reads and writes the Draw Things configuration JSON (spec §6, level 3).
