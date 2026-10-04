@@ -137,3 +137,10 @@ I test di sessione dell'M3 (`GenerationSessionTests`) sono stati resi determinis
 - **`runPipeline` decodifica e ricodifica le immagini dei passaggi sul thread principale**, e `contribute` legge i file del plug-in sul thread principale: a canvas di 8192 l'interfaccia si ferma per qualche centinaio di millisecondi.
 - **Un plug-in già caricato e spento dalle Preferenze** diventa inattivo per il lavoro subito, ma il codice resta caricato fino al riavvio (dal menu dell'header si può riattivare).
 
+## Rimandi delle impostazioni consigliate
+
+- **Le voci con LoRA acceleratore** (Lightning, Turbo) non sono nella tabella: la scelta resta all'utente (`docs/superpowers/reference-lora-acceleratori.md` mostra cosa cambierebbero).
+- **La tabella si rigenera a mano** con `python3 Scripts/make-recommended-settings.py` quando Draw Things aggiorna la lista; i modelli nuovi hanno il valore consigliato solo dopo la rigenerazione.
+- **Nessun avviso né annullamento** quando cambiare modello cambia i valori.
+- **Il menu dei modelli non ha test automatici**; la logica sta in `ModelSelection.choose`.
+
