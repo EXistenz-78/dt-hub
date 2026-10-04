@@ -129,3 +129,11 @@ I test di sessione dell'M3 (`GenerationSessionTests`) sono stati resi determinis
 - **Nessuna cache dell'elenco:** con migliaia di preset ogni lettura scansiona la cartella.
 - **Prova dal vivo di P3 non completata dall'esecutore:** schermo bloccato durante la prova (modifica a mano di un file con l'app aperta, preset cancellato e Run, «Togli la pipeline»).
 
+## Rimandi della revisione di M8b
+
+- **«Run · 1 passaggi» / «Run · 1 passes»:** manca il plurale nel catalogo (il Sample con «Overcast» spento manda una pipeline di un passaggio).
+- **Nessun test carica insieme Sample e Sample B** (la coesistenza con `moduleAliases` è provata solo dal vivo).
+- **Un plug-in che rimanda il Moodboard** perde le immagini di prima anche se tutti i percorsi nuovi sono illeggibili.
+- **`runPipeline` decodifica e ricodifica le immagini dei passaggi sul thread principale**, e `contribute` legge i file del plug-in sul thread principale: a canvas di 8192 l'interfaccia si ferma per qualche centinaio di millisecondi.
+- **Un plug-in già caricato e spento dalle Preferenze** diventa inattivo per il lavoro subito, ma il codice resta caricato fino al riavvio (dal menu dell'header si può riattivare).
+
