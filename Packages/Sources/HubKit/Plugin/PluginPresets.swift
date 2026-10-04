@@ -7,8 +7,8 @@ public struct PluginPresets: Equatable, Sendable {
   public var presets: [Preset]
 
   /// Nil when the data is not a JSON object with a `presets` list. An entry without a name is left out.
-  /// Every preset is marked as the plug-in's (`origin`).
-  public init?(message: Data, origin: String) {
+  /// The name carries the plug-in's acronym (e.g. "SMP · Overcast"): the app adds nothing to say where it comes from.
+  public init?(message: Data) {
     guard let root = try? JSONDecoder().decode(JSONValue.self, from: message), case .object(let object) = root,
       case .array(let list)? = object["presets"]
     else { return nil }
@@ -21,8 +21,7 @@ public struct PluginPresets: Equatable, Sendable {
       var fields = overlay.applied(to: GenerationFields())
       fields.parameters.loras = PluginContribution.loras(entry["loras"]) ?? []
       return Preset(
-        name: name, prompt: fields.prompt, negativePrompt: fields.negativePrompt, parameters: fields.parameters,
-        origin: origin)
+        name: name, prompt: fields.prompt, negativePrompt: fields.negativePrompt, parameters: fields.parameters)
     }
   }
 }
