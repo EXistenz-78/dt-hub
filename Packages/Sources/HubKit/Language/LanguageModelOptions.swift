@@ -38,12 +38,16 @@ public struct LanguageModelOptions: Equatable, Sendable {
   public init(message: [String: Any]) {
     let options = message["options"] as? [String: Any] ?? [:]
     func number(_ key: String) -> Double? { (options[key] as? NSNumber)?.doubleValue }
+    /// A whole number brought into `range` while it is still a Double: `Int(1e20)` would trap.
+    func integer(_ key: String, in range: ClosedRange<Int>) -> Int? {
+      number(key).map { Int(min(max($0.rounded(), Double(range.lowerBound)), Double(range.upperBound))) }
+    }
     func flag(_ key: String) -> Bool? { (options[key] as? NSNumber).flatMap { Self.isBoolean($0) ? $0.boolValue : nil } }
     let system = (message["system"] as? String).flatMap { $0.isEmpty ? nil : $0 }
     self.init(
       system: system, temperature: number("temperature"), topP: number("topP"),
-      topK: number("topK").map { Int($0.rounded()) }, presencePenalty: number("presencePenalty"),
-      maxTokens: number("maxTokens").map { Int($0.rounded()) }, thinking: flag("thinking"))
+      topK: integer("topK", in: Self.topKRange), presencePenalty: number("presencePenalty"),
+      maxTokens: integer("maxTokens", in: Self.maxTokensRange), thinking: flag("thinking"))
     self = clamped()
   }
 

@@ -178,3 +178,8 @@ I test di sessione dell'M3 (`GenerationSessionTests`) sono stati resi determinis
 - **Nessun annullamento:** una richiesta `llm` non si può interrompere dal plug-in; un modello con il thinking acceso può metterci minuti.
 - **`refreshContext` rilegge la cartella dei modelli** a ogni cambio di tab (una scansione di due livelli): se pesasse, si memorizza l'elenco finché la cartella o le impostazioni non cambiano.
 - **Il solo Moodboard conta come T2I** (scelta dell'utente, 5 ottobre 2026): le sue immagini non vanno al PE T2I. Se in prova dal vivo Qwen 2.1 con il solo Moodboard si comporta da I2I, si cambia `PEPlanner` (una riga).
+- **Un booleano dove ci vuole un numero** (`"maxTokens": true`) viene letto come 1 e non ignorato (`number()` di `LanguageModelOptions` non scarta i `CFBoolean`; `flag()` sì). Test da aggiungere con la correzione.
+- **`languageModels: []`** si manda con la cartella dei modelli vuota, mentre le altre chiavi del contesto si omettono quando non hanno niente da dire; il README e i commenti dicono due cose un po' diverse.
+- **Due domande insieme a modelli diversi** (due plug-in, o un doppio clic) non si vedono tra loro: possono caricare due modelli insieme. Esisteva già con lo stesso modello; il caricamento per nome lo rende un po' più probabile.
+- **Un plug-in futuro che contribuisce un Moodboard a ogni contesto** ne rimanderebbe uno nuovo a ogni invio (le immagini cambiano id, il contesto si rimanda): nessun plug-in lo fa oggi.
+- **`startImage` è il file salvato**, senza ritaglio né disegno del Brush: se il PE deve vedere l'immagine incorniciata è una scelta di prodotto.

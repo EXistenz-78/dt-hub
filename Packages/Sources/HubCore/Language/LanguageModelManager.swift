@@ -90,6 +90,7 @@ public final class LanguageModelManager {
     } else {
       guard let chosen = selectedModel() else {
         state = .failed(.noModelSelected)
+        scheduleIdleUnload()  // a model a plug-in asked for by name may still be loaded
         throw .noModelSelected
       }
       model = chosen

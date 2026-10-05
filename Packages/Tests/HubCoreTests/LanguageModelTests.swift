@@ -195,6 +195,16 @@ struct LanguageModelManagerTests {
     }
   }
 
+  @Test func aQuestionWithNoChosenModelStillLetsTheIdleTimeFreeAModelLoadedByName() async throws {
+    let service = FakeLanguageModelService()
+    let manager = manager(service, root: try folder(), selected: "missing", idle: 2)
+    _ = try await manager.respond(to: "hi", modelNamed: "text-model")
+    #expect(manager.isLoaded)
+    await #expect(throws: LanguageModelError.noModelSelected) { try await manager.respond(to: "again") }
+    for _ in 0..<60 where manager.isLoaded { try await Task.sleep(for: .milliseconds(50)) }
+    #expect(!manager.isLoaded)
+  }
+
   @Test func theOptionsReachTheService() async throws {
     let service = FakeLanguageModelService()
     let manager = manager(service, root: try folder())
