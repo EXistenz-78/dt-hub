@@ -95,6 +95,23 @@ struct PMWriter {
     return conflicts > 0 ? L.format(.sentWithConflicts, conflicts, italian: italian) : L.text(.sent, italian: italian)
   }
 
+  // MARK: The suggested format
+
+  /// Sets the Generation tab to `ratio` with the area it has now (spec §7). Only when the user presses «Apply».
+  func applyRatio(_ ratio: String, currentWidth: Int?, currentHeight: Int?) async -> Outcome {
+    guard let currentWidth, let currentHeight, currentWidth > 0, currentHeight > 0 else {
+      return Outcome(status: L.text(.noSize, italian: italian), ratio: nil, sent: false)
+    }
+    guard let size = RatioSize.size(ratio: ratio, area: currentWidth * currentHeight) else {
+      return Outcome(status: L.format(.badRatio, ratio, italian: italian), ratio: nil, sent: false)
+    }
+    let result = await contribute(["fields": ["width": size.width, "height": size.height]])
+    guard Self.wasAccepted(result) else {
+      return Outcome(status: Self.describe(result, italian: italian), ratio: ratio, sent: false)
+    }
+    return Outcome(status: L.format(.formatApplied, size.width, size.height, italian: italian), ratio: nil, sent: true)
+  }
+
   // MARK: The scene Shuffle
 
   static let sceneSystem = """

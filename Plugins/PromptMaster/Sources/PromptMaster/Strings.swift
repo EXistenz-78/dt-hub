@@ -12,7 +12,7 @@ enum L {
     case chosen, clearAll, removeChosen, noneChosen, writePrompt, writing, booru
     // What happened
     case sent, sentWithConflicts, notAnswered, noMasterPrompt, emptyAnswer, llmFailed, sceneFailed
-    case enhancerModelMissing, enhancerSystemMissing, ratio, provisional
+    case enhancerModelMissing, enhancerSystemMissing, ratio, apply, formatApplied, noSize, badRatio, provisional
     case unreadableFile, unknownSchema, repeatedIDs, customNotSaved
   }
 
@@ -44,7 +44,9 @@ enum L {
     .sceneFailed: "No scene: %@",
     .enhancerModelMissing: "Prompt enhancer not found in the models folder: using the language model you chose.",
     .enhancerSystemMissing: "The enhancer %@ has no system_prompt.txt in its folder: using the language model you chose.",
-    .ratio: "Suggested format: %@", .provisional: "This family's master prompt is provisional.",
+    .ratio: "Suggested format: %@", .apply: "Apply", .formatApplied: "Size set to %d × %d.",
+    .noSize: "The size of the Generation tab is not known yet.", .badRatio: "The format “%@” cannot be applied.",
+    .provisional: "This family's master prompt is provisional.",
     .unreadableFile: "%@ cannot be read: using the copy built into the plug-in.",
     .unknownSchema: "%@ has a layout this plug-in does not know: using the copy built into the plug-in.",
     .repeatedIDs: "%@ uses the same id twice: using the copy built into the plug-in.",
@@ -65,7 +67,9 @@ enum L {
     .sceneFailed: "Nessuna scena: %@",
     .enhancerModelMissing: "Il prompt enhancer non è nella cartella dei modelli: uso il modello linguistico scelto.",
     .enhancerSystemMissing: "Nella cartella di %@ manca system_prompt.txt: uso il modello linguistico scelto.",
-    .ratio: "Formato consigliato: %@", .provisional: "Il master prompt di questa famiglia è provvisorio.",
+    .ratio: "Formato consigliato: %@", .apply: "Applica", .formatApplied: "Dimensione portata a %d × %d.",
+    .noSize: "La dimensione del tab Generazione non è ancora nota.", .badRatio: "Il formato «%@» non si può applicare.",
+    .provisional: "Il master prompt di questa famiglia è provvisorio.",
     .unreadableFile: "%@ non si legge: uso la copia incorporata nel plug-in.",
     .unknownSchema: "%@ ha un formato che questo plug-in non conosce: uso la copia incorporata.",
     .repeatedIDs: "%@ usa lo stesso id due volte: uso la copia incorporata nel plug-in.",

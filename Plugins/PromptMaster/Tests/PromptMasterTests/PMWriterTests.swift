@@ -163,6 +163,37 @@ struct PMWriterTests {
     #expect(outcome.status.contains("only 2 GB is free") && !outcome.sent && recorder.asks.count == 1)
   }
 
+  // MARK: The suggested format
+
+  private func width(_ recorder: Recorder) -> Int? { fields(recorder)?["width"] as? Int }
+  private func height(_ recorder: Recorder) -> Int? { fields(recorder)?["height"] as? Int }
+
+  @Test func applyingAFormatSetsTheSizeWithTheCurrentAreaAndSaysSo() async {
+    let recorder = Recorder()
+    let outcome = await writer(recorder).applyRatio("3:2", currentWidth: 1024, currentHeight: 1024)
+    #expect(width(recorder) == 1280 && height(recorder) == 832)
+    #expect(fields(recorder)?["prompt"] == nil)  // only the size is touched
+    #expect(outcome.status == "Size set to 1280 × 832." && outcome.sent && outcome.ratio == nil)
+    #expect(recorder.asks.isEmpty)  // no language model is involved
+  }
+
+  @Test func withoutAKnownSizeOrWithAFormatThatCannotBeReadNothingIsSent() async {
+    let recorder = Recorder()
+    #expect(await writer(recorder).applyRatio("3:2", currentWidth: nil, currentHeight: 1024).status == "The size of the Generation tab is not known yet.")
+    #expect(await writer(recorder).applyRatio("3:2", currentWidth: 0, currentHeight: 0).sent == false)
+    #expect(await writer(recorder).applyRatio("wide", currentWidth: 1024, currentHeight: 1024).status == "The format “wide” cannot be applied.")
+    #expect(recorder.contributions.isEmpty)
+  }
+
+  @Test func ifTheAppRefusesTheFormatItsReasonIsShownAndTheButtonStaysUseful() async {
+    let recorder = Recorder()
+    recorder.accepted = ["type": "error", "text": "The plug-in is not active."]
+    let refused = await writer(recorder).applyRatio("3:2", currentWidth: 1024, currentHeight: 1024)
+    #expect(refused.status == "The plug-in is not active." && !refused.sent && refused.ratio == "3:2")
+    recorder.accepted = nil
+    #expect(await writer(recorder).applyRatio("3:2", currentWidth: 1024, currentHeight: 1024).status == "No answer from the app.")
+  }
+
   // MARK: The scene
 
   @Test func theSceneComesBackAsTextInTheInterfaceLanguage() async throws {
