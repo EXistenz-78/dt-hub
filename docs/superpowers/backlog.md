@@ -217,10 +217,11 @@ Prima i master prompt davano «lunghezze obiettivo» prese dalle note del vecchi
 | Z-Image | 100–250 → 300 | 512 token di predefinito, fino a 1024; «funziona meglio con prompt lunghi e dettagliati» ([scheda ufficiale](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo/discussions/8), [mflux #810](https://github.com/mflux-community/mflux/pull/810)) |
 | SDXL | 30–55 → 60 | 77 token per encoder CLIP (notebook) |
 | SD 1.5 | 20–35 tag → 40 | 77 token CLIP, troncamento rigido (notebook) |
-| ERNIE-Image | 50–150 → 300 | 2048 caratteri (notebook) |
-| HiDream-I1 | 40–90 → 150 | 128 token bene, 248 al massimo ([Draw Things wiki](https://wiki.drawthings.ai/wiki/Prompting_Base_Model_Basics), [HF discussione 40](https://huggingface.co/HiDream-ai/HiDream-I1-Full/discussions/40)) |
+| ERNIE-Image | 50–150 → 300 | ≈2048 caratteri **solo dal notebook**; la scheda ufficiale ([baidu/ERNIE-Image](https://huggingface.co/baidu/ERNIE-Image)) non indica nessun limite |
+| HiDream-I1 | 40–90 → 150 | la pipeline di riferimento legge 128 token (CLIP 77) e tronca ([issue #18](https://github.com/HiDream-ai/HiDream-I1/issues/18), [HF discussione 40](https://huggingface.co/HiDream-ai/HiDream-I1-Full/discussions/40)); alcuni strumenti arrivano a 256 (SD.Next). **Prove deboli**: nessuna dichiarazione ufficiale sulla capacità vera del modello; tetto prudente |
 | Anima (Cosmos 2.5) | 30–120 → 300 | `max_sequence_length` 512 ([SGLang](https://lmsysorg.mintlify.app/cookbook/diffusion/CircleStone/Anima)) |
 
 - **Corretto rispetto a prima:** Z-Image non ha un limite di 800 caratteri e non perde attenzione dopo 75 token (affermazioni del vecchio PM che le fonti non confermano); FLUX, FLUX.2, Krea, Z-Image ed ERNIE potevano avere prompt molto più lunghi di «60–150 parole»; HiDream invece va **accorciato** (80 → 40–90 parole abituali, massimo 150).
+- **Criterio:** il limite è dell'encoder di testo del modello e dell'implementazione di riferimento, non del programma che lo esegue; Draw Things è stato usato solo come riscontro (FLUX.1, HiDream). Un programma può comunque imporre un tetto proprio più basso.
 - **Non verificato:** come Draw Things tratta i prompt oltre 77 token su SD/SDXL (concatenazione a blocchi o troncamento) e se imposta un limite proprio per le famiglie a 512 token; il massimo di Qwen Image 2.1 (assunto uguale a Qwen Image); i consigli di *efficacia* (cosa rende un prompt migliore, oltre al limite) restano da rivedere nella ricerca della spec §9.
 
