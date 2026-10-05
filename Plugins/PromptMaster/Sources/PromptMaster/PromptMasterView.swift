@@ -25,16 +25,6 @@ struct PromptMasterView: View {
     VStack(spacing: 0) {
       DSPanelHeader(icon: "text.alignleft", title: L.text(.description, italian: state.italian))
       VStack(alignment: .leading, spacing: DS.rowGap) {
-        ZStack(alignment: .topLeading) {
-          TextEditor(text: $state.description)
-            .font(.body).scrollContentBackground(.hidden).padding(6)
-          if state.description.isEmpty {
-            Text(L.text(.descriptionPlaceholder, italian: state.italian)).foregroundStyle(.tertiary)
-              .padding(.horizontal, 11).padding(.vertical, 14).allowsHitTesting(false)
-          }
-        }
-        .frame(minHeight: 110, maxHeight: 190)
-        .background(RoundedRectangle(cornerRadius: DS.minorRadius, style: .continuous).fill(Color.primary.opacity(0.06)))
         HStack {
           Spacer()
           Button(action: makeScene) {
@@ -53,6 +43,16 @@ struct PromptMasterView: View {
           .buttonStyle(DSPillButtonStyle())
           .disabled(state.isMakingScene || state.isWriting || !state.active)
         }
+        ZStack(alignment: .topLeading) {
+          TextEditor(text: $state.description)
+            .font(.body).scrollContentBackground(.hidden).padding(6)
+          if state.description.isEmpty {
+            Text(L.text(.descriptionPlaceholder, italian: state.italian)).foregroundStyle(.tertiary)
+              .padding(.horizontal, 11).padding(.vertical, 14).allowsHitTesting(false)
+          }
+        }
+        .frame(minHeight: 110, maxHeight: 190)
+        .background(RoundedRectangle(cornerRadius: DS.minorRadius, style: .continuous).fill(Color.primary.opacity(0.06)))
       }
       .padding(DS.panelPadding)
     }

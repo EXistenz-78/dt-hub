@@ -203,3 +203,24 @@ I test di sessione dell'M3 (`GenerationSessionTests`) sono stati resi determinis
 - **Una `schema` 2 nella cartella dati** si segnala di solito come «non si legge» e non come «layout sconosciuto» (si decodifica prima come schema 1).
 - **Ogni riga della lista osserva tutto `PMState`:** a ogni tasto nella descrizione si ridisegnano le righe aperte e si salva in `UserDefaults`; non misurato.
 - **Il cestino dei termini personali** è sempre visibile, non solo al passaggio del mouse (spec §4).
+
+## Lunghezze dei master prompt (verificate il 5 ottobre 2026)
+
+Prima i master prompt davano «lunghezze obiettivo» prese dalle note del vecchio PM, tra cui due non confermate dalle fonti. Ora ogni famiglia ha una lunghezza abituale (`words`) e un massimo (`maxWords`) che segue il limite vero dell'encoder di testo, con un margine, e il motivo (`lengthNote`). Il master prompt dice «aim for X; never beyond N».
+
+| Famiglia | Abituale → massimo | Limite vero e fonte |
+|---|---|---|
+| FLUX.1 | 80–250 → 300 parole | T5-XXL, 512 token (≈350 parole), il resto cade ([FLUX.1-dev, discussione 43](https://huggingface.co/black-forest-labs/FLUX.1-dev/discussions/43), [Draw Things wiki](https://wiki.drawthings.ai/wiki/Prompting_Base_Model_Basics): «10–250 parole») |
+| FLUX.2 (dev, klein 9B/4B) | 60–250 → 300 | `MAX_LENGTH = 512` ([DeepWiki flux2](https://deepwiki.com/black-forest-labs/flux2/3.2-text-encoders)) |
+| Krea 2 | 40–150 → 300 | 512 token; oltre 640 immagini nere o corrotte ([ComfyUI #14782](https://github.com/Comfy-Org/ComfyUI/issues/14782)) |
+| Qwen Image / 2.1 | 80–250 → 450 | `max_sequence_length` 1024 di predefinito ([diffusers](https://huggingface.co/docs/diffusers/main/api/pipelines/qwenimage)); fino a ≈500 parole secondo il notebook «Modelli generazione immagini» |
+| Z-Image | 100–250 → 300 | 512 token di predefinito, fino a 1024; «funziona meglio con prompt lunghi e dettagliati» ([scheda ufficiale](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo/discussions/8), [mflux #810](https://github.com/mflux-community/mflux/pull/810)) |
+| SDXL | 30–55 → 60 | 77 token per encoder CLIP (notebook) |
+| SD 1.5 | 20–35 tag → 40 | 77 token CLIP, troncamento rigido (notebook) |
+| ERNIE-Image | 50–150 → 300 | 2048 caratteri (notebook) |
+| HiDream-I1 | 40–90 → 150 | 128 token bene, 248 al massimo ([Draw Things wiki](https://wiki.drawthings.ai/wiki/Prompting_Base_Model_Basics), [HF discussione 40](https://huggingface.co/HiDream-ai/HiDream-I1-Full/discussions/40)) |
+| Anima (Cosmos 2.5) | 30–120 → 300 | `max_sequence_length` 512 ([SGLang](https://lmsysorg.mintlify.app/cookbook/diffusion/CircleStone/Anima)) |
+
+- **Corretto rispetto a prima:** Z-Image non ha un limite di 800 caratteri e non perde attenzione dopo 75 token (affermazioni del vecchio PM che le fonti non confermano); FLUX, FLUX.2, Krea, Z-Image ed ERNIE potevano avere prompt molto più lunghi di «60–150 parole»; HiDream invece va **accorciato** (80 → 40–90 parole abituali, massimo 150).
+- **Non verificato:** come Draw Things tratta i prompt oltre 77 token su SD/SDXL (concatenazione a blocchi o troncamento) e se imposta un limite proprio per le famiglie a 512 token; il massimo di Qwen Image 2.1 (assunto uguale a Qwen Image); i consigli di *efficacia* (cosa rende un prompt migliore, oltre al limite) restano da rivedere nella ricerca della spec §9.
+

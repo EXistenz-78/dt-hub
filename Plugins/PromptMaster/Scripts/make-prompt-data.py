@@ -14,25 +14,38 @@ PLUGIN = os.path.dirname(HERE)
 DEFAULT_SOURCE = "/Users/existenz/Software developement/Prompt generator/Prompt Master 2.0"
 
 DATABASE_VERSION = "2.1.0"
-MASTER_VERSION = "1.0.0"
+MASTER_VERSION = "1.1.0"
 
 # The families of Draw Things (its `version`), in the order of the spec §3; `old` is the family of PM 2.0 whose
 # category rules (only_for, blocked_for, blocked_categories) seed `hiddenCategories`.
 FAMILIES = [
-    # id,              label,                         old,           negative, words,      provisional
-    ("flux1",          "FLUX.1",                      "flux1",       False, "60-150",  False),
-    ("flux2",          "FLUX.2 [dev]",                "flux2_klein", False, "50-150",  True),
-    ("flux2_9b",       "FLUX.2 [klein] 9B",           "flux2_klein", False, "50-150",  False),
-    ("flux2_4b",       "FLUX.2 [klein] 4B",           "flux2_klein", False, "50-150",  False),
-    ("krea_2",         "Krea 2",                      "krea2",       True,  "30-70",   False),
-    ("qwen_image",     "Qwen Image",                  "qwen_image",  True,  "50-150",  False),
-    ("qwen_image_2.1", "Qwen Image 2.1",              "qwen_image",  False, "50-150",  True),
-    ("z_image",        "Z Image",                     "z_image",     False, "60-120",  False),
-    ("sdxl_base_v0.9", "Stable Diffusion XL",         "sdxl",        True,  "30-70",   False),
-    ("v1",             "Stable Diffusion 1.5",        "sd15",        True,  "15-40",   False),
-    ("ernie_image",    "ERNIE-Image",                 "ernie_image", True,  "30-80",   False),
-    ("hidream_i1",     "HiDream-I1",                  "flux1",       False, "50-150",  True),
-    ("cosmos2.5_2b",   "Anima (Cosmos 2.5)",          "illustrious", True,  "20-60",   True),
+    # id, label, old, negative, usual length, ceiling, unit, why the ceiling, provisional
+    ("flux1", "FLUX.1", "flux1", False, "80-250", 300, "words",
+     "the text encoder (T5-XXL) reads 512 tokens, about 350 words, and drops the rest", False),
+    ("flux2", "FLUX.2 [dev]", "flux2_klein", False, "60-250", 300, "words",
+     "the text encoder reads 512 tokens, about 350 words, and drops the rest", True),
+    ("flux2_9b", "FLUX.2 [klein] 9B", "flux2_klein", False, "60-250", 300, "words",
+     "the text encoder reads 512 tokens, about 350 words, and drops the rest", False),
+    ("flux2_4b", "FLUX.2 [klein] 4B", "flux2_klein", False, "60-250", 300, "words",
+     "the text encoder reads 512 tokens, about 350 words, and drops the rest", False),
+    ("krea_2", "Krea 2", "krea2", True, "40-150", 300, "words",
+     "the conditioning is limited to 512 tokens, about 350 words, and a longer prompt can corrupt the picture", False),
+    ("qwen_image", "Qwen Image", "qwen_image", True, "80-250", 450, "words",
+     "the text encoder reads about 1024 tokens, roughly 500 words, and the prompt is cut after that", False),
+    ("qwen_image_2.1", "Qwen Image 2.1", "qwen_image", False, "80-250", 450, "words",
+     "the text encoder reads about 1024 tokens, roughly 500 words, and the prompt is cut after that", True),
+    ("z_image", "Z Image", "z_image", False, "100-250", 300, "words",
+     "the text encoder reads 512 tokens by default, about 350 words, and drops the rest", False),
+    ("sdxl_base_v0.9", "Stable Diffusion XL", "sdxl", True, "30-55", 60, "words",
+     "each CLIP text encoder reads 77 tokens, about 55 words, and ignores the rest; commas and tags cost tokens too", False),
+    ("v1", "Stable Diffusion 1.5", "sd15", True, "20-35", 40, "tags",
+     "CLIP reads 77 tokens and ignores the rest; every tag and every comma costs tokens", False),
+    ("ernie_image", "ERNIE-Image", "ernie_image", True, "50-150", 300, "words",
+     "the prompt is limited to 2048 characters, about 330 words", False),
+    ("hidream_i1", "HiDream-I1", "flux1", False, "40-90", 150, "words",
+     "the encoders read 128 tokens well, about 90 words, and 248 at most, about 150 words", True),
+    ("cosmos2.5_2b", "Anima (Cosmos 2.5)", "illustrious", True, "30-120", 300, "words",
+     "the text conditioner works on 512 tokens, about 350 words", True),
 ]
 
 COMMON = """You write prompts for the image model "{label}".
@@ -51,43 +64,44 @@ OUTPUT_JSON = (
     "kept short and targeted, never a generic list of quality words unless the notes below say so. Both values are in English."
 )
 
+LENGTH = "- Length: aim for {words} {unit}. When the description and the terms need more room, go on, but never beyond {max} {unit}: {why}."
+
 NOTES = {
-    "flux1": """- Write natural, flowing prose in full sentences (T5 encoder: long relational sentences are fine). Target length: {words} words.
+    "flux1": """- Write natural, flowing prose in full sentences (T5 encoder: long relational sentences are fine).
 - Order: subject and action first, then setting, then light and color, then camera and lens, then style or medium.
 - Never use quality tags (masterpiece, 8k, best quality): they degrade the result. No numeric weights.
 - There is no negative prompt: say in positive words what the image contains; turn "avoid" terms into a positive description.
 - Text that must appear in the image goes in double quotes.""",
-    "flux2_klein": """- Write natural prose. The text encoder reads the first elements most strongly, so put the most important element first. Target length: {words} words (under 20 is under-specified, over 300 drifts).
+    "flux2_klein": """- Write natural prose. The text encoder reads the first elements most strongly, so put the most important element first. Under 20 words is under-specified.
 - Order: subject and action, setting, light and color, camera and lens, style or medium.
 - No negative prompt and no numeric weights: turn "avoid" terms into positive description. Never use quality tags.
 - Exact colors can be given as hex codes (#RRGGBB). Text in the image goes in double quotes, with font, color and position.""",
-    "krea_2": """- Write natural prose, {words} words. The model has an aesthetic of its own (depth of field, color grading, rim light): start minimal, with a clear subject, one note of light and one atmosphere, and do not over-specify technical parameters.
-- Keep the subject layer and the style layer in separate sentences.
+    "krea_2": """- Write natural prose. The model has an aesthetic of its own (depth of field, color grading, rim light): do not over-specify technical parameters, and keep the subject layer and the style layer in separate sentences.
 - Numeric weights are read as literal text: never use them.
 - A negative prompt is supported but must stay minimal and targeted, naming only specific artifacts or objects to avoid.""",
-    "qwen_image": """- Write natural prose like for FLUX, {words} words. Excellent with text in the image (also Chinese and other scripts): put it in double quotes and state font, color and position.
+    "qwen_image": """- Write natural prose like for FLUX. Excellent with text in the image (also Chinese and other scripts): put it in double quotes and state font, color and position.
 - A negative prompt is supported: use it targeted by kind of defect, never as a generic list of low-quality words; if nothing specific has to be excluded, leave "negative" empty.
 - You may end the prompt with the quality suffix "Ultra HD, 4k, cinematic composition".""",
-    "qwen_image_2.1": """- Write natural prose, {words} words. The text encoder is a vision-language model: precise spatial and material descriptions work well. Text in the image goes in double quotes with font, color and position.
+    "qwen_image_2.1": """- Write natural prose. The text encoder is a vision-language model: precise spatial and material descriptions work well. Text in the image goes in double quotes with font, color and position.
 - If the user wants a transparent background, say explicitly: an RGBA image with an alpha channel and a transparent background.
 - There is no negative prompt (guidance 1): turn "avoid" terms into positive description. Never use quality tags.
 (Provisional master prompt: to be reviewed against the model's documentation.)""",
-    "z_image": """- This is a distilled turbo model with no negative prompt and no numeric weights. Hard limit 800 characters; attention falls after about 75 tokens, so keep the essential content early. Target: {words} words.
+    "z_image": """- This is a distilled turbo model with no negative prompt and no numeric weights. It likes long, detailed prompts: describe the scene in full.
 - The very first sentence must be the style or medium (before the subject). Do not frame the image as "a photograph" or "a cinematic frame from a film": that framing overrides the style even in first position.
 - Turn "avoid" terms into positive description.""",
-    "sdxl": """- Start with one descriptive sentence, then a tail of comma-separated tags. Target: {words} words. Quality boosters (masterpiece, best quality) still work.
+    "sdxl": """- Start with one descriptive sentence, then a tail of comma-separated tags. The first words weigh the most. Quality boosters (masterpiece, best quality) still work.
 - Numeric weights like (term:1.2) are allowed, sparingly.
 - A negative prompt is recommended: a short comma-separated list of what to avoid (for example blurry, low quality, deformed hands) plus the terms the user marked as to avoid.""",
-    "sd15": """- Tags only: {words} comma-separated tags (CLIP, 77-token limit). Order is priority: the first tokens weigh the most, so start with the subject and the style.
+    "sd15": """- Tags only, comma-separated. Order is priority: the first tokens weigh the most, so start with the subject and the style.
 - Weights like (term:1.2) are allowed, sparingly.
 - A negative prompt is indispensable: a short comma-separated list (blurry, low quality, bad anatomy, extra limbs) plus the terms the user marked as to avoid.""",
-    "ernie_image": """- Follow-the-letter model: write a complete prompt of {words} words; the model does not enhance short prompts. Weights like (term:1.3) are supported.
+    "ernie_image": """- Follow-the-letter model: write a complete prompt; the model does not enhance short prompts. Weights like (term:1.3) are supported.
 - Text in the image: double quotes, the font style stated next to the text, an explicit position, short segments (8-10 words each).
 - A negative prompt is supported but must stay targeted by kind of defect (deformed hands, blurred text), never a generic list of low-quality words.""",
-    "hidream": """- Write natural prose, {words} words, subject first, then setting, light, camera and style. No quality tags, no numeric weights.
+    "hidream": """- Write natural prose, subject first, then setting, light, camera and style; put what matters most early, because only the first 128 tokens are read well. No quality tags, no numeric weights.
 - Turn "avoid" terms into positive description.
 (Provisional master prompt: to be reviewed against the model's documentation.)""",
-    "anima": """- Mix a short tag line with natural language: begin with quality and meta tags, then the subject tags (Danbooru style, underscores between words), then one or two sentences in plain English for the scene. Target: {words} words in total.
+    "anima": """- Mix a short tag line with natural language: begin with quality and meta tags, then the subject tags (Danbooru style, underscores between words), then one or two sentences in plain English for the scene.
 - A negative prompt is supported: a short comma-separated list of what to avoid.
 (Provisional master prompt: to be reviewed against the model's documentation.)""",
 }
@@ -134,12 +148,14 @@ def build(source):
     database = {"schema": 1, "version": DATABASE_VERSION, "groups": groups, "categories": categories}
 
     families = {}
-    for fid, label, old, negative, words, provisional in FAMILIES:
+    for fid, label, old, negative, words, ceiling, unit, why, provisional in FAMILIES:
         output = OUTPUT_JSON if negative else OUTPUT_TEXT
-        notes = NOTES[NOTES_KEY[fid]].format(words=words)
+        length = LENGTH.format(words=words, unit=unit, max=ceiling, why=why)
+        notes = length + "\n" + NOTES[NOTES_KEY[fid]]
         entry = {
             "label": label, "negative": negative, "hiddenCategories": hidden_categories(db, db["families"], old, negative),
-            "words": words, "system": COMMON.format(label=label, output=output, notes=notes),
+            "words": words, "maxWords": ceiling, "lengthNote": why[0].upper() + why[1:] + ".",
+            "system": COMMON.format(label=label, output=output, notes=notes),
         }
         if fid in BOORU:
             entry["booruSystem"] = BOORU[fid]
