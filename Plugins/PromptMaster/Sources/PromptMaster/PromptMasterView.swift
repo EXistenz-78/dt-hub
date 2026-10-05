@@ -7,6 +7,7 @@ struct PromptMasterView: View {
   @ObservedObject var state: PMState
   let write: () -> Void
   let makeScene: () -> Void
+  let applyRatio: () -> Void
 
   var body: some View {
     HStack(alignment: .top, spacing: DS.groupGap) {
@@ -97,6 +98,16 @@ struct PromptMasterView: View {
         }
         if !state.status.isEmpty {
           Text(state.status).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+        }
+        if let ratio = state.suggestedRatio {
+          Button(action: applyRatio) {
+            HStack(spacing: DS.pillIconGap) {
+              Image(systemName: "aspectratio")
+              Text("\(L.text(.apply, italian: state.italian)) \(ratio)")
+            }
+          }
+          .buttonStyle(DSPillButtonStyle())
+          .disabled(!state.canApplyRatio)
         }
         Button(action: write) {
           if state.isWriting {

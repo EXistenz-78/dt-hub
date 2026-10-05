@@ -30,6 +30,8 @@ struct SelectedTerm: Identifiable, Equatable {
   var id: String
   var title: String
   var categoryTitle: String
+  /// The English name of the category, which tells the language model how to use the term (a light, a palette, a genre).
+  var categoryEnglish: String
   var english: String
   var isNegative: Bool
 }
@@ -66,7 +68,8 @@ struct TermTree: Equatable {
         }
         for term in terms {
           every[term.id] = SelectedTerm(
-            id: term.id, title: term.title, categoryTitle: categoryTitle, english: term.english, isNegative: isNegative)
+            id: term.id, title: term.title, categoryTitle: categoryTitle, categoryEnglish: category.en,
+            english: term.english, isNegative: isNegative)
           order.append(term.id)
         }
         termIDs[category.id] = terms.map(\.id)

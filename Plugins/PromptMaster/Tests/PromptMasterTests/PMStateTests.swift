@@ -15,7 +15,7 @@ struct PMStateTests {
     let state = PMState(
       store: PMStore(defaults: defaults ?? self.defaults()), customStore: CustomTermsStore(folder: custom ?? folder()),
       italian: true, shuffler: { _, _, _ in shuffled })
-    state.update(family: "flux2_9b", startImage: nil, moodboard: [], languageModels: [])
+    state.update(family: "flux2_9b", languageModels: [])
     state.active = true
     return state
   }
@@ -42,7 +42,7 @@ struct PMStateTests {
     let state = PMState(
       store: PMStore(defaults: defaults()), customStore: CustomTermsStore(folder: folder()), italian: true,
       shuffler: { _, hidden, mode in seen = (hidden, mode); return ["lq_soft_diffused"] })
-    state.update(family: "z_image", startImage: nil, moodboard: [], languageModels: [])
+    state.update(family: "z_image", languageModels: [])
     state.setChosen("fr_closeup", true)
     state.mode = .art
     state.shuffle()
@@ -56,7 +56,7 @@ struct PMStateTests {
     let typography = PMData.embeddedDatabase.categories.first { $0.id == "typography_text" }!.terms[0].id
     state.setChosen(typography, true)
     #expect(state.selectedTerms.map(\.id) == [typography])
-    state.update(family: "z_image", startImage: nil, moodboard: [], languageModels: [])
+    state.update(family: "z_image", languageModels: [])
     #expect(!state.visibleTree.groups.flatMap(\.categories).contains { $0.id == "typography_text" })
     #expect(state.selectedTerms.isEmpty && state.selection == [typography])  // kept for when the family changes back
   }
@@ -132,7 +132,7 @@ struct PMStateTests {
     state.isWriting = true
     #expect(!state.canWrite)
     state.isWriting = false
-    state.update(family: "ideogram_4", startImage: nil, moodboard: [], languageModels: [])
+    state.update(family: "ideogram_4", languageModels: [])
     #expect(!state.canWrite && state.writeRequest?.family == "ideogram_4")
   }
 
@@ -150,12 +150,37 @@ struct PMStateTests {
     let state = state()
     state.description = "ciao"
     state.booru = true
-    state.update(family: "v1", startImage: "/s.png", moodboard: ["/m.png"], languageModels: [])
+    state.update(family: "v1", languageModels: [])
     var request = try #require(state.writeRequest)
-    #expect(request.booru && request.startImage == "/s.png" && request.moodboard == ["/m.png"] && request.description == "ciao")
-    state.update(family: "flux1", startImage: nil, moodboard: [], languageModels: [])
+    #expect(request.booru && request.description == "ciao")
+    state.update(family: "flux1", languageModels: [])
     request = try #require(state.writeRequest)
     #expect(!request.booru)
+  }
+
+  // MARK: The suggested format
+
+  @Test func theSuggestedFormatIsKeptUntilTheFamilyChangesAndTheSizeIsRemembered() {
+    let state = state()
+    state.update(family: "qwen_image_2.1", languageModels: [], width: 1024, height: 832)
+    #expect(state.currentWidth == 1024 && state.currentHeight == 832)
+    state.suggestedRatio = "3:2"
+    state.update(family: "qwen_image_2.1", languageModels: [], width: 1280, height: 832)  // the same family: kept
+    #expect(state.suggestedRatio == "3:2" && state.currentWidth == 1280)
+    state.update(family: "flux2_9b", languageModels: [])  // another family: gone
+    #expect(state.suggestedRatio == nil && state.currentWidth == nil)
+  }
+
+  @Test func theFormatCanBeAppliedOnlyWithAFormatAnActivePluginAndNothingBeingWritten() {
+    let state = state()
+    #expect(!state.canApplyRatio)
+    state.suggestedRatio = "3:2"
+    #expect(state.canApplyRatio)
+    state.isWriting = true
+    #expect(!state.canApplyRatio)
+    state.isWriting = false
+    state.active = false
+    #expect(!state.canApplyRatio)
   }
 
   // MARK: Memory

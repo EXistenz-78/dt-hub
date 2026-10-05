@@ -6,8 +6,8 @@ import Foundation
 /// for it.
 @MainActor
 struct PMWriter {
-  /// `host.askLanguageModelAnswer(_:images:system:model:options:)`.
-  var ask: @MainActor (_ prompt: String, _ images: [String], _ system: String?, _ model: String?, _ options: DTHubLLMOptions) async -> DTHubLLMAnswer
+  /// `host.askLanguageModelAnswer(_:system:model:options:)`.
+  var ask: @MainActor (_ prompt: String, _ system: String?, _ model: String?, _ options: DTHubLLMOptions) async -> DTHubLLMAnswer
   /// `host.contribute`.
   var contribute: @MainActor ([String: Any]) async -> [String: Any]?
   var italian = L.systemIsItalian
@@ -21,8 +21,6 @@ struct PMWriter {
     var description: String
     var terms: [SelectedTerm]
     var booru: Bool
-    var startImage: String?
-    var moodboard: [String]
     var languageModels: [DTHubLanguageModel]
   }
 
@@ -41,29 +39,28 @@ struct PMWriter {
   func write(_ request: Request) async -> Outcome {
     let master = request.masters.families[request.family]
     let plan = PEPlanner.plan(
-      family: request.family, startImage: request.startImage, moodboard: request.moodboard,
-      languageModels: request.languageModels, folderSize: folderSize, readFile: readFile)
+      family: request.family, languageModels: request.languageModels, folderSize: folderSize, readFile: readFile)
     var notes: [String] = []
     let answer: DTHubLLMAnswer
     switch plan {
     case .enhancer(let enhancer):
       answer = await ask(
-        BriefBuilder.request(description: request.description, terms: request.terms), enhancer.images, enhancer.system,
-        enhancer.model, enhancer.options)
+        BriefBuilder.enhancerRequest(description: request.description, terms: request.terms), enhancer.system, enhancer.model,
+        enhancer.options)
     case .generic(let reason):
       guard let brief = BriefBuilder.make(
         family: request.family, masters: request.masters, description: request.description, terms: request.terms,
         booru: request.booru)
       else { return Outcome(status: L.text(.noMasterPrompt, italian: italian), ratio: nil, sent: false) }
       switch reason {
-      case .modelMissing(let kind)?:
-        notes.append(L.text(kind == .t2i ? .enhancerModelMissingT2I : .enhancerModelMissingI2I, italian: italian))
+      case .modelMissing?:
+        notes.append(L.text(.enhancerModelMissing, italian: italian))
       case .systemPromptMissing(let model)?:
         notes.append(L.format(.enhancerSystemMissing, model, italian: italian))
       case nil:
         break
       }
-      answer = await ask(brief.prompt, [], brief.system, nil, Self.genericOptions)
+      answer = await ask(brief.prompt, brief.system, nil, Self.genericOptions)
     }
 
     let text: String
@@ -98,6 +95,23 @@ struct PMWriter {
     return conflicts > 0 ? L.format(.sentWithConflicts, conflicts, italian: italian) : L.text(.sent, italian: italian)
   }
 
+  // MARK: The suggested format
+
+  /// Sets the Generation tab to `ratio` with the area it has now (spec §7). Only when the user presses «Apply».
+  func applyRatio(_ ratio: String, currentWidth: Int?, currentHeight: Int?) async -> Outcome {
+    guard let currentWidth, let currentHeight, currentWidth > 0, currentHeight > 0 else {
+      return Outcome(status: L.text(.noSize, italian: italian), ratio: nil, sent: false)
+    }
+    guard let size = RatioSize.size(ratio: ratio, area: currentWidth * currentHeight) else {
+      return Outcome(status: L.format(.badRatio, ratio, italian: italian), ratio: nil, sent: false)
+    }
+    let result = await contribute(["fields": ["width": size.width, "height": size.height]])
+    guard Self.wasAccepted(result) else {
+      return Outcome(status: Self.describe(result, italian: italian), ratio: ratio, sent: false)
+    }
+    return Outcome(status: L.format(.formatApplied, size.width, size.height, italian: italian), ratio: nil, sent: true)
+  }
+
   // MARK: The scene Shuffle
 
   static let sceneSystem = """
@@ -108,7 +122,7 @@ struct PMWriter {
   func scene() async -> Result<String, SceneFailure> {
     let language = italian ? "Italian" : "English"
     let answer = await ask(
-      "Invent a subject with an action, and a setting, for an image. Write the two sentences in \(language).", [],
+      "Invent a subject with an action, and a setting, for an image. Write the two sentences in \(language).",
       Self.sceneSystem, nil, DTHubLLMOptions(temperature: 1.0, maxTokens: 300, thinking: false))
     switch answer {
     case .failure(let reason):

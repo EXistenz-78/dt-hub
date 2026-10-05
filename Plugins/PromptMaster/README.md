@@ -8,9 +8,15 @@ nel campo Prompt della Generazione (e nel negativo, per le famiglie che lo leggo
 - **Foto / Arte** guidano solo lo Shuffle (quali categorie pesca); **Shuffle** sostituisce la selezione con un termine a caso
   per categoria; **Shuffle scena** chiede all'LLM un soggetto e un'ambientazione e li scrive nella descrizione.
 - **Termini personali:** «Aggiungi un termine» in fondo a ogni categoria (una stringa, in qualsiasi lingua).
-- **Qwen Image 2.1:** se nella cartella dei modelli ci sono i due prompt enhancer ufficiali (`…PE-T2I…` e `…PE-I2I…`, con il loro
-  `system_prompt.txt` accanto ai pesi) il plug-in usa quelli al posto dell'LLM generico: l'I2I se c'è un'immagine di partenza
-  (il Moodboard non decide, ma con l'I2I le sue immagini vanno al modello). Altrimenti usa l'LLM scelto.
+- **Cosa riceve l'LLM:** la descrizione, poi i termini in inglese **con la loro categoria**, una riga per categoria
+  (`Light Source: Starlight`, `Color Palette: Jewel tones`): la categoria dice come usare il termine (una luce, una palette,
+  un genere) e evita che «butterfly lighting» diventi farfalle.
+- **Qwen Image 2.1:** se nella cartella dei modelli c'è il prompt enhancer T2I ufficiale (`…PE-T2I…`, con il suo
+  `system_prompt.txt` accanto ai pesi) il plug-in usa quello al posto dell'LLM generico, con una richiesta in prosa
+  (la descrizione e una riga `Look: …`). Sotto il prompt compare il formato che suggerisce, con un pulsante **Applica** che
+  porta larghezza e altezza della Generazione a quel rapporto, con la stessa area in pixel. Se il PE non c'è, vale il
+  modello scelto con il master prompt di ripiego (che ha la stessa struttura, massimo 500 parole). Il PE I2I non c'è: è per un
+  plug-in dedicato a Qwen Image 2.1.
 - Funziona con 13 famiglie (`PMFamilies.all`); sulle altre il tab è grigio.
 
 ## I dati
@@ -31,7 +37,7 @@ primi due. Le copie incorporate e i file di `Data/` si rigenerano con `Scripts/m
 ## Costruirlo
 
     Plugins/PromptMaster/Scripts/build.sh OUT_FOLDER     # fa OUT_FOLDER/PromptMaster.dthubplugin
-    cd Plugins/PromptMaster && swift test                # 97 test
+    cd Plugins/PromptMaster && swift test                # 112 test
 
 Poi si aggiunge in DT Hub › Preferenze › Plug-in e si accende dal menu Plug-in dell'header. Richiede il contratto `llm`
-con `system`, `model` e `options` e il `context` con `startImage`, `moodboard` e `languageModels` (tappa 1).
+con `system`, `model` e `options` e il `context` con `languageModels` e `parameters` (tappa 1).
