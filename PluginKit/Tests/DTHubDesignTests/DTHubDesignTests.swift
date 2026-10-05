@@ -18,4 +18,10 @@ struct DTHubDesignTests {
     _ = DSGroupHeader(title: "x", prominent: true)
     _ = DSPanelHeader(icon: "lightbulb", title: "x")
   }
+
+  @Test func aCollapsibleCardCanCarryAnAccessoryNextToItsTitle() {
+    // With and without: the existing calls (no accessory) keep compiling.
+    _ = DSCollapsibleCard("x", isExpanded: .constant(true), trailing: { Image(systemName: "minus.circle") }) { Text("y") }
+    _ = DSCollapsibleCard("x", systemImage: "lightbulb", tint: DS.remove, isExpanded: .constant(false)) { Text("y") }
+  }
 }

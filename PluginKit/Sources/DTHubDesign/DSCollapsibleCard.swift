@@ -3,12 +3,14 @@ import SwiftUI
 /// A collapsible card of the Generation tab (spec §7). `tint` colours the card, e.g.
 /// `DS.remove` for the negative prompt. A custom disclosure rather than `DisclosureGroup`:
 /// the stock control keeps a system focus ring around its triangle. Pass a localized title
-/// (`String(localized:)`): the catalog test rejects literals here.
-public struct DSCollapsibleCard<Content: View>: View {
+/// (`String(localized:)`): the catalog test rejects literals here. `trailing` is an optional accessory at the
+/// right of the title (a "remove" button, say); it is not part of the button that opens and closes the card.
+public struct DSCollapsibleCard<Content: View, Trailing: View>: View {
   let title: String
   let systemImage: String?
   let tint: Color?
   @Binding var isExpanded: Bool
+  let trailing: Trailing
   let content: Content
 
   public init(
@@ -16,12 +18,14 @@ public struct DSCollapsibleCard<Content: View>: View {
     systemImage: String? = nil,
     tint: Color? = nil,
     isExpanded: Binding<Bool>,
+    @ViewBuilder trailing: () -> Trailing,
     @ViewBuilder content: () -> Content
   ) {
     self.title = title
     self.systemImage = systemImage
     self.tint = tint
     self._isExpanded = isExpanded
+    self.trailing = trailing()
     self.content = content()
   }
 
@@ -44,6 +48,15 @@ public struct DSCollapsibleCard<Content: View>: View {
   }
 
   private var header: some View {
+    HStack(spacing: DS.controlGap) {
+      toggleButton
+      trailing
+    }
+    .padding(.horizontal, DS.panelPadding)
+    .padding(.vertical, 12)
+  }
+
+  private var toggleButton: some View {
     Button {
       withAnimation(.easeInOut(duration: 0.18)) { isExpanded.toggle() }
     } label: {
@@ -60,14 +73,27 @@ public struct DSCollapsibleCard<Content: View>: View {
         DSGroupHeader(title: title, prominent: true)
         Spacer(minLength: 0)
       }
-      .padding(.horizontal, DS.panelPadding)
-      .padding(.vertical, 12)
       .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
     // Reachable with the keyboard; only the system focus ring is hidden.
     .focusEffectDisabled()
     .accessibilityAddTraits(.isHeader)
+  }
+}
+
+extension DSCollapsibleCard where Trailing == EmptyView {
+  /// A card without an accessory.
+  public init(
+    _ title: String,
+    systemImage: String? = nil,
+    tint: Color? = nil,
+    isExpanded: Binding<Bool>,
+    @ViewBuilder content: () -> Content
+  ) {
+    self.init(
+      title, systemImage: systemImage, tint: tint, isExpanded: isExpanded, trailing: { EmptyView() },
+      content: content)
   }
 }
 
