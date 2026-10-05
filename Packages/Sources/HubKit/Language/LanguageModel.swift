@@ -28,6 +28,8 @@ public enum LanguageModelError: Error, Equatable, Sendable {
   /// The model does not fit in the memory that is free now.
   case notEnoughMemory(neededBytes: Int64, availableBytes: Int64)
   case imagesNotSupported
+  /// A plug-in asked for a model by name and the models folder has none with that name.
+  case modelNotFound(String)
   /// The model was freed while it was loading, because RUN needed the memory.
   case interrupted
   case loadFailed(String)
@@ -42,8 +44,15 @@ public protocol LanguageModelService: Sendable {
   func load(_ model: LanguageModelDescriptor) async throws
   /// Frees the memory of the loaded model; does nothing when none is loaded.
   func unload() async
-  /// One question, with images for a vision model. The model must be loaded.
-  func respond(to prompt: String, images: [URL]) async throws -> String
+  /// One question, with images for a vision model and the options of `LanguageModelOptions`. The model must be loaded.
+  func respond(to prompt: String, images: [URL], options: LanguageModelOptions) async throws -> String
+}
+
+extension LanguageModelService {
+  /// A question with the default options.
+  public func respond(to prompt: String, images: [URL]) async throws -> String {
+    try await respond(to: prompt, images: images, options: LanguageModelOptions())
+  }
 }
 
 /// Downloads a model from Hugging Face into a folder, only when the user asked (spec §9).

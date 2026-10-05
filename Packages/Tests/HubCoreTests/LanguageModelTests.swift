@@ -95,6 +95,7 @@ actor FakeLanguageModelService: LanguageModelService {
   private(set) var loads: [String] = []
   private(set) var unloads = 0
   private(set) var questions: [(String, [URL])] = []
+  private(set) var askedOptions: [LanguageModelOptions] = []
   var loadError: LanguageModelError?
   var answer = "an answer"
   private var loadGate: Gate?
@@ -112,8 +113,9 @@ actor FakeLanguageModelService: LanguageModelService {
 
   func unload() async { unloads += 1 }
 
-  func respond(to prompt: String, images: [URL]) async throws -> String {
+  func respond(to prompt: String, images: [URL], options: LanguageModelOptions) async throws -> String {
     questions.append((prompt, images))
+    askedOptions.append(options)
     return answer
   }
 }
@@ -155,6 +157,65 @@ struct LanguageModelManagerTests {
     #expect(try await manager.respond(to: "again") == "an answer")
     #expect(await service.loads == ["text-model"])
     #expect(manager.state == .ready("text-model"))
+  }
+
+  @Test func aModelAskedByNameIsLoadedInsteadOfTheChosenOneAndTheChoiceStays() async throws {
+    let service = FakeLanguageModelService()
+    let root = try folder()
+    let manager = manager(service, root: root)
+    let chosen = manager.settings.selectedModel
+    _ = try await manager.respond(to: "hi", modelNamed: "vision-model")
+    #expect(await service.loads == ["vision-model"])
+    #expect(manager.settings.selectedModel == chosen)
+    #expect(manager.state == .ready("vision-model"))
+    // Without a name the chosen model comes back.
+    _ = try await manager.respond(to: "again")
+    #expect(await service.loads == ["vision-model", "text-model"])
+    #expect(await service.unloads == 1)
+  }
+
+  @Test func aNameTheFolderDoesNotHaveIsAnErrorAndLoadsNothing() async throws {
+    let service = FakeLanguageModelService()
+    let manager = manager(service, root: try folder())
+    await #expect(throws: LanguageModelError.modelNotFound("nowhere")) {
+      try await manager.respond(to: "hi", modelNamed: "nowhere")
+    }
+    #expect(await service.loads.isEmpty)
+    #expect(manager.state == .unloaded)  // a wrong name is not a failure of the model
+  }
+
+  @Test func imagesAreCheckedAgainstTheModelThatIsAsked() async throws {
+    let service = FakeLanguageModelService()
+    let manager = manager(service, root: try folder())  // the chosen model is the text one
+    let image = [URL(fileURLWithPath: "/tmp/a.png")]
+    _ = try await manager.respond(to: "what is this?", images: image, modelNamed: "vision-model")
+    #expect(await service.questions.last?.1 == image)
+    await #expect(throws: LanguageModelError.imagesNotSupported) {
+      try await manager.respond(to: "what is this?", images: image, modelNamed: "text-model")
+    }
+  }
+
+  @Test func theOptionsReachTheService() async throws {
+    let service = FakeLanguageModelService()
+    let manager = manager(service, root: try folder())
+    let options = LanguageModelOptions(system: "Be brief.", temperature: 1, thinking: true)
+    _ = try await manager.respond(to: "hi", options: options)
+    _ = try await manager.respond(to: "again")
+    #expect(await service.askedOptions == [options, LanguageModelOptions()])
+  }
+
+  @Test func aRefusedQuestionStillLetsTheIdleTimeFreeTheModel() async throws {
+    let service = FakeLanguageModelService()
+    let manager = manager(service, root: try folder(), idle: 2)
+    _ = try await manager.respond(to: "hi")
+    await #expect(throws: LanguageModelError.modelNotFound("nowhere")) {
+      try await manager.respond(to: "hi", modelNamed: "nowhere")
+    }
+    await #expect(throws: LanguageModelError.imagesNotSupported) {
+      try await manager.respond(to: "hi", images: [URL(fileURLWithPath: "/tmp/a.png")])
+    }
+    for _ in 0..<60 where manager.isLoaded { try await Task.sleep(for: .milliseconds(50)) }
+    #expect(!manager.isLoaded)
   }
 
   @Test func withoutAChosenModelItSaysSo() async throws {

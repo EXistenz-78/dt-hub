@@ -72,18 +72,35 @@ public final class LanguageModelManager {
   }
 
   /// Asks the model: loads it first when needed (after the memory check), then frees it after
-  /// the idle time.
-  public func respond(to prompt: String, images: [URL] = []) async throws(LanguageModelError) -> String {
+  /// the idle time. `modelNamed` asks a model of the folder by name instead of the one chosen in
+  /// the settings (a plug-in's wish): the choice in the settings stays as it is.
+  public func respond(
+    to prompt: String, images: [URL] = [], options: LanguageModelOptions = LanguageModelOptions(),
+    modelNamed name: String? = nil
+  ) async throws(LanguageModelError) -> String {
     activity += 1
     idleTask?.cancel()
-    guard let model = selectedModel() else {
-      state = .failed(.noModelSelected)
-      throw .noModelSelected
+    let model: LanguageModelDescriptor
+    if let name {
+      guard let named = availableModels().first(where: { $0.name == name }) else {
+        scheduleIdleUnload()
+        throw .modelNotFound(name)
+      }
+      model = named
+    } else {
+      guard let chosen = selectedModel() else {
+        state = .failed(.noModelSelected)
+        throw .noModelSelected
+      }
+      model = chosen
     }
-    if !images.isEmpty, !model.supportsImages { throw .imagesNotSupported }
+    if !images.isEmpty, !model.supportsImages {
+      scheduleIdleUnload()
+      throw .imagesNotSupported
+    }
     try await ensureLoaded(model)
     do {
-      let answer = try await service.respond(to: prompt, images: images)
+      let answer = try await service.respond(to: prompt, images: images, options: options)
       scheduleIdleUnload()
       return answer
     } catch let error as LanguageModelError {
