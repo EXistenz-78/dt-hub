@@ -34,6 +34,12 @@ struct PromptDatabase: Codable, Equatable, Sendable, VersionedData {
   var version: String
   var groups: [PMGroup]
   var categories: [PMCategory]
+
+  /// Group ids, category ids and term ids (across all categories) are each used once.
+  var hasUniqueIDs: Bool {
+    func unique(_ ids: [String]) -> Bool { Set(ids).count == ids.count }
+    return unique(groups.map(\.id)) && unique(categories.map(\.id)) && unique(categories.flatMap { $0.terms.map(\.id) })
+  }
 }
 
 /// The master prompt of one family and what goes with it.

@@ -35,7 +35,8 @@ struct PMWriter {
   }
 
   /// The generic model has to say a prompt, maybe with its negative: room for that.
-  static let genericOptions = DTHubLLMOptions(maxTokens: 2048)
+  /// A model that thinks by default would spend its tokens on the reasoning and never close it: no thinking.
+  static let genericOptions = DTHubLLMOptions(maxTokens: 2048, thinking: false)
 
   func write(_ request: Request) async -> Outcome {
     let master = request.masters.families[request.family]
@@ -108,7 +109,7 @@ struct PMWriter {
     let language = italian ? "Italian" : "English"
     let answer = await ask(
       "Invent a subject with an action, and a setting, for an image. Write the two sentences in \(language).", [],
-      Self.sceneSystem, nil, DTHubLLMOptions(temperature: 1.0, maxTokens: 300))
+      Self.sceneSystem, nil, DTHubLLMOptions(temperature: 1.0, maxTokens: 300, thinking: false))
     switch answer {
     case .failure(let reason):
       return .failure(SceneFailure(text: L.format(.sceneFailed, reason, italian: italian)))

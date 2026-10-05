@@ -60,6 +60,15 @@ struct PMWriterTests {
     #expect(outcome.status == "Prompt sent to Generation." && outcome.sent)
   }
 
+  @Test func theGenericModelIsToldNotToThinkForThePromptAndForTheScene() async {
+    // A model that thinks by default would spend its tokens on the reasoning and never close it.
+    let recorder = Recorder()
+    _ = await writer(recorder).write(request())
+    #expect(recorder.asks[0].options.thinking == false)
+    _ = await writer(recorder).scene()
+    #expect(recorder.asks[1].options.thinking == false)
+  }
+
   @Test func theNegativePromptIsWrittenOnlyForAFamilyThatReadsOne() async {
     let recorder = Recorder()
     recorder.answer = .text(#"{"prompt": "a cat", "negative": "blurry"}"#)

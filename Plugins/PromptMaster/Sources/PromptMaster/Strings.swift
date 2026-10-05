@@ -13,7 +13,7 @@ enum L {
     // What happened
     case sent, sentWithConflicts, notAnswered, noMasterPrompt, emptyAnswer, llmFailed, sceneFailed
     case enhancerModelMissingT2I, enhancerModelMissingI2I, enhancerSystemMissing, ratio, provisional
-    case unreadableFile, unknownSchema, customNotSaved
+    case unreadableFile, unknownSchema, repeatedIDs, customNotSaved
   }
 
   static var systemIsItalian: Bool {
@@ -48,6 +48,7 @@ enum L {
     .ratio: "Suggested format: %@", .provisional: "This family's master prompt is provisional.",
     .unreadableFile: "%@ cannot be read: using the copy built into the plug-in.",
     .unknownSchema: "%@ has a layout this plug-in does not know: using the copy built into the plug-in.",
+    .repeatedIDs: "%@ uses the same id twice: using the copy built into the plug-in.",
     .customNotSaved: "Could not save your term.",
   ]
 
@@ -69,6 +70,7 @@ enum L {
     .ratio: "Formato consigliato: %@", .provisional: "Il master prompt di questa famiglia è provvisorio.",
     .unreadableFile: "%@ non si legge: uso la copia incorporata nel plug-in.",
     .unknownSchema: "%@ ha un formato che questo plug-in non conosce: uso la copia incorporata.",
+    .repeatedIDs: "%@ usa lo stesso id due volte: uso la copia incorporata nel plug-in.",
     .customNotSaved: "Non si è potuto salvare il tuo termine.",
   ]
 }
