@@ -13,7 +13,8 @@ struct MainWindowView: View {
   /// What the plug-ins are told about: the model and its family.
   private var contextKey: [String?] {
     let model = connection.selection.selectedModel(in: connection.monitor.catalog)
-    return [model?.file, model?.family]
+    let moodboard = generation.control.inputs.moodboard.filter(\.isOn).map { $0.id.uuidString }.joined(separator: ",")
+    return [model?.file, model?.family, generation.control.inputs.image?.id.uuidString, moodboard]
   }
 
   var body: some View {
@@ -45,6 +46,8 @@ struct MainWindowView: View {
       workspace.setPluginTabs(plugins.activeTabs)
     }
     .onChange(of: plugins.activeTabs) { workspace.setPluginTabs(plugins.activeTabs) }
+    // A model added to the models folder meanwhile: the plug-in hears about it when its tab is shown.
+    .onChange(of: workspace.selectedTabID) { plugins.refreshContext() }
   }
 
   @ViewBuilder private var tabContent: some View {

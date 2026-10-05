@@ -32,7 +32,7 @@ La classe principale (`NSPrincipalClass`, sottoclasse di `NSObject`) risponde a:
 - `dthubHandle(_ message: Data, reply: @escaping (Data) -> Void)`: l'app parla al plug-in.
 
 **Messaggi:** JSON `{"type": "...", …}`, con una risposta JSON. Un messaggio sconosciuto riceve `{"type":"unsupported"}` e non è un errore.
-- *App → plug-in*: `context` (parametri correnti in sola lettura, modello e famiglia scelti, catalogo di modelli e LoRA, cartella temporanea per le immagini), `activate`, `deactivate`;
+- *App → plug-in*: `context` (parametri correnti in sola lettura, modello e famiglia scelti, catalogo di modelli e LoRA, cartella temporanea per le immagini; dal 5 ottobre anche `startImage`, il file dell'immagine di partenza del tab Control, `moodboard`, i file delle immagini del Moodboard accese, e `languageModels`, i modelli linguistici della cartella), `activate`, `deactivate`;
 - *plug-in → app*: `notice` (un avviso da mostrare), e in M8b `contribute` (parametri, prompt, negativo, immagine di partenza, moodboard, maschera, pipeline) e `llm` (una richiesta al servizio di linguaggio, spec principale §9).
 - Le **immagini** non viaggiano nei messaggi: si scambiano come file PNG nella cartella temporanea del contesto.
 
@@ -115,7 +115,7 @@ Il contratto resta la **versione 1**: i nuovi messaggi sono aggiunte, e un'app c
 - `startImage`: `{path, name}`, l'immagine di partenza del tab Control (provenienza del plug-in); la maschera non si può contribuire in M8b (backlog).
 - `pipeline`: `{name, steps: [{title, fields, loras, moodboard, startImage, useOutputAsStart}]}`. Il passaggio esegue i campi del tab con le sue modifiche sopra; `loras` e `moodboard` del passaggio **sostituiscono** quelli del tab per quel passaggio (`[]` = nessuno), se assenti restano quelli del tab; `startImage` o l'output del passaggio precedente (`useOutputAsStart`) sostituiscono l'immagine di partenza (inquadrata sul canvas del passaggio, senza la maschera del tab).
 
-**`llm`** (plug-in → app): `{prompt, images:[percorsi]}` → `{"type":"llm","text":…}` oppure `error` (nessun modello scelto, immagini non supportate…). La risposta può tardare (il modello si carica); la libreria dei plug-in aspetta fino a 300 secondi.
+**`llm`** (plug-in → app): `{prompt, images:[percorsi], system?, model?, options?}` → `{"type":"llm","text":…}` oppure `error` (nessun modello scelto, immagini non supportate, modello non trovato…). `system` è il system prompt; `model` è il nome di un modello della cartella dei modelli (lo ricevi in `context.languageModels`) e vale al posto di quello scelto dall'utente, che resta com'è; `options` ha `temperature`, `topP`, `topK`, `presencePenalty`, `maxTokens`, `thinking` (tutti facoltativi, riportati nei loro limiti). La risposta può tardare (il modello si carica); la libreria dei plug-in aspetta 300 secondi, o quanto dice `DTHubLLMOptions.timeout` (al massimo 1800; non viaggia nel messaggio). Aggiunte del 5 ottobre 2026 (tappa 1 di Prompt Master): additive, il numero di contratto resta 1.
 
 **Scelte del prototipo.**
 - Un campo prende il teal finché **contiene** il valore del plug-in; se l'utente lo modifica compare il valore tra parentesi, e se riscrive lo stesso valore il teal torna. Prompt e negativo: teal, mai parentesi. Il segno non si salva: al riavvio i valori restano, senza teal.

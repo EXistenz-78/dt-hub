@@ -127,6 +127,52 @@ struct PluginRegistryTests {
     #expect(Array(plugin.sentTypes.suffix(2)) == [PluginMessageType.activate, PluginMessageType.context])
   }
 
+  @Test func theContextTellsAboutTheStartImageTheMoodboardAndTheLanguageModels() async throws {
+    try PluginFixture.bundle(in: root, id: "a", name: "A")
+    let loader = FakeLoader()
+    let registry = registry(loader: loader, enabled: ["a"])
+    var startImage: String? = "/tmp/start.png"
+    var models = [PluginLanguageModel(name: "a/pe", path: "/m/a/pe", supportsImages: true)]
+    var moodboard = ["/tmp/m1.png", "/tmp/m2.png"]
+    registry.startImagePath = { startImage }
+    registry.moodboardPaths = { moodboard }
+    registry.languageModels = { models }
+    registry.start()
+    registry.updateContext(model: "m.ckpt", family: "qwen_image_2.1", parameters: GenerationParameters())
+    await settle()
+    let plugin = try #require(loader.plugins["a"])
+    func lastContext() throws -> PluginContext {
+      let data = try #require(plugin.sent.last { PluginMessageType.of($0) == PluginMessageType.context })
+      return try JSONDecoder().decode(PluginContext.self, from: data)
+    }
+    #expect(try lastContext().startImage == "/tmp/start.png")
+    #expect(try lastContext().moodboard == ["/tmp/m1.png", "/tmp/m2.png"])
+    #expect(try lastContext().languageModels == models)
+    // The start image goes and a model arrives: nothing is sent until the app says so, then it is.
+    startImage = nil
+    moodboard = []
+    models.append(PluginLanguageModel(name: "b", path: "/m/b", supportsImages: false))
+    #expect(try lastContext().startImage == "/tmp/start.png")
+    registry.refreshContext()
+    await settle()
+    #expect(try lastContext().startImage == nil)
+    #expect(try lastContext().moodboard == nil)  // an empty Moodboard is left out, not sent as []
+    #expect(try lastContext().languageModels?.count == 2)
+  }
+
+  @Test func refreshingTheContextTellsOnlyThePluginsThatAreOn() async throws {
+    try PluginFixture.bundle(in: root, id: "a", name: "A")
+    let loader = FakeLoader()
+    let registry = registry(loader: loader, enabled: ["a"])
+    registry.start()
+    registry.setActive("a", false)
+    await settle()
+    let before = try #require(loader.plugins["a"]).sent.count
+    registry.refreshContext()
+    await settle()
+    #expect(try #require(loader.plugins["a"]).sent.count == before)
+  }
+
   @Test func aPluginForOtherFamiliesHasNoTabWhileAnotherModelIsChosen() throws {
     try PluginFixture.bundle(in: root, id: "a", name: "A")
     let loader = FakeLoader()

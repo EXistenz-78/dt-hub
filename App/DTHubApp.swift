@@ -45,7 +45,16 @@ struct DTHubApp: App {
     // Contributions land on the Generation tab; a plug-in's question goes to the language model.
     generation.attach(plugins.contributions)
     plugins.presetStore = generation.presets
-    plugins.askLanguageModel = { prompt, images in try await languageModel.respond(to: prompt, images: images) }
+    plugins.askLanguageModel = { prompt, images, options, name in
+      try await languageModel.respond(to: prompt, images: images, options: options, modelNamed: name)
+    }
+    plugins.startImagePath = { control.startImageURL?.path }
+    plugins.moodboardPaths = { control.moodboardURLs.map(\.path) }
+    plugins.languageModels = {
+      languageModel.availableModels().map {
+        PluginLanguageModel(name: $0.name, path: $0.path, supportsImages: $0.supportsImages)
+      }
+    }
     plugins.start(skipping: NSEvent.modifierFlags.contains(.option))
     _plugins = State(initialValue: plugins)
     // A download cut short by quitting leaves a hidden folder with part of a model: remove it.

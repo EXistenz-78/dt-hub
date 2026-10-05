@@ -245,6 +245,7 @@ enum LanguageModelErrorText {
     case .noModelSelected: return String(localized: "llm.error.noModel")
     case .imagesNotSupported: return String(localized: "llm.error.noImages")
     case .interrupted: return String(localized: "llm.error.interrupted")
+    case .modelNotFound(let name): return String(format: String(localized: "llm.error.modelNotFound"), name)
     case .notEnoughMemory(let needed, let available):
       return String(
         format: String(localized: "llm.error.memory"), ByteCountFormatter.string(fromByteCount: needed, countStyle: .memory),
