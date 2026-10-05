@@ -11,6 +11,8 @@ combaciare luce, colori e direzione del sole di un'immagine con quelli della sfe
   salvarli con lo stesso nome; il plug-in non li sovrascrive mai. Se ne cancelli uno, «Invia a Generazione» lo ricrea.
 - **Salva anche sulla Scrivania:** una copia della sfera come `Sphere Light NNN.png`.
 
+Il tab usa i componenti dell'app (`DTHubDesign`, dal pacchetto `PluginKit`): card, pulsanti a pillola, caselle teal.
+
 ## Costruirlo
 
     Plugins/SphereLight/Scripts/build.sh OUT_FOLDER     # fa OUT_FOLDER/SphereLight.dthubplugin

@@ -162,3 +162,9 @@ I test di sessione dell'M3 (`GenerationSessionTests`) sono stati resi determinis
 - **`DesktopSaver`** va in overflow con un file chiamato `Sphere Light 9223372036854775807.png` (usare `addingReportingOverflow`).
 - **Stringhe `active`/`inactive`** di `Strings.swift` inutilizzate; test da rafforzare: l'ordine preset → pipeline, i segnaposto uguali nelle due lingue, `describe` con `problems`, valori salvati fuori intervallo.
 
+## Rimandi del design system nel kit
+
+- **Il kit non riesporta il design system:** un plug-in prende due prodotti con due alias (vedi `PluginKit/README.md`). Se in futuro SwiftPM propaga l'alias, si può riesportare.
+- **L'esempio `Sample` non usa il design system** (resta con i controlli standard).
+- **`DSStatusDot` resta in `HubKit`** perché dipende da `ConnectionStatus`.
+
