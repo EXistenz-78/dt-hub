@@ -183,3 +183,45 @@ I test di sessione dell'M3 (`GenerationSessionTests`) sono stati resi determinis
 - **Due domande insieme a modelli diversi** (due plug-in, o un doppio clic) non si vedono tra loro: possono caricare due modelli insieme. Esisteva già con lo stesso modello; il caricamento per nome lo rende un po' più probabile.
 - **Un plug-in futuro che contribuisce un Moodboard a ogni contesto** ne rimanderebbe uno nuovo a ogni invio (le immagini cambiano id, il contesto si rimanda): nessun plug-in lo fa oggi.
 - **`startImage` è il file salvato**, senza ritaglio né disegno del Brush: se il PE deve vedere l'immagine incorniciata è una scelta di prodotto.
+
+## Rimandi del plug-in Prompt Master (tappa 2)
+
+- **I master prompt sono provvisori:** quelli di `flux2`, `qwen_image_2.1`, `hidream_i1` e `cosmos2.5_2b` sono scritti senza ricerca, gli altri nove partono dalle note del vecchio PM tradotte; la revisione con le fonti online (spec §9) arriva come nuovo `master-prompts.json`.
+- **Lo Shuffle non pesca i termini personali** e sostituisce tutta la selezione, personali compresi.
+- **I termini a evitare** (categoria «negative_terms») vanno all'LLM in un elenco a parte; nelle famiglie senza negativo l'LLM li trasforma in descrizione positiva. Non c'è un campo negativo scritto a mano.
+- **Il pulsante «Scrivi prompt» non si può annullare** (il contratto non lo prevede); il PE con il thinking può metterci minuti.
+- **Il formato suggerito dal PE** (`wh_ratio`) si mostra e non si applica.
+- **Il kit non ha un `init` pubblico per `DTHubLanguageModel`:** i test lo costruiscono da JSON.
+- **La colla** (`PromptMasterPlugin`, le viste) non ha test automatici; la logica sta in `PMWriter`, `PMState`, `PEPlanner`, `TermTree` e gli altri tipi puri. Il tab è stato visto in un PNG disegnato fuori dall'app, non dal vivo nella finestra.
+- **Provato dal vivo solo con il modello generico locale** (Qwen3-VL-2B): i PE di Qwen (tappa 3) e un modello più grande per i master prompt non ancora.
+
+- **Una risposta fatta solo di virgolette** (`""`) o un JSON con `"prompt": "  "` diventa un prompt vuoto (o il testo del JSON) e finisce nella Generazione: `AnswerParser` dovrebbe dare nil.
+- **Un clic su una freccia durante la ricerca** cambia lo stato aperto/chiuso salvato senza che si veda; `toggleOpen` non dovrebbe fare nulla mentre la lista è filtrata.
+- **`custom-terms.json` illeggibile:** i termini personali spariscono senza una riga di stato all'avvio (il file non si tocca); la spec §3 chiede un avviso.
+- **«Tag booru» acceso su `sdxl_base_v0.9` e `v1`:** il testo del booru dice «solo tag, niente frasi» dopo il master prompt che chiede un JSON con `negative`; un modello piccolo può rispondere con i soli tag e il negativo non si scrive. Da riscrivere nella revisione dei master prompt.
+- **`make-prompt-data.py`:** l'asserzione sul testo delle stringhe Swift cerca `"""#`, che `json.dumps` non produce mai; il rischio vero è `\#`.
+- **Una `schema` 2 nella cartella dati** si segnala di solito come «non si legge» e non come «layout sconosciuto» (si decodifica prima come schema 1).
+- **Ogni riga della lista osserva tutto `PMState`:** a ogni tasto nella descrizione si ridisegnano le righe aperte e si salva in `UserDefaults`; non misurato.
+- **Il cestino dei termini personali** è sempre visibile, non solo al passaggio del mouse (spec §4).
+
+## Lunghezze dei master prompt (verificate il 5 ottobre 2026)
+
+Prima i master prompt davano «lunghezze obiettivo» prese dalle note del vecchio PM, tra cui due non confermate dalle fonti. Ora ogni famiglia ha una lunghezza abituale (`words`) e un massimo (`maxWords`) che segue il limite vero dell'encoder di testo, con un margine, e il motivo (`lengthNote`). Il master prompt dice «aim for X; never beyond N».
+
+| Famiglia | Abituale → massimo | Limite vero e fonte |
+|---|---|---|
+| FLUX.1 | 80–250 → 300 parole | T5-XXL, 512 token (≈350 parole), il resto cade ([FLUX.1-dev, discussione 43](https://huggingface.co/black-forest-labs/FLUX.1-dev/discussions/43), [Draw Things wiki](https://wiki.drawthings.ai/wiki/Prompting_Base_Model_Basics): «10–250 parole») |
+| FLUX.2 (dev, klein 9B/4B) | 60–250 → 300 | `MAX_LENGTH = 512` ([DeepWiki flux2](https://deepwiki.com/black-forest-labs/flux2/3.2-text-encoders)) |
+| Krea 2 | 40–150 → 300 | 512 token; oltre 640 immagini nere o corrotte ([ComfyUI #14782](https://github.com/Comfy-Org/ComfyUI/issues/14782)) |
+| Qwen Image / 2.1 | 80–250 → 450 | `max_sequence_length` 1024 di predefinito ([diffusers](https://huggingface.co/docs/diffusers/main/api/pipelines/qwenimage)); fino a ≈500 parole secondo il notebook «Modelli generazione immagini» |
+| Z-Image | 100–250 → 300 | 512 token di predefinito, fino a 1024; «funziona meglio con prompt lunghi e dettagliati» ([scheda ufficiale](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo/discussions/8), [mflux #810](https://github.com/mflux-community/mflux/pull/810)) |
+| SDXL | 30–55 → 60 | 77 token per encoder CLIP (notebook) |
+| SD 1.5 | 20–35 tag → 40 | 77 token CLIP, troncamento rigido (notebook) |
+| ERNIE-Image | 50–150 → 300 | ≈2048 caratteri **solo dal notebook**; la scheda ufficiale ([baidu/ERNIE-Image](https://huggingface.co/baidu/ERNIE-Image)) non indica nessun limite |
+| HiDream-I1 | 40–90 → 150 | la pipeline di riferimento legge 128 token (CLIP 77) e tronca ([issue #18](https://github.com/HiDream-ai/HiDream-I1/issues/18), [HF discussione 40](https://huggingface.co/HiDream-ai/HiDream-I1-Full/discussions/40)); alcuni strumenti arrivano a 256 (SD.Next). **Prove deboli**: nessuna dichiarazione ufficiale sulla capacità vera del modello; tetto prudente |
+| Anima (Cosmos 2.5) | 30–120 → 300 | `max_sequence_length` 512 ([SGLang](https://lmsysorg.mintlify.app/cookbook/diffusion/CircleStone/Anima)) |
+
+- **Corretto rispetto a prima:** Z-Image non ha un limite di 800 caratteri e non perde attenzione dopo 75 token (affermazioni del vecchio PM che le fonti non confermano); FLUX, FLUX.2, Krea, Z-Image ed ERNIE potevano avere prompt molto più lunghi di «60–150 parole»; HiDream invece va **accorciato** (80 → 40–90 parole abituali, massimo 150).
+- **Criterio:** il limite è dell'encoder di testo del modello e dell'implementazione di riferimento, non del programma che lo esegue; Draw Things è stato usato solo come riscontro (FLUX.1, HiDream). Un programma può comunque imporre un tetto proprio più basso.
+- **Non verificato:** come Draw Things tratta i prompt oltre 77 token su SD/SDXL (concatenazione a blocchi o troncamento) e se imposta un limite proprio per le famiglie a 512 token; il massimo di Qwen Image 2.1 (assunto uguale a Qwen Image); i consigli di *efficacia* (cosa rende un prompt migliore, oltre al limite) restano da rivedere nella ricerca della spec §9.
+

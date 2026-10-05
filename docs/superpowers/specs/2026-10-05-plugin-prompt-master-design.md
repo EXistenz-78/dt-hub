@@ -1,6 +1,6 @@
 # DT Hub — Plug-in Prompt Master (PM)
 
-Data: 5 ottobre 2026 · Stato: approvata il 5 ottobre 2026; tappa 1 (il contratto) realizzata, tappe 2 e 3 da fare · Estende `2026-10-03-plugin-design.md` (contratto 1), `2026-10-04-plugin-sphere-light-design.md` (come si costruisce un plug-in) e `2026-10-05-plugin-design-system-design.md` (l'aspetto dell'app)
+Data: 5 ottobre 2026 · Stato: approvata il 5 ottobre 2026; tappe 1 (il contratto) e 2 (il plug-in) realizzate, tappa 3 da fare · Estende `2026-10-03-plugin-design.md` (contratto 1), `2026-10-04-plugin-sphere-light-design.md` (come si costruisce un plug-in) e `2026-10-05-plugin-design-system-design.md` (l'aspetto dell'app)
 
 ## 1. Scopo
 
@@ -34,7 +34,7 @@ Tre file JSON in `~/Library/Application Support/DT Hub/Data/`, ognuno con una **
 | File | Contenuto | Chi lo scrive |
 |---|---|---|
 | `prompt-database.json` | Gruppi, categorie, termini. Condiviso con altri plug-in. | l'utente lo sostituisce per aggiornarlo |
-| `prompt-master/master-prompts.json` | Per famiglia: nome, master prompt (inglese), `negative` (sì/no), `hiddenCategories`, lunghezza obiettivo. | l'utente lo sostituisce (la revisione del §9 arriva così) |
+| `prompt-master/master-prompts.json` | Per famiglia: nome, master prompt (inglese), `negative` (sì/no), `hiddenCategories`, lunghezza abituale (`words`) e massima (`maxWords`) con la ragione del limite (`lengthNote`); il master prompt dice al modello il massimo («never beyond N words»). | l'utente lo sostituisce (la revisione del §9 arriva così) |
 | `prompt-master/custom-terms.json` | Termini aggiunti dall'utente. | il plug-in |
 
 **Quale versione vale.** Ogni file ha `schema` e `version`. All'avvio il plug-in legge il file della cartella; se manca, è illeggibile, ha uno `schema` che il plug-in non conosce o una `version` più vecchia di quella incorporata, vale la copia incorporata (il file illeggibile o con schema sconosciuto genera un avviso nella riga di stato, e non viene toccato). Il plug-in non scrive mai su `prompt-database.json` e su `master-prompts.json`; scrive solo i termini personali.
