@@ -7,7 +7,7 @@ import Testing
 /// What the writer asked of the app.
 @MainActor
 final class Recorder {
-  struct Ask { var prompt: String; var images: [String]; var system: String?; var model: String?; var options: DTHubLLMOptions }
+  struct Ask { var prompt: String; var system: String?; var model: String?; var options: DTHubLLMOptions }
   var asks: [Ask] = []
   var contributions: [[String: Any]] = []
   var answer: DTHubLLMAnswer = .text("A quiet harbour at dawn.")
@@ -21,8 +21,8 @@ struct PMWriterTests {
 
   private func writer(_ recorder: Recorder, files: [String: String] = [:], sizes: [String: Int64] = [:]) -> PMWriter {
     PMWriter(
-      ask: { prompt, images, system, model, options in
-        recorder.asks.append(.init(prompt: prompt, images: images, system: system, model: model, options: options))
+      ask: { prompt, system, model, options in
+        recorder.asks.append(.init(prompt: prompt, system: system, model: model, options: options))
         return recorder.answer
       },
       contribute: { recorder.contributions.append($0); return recorder.accepted },
@@ -31,11 +31,10 @@ struct PMWriterTests {
 
   private func request(
     _ family: String = "flux2_9b", description: String = "un porto all'alba", terms: [SelectedTerm] = [],
-    booru: Bool = false, start: String? = nil, moodboard: [String] = [], models: [DTHubLanguageModel] = []
+    booru: Bool = false, models: [DTHubLanguageModel] = []
   ) -> PMWriter.Request {
     PMWriter.Request(
-      family: family, masters: masters, description: description, terms: terms, booru: booru, startImage: start,
-      moodboard: moodboard, languageModels: models)
+      family: family, masters: masters, description: description, terms: terms, booru: booru, languageModels: models)
   }
 
   private func term(_ english: String, avoid: Bool = false) -> SelectedTerm {
@@ -55,7 +54,7 @@ struct PMWriterTests {
     let ask = recorder.asks[0]
     #expect(ask.system == masters.families["flux2_9b"]?.system)
     #expect(ask.prompt.contains("un porto all'alba") && ask.prompt.contains("- Fog"))
-    #expect(ask.model == nil && ask.images.isEmpty && ask.options == PMWriter.genericOptions)
+    #expect(ask.model == nil && ask.options == PMWriter.genericOptions)
     #expect(fields(recorder)?["prompt"] as? String == "A quiet harbour at dawn.")
     #expect(outcome.status == "Prompt sent to Generation." && outcome.sent)
   }
@@ -131,7 +130,7 @@ struct PMWriterTests {
     let outcome = await writer(recorder, files: files).write(
       request("qwen_image_2.1", terms: [term("Fog")], models: [model(t2i), model(i2i)]))
     let ask = recorder.asks[0]
-    #expect(ask.model == t2i && ask.system == "T2I SYSTEM" && ask.images.isEmpty)
+    #expect(ask.model == t2i && ask.system == "T2I SYSTEM")
     #expect(ask.options.thinking == true && ask.options.maxTokens == 16256 && ask.options.timeout == 900)
     #expect(ask.prompt.contains("- Fog"))
     #expect(fields(recorder)?["prompt"] as? String == "a long rich prompt")
@@ -139,21 +138,17 @@ struct PMWriterTests {
     #expect(outcome.ratio == "3:2" && outcome.status == "Prompt sent to Generation. Suggested format: 3:2")
   }
 
-  @Test func withAStartImageTheI2IEnhancerGetsThePicturesAndAMoodboardAloneDoesNot() async {
+  @Test func qwenImage21AlwaysGoesToTheTextToImageEnhancerAndNoPictureIsSent() async {
     let recorder = Recorder()
-    _ = await writer(recorder, files: files).write(
-      request("qwen_image_2.1", start: "/s.png", moodboard: ["/m.png"], models: [model(t2i), model(i2i)]))
-    #expect(recorder.asks[0].model == i2i && recorder.asks[0].images == ["/s.png", "/m.png"] && recorder.asks[0].system == "EDIT SYSTEM")
-    let again = Recorder()
-    _ = await writer(again, files: files).write(request("qwen_image_2.1", moodboard: ["/m.png"], models: [model(t2i), model(i2i)]))
-    #expect(again.asks[0].model == t2i && again.asks[0].images.isEmpty)
+    _ = await writer(recorder, files: files).write(request("qwen_image_2.1", models: [model(t2i), model(i2i)]))
+    #expect(recorder.asks[0].model == t2i && recorder.asks[0].system == "T2I SYSTEM")
   }
 
   @Test func withoutTheEnhancerTheGenericModelIsUsedAndTheLineSaysSoAndThatTheMasterPromptIsProvisional() async {
     let recorder = Recorder()
     let outcome = await writer(recorder).write(request("qwen_image_2.1"))
     #expect(recorder.asks[0].model == nil && recorder.asks[0].system == masters.families["qwen_image_2.1"]?.system)
-    #expect(outcome.status.contains("Prompt enhancer (T2I) not found") && outcome.status.contains("provisional"))
+    #expect(outcome.status.contains("Prompt enhancer not found") && outcome.status.contains("provisional"))
     let noSystem = Recorder()
     let second = await writer(noSystem, files: [:]).write(request("qwen_image_2.1", models: [model(t2i)]))
     #expect(second.status.contains("has no system_prompt.txt") && noSystem.asks[0].model == nil)

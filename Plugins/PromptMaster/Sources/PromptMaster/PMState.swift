@@ -29,8 +29,6 @@ final class PMState: ObservableObject {
   @Published var newTermText = ""
 
   private(set) var family: String?
-  private(set) var startImage: String?
-  private(set) var moodboard: [String] = []
   private(set) var languageModels: [DTHubLanguageModel] = []
   private var fullTree: TermTree
 
@@ -74,11 +72,9 @@ final class PMState: ObservableObject {
   // MARK: What the app says
 
   /// The `context` message: the family decides which categories are hidden and which master prompt is used.
-  func update(family: String?, startImage: String?, moodboard: [String], languageModels: [DTHubLanguageModel]) {
+  func update(family: String?, languageModels: [DTHubLanguageModel]) {
     let changed = family != self.family
     self.family = family
-    self.startImage = startImage
-    self.moodboard = moodboard
     self.languageModels = languageModels
     if changed { rebuild() }
   }
@@ -162,7 +158,7 @@ final class PMState: ObservableObject {
     guard let family else { return nil }
     return PMWriter.Request(
       family: family, masters: data.masters, description: description, terms: selectedTerms,
-      booru: booru && hasBooruSwitch, startImage: startImage, moodboard: moodboard, languageModels: languageModels)
+      booru: booru && hasBooruSwitch, languageModels: languageModels)
   }
 
   private func persist() {
