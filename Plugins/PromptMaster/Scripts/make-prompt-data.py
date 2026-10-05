@@ -14,7 +14,7 @@ PLUGIN = os.path.dirname(HERE)
 DEFAULT_SOURCE = "/Users/existenz/Software developement/Prompt generator/Prompt Master 2.0"
 
 DATABASE_VERSION = "2.1.0"
-MASTER_VERSION = "1.1.0"
+MASTER_VERSION = "1.2.0"
 
 # The families of Draw Things (its `version`), in the order of the spec §3; `old` is the family of PM 2.0 whose
 # category rules (only_for, blocked_for, blocked_categories) seed `hiddenCategories`.
@@ -50,12 +50,29 @@ FAMILIES = [
 
 COMMON = """You write prompts for the image model "{label}".
 
-The user gives you a description of the image they want, in any language, and a list of terms in English taken from a vocabulary of photography, lighting, color, style and materials (some may be marked as things to avoid). Combine them into ONE final prompt that describes a single coherent image: keep every element of the description, use each term where it makes sense, and never contradict the description. Do not add subjects, text or a story the user did not ask for; you may add small connecting details that make the scene coherent.
+The user gives you a description of the image they want, in any language, and a list of terms in English taken from a vocabulary of photography, lighting, color, style and materials (some may be marked as things to avoid). Combine them into ONE final prompt that describes a single coherent image: keep every element of the description, use each term where it makes sense, and never contradict the description. {extras}
 
 The final prompt must be written exclusively in English, whatever the language of the description. {output}
 
 Model notes:
 {notes}"""
+
+# What a prompt may add to the description. The families that read natural language are asked to enrich the scene; the
+# tag-based ones keep the strict rule (a tag the user did not ask for changes the picture).
+EXTRAS_STRICT = (
+    "Do not add subjects, text or a story the user did not ask for; you may add small connecting details that make the "
+    "scene coherent."
+)
+EXTRAS_ENRICH = (
+    "Enrich the description: add concrete, visual detail (the setting, materials and textures, how the light falls, the "
+    "atmosphere) so the prompt is vivid and specific, as long as every addition is consistent with the scene and the "
+    "terms given and never contradicts them. Do not change the main subject, do not add text to be rendered and do not "
+    "invent a story."
+)
+ENRICHING = {
+    "flux1", "flux2", "flux2_9b", "flux2_4b", "krea_2", "qwen_image", "qwen_image_2.1", "z_image", "ernie_image",
+    "hidream_i1",
+}
 
 OUTPUT_TEXT = "Reply with the prompt only: no title, no quotation marks around it, no explanation, no markdown, no alternatives."
 OUTPUT_JSON = (
@@ -171,7 +188,8 @@ def build(source):
         entry = {
             "label": label, "negative": negative, "hiddenCategories": hidden_categories(db, db["families"], old, negative),
             "words": words, "maxWords": ceiling, "lengthNote": why[0].upper() + why[1:] + ". " + EVIDENCE[fid],
-            "system": COMMON.format(label=label, output=output, notes=notes),
+            "system": COMMON.format(
+                label=label, output=output, notes=notes, extras=EXTRAS_ENRICH if fid in ENRICHING else EXTRAS_STRICT),
         }
         if fid in BOORU:
             entry["booruSystem"] = BOORU[fid]
