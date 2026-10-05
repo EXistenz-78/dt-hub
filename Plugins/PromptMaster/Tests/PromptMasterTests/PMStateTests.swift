@@ -158,6 +158,31 @@ struct PMStateTests {
     #expect(!request.booru)
   }
 
+  // MARK: The suggested format
+
+  @Test func theSuggestedFormatIsKeptUntilTheFamilyChangesAndTheSizeIsRemembered() {
+    let state = state()
+    state.update(family: "qwen_image_2.1", languageModels: [], width: 1024, height: 832)
+    #expect(state.currentWidth == 1024 && state.currentHeight == 832)
+    state.suggestedRatio = "3:2"
+    state.update(family: "qwen_image_2.1", languageModels: [], width: 1280, height: 832)  // the same family: kept
+    #expect(state.suggestedRatio == "3:2" && state.currentWidth == 1280)
+    state.update(family: "flux2_9b", languageModels: [])  // another family: gone
+    #expect(state.suggestedRatio == nil && state.currentWidth == nil)
+  }
+
+  @Test func theFormatCanBeAppliedOnlyWithAFormatAnActivePluginAndNothingBeingWritten() {
+    let state = state()
+    #expect(!state.canApplyRatio)
+    state.suggestedRatio = "3:2"
+    #expect(state.canApplyRatio)
+    state.isWriting = true
+    #expect(!state.canApplyRatio)
+    state.isWriting = false
+    state.active = false
+    #expect(!state.canApplyRatio)
+  }
+
   // MARK: Memory
 
   @Test func theSessionComesBackInANewState() {

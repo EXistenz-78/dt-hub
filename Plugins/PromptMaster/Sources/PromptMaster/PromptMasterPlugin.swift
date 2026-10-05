@@ -14,7 +14,8 @@ final class PromptMasterPlugin: DTHubPlugin {
   func makeViewController() -> NSViewController {
     NSHostingController(
       rootView: PromptMasterView(
-        state: state, write: { [weak self] in self?.write() }, makeScene: { [weak self] in self?.makeScene() }))
+        state: state, write: { [weak self] in self?.write() }, makeScene: { [weak self] in self?.makeScene() },
+        applyRatio: { [weak self] in self?.applyRatio() }))
   }
 
   func start(host: DTHubHost) {
@@ -25,7 +26,9 @@ final class PromptMasterPlugin: DTHubPlugin {
     switch DTHubMessage.type(of: message) {
     case "context":
       if let context = try? JSONDecoder().decode(DTHubContext.self, from: message) {
-        state.update(family: context.family, languageModels: context.languageModels ?? [])
+        let size = RatioSize.currentSize(inContext: message)
+        state.update(
+          family: context.family, languageModels: context.languageModels ?? [], width: size?.width, height: size?.height)
       }
       return nil
     case "activate":
@@ -51,10 +54,24 @@ final class PromptMasterPlugin: DTHubPlugin {
     guard state.canWrite, let host, let request = state.writeRequest else { return }
     state.isWriting = true
     state.status = ""
+    state.suggestedRatio = nil
     let writer = makeWriter(host)
     Task {
-      state.status = await writer.write(request).status
+      let outcome = await writer.write(request)
+      state.status = outcome.status
+      state.suggestedRatio = outcome.ratio
       state.isWriting = false
+    }
+  }
+
+  private func applyRatio() {
+    guard state.canApplyRatio, let host, let ratio = state.suggestedRatio else { return }
+    let (width, height) = (state.currentWidth, state.currentHeight)
+    let writer = makeWriter(host)
+    Task {
+      let outcome = await writer.applyRatio(ratio, currentWidth: width, currentHeight: height)
+      state.status = outcome.status
+      if outcome.sent { state.suggestedRatio = nil }
     }
   }
 
