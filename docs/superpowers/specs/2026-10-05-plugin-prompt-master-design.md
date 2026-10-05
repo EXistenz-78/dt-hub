@@ -22,7 +22,7 @@ Fuori: Ideogram 4 e il suo compositore JSON; Midjourney e le altre famiglie non 
 |---|---|---|
 | **1 — DT Hub** | Il messaggio `llm` impara `system`, `model` e `options`; `context` impara l'immagine di partenza e l'elenco dei modelli linguistici (§6). | Il plug-in ne ha bisogno già per il master prompt come system prompt. Serve anche ai plug-in futuri. È piccola e si prova da sola. |
 | **2 — Plug-in** | Il tab di PM per le 13 famiglie con l'LLM generico, `qwen_image_2.1` compresa; la scelta del PE di Qwen quando i modelli ci sono (§7). | Utilizzabile da subito, anche senza i PE. |
-| **3 — PE di Qwen** | Conversione in MLX dei due modelli ufficiali e prova dal vivo. | Richiede due download da ~19 GB e la conversione: solo col permesso dell'utente. |
+| **3 — PE di Qwen** | Procurarsi i due PE in MLX e provarli dal vivo. | Esistono già conversioni MLX della comunità (§12): un download da ~5,6 GB (4 bit) o ~9,7 GB (8 bit) per modello, solo col permesso dell'utente. |
 | **Lavoro a parte** | Revisione dei master prompt con la ricerca online e il notebook (§9). | Si consegna come file; non blocca il codice. |
 
 Ogni tappa ha il suo piano e il suo merge. Questa spec le copre tutte.
@@ -123,7 +123,7 @@ Per ognuna delle 13 famiglie si rivede il master prompt contro le fonti online (
 
 ## 12. Rischi aperti
 
-- **I PE non sono ancora in MLX.** I file in `Downloads` sono nel formato di Draw Things (`int8_convrot`, un solo `.safetensors`, senza `config.json`); lo scanner dell'LLM non li vede. Servono i pesi originali convertiti: due download da ~19 GB. Finché non ci sono, `qwen_image_2.1` usa il generico.
+- **I PE vanno procurati in MLX.** I file in `Downloads` sono nel formato di Draw Things (`int8_convrot`, un solo `.safetensors`, senza `config.json`); lo scanner dell'LLM non li vede. Esistono conversioni della comunità, non ufficiali: `prithivMLmods/Qwen-Image-2.1-PE-T2I-MLX` e `…-PE-I2I-MLX` (fatte con `mlx-vlm`, torre visiva intatta; BF16 ~17,5 GB nella radice, `8bit/` ~9,7 GB e `4bit/` ~5,6 GB in sottocartelle). Da verificare dopo il download: che ogni variante abbia `config.json`, tokenizer e template di chat, e che `mlx-swift-lm` la carichi. Lo scanner cerca `config.json` al massimo due livelli sotto la cartella dei modelli: una sottocartella `8bit/` dentro `publisher/modello/` sarebbe troppo profonda, quindi la variante scelta va scaricata in una cartella propria (per esempio `prithivMLmods/Qwen-Image-2.1-PE-T2I-MLX-8bit`). Il `system_prompt` va comunque copiato dal repository ufficiale. Le versioni «Heretic»/«Abliterated» sono modifiche non volute e non si usano. Finché non ci sono, `qwen_image_2.1` usa il generico.
 - **La qualità dell'LLM generico decide la qualità degli altri 12 master prompt.** Oggi nella cartella MLX c'è solo Qwen3-VL-2B 4 bit: per un prompt buono ne serve uno più grande. È una scelta dell'utente, non del plug-in.
 - **Moodboard e I2I.** La nota di Draw Things dice che Qwen Image 2.1 legge le immagini di riferimento dal canvas **e** dal Moodboard. Con il solo Moodboard il PE T2I scrive un prompt che non sa nulla di quelle immagini. Si decide di non considerarle per ora; da riprovare dopo la prova dal vivo (backlog: «Famiglie che leggono il Moodboard»).
 - **Thinking lungo.** Un PE da 9 B con thinking acceso può metterci minuti; per questo `timeout` entra nel contratto e il pulsante resta occupato con un testo chiaro.
