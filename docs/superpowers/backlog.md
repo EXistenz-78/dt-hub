@@ -171,3 +171,10 @@ I test di sessione dell'M3 (`GenerationSessionTests`) sono stati resi determinis
 - **Spec del design system:** §6 dice ancora che la risoluzione di `PluginKit` in Xcode è da provare (è provata); §5 nomina `DS.accent` mentre il test usa `DS.panelRadius`.
 - **Il cambio di tab tra due plug-in** non ha un test automatico (è una riga di interfaccia, provata dal vivo).
 
+
+## Rimandi del contratto `llm` (tappa 1 di Prompt Master)
+
+- **Le immagini date all'LLM arrivano a 512 × 512:** `ChatSession` ridimensiona le immagini a quella misura per impostazione predefinita (`processing: .init(resize:)`). Va bene per descrivere; per l'I2I dei PE di Qwen (immagine di partenza) si deve vedere con la prova dal vivo se basta, altrimenti `LanguageModelOptions` ottiene una misura massima.
+- **Nessun annullamento:** una richiesta `llm` non si può interrompere dal plug-in; un modello con il thinking acceso può metterci minuti.
+- **`refreshContext` rilegge la cartella dei modelli** a ogni cambio di tab (una scansione di due livelli): se pesasse, si memorizza l'elenco finché la cartella o le impostazioni non cambiano.
+- **Il solo Moodboard conta come T2I** (scelta dell'utente, 5 ottobre 2026): le sue immagini non vanno al PE T2I. Se in prova dal vivo Qwen 2.1 con il solo Moodboard si comporta da I2I, si cambia `PEPlanner` (una riga).
