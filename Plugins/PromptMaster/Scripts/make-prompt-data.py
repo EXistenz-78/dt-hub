@@ -41,9 +41,9 @@ FAMILIES = [
     ("v1", "Stable Diffusion 1.5", "sd15", True, "20-35", 40, "tags",
      "CLIP reads 77 tokens and ignores the rest; every tag and every comma costs tokens", False),
     ("ernie_image", "ERNIE-Image", "ernie_image", True, "50-150", 300, "words",
-     "the prompt is limited to 2048 characters, about 330 words", False),
+     "the prompt is limited to about 2048 characters, roughly 330 words", False),
     ("hidream_i1", "HiDream-I1", "flux1", False, "40-90", 150, "words",
-     "the encoders read 128 tokens well, about 90 words, and 248 at most, about 150 words", True),
+     "the reference pipeline reads 128 tokens, about 90 words, by default, and some tools raise it to 256 tokens, about 150 words", True),
     ("cosmos2.5_2b", "Anima (Cosmos 2.5)", "illustrious", True, "30-120", 300, "words",
      "the text conditioner works on 512 tokens, about 350 words", True),
 ]
@@ -63,6 +63,22 @@ OUTPUT_JSON = (
     '"prompt" is the final prompt; "negative" lists only what to avoid (specific artifacts, unwanted objects, things the user marked as to avoid), '
     "kept short and targeted, never a generic list of quality words unless the notes below say so. Both values are in English."
 )
+
+# How good the evidence for each ceiling is, for whoever reviews the master prompts (kept in `lengthNote`, not sent to the model).
+EVIDENCE = {
+    "flux1": "Encoder limit (T5-XXL 512 tokens), well documented.",
+    "flux2": "Reference code constant (MAX_LENGTH = 512).", "flux2_9b": "Reference code constant (MAX_LENGTH = 512).",
+    "flux2_4b": "Reference code constant (MAX_LENGTH = 512).",
+    "krea_2": "Reference implementation (max_length 512) and a bug report: beyond 512 tokens the output is corrupted.",
+    "qwen_image": "diffusers default max_sequence_length 1024; the figure of about 500 words comes from the notebook.",
+    "qwen_image_2.1": "Assumed equal to Qwen Image; not checked for 2.1.",
+    "z_image": "Model card: 512 tokens by default, 1024 on request; 'works best with long and detailed prompts'.",
+    "sdxl_base_v0.9": "CLIP window of 77 tokens (notebook); how a runtime chunks longer prompts is not checked.",
+    "v1": "CLIP window of 77 tokens (notebook); how a runtime chunks longer prompts is not checked.",
+    "ernie_image": "The 2048 characters come from the notebook only; the official model card states no limit.",
+    "hidream_i1": "Reference pipeline default (128 tokens, CLIP 77); no official statement on the model's real capacity. A cautious ceiling.",
+    "cosmos2.5_2b": "Anima runtime default (max_sequence_length 512, accepts up to 4096).",
+}
 
 LENGTH = "- Length: aim for {words} {unit}. When the description and the terms need more room, go on, but never beyond {max} {unit}: {why}."
 
@@ -154,7 +170,7 @@ def build(source):
         notes = length + "\n" + NOTES[NOTES_KEY[fid]]
         entry = {
             "label": label, "negative": negative, "hiddenCategories": hidden_categories(db, db["families"], old, negative),
-            "words": words, "maxWords": ceiling, "lengthNote": why[0].upper() + why[1:] + ".",
+            "words": words, "maxWords": ceiling, "lengthNote": why[0].upper() + why[1:] + ". " + EVIDENCE[fid],
             "system": COMMON.format(label=label, output=output, notes=notes),
         }
         if fid in BOORU:
