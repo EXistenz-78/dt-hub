@@ -1,6 +1,6 @@
 # DT Hub — Plug-in Prompt Master (PM)
 
-Data: 5 ottobre 2026 · Stato: approvata il 5 ottobre 2026; tappe 1 (il contratto) e 2 (il plug-in) realizzate; tappa 3 ridefinita il 5 ottobre (pomeriggio) dopo la lettura dei system prompt dei PE, da rileggere · Estende `2026-10-03-plugin-design.md` (contratto 1), `2026-10-04-plugin-sphere-light-design.md` (come si costruisce un plug-in) e `2026-10-05-plugin-design-system-design.md` (l'aspetto dell'app)
+Data: 5 ottobre 2026 · Stato: approvata il 5 ottobre 2026; tappe 1 (il contratto), 2 (il plug-in) e 3 (Qwen 2.1: PE T2I, categorie nella richiesta, «Applica») realizzate; resta la revisione dei master prompt (§9) · Estende `2026-10-03-plugin-design.md` (contratto 1), `2026-10-04-plugin-sphere-light-design.md` (come si costruisce un plug-in) e `2026-10-05-plugin-design-system-design.md` (l'aspetto dell'app)
 
 ## 1. Scopo
 
