@@ -136,6 +136,16 @@ struct PMStateTests {
     #expect(!state.canWrite && state.writeRequest?.family == "ideogram_4")
   }
 
+  @Test func theButtonIsOffWhileASceneIsBeingWritten() {
+    let state = state()
+    state.description = "un porto"
+    #expect(state.canWrite)
+    state.isMakingScene = true
+    #expect(!state.canWrite)  // the scene would replace the text the request was made from
+    state.isMakingScene = false
+    #expect(state.canWrite)
+  }
+
   @Test func theRequestCarriesWhatTheTabKnowsAndTheBooruSwitchOnlyWhereItExists() throws {
     let state = state()
     state.description = "ciao"

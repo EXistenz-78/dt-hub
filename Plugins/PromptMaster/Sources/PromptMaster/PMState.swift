@@ -67,6 +67,7 @@ final class PMState: ObservableObject {
     switch warning {
     case .unreadable(let file): return L.format(.unreadableFile, file, italian: italian)
     case .unknownSchema(let file): return L.format(.unknownSchema, file, italian: italian)
+    case .repeatedIDs(let file): return L.format(.repeatedIDs, file, italian: italian)
     }
   }
 
@@ -153,7 +154,7 @@ final class PMState: ObservableObject {
 
   /// There is something to write from, a master prompt to write with, and the plug-in is on and not busy.
   var canWrite: Bool {
-    active && !isWriting && master != nil
+    active && !isWriting && !isMakingScene && master != nil
       && (!description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !selectedTerms.isEmpty)
   }
 

@@ -195,3 +195,11 @@ I test di sessione dell'M3 (`GenerationSessionTests`) sono stati resi determinis
 - **La colla** (`PromptMasterPlugin`, le viste) non ha test automatici; la logica sta in `PMWriter`, `PMState`, `PEPlanner`, `TermTree` e gli altri tipi puri. Il tab è stato visto in un PNG disegnato fuori dall'app, non dal vivo nella finestra.
 - **Provato dal vivo solo con il modello generico locale** (Qwen3-VL-2B): i PE di Qwen (tappa 3) e un modello più grande per i master prompt non ancora.
 
+- **Una risposta fatta solo di virgolette** (`""`) o un JSON con `"prompt": "  "` diventa un prompt vuoto (o il testo del JSON) e finisce nella Generazione: `AnswerParser` dovrebbe dare nil.
+- **Un clic su una freccia durante la ricerca** cambia lo stato aperto/chiuso salvato senza che si veda; `toggleOpen` non dovrebbe fare nulla mentre la lista è filtrata.
+- **`custom-terms.json` illeggibile:** i termini personali spariscono senza una riga di stato all'avvio (il file non si tocca); la spec §3 chiede un avviso.
+- **«Tag booru» acceso su `sdxl_base_v0.9` e `v1`:** il testo del booru dice «solo tag, niente frasi» dopo il master prompt che chiede un JSON con `negative`; un modello piccolo può rispondere con i soli tag e il negativo non si scrive. Da riscrivere nella revisione dei master prompt.
+- **`make-prompt-data.py`:** l'asserzione sul testo delle stringhe Swift cerca `"""#`, che `json.dumps` non produce mai; il rischio vero è `\#`.
+- **Una `schema` 2 nella cartella dati** si segnala di solito come «non si legge» e non come «layout sconosciuto» (si decodifica prima come schema 1).
+- **Ogni riga della lista osserva tutto `PMState`:** a ogni tasto nella descrizione si ridisegnano le righe aperte e si salva in `UserDefaults`; non misurato.
+- **Il cestino dei termini personali** è sempre visibile, non solo al passaggio del mouse (spec §4).

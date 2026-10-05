@@ -4,12 +4,20 @@ import Foundation
 protocol VersionedData {
   var schema: Int { get }
   var version: String { get }
+  /// No id is used twice: a list built from the file would crash on a repeated one.
+  var hasUniqueIDs: Bool { get }
+}
+
+extension VersionedData {
+  var hasUniqueIDs: Bool { true }
 }
 
 /// Why a file in the data folder was not used.
 enum DataWarning: Equatable, Sendable {
   case unreadable(file: String)
   case unknownSchema(file: String)
+  /// An id is used twice (a hand-edited file): the list and the Shuffle could not work with it.
+  case repeatedIDs(file: String)
 }
 
 struct LoadedData<T> {
@@ -48,6 +56,9 @@ enum DataSource {
     }
     guard file.schema == supportedSchema else {
       return LoadedData(value: embedded, fromFile: false, warning: .unknownSchema(file: name))
+    }
+    guard file.hasUniqueIDs else {
+      return LoadedData(value: embedded, fromFile: false, warning: .repeatedIDs(file: name))
     }
     if isOlder(file.version, than: embedded.version) { return LoadedData(value: embedded, fromFile: false) }
     return LoadedData(value: file, fromFile: true)

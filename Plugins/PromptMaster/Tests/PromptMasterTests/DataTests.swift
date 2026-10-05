@@ -108,6 +108,30 @@ struct DataTests {
     #expect(try Data(contentsOf: file) == Data("not json".utf8))  // never touched
   }
 
+  @Test func aFileWithRepeatedIdsLosesWithAWarningAndIsLeftAloneBecauseTheListWouldCrash() throws {
+    let folder = try makeFolder()
+    let file = folder.appendingPathComponent("prompt-database.json")
+    func write(_ json: String) throws { try Data(json.utf8).write(to: file) }
+    let term = #"{"id": "t1", "it": "a", "en": "a"}"#
+    // The same term id twice in one category, in two categories; the same category id twice; the same group twice.
+    try write(#"{"schema": 1, "version": "99.0.0", "groups": [{"id": "A", "it": "x", "en": "x"}], "categories": [{"id": "c", "group": "A", "it": "x", "en": "x", "terms": [\#(term), \#(term)]}]}"#)
+    #expect(PMData.load(folder: folder).warnings == [.repeatedIDs(file: "prompt-database.json")])
+    try write(#"{"schema": 1, "version": "99.0.0", "groups": [{"id": "A", "it": "x", "en": "x"}], "categories": [{"id": "c", "group": "A", "it": "x", "en": "x", "terms": [\#(term)]}, {"id": "d", "group": "A", "it": "x", "en": "x", "terms": [\#(term)]}]}"#)
+    #expect(PMData.load(folder: folder).warnings == [.repeatedIDs(file: "prompt-database.json")])
+    try write(#"{"schema": 1, "version": "99.0.0", "groups": [{"id": "A", "it": "x", "en": "x"}], "categories": [{"id": "c", "group": "A", "it": "x", "en": "x", "terms": []}, {"id": "c", "group": "A", "it": "x", "en": "x", "terms": []}]}"#)
+    #expect(PMData.load(folder: folder).warnings == [.repeatedIDs(file: "prompt-database.json")])
+    try write(#"{"schema": 1, "version": "99.0.0", "groups": [{"id": "A", "it": "x", "en": "x"}, {"id": "A", "it": "y", "en": "y"}], "categories": []}"#)
+    let data = PMData.load(folder: folder)
+    #expect(data.database == PMData.embeddedDatabase && data.warnings == [.repeatedIDs(file: "prompt-database.json")])
+    #expect(try String(contentsOf: file, encoding: .utf8).contains(#""id": "A", "it": "y""#))  // never touched
+  }
+
+  @Test func aFileWithUniqueIdsIsStillAccepted() throws {
+    let folder = try makeFolder()
+    try databaseJSON(version: "99.0.0").write(to: folder.appendingPathComponent("prompt-database.json"))
+    #expect(PMData.load(folder: folder).warnings.isEmpty)
+  }
+
   @Test func theMasterPromptsFileLivesInThePluginsOwnFolder() throws {
     let folder = try makeFolder()
     var masters = PMData.embeddedMasters
