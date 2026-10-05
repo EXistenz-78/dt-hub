@@ -112,6 +112,20 @@ struct DataTests {
     }
   }
 
+  @Test func qwenImage21HasAMaximumOf500WordsAndFollowsTheEnhancersStructureInOurOwnWords() {
+    let qwen = PMData.embeddedMasters.families["qwen_image_2.1"]
+    #expect(qwen?.maxWords == 500 && qwen?.words == "300-450")
+    let system = qwen?.system ?? ""
+    for phrase in [
+      "never beyond 500 words", "Open with one sentence", "position in the frame", "Give the light its own sentence",
+      "double quotes", "one sentence about the whole composition", "RGBA image with an alpha channel",
+    ] {
+      #expect(system.contains(phrase), "\(phrase)")
+    }
+    // Qwen's own text is not copied (licence): none of its section titles.
+    #expect(!system.contains("Image Prompt Rewriting Expert") && !system.contains("Walk the frame"))
+  }
+
   @Test func theFourFamiliesWithoutAReviewAreMarkedProvisional() {
     let provisional = PMData.embeddedMasters.families.filter { $0.value.provisional == true }.keys
     #expect(Set(provisional) == ["flux2", "qwen_image_2.1", "hidream_i1", "cosmos2.5_2b"])
