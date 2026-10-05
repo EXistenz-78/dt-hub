@@ -231,5 +231,11 @@ Prima i master prompt davano «lunghezze obiettivo» prese dalle note del vecchi
 - **Il PE I2I** (riscrive istruzioni di modifica di un'immagine, con `<image1>`, `<image2>`…, e risponde con `wh_ratio` o `ratio_follow`) è per un plug-in dedicato a Qwen Image 2.1; il contratto ha già `startImage` e `moodboard` nel `context`.
 - **La richiesta al PE ignora i termini da evitare** (non ha un negativo); per Qwen 2.1 la categoria dei termini da evitare è comunque nascosta.
 - **La risposta del PE ha paragrafi separati da righe vuote:** vanno nel campo Prompt così come sono; se Draw Things li trattasse male, `AnswerParser` potrebbe unirli.
-- **«Applica» legge la dimensione dal `context`** (`parameters.width` e `.height`): se l'utente cambia la dimensione a mano dopo, vale quella aggiornata solo al prossimo `context`.
+- **«Applica» legge la dimensione dal `context`** (`parameters.width` e `.height`); dopo la revisione l'app rimanda il contesto anche quando l'utente cambia la dimensione a mano (`PluginContextKey`).
 - **Il PE T2I è una conversione della comunità** (`prithivMLmods`, 4 bit): non si è confrontata la qualità con il modello originale.
+- **Il PE può superare il massimo di parole:** nella prova dal vivo ha scritto 694 parole per una richiesta densa (il suo prompt ne chiede 400–500, il massimo di Qwen 2.1 è 500). Non si taglia (si perderebbe la frase finale) né si rifà (altri 45 s): si potrebbe avvisare nella riga di stato dopo ogni scrittura («Prompt di 694 parole: questo modello ne legge circa 500; la fine può essere ignorata»), con `maxWords` dei dati, per tutte le famiglie.
+- **«Applica» compare anche per un rapporto illeggibile** («2.35:1», «16x9»): la spec vuole che non compaia; premendolo dice che non si può applicare. Basterebbe tenere `suggestedRatio` solo se `RatioSize.parse` lo legge.
+- **Se la famiglia cambia mentre il PE scrive** (fino a 900 s), a fine scrittura il formato suggerito torna a comparire sotto la nuova famiglia: si dovrebbe impostarlo solo se la famiglia è ancora quella della richiesta.
+- **`applyRatio` moltiplica larghezza × altezza** senza controllare l'overflow; i valori vengono dai parametri dell'app, già limitati.
+- **Un termine personale con a capo dentro** non viene ripulito: finisce così com'è nella richiesta all'LLM (non rompe nessuna struttura che leggiamo noi).
+

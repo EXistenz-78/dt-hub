@@ -115,18 +115,18 @@ NOTES = {
     "qwen_image": """- Write natural prose like for FLUX. Excellent with text in the image (also Chinese and other scripts): put it in double quotes and state font, color and position.
 - A negative prompt is supported: use it targeted by kind of defect, never as a generic list of low-quality words; if nothing specific has to be excluded, leave "negative" empty.
 - You may end the prompt with the quality suffix "Ultra HD, 4k, cinematic composition".""",
-    "qwen_image_2.1": """- Write one long paragraph (separate paragraphs only for a layout made of stacked regions), as an observer describing the finished image in the present tense and the third person: no commands, no quality boosters (masterpiece, 8K, highly detailed).
-- Open with one sentence of about twenty words: the medium (photograph, poster, illustration, scene), the style, the subject, the background and its palette.
-- Then walk the frame in order, background first. For a layout: the top band, the body from left to right, the bottom band. For a single subject: its pose and place in the frame, head and face, body and garments, what it holds. Give every element a position in the frame (upper-left, along the lower edge, behind the left shoulder) and use about ten such phrases, reaching the corners and the edges, not only the centre.
-- Give the light its own sentence: its source, direction and quality, and the shadows and highlights it leaves.
-- Name colors with a modifier (deep navy, pale cream) and give materials and textures (brushed metal, weathered wood). Enumerate: say what each thing is, small counts as words.
-- People: build, posture, gaze, expression, hair, each garment with its color and material; age as a life stage, never a number.
-- Any text that must appear goes in straight double quotes, in its own script, with weight, color and position; text not meant to be read is blurred or too small to read.
-- End with one sentence about the whole composition: balance, palette, style and mood.
-- Everything must hold together physically: shadows fall away from the light, reflections match what is in front of the surface.
+    "qwen_image_2.1": """- Write one long paragraph (separate paragraphs only for a layout made of stacked regions), as an observer describing the finished picture in the present tense and the third person: no commands and no hype words (no "best quality", no "ultra HD", no "trending on ArtStation"); describe, do not praise.
+- Begin with one sentence of roughly twenty words that names the kind of picture (photograph, poster, illustration, scene), its style, its subject and its backdrop with the palette.
+- Then go through the frame in order, backdrop first. For a layout: the top area, then the middle from left to right, then the lower area. For a single subject: its pose and place in the frame, head and face, body and clothes, what it holds. Give every element a position in the frame (top left, bottom edge, to the right of the doorway, just behind the table) and use about ten such phrases, reaching the corners and the edges, not only the centre.
+- Give the light a sentence of its own: where it comes from, how hard or soft it is, and what shadows and glints it makes.
+- Describe colors with a qualifier (warm ochre, slate blue, dusty mauve) and say what things are made of and how they feel to the eye (oiled oak, hammered copper, rough plaster). Prefer a precise list to a collective word, and spell out small numbers.
+- People: build, posture, gaze, expression, hair, each garment with its color and fabric; age loosely (a child, a young woman, an old man), never with a number of years.
+- Any text that must appear goes in straight double quotes, in its own script, with weight, color and position; lettering that should not be legible is described as indistinct.
+- Finish with a single sentence that sums up the picture as a whole (its balance, colors, style and atmosphere).
+- Keep the scene physically plausible: shadows follow the light, reflections show what faces the surface.
 - If the user wants a transparent background, say explicitly: an RGBA image with an alpha channel and a transparent background.
 - There is no negative prompt (guidance 1): turn "avoid" terms into positive description.
-(Provisional master prompt: its structure follows the model's own prompt enhancer; to be reviewed against the model's documentation.)""",
+(Provisional master prompt: its structure follows the model's own prompt enhancer, in our own words; to be reviewed against the model's documentation.)""",
     "z_image": """- This is a distilled turbo model with no negative prompt and no numeric weights. It likes long, detailed prompts: describe the scene in full.
 - The very first sentence must be the style or medium (before the subject). Do not frame the image as "a photograph" or "a cinematic frame from a film": that framing overrides the style even in first position.
 - Turn "avoid" terms into positive description.""",
