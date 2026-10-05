@@ -3707,6 +3707,23 @@
         }
       }
     },
+    "llm.error.modelNotFound": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The language model “%@” is not in the models folder."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il modello linguistico «%@» non è nella cartella dei modelli."
+          }
+        }
+      }
+    },
     "llm.error.noImages": {
       "extractionState": "manual",
       "localizations": {

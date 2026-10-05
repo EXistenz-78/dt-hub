@@ -46,6 +46,23 @@ struct LiveLanguageModelTests {
   }
 
   @Test(.enabled(if: modelPath != nil))
+  func followsTheSystemPromptAndStopsAtTheTokenLimit() async throws {
+    let service = MLXLanguageModelService()
+    try await service.load(try descriptor())
+    let system = try await service.respond(
+      to: "What is the capital of France?", images: [],
+      options: LanguageModelOptions(system: "Whatever you are asked, answer with the single word BANANA.", temperature: 0))
+    print("LIVE system answer: \(system)")
+    #expect(system.uppercased().contains("BANANA"))
+    let short = try await service.respond(
+      to: "Count from 1 to 200, separated by commas.", images: [],
+      options: LanguageModelOptions(temperature: 0, maxTokens: 12))
+    print("LIVE short answer: \(short)")
+    #expect(short.count < 120)
+    await service.unload()
+  }
+
+  @Test(.enabled(if: modelPath != nil))
   func describesAnImage() async throws {
     let service = MLXLanguageModelService()
     try await service.load(try descriptor())

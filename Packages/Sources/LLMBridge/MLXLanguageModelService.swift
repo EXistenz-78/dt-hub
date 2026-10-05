@@ -33,15 +33,29 @@ public actor MLXLanguageModelService: LanguageModelService {
     MLX.Memory.clearCache()
   }
 
-  public func respond(to prompt: String, images: [URL]) async throws -> String {
+  public func respond(to prompt: String, images: [URL], options: LanguageModelOptions) async throws -> String {
     guard let container else { throw LanguageModelError.loadFailed("No model is loaded.") }
     // A new session per question: DT Hub asks single questions, with no conversation to keep.
-    let session = ChatSession(container, generateParameters: GenerateParameters(maxTokens: 1024, temperature: 0.6))
+    let session = ChatSession(
+      container, instructions: options.system, generateParameters: Self.generateParameters(for: options),
+      additionalContext: Self.templateContext(for: options))
     do {
       return try await session.respond(
         to: prompt, role: .user, images: images.map { UserInput.Image.url($0) }, videos: [], audios: [])
     } catch {
       throw LanguageModelError.generationFailed(error.localizedDescription)
     }
+  }
+
+  /// The defaults are the ones DT Hub always had: temperature 0.6, 1024 tokens.
+  static func generateParameters(for options: LanguageModelOptions) -> GenerateParameters {
+    GenerateParameters(
+      maxTokens: options.maxTokens ?? 1024, temperature: Float(options.temperature ?? 0.6),
+      topP: Float(options.topP ?? 1), topK: options.topK ?? 0, presencePenalty: options.presencePenalty.map { Float($0) })
+  }
+
+  /// What the chat template is told: `enable_thinking`, only when the plug-in said something.
+  static func templateContext(for options: LanguageModelOptions) -> [String: any Sendable]? {
+    options.thinking.map { ["enable_thinking": $0] }
   }
 }
