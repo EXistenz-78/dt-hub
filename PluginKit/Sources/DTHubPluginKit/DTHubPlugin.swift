@@ -39,12 +39,79 @@ public enum DTHubMessage {
   public static func bare(_ type: String) -> Data { Data(#"{"type":"\#(type)"}"#.utf8) }
 }
 
+/// A language model of the app's models folder (an entry of `DTHubContext.languageModels`).
+public struct DTHubLanguageModel: Decodable, Equatable, Sendable {
+  /// The name `askLanguageModel(model:)` asks for.
+  public var name: String
+  /// Its folder, to read files that come with the model.
+  public var path: String
+  /// True for a vision-language model: it can be given images.
+  public var supportsImages: Bool
+}
+
 /// App → plug-in: where the app stands (message type `context`).
 public struct DTHubContext: Decodable, Sendable {
   public var model: String?
   public var family: String?
   /// A folder to exchange image files through.
   public var tempFolder: String
+  /// The path of the start image of the Control tab; nil when there is none.
+  public var startImage: String?
+  /// The Moodboard pictures that are on, as files, in the order of the thumbnails; nil when there are none.
+  public var moodboard: [String]?
+  /// The language models of the app's models folder; nil when the app does not say.
+  public var languageModels: [DTHubLanguageModel]?
+}
+
+/// How a question to the language model is asked. Every field is optional: nil keeps the app's default.
+public struct DTHubLLMOptions: Equatable, Sendable {
+  public var temperature: Double?
+  public var topP: Double?
+  public var topK: Int?
+  public var presencePenalty: Double?
+  public var maxTokens: Int?
+  /// Lets a reasoning model think before it answers.
+  public var thinking: Bool?
+  /// How long to wait for the answer, in seconds. Only this library uses it (the app never sees it): 300 when
+  /// nil, at most 1800.
+  public var timeout: Double?
+
+  public static let defaultTimeout = 300.0
+  public static let maxTimeout = 1800.0
+
+  public init(
+    temperature: Double? = nil, topP: Double? = nil, topK: Int? = nil, presencePenalty: Double? = nil,
+    maxTokens: Int? = nil, thinking: Bool? = nil, timeout: Double? = nil
+  ) {
+    self.temperature = temperature
+    self.topP = topP
+    self.topK = topK
+    self.presencePenalty = presencePenalty
+    self.maxTokens = maxTokens
+    self.thinking = thinking
+    self.timeout = timeout
+  }
+
+  var effectiveTimeout: Double { min(max(timeout ?? Self.defaultTimeout, 1), Self.maxTimeout) }
+
+  /// The `options` object of the `llm` message: only what is set, and not the timeout.
+  var json: [String: Any] {
+    var object: [String: Any] = [:]
+    if let temperature { object["temperature"] = temperature }
+    if let topP { object["topP"] = topP }
+    if let topK { object["topK"] = topK }
+    if let presencePenalty { object["presencePenalty"] = presencePenalty }
+    if let maxTokens { object["maxTokens"] = maxTokens }
+    if let thinking { object["thinking"] = thinking }
+    return object
+  }
+}
+
+/// What the language model answered, or why not.
+public enum DTHubLLMAnswer: Equatable, Sendable {
+  case text(String)
+  /// The app's reason (no model chosen, not enough memory, the model is not in the folder…) or "No answer."
+  case failure(String)
 }
 
 /// The app side of the channel, given to the plug-in at start.
@@ -86,10 +153,41 @@ public final class DTHubHost {
   }
 
   /// Asks the app's language model, which answers in its own time (it may have to load first). Nil when
-  /// there is no answer: no model chosen, the plug-in not active, a timeout.
-  public func askLanguageModel(_ prompt: String, images: [String] = []) async -> String? {
-    let answer = await sendJSON(["type": "llm", "prompt": prompt, "images": images], timeout: 300)
-    return answer?["type"] as? String == "llm" ? answer?["text"] as? String : nil
+  /// there is no answer: no model chosen, the plug-in not active, a timeout. `system` is the system prompt;
+  /// `model` the name of a model of `DTHubContext.languageModels` to use instead of the one the user chose.
+  public func askLanguageModel(
+    _ prompt: String, images: [String] = [], system: String? = nil, model: String? = nil,
+    options: DTHubLLMOptions = DTHubLLMOptions()
+  ) async -> String? {
+    if case .text(let text) = await askLanguageModelAnswer(
+      prompt, images: images, system: system, model: model, options: options)
+    {
+      return text
+    }
+    return nil
+  }
+
+  /// Like `askLanguageModel`, with the app's reason when there is no answer.
+  public func askLanguageModelAnswer(
+    _ prompt: String, images: [String] = [], system: String? = nil, model: String? = nil,
+    options: DTHubLLMOptions = DTHubLLMOptions()
+  ) async -> DTHubLLMAnswer {
+    let message = Self.llmMessage(prompt: prompt, images: images, system: system, model: model, options: options)
+    guard let answer = await sendJSON(message, timeout: options.effectiveTimeout) else { return .failure("No answer.") }
+    if answer["type"] as? String == "llm", let text = answer["text"] as? String { return .text(text) }
+    return .failure(answer["text"] as? String ?? "No answer.")
+  }
+
+  /// The `llm` message: the keys that are not set are left out, so the app asks as it always did.
+  nonisolated static func llmMessage(
+    prompt: String, images: [String], system: String?, model: String?, options: DTHubLLMOptions
+  ) -> [String: Any] {
+    var message: [String: Any] = ["type": "llm", "prompt": prompt, "images": images]
+    if let system, !system.isEmpty { message["system"] = system }
+    if let model, !model.isEmpty { message["model"] = model }
+    let optionsJSON = options.json
+    if !optionsJSON.isEmpty { message["options"] = optionsJSON }
+    return message
   }
 
   func sendJSON(_ body: [String: Any], timeout: Double = 5) async -> [String: Any]? {

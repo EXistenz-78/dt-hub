@@ -40,7 +40,10 @@ and `import DTHubDesign` in the views (see `Plugins/SphereLight`).
 
 JSON objects with a `type`. An unknown type gets `{"type":"unsupported"}`.
 
-**App → plug-in:** `context` (model, family, parameters, `tempFolder`: a folder to exchange picture files through),
+**App → plug-in:** `context` (model, family, parameters, `tempFolder`: a folder to exchange picture files through;
+`startImage`: the path of the Control tab's start image when there is one; `moodboard`: the paths of the Moodboard
+pictures that are on, in the order of the thumbnails; `languageModels`: `[{"name", "path", "supportsImages"}]`, the
+language models of the app's models folder — each key is left out when there is nothing to say; the app sends the context again when a plug-in's tab is shown),
 `activate`, `deactivate`.
 
 **Plug-in → app:**
@@ -71,7 +74,15 @@ JSON objects with a `type`. An unknown type gets `{"type":"unsupported"}`.
   names apart. `fields` has the keys of `contribute` above, the prompt and the negative prompt included; no size,
   no model. A name the menu has already is never touched (the user may have changed it), so register them
   whenever you like. The answer is `{"type":"ok","added":n,"existing":m,"rejected":k}`.
-- `llm` — `{"prompt", "images": [paths]}`: a question for the language model. The answer is
-  `{"type":"llm","text":…}` (it can take a while: the model may have to load) or an `error`.
+- `llm` — `{"prompt", "images": [paths], "system", "model", "options"}`: a question for the language model. The answer
+  is `{"type":"llm","text":…}` (it can take a while: the model may have to load) or an `error`. Only `prompt` is
+  needed. `system` is the system prompt. `model` is the `name` of one of `languageModels` and asks for that model
+  instead of the one the user chose (the user's choice stays; an unknown name is an `error`). `options` is an object
+  with `temperature` (0–2), `topP` (0–1), `topK` (0–200), `presencePenalty` (−2–2), `maxTokens` (1–32768) and
+  `thinking` (true/false: lets a reasoning model think first); a number out of range is brought into range, what is
+  not set keeps the app's default (temperature 0.6, 1024 tokens). With the library: `host.askLanguageModel(prompt,
+  system:, model:, options: DTHubLLMOptions(…))` returns the text or nil, `askLanguageModelAnswer` also gives the
+  app's reason; `DTHubLLMOptions.timeout` (seconds, 300 by default, 1800 at most) is how long the library waits and
+  is not sent.
 
 The Sample plug-in (`Examples/Sample`, `Scripts/build-sample.sh OUT [b]`) sends all of these.

@@ -34,7 +34,24 @@ public enum PluginMessageType {
   }
 }
 
-/// App → plug-in: where the app stands (sent when the plug-in is activated and when the model changes).
+/// A language model of the models folder, as a plug-in is told about it (`PluginContext.languageModels`).
+public struct PluginLanguageModel: Codable, Equatable, Sendable {
+  /// The name `llm`'s `model` asks for (the path below the models folder).
+  public var name: String
+  /// Its folder, to read files that come with the model.
+  public var path: String
+  /// True for a vision-language model: it can be given images.
+  public var supportsImages: Bool
+
+  public init(name: String, path: String, supportsImages: Bool) {
+    self.name = name
+    self.path = path
+    self.supportsImages = supportsImages
+  }
+}
+
+/// App → plug-in: where the app stands (sent when the plug-in is activated, when the model, its parameters or the
+/// start image change, and when the user comes back to a tab).
 public struct PluginContext: Codable, Equatable, Sendable {
   public var type = PluginMessageType.context
   public var model: String?
@@ -42,12 +59,24 @@ public struct PluginContext: Codable, Equatable, Sendable {
   public var parameters: GenerationParameters
   /// A folder the plug-in can exchange image files through.
   public var tempFolder: String
+  /// The start image of the Control tab: the path of its file. Absent when there is none.
+  public var startImage: String?
+  /// The Moodboard pictures that are on, as files, in the order of the thumbnails. Absent when there are none.
+  public var moodboard: [String]?
+  /// The language models of the models folder. Absent when the app has none to list.
+  public var languageModels: [PluginLanguageModel]?
 
-  public init(model: String?, family: String?, parameters: GenerationParameters, tempFolder: String) {
+  public init(
+    model: String?, family: String?, parameters: GenerationParameters, tempFolder: String, startImage: String? = nil,
+    moodboard: [String]? = nil, languageModels: [PluginLanguageModel]? = nil
+  ) {
     self.model = model
     self.family = family
     self.parameters = parameters
     self.tempFolder = tempFolder
+    self.startImage = startImage
+    self.moodboard = moodboard
+    self.languageModels = languageModels
   }
 }
 
