@@ -23,6 +23,19 @@ Objective-C selectors and JSON messages (see `docs/superpowers/specs/2026-10-03-
 
 The bundle is added in DT Hub › Preferences › Plug-ins.
 
+## The look of the app
+
+`DTHubDesign` (a second product of this package, SwiftUI only) holds the components of the app: `DS` (colours, radii,
+spacing), `dsPanel`, `DSPanelHeader`, `DSGroupHeader`, `DSCollapsibleCard` (with an optional `trailing` accessory),
+`DSPillButtonStyle`, `DSGlassCircleButtonStyle`, `DSCheckboxToggleStyle`, `dsGlass`… A plug-in tab that uses them looks
+like the rest of DT Hub. Take the product next to the kit and give **each** module an alias of its own (the kit does not
+re-export the design system: with `moduleAliases` that does not resolve):
+
+        .product(name: "DTHubPluginKit", package: "PluginKit", moduleAliases: ["DTHubPluginKit": "MyPluginKit"]),
+        .product(name: "DTHubDesign", package: "PluginKit", moduleAliases: ["DTHubDesign": "MyPluginDesign"]),
+
+and `import DTHubDesign` in the views (see `Plugins/SphereLight`).
+
 ## Messages (contract 1)
 
 JSON objects with a `type`. An unknown type gets `{"type":"unsupported"}`.
