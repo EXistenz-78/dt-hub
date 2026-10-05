@@ -45,7 +45,7 @@ struct PMWriter {
     switch plan {
     case .enhancer(let enhancer):
       answer = await ask(
-        BriefBuilder.request(description: request.description, terms: request.terms), enhancer.system, enhancer.model,
+        BriefBuilder.enhancerRequest(description: request.description, terms: request.terms), enhancer.system, enhancer.model,
         enhancer.options)
     case .generic(let reason):
       guard let brief = BriefBuilder.make(
