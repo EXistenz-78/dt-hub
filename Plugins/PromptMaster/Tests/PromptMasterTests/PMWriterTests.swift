@@ -38,7 +38,8 @@ struct PMWriterTests {
   }
 
   private func term(_ english: String, avoid: Bool = false) -> SelectedTerm {
-    SelectedTerm(id: english, title: english, categoryTitle: "C", english: english, isNegative: avoid)
+    SelectedTerm(
+      id: english, title: english, categoryTitle: "C", categoryEnglish: "Light Source", english: english, isNegative: avoid)
   }
 
   private func model(_ name: String) -> DTHubLanguageModel {
@@ -53,7 +54,7 @@ struct PMWriterTests {
     let outcome = await writer(recorder).write(request(terms: [term("Fog")]))
     let ask = recorder.asks[0]
     #expect(ask.system == masters.families["flux2_9b"]?.system)
-    #expect(ask.prompt.contains("un porto all'alba") && ask.prompt.contains("- Fog"))
+    #expect(ask.prompt.contains("un porto all'alba") && ask.prompt.contains("- Light Source: Fog"))
     #expect(ask.model == nil && ask.options == PMWriter.genericOptions)
     #expect(fields(recorder)?["prompt"] as? String == "A quiet harbour at dawn.")
     #expect(outcome.status == "Prompt sent to Generation." && outcome.sent)
@@ -132,7 +133,8 @@ struct PMWriterTests {
     let ask = recorder.asks[0]
     #expect(ask.model == t2i && ask.system == "T2I SYSTEM")
     #expect(ask.options.thinking == true && ask.options.maxTokens == 16256 && ask.options.timeout == 900)
-    #expect(ask.prompt.contains("- Fog"))
+    // The enhancer gets the user's own words and one Look line, not the labelled lists.
+    #expect(ask.prompt.hasSuffix("Look: light source: Fog.") && !ask.prompt.contains("Terms to include"))
     #expect(fields(recorder)?["prompt"] as? String == "a long rich prompt")
     #expect(fields(recorder)?["negativePrompt"] == nil)
     #expect(outcome.ratio == "3:2" && outcome.status == "Prompt sent to Generation. Suggested format: 3:2")
