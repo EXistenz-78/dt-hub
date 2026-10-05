@@ -51,6 +51,28 @@ struct ControlStoreTests {
     #expect(image.fileName.hasSuffix(".png"))
   }
 
+  @Test func theStartImageHasAFileAndNothingElseDoes() throws {
+    let root = folder()
+    let store = store(in: root)
+    #expect(store.startImageURL == nil)
+    try store.setImage(data: pictureData(width: 30, height: 20), name: "cat.png", source: .pasteboard)
+    let url = try #require(store.startImageURL)
+    #expect(url.deletingLastPathComponent().lastPathComponent == "Control")
+    #expect(FileManager.default.fileExists(atPath: url.path))
+    store.removeImage()
+    #expect(store.startImageURL == nil)
+  }
+
+  @Test func theMoodboardFilesAreThoseThatAreOnInTheOrderOfTheThumbnails() throws {
+    let store = store(in: folder())
+    #expect(store.moodboardURLs.isEmpty)
+    try addPictures(store, 3)
+    let all = store.moodboardURLs
+    #expect(all.count == 3 && all.allSatisfy { FileManager.default.fileExists(atPath: $0.path) })
+    store.setMoodboardOn(id: store.inputs.moodboard[1].id, isOn: false)
+    #expect(store.moodboardURLs == [all[0], all[2]])
+  }
+
   @Test func theSizeFollowsTheExifOrientation() throws {
     let store = store(in: folder())
     try store.setImage(data: pictureData(width: 300, height: 200, type: .jpeg, orientation: 6), name: "p.jpg", source: .pasteboard)

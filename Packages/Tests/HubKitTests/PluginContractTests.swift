@@ -55,4 +55,32 @@ struct PluginContractTests {
     let back = try JSONDecoder().decode(PluginContext.self, from: data)
     #expect(back == context)
   }
+
+  @Test func theContextCarriesTheStartImageTheMoodboardAndTheLanguageModels() throws {
+    let context = PluginContext(
+      model: "m.ckpt", family: "qwen_image_2.1", parameters: GenerationParameters(), tempFolder: "/tmp/x",
+      startImage: "/tmp/start.png", moodboard: ["/tmp/m1.png", "/tmp/m2.png"],
+      languageModels: [PluginLanguageModel(name: "a/b", path: "/m/a/b", supportsImages: true)])
+    let data = try JSONEncoder().encode(context)
+    #expect(try JSONDecoder().decode(PluginContext.self, from: data) == context)
+    let object = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+    #expect(object["startImage"] as? String == "/tmp/start.png")
+    #expect(object["moodboard"] as? [String] == ["/tmp/m1.png", "/tmp/m2.png"])
+    #expect((object["languageModels"] as? [[String: Any]])?.first?["name"] as? String == "a/b")
+  }
+
+  @Test func withoutAStartImageAMoodboardOrModelsTheContextLeavesTheKeysOut() throws {
+    let context = PluginContext(model: nil, family: nil, parameters: GenerationParameters(), tempFolder: "/tmp/x")
+    let object = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(context)) as? [String: Any])
+    #expect(object["startImage"] == nil)
+    #expect(object["moodboard"] == nil)
+    #expect(object["languageModels"] == nil)
+  }
+
+  @Test func aContextFromAnOlderAppStillDecodes() throws {
+    let old = try JSONEncoder().encode(
+      PluginContext(model: "m.ckpt", family: nil, parameters: GenerationParameters(), tempFolder: "/tmp/x"))
+    let back = try JSONDecoder().decode(PluginContext.self, from: old)
+    #expect(back.startImage == nil && back.moodboard == nil && back.languageModels == nil)
+  }
 }

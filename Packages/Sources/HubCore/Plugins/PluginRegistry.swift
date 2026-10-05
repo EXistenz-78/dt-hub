@@ -64,8 +64,16 @@ public final class PluginRegistry: PluginHosting {
   public let contributions = ContributionStore()
   /// The Preset menu's store, where the presets a plug-in brings go; set by the app.
   @ObservationIgnored public var presetStore: PresetStore?
-  /// Answers a plug-in's question to the language model (`llm` message); nil = no language model.
-  @ObservationIgnored public var askLanguageModel: (@MainActor (_ prompt: String, _ images: [URL]) async throws -> String)?
+  /// Answers a plug-in's question to the language model (`llm` message); nil = no language model. `modelName` is the
+  /// model of the models folder the plug-in asks for; nil = the one chosen in the settings.
+  @ObservationIgnored public var askLanguageModel:
+    (@MainActor (_ prompt: String, _ images: [URL], _ options: LanguageModelOptions, _ modelName: String?) async throws -> String)?
+  /// The path of the Control tab's start image, when there is one; read whenever a context is sent.
+  @ObservationIgnored public var startImagePath: (@MainActor () -> String?)?
+  /// The paths of the Moodboard pictures that are on; read whenever a context is sent.
+  @ObservationIgnored public var moodboardPaths: (@MainActor () -> [String])?
+  /// The language models of the models folder; read whenever a context is sent.
+  @ObservationIgnored public var languageModels: (@MainActor () -> [PluginLanguageModel])?
 
   @ObservationIgnored private let folder: PluginFolder
   @ObservationIgnored private let settings: PluginSettingsStore
@@ -263,9 +271,17 @@ public final class PluginRegistry: PluginHosting {
 
   @ObservationIgnored private var latestParameters = GenerationParameters()
 
+  /// Tells the active plug-ins where the app stands again, for what changed without the model or its parameters
+  /// changing (a model added to the models folder, a start image): the app calls it when a plug-in's tab is shown.
+  public func refreshContext() {
+    for entry in entries where entry.state == .loaded && entry.isActive { sendContext(to: entry.id) }
+  }
+
   private func sendContext(to identifier: String) {
     let context = PluginContext(
-      model: model, family: family, parameters: latestParameters, tempFolder: tempFolder.path)
+      model: model, family: family, parameters: latestParameters, tempFolder: tempFolder.path,
+      startImage: startImagePath?(), moodboard: moodboardPaths.flatMap { $0().nilIfEmpty },
+      languageModels: languageModels?())
     guard let data = try? JSONEncoder().encode(context) else { return }
     send(data, to: identifier)
   }
@@ -337,7 +353,7 @@ public final class PluginRegistry: PluginHosting {
     return (try? JSONSerialization.data(withJSONObject: answer)) ?? PluginMessageType.bare(PluginMessageType.ok)
   }
 
-  /// `{"type":"llm","prompt":…,"images":[paths]}` → `{"type":"llm","text":…}`.
+  /// `{"type":"llm","prompt":…,"images":[paths],"system":…,"model":name,"options":{…}}` → `{"type":"llm","text":…}`.
   private func askModel(_ message: Data, from pluginID: String) async -> Data {
     guard isActive(pluginID) else { return PluginMessageType.failure("The plug-in is not active.") }
     guard let object = try? JSONSerialization.jsonObject(with: message) as? [String: Any],
@@ -345,12 +361,21 @@ public final class PluginRegistry: PluginHosting {
     else { return PluginMessageType.failure("The message has no prompt.") }
     guard let ask = askLanguageModel else { return PluginMessageType.failure("There is no language model.") }
     let images = (object["images"] as? [String] ?? []).map { URL(fileURLWithPath: $0) }
+    let options = LanguageModelOptions(message: object)
+    let modelName = (object["model"] as? String).flatMap { $0.isEmpty ? nil : $0 }
     do {
-      let text = try await ask(prompt, images)
+      let text = try await ask(prompt, images, options, modelName)
       return (try? JSONSerialization.data(withJSONObject: ["type": PluginMessageType.llm, "text": text]))
         ?? PluginMessageType.failure("The answer could not be sent.")
+    } catch let error as LanguageModelError {
+      return PluginMessageType.failure(error.plainText)
     } catch {
       return PluginMessageType.failure(String(describing: error))
     }
   }
+}
+
+private extension Array {
+  /// nil for an empty list: a key with nothing to say is left out of the context.
+  var nilIfEmpty: [Element]? { isEmpty ? nil : self }
 }

@@ -57,4 +57,16 @@ struct LanguageModelContractTests {
   @Test func thinkingCanBeSwitchedOffToo() throws {
     #expect(LanguageModelOptions(message: try message(#"{"options":{"thinking":false}}"#)).thinking == false)
   }
+
+  @Test func everyErrorHasAReasonInPlainEnglishThatNamesWhatMatters() {
+    #expect(LanguageModelError.modelNotFound("mlx/pe").plainText.contains("mlx/pe"))
+    #expect(LanguageModelError.loadFailed("bad weights").plainText.contains("bad weights"))
+    #expect(LanguageModelError.generationFailed("out of tokens").plainText.contains("out of tokens"))
+    #expect(LanguageModelError.downloadFailed("offline").plainText == "offline")
+    let all: [LanguageModelError] = [
+      .noModelSelected, .notEnoughMemory(neededBytes: 5_000_000_000, availableBytes: 1_000_000_000), .imagesNotSupported,
+      .interrupted,
+    ]
+    #expect(all.allSatisfy { !$0.plainText.isEmpty && !$0.plainText.contains("noModel") })
+  }
 }
