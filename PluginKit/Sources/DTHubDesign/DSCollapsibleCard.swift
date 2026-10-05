@@ -47,13 +47,17 @@ public struct DSCollapsibleCard<Content: View, Trailing: View>: View {
     .dsPanel()
   }
 
+  /// Without an accessory the whole header row, padding included, is the button, as it always was.
+  private var hasAccessory: Bool { Trailing.self != EmptyView.self }
+
   private var header: some View {
     HStack(spacing: DS.controlGap) {
       toggleButton
-      trailing
+      if hasAccessory {
+        trailing
+          .padding(.trailing, DS.panelPadding)
+      }
     }
-    .padding(.horizontal, DS.panelPadding)
-    .padding(.vertical, 12)
   }
 
   private var toggleButton: some View {
@@ -73,6 +77,10 @@ public struct DSCollapsibleCard<Content: View, Trailing: View>: View {
         DSGroupHeader(title: title, prominent: true)
         Spacer(minLength: 0)
       }
+      // The padding is inside the button: the margins around the title open and close the card too.
+      .padding(.leading, DS.panelPadding)
+      .padding(.trailing, hasAccessory ? 0 : DS.panelPadding)
+      .padding(.vertical, 12)
       .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
