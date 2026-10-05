@@ -55,6 +55,43 @@ struct DataTests {
     }
   }
 
+  /// The most a family's prompt may have, in words (or tags for SD 1.5): the real limit of its text encoder with a margin
+  /// (about 0.75 words per token), or the most the sources say works. Beyond it the prompt is cut off (FLUX, Z-Image),
+  /// corrupts the picture (Krea 2) or is ignored (CLIP).
+  private let ceilings: [String: ClosedRange<Int>] = [
+    "flux1": 250...330, "flux2": 250...330, "flux2_9b": 250...330, "flux2_4b": 250...330,  // 512 tokens
+    "krea_2": 250...330,  // 512 tokens; beyond that the picture is corrupted
+    "qwen_image": 400...500, "qwen_image_2.1": 400...500,  // 1024 tokens by default
+    "z_image": 250...330,  // 512 tokens, up to 1024 when asked
+    "ernie_image": 250...330,  // 2048 characters
+    "hidream_i1": 90...150,  // 128 tokens work, 248 at most
+    "cosmos2.5_2b": 250...330,  // 512 tokens
+    "sdxl_base_v0.9": 40...60, "v1": 30...45,  // 77 CLIP tokens
+  ]
+
+  @Test func everyFamilyHasACeilingThatFollowsTheRealLimitOfItsTextEncoderAndSaysIt() {
+    for (family, prompt) in PMData.embeddedMasters.families {
+      let ceiling = prompt.maxWords
+      #expect(ceiling != nil && (ceilings[family] ?? 0...0).contains(ceiling ?? -1), "\(family): \(String(describing: ceiling))")
+      guard let ceiling else { continue }
+      #expect(prompt.system.contains("never beyond \(ceiling) "), "\(family) must tell the model its ceiling")
+      #expect(prompt.lengthNote?.isEmpty == false, "\(family) must say why")
+      // The usual range always fits under the ceiling.
+      let top = prompt.words.split(separator: "-").last.flatMap { Int($0) } ?? Int.max
+      #expect(top <= ceiling, "\(family): \(prompt.words) vs \(ceiling)")
+    }
+    #expect(Set(ceilings.keys) == Set(PMFamilies.all))
+  }
+
+  @Test func theLimitsThatWereNotInTheSourcesAreGone() {
+    // Z-Image has no 800-character limit and does not lose attention after 75 tokens: it likes long, detailed prompts.
+    let z = PMData.embeddedMasters.families["z_image"]
+    #expect(z?.system.contains("800 characters") == false && z?.system.contains("75 tokens") == false)
+    #expect((z?.words.split(separator: "-").last.flatMap { Int($0) } ?? 0) >= 200)
+    // HiDream reads 128 tokens well and 248 at most: its usual range is shorter than FLUX's.
+    #expect((PMData.embeddedMasters.families["hidream_i1"]?.maxWords ?? 999) < (PMData.embeddedMasters.families["flux1"]?.maxWords ?? 0))
+  }
+
   @Test func theFourFamiliesWithoutAReviewAreMarkedProvisional() {
     let provisional = PMData.embeddedMasters.families.filter { $0.value.provisional == true }.keys
     #expect(Set(provisional) == ["flux2", "qwen_image_2.1", "hidream_i1", "cosmos2.5_2b"])

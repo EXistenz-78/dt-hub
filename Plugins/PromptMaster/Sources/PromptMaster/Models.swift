@@ -49,7 +49,12 @@ struct FamilyPrompt: Codable, Equatable, Sendable {
   var negative: Bool
   /// Categories that make no sense for the family; they do not appear in the list.
   var hiddenCategories: [String]
+  /// The usual length of the prompt ("80-250": words, or tags for SD 1.5).
   var words: String
+  /// The most it may have, from the real limit of the family's text encoder (spec §9); the system prompt says it.
+  var maxWords: Int?
+  /// Where the limit comes from, for whoever reviews the master prompts.
+  var lengthNote: String?
   /// The system prompt, in English, which asks for an English-only answer.
   var system: String
   /// What is added to `system` when the "booru tags" switch is on (only for the families that have it).
