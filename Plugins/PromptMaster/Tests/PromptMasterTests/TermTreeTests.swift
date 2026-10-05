@@ -93,6 +93,7 @@ struct TermTreeTests {
     #expect(ids == ["fr_extreme_closeup", "fr_closeup"])
     #expect(tree.pruned(["fr_closeup", "gone"]) == ["fr_closeup"])
     #expect(tree.selectedTerms(["fr_closeup"])[0].categoryTitle == "Inquadratura")
+    #expect(tree.selectedTerms(["fr_closeup"])[0].categoryEnglish == "Framing")
   }
 
   @Test func termsOfTheNegativeCategoryAreMarkedToAvoid() {

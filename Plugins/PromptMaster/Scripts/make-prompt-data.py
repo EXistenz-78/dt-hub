@@ -14,7 +14,7 @@ PLUGIN = os.path.dirname(HERE)
 DEFAULT_SOURCE = "/Users/existenz/Software developement/Prompt generator/Prompt Master 2.0"
 
 DATABASE_VERSION = "2.1.0"
-MASTER_VERSION = "1.2.0"
+MASTER_VERSION = "1.3.0"
 
 # The families of Draw Things (its `version`), in the order of the spec §3; `old` is the family of PM 2.0 whose
 # category rules (only_for, blocked_for, blocked_categories) seed `hiddenCategories`.
@@ -32,7 +32,7 @@ FAMILIES = [
      "the conditioning is limited to 512 tokens, about 350 words, and a longer prompt can corrupt the picture", False),
     ("qwen_image", "Qwen Image", "qwen_image", True, "80-250", 450, "words",
      "the text encoder reads about 1024 tokens, roughly 500 words, and the prompt is cut after that", False),
-    ("qwen_image_2.1", "Qwen Image 2.1", "qwen_image", False, "80-250", 450, "words",
+    ("qwen_image_2.1", "Qwen Image 2.1", "qwen_image", False, "300-450", 500, "words",
      "the text encoder reads about 1024 tokens, roughly 500 words, and the prompt is cut after that", True),
     ("z_image", "Z Image", "z_image", False, "100-250", 300, "words",
      "the text encoder reads 512 tokens by default, about 350 words, and drops the rest", False),
@@ -88,7 +88,7 @@ EVIDENCE = {
     "flux2_4b": "Reference code constant (MAX_LENGTH = 512).",
     "krea_2": "Reference implementation (max_length 512) and a bug report: beyond 512 tokens the output is corrupted.",
     "qwen_image": "diffusers default max_sequence_length 1024; the figure of about 500 words comes from the notebook.",
-    "qwen_image_2.1": "Assumed equal to Qwen Image; not checked for 2.1.",
+    "qwen_image_2.1": "Confirmed by the user at 450-500 words; Qwen's own prompt enhancer writes 400-500 words.",
     "z_image": "Model card: 512 tokens by default, 1024 on request; 'works best with long and detailed prompts'.",
     "sdxl_base_v0.9": "CLIP window of 77 tokens (notebook); how a runtime chunks longer prompts is not checked.",
     "v1": "CLIP window of 77 tokens (notebook); how a runtime chunks longer prompts is not checked.",
@@ -115,10 +115,18 @@ NOTES = {
     "qwen_image": """- Write natural prose like for FLUX. Excellent with text in the image (also Chinese and other scripts): put it in double quotes and state font, color and position.
 - A negative prompt is supported: use it targeted by kind of defect, never as a generic list of low-quality words; if nothing specific has to be excluded, leave "negative" empty.
 - You may end the prompt with the quality suffix "Ultra HD, 4k, cinematic composition".""",
-    "qwen_image_2.1": """- Write natural prose. The text encoder is a vision-language model: precise spatial and material descriptions work well. Text in the image goes in double quotes with font, color and position.
+    "qwen_image_2.1": """- Write one long paragraph (separate paragraphs only for a layout made of stacked regions), as an observer describing the finished picture in the present tense and the third person: no commands and no hype words (no "best quality", no "ultra HD", no "trending on ArtStation"); describe, do not praise.
+- Begin with one sentence of roughly twenty words that names the kind of picture (photograph, poster, illustration, scene), its style, its subject and its backdrop with the palette.
+- Then go through the frame in order, backdrop first. For a layout: the top area, then the middle from left to right, then the lower area. For a single subject: its pose and place in the frame, head and face, body and clothes, what it holds. Give every element a position in the frame (top left, bottom edge, to the right of the doorway, just behind the table) and use about ten such phrases, reaching the corners and the edges, not only the centre.
+- Give the light a sentence of its own: where it comes from, how hard or soft it is, and what shadows and glints it makes.
+- Describe colors with a qualifier (warm ochre, slate blue, dusty mauve) and say what things are made of and how they feel to the eye (oiled oak, hammered copper, rough plaster). Prefer a precise list to a collective word, and spell out small numbers.
+- People: build, posture, gaze, expression, hair, each garment with its color and fabric; age loosely (a child, a young woman, an old man), never with a number of years.
+- Any text that must appear goes in straight double quotes, in its own script, with weight, color and position; lettering that should not be legible is described as indistinct.
+- Finish with a single sentence that sums up the picture as a whole (its balance, colors, style and atmosphere).
+- Keep the scene physically plausible: shadows follow the light, reflections show what faces the surface.
 - If the user wants a transparent background, say explicitly: an RGBA image with an alpha channel and a transparent background.
-- There is no negative prompt (guidance 1): turn "avoid" terms into positive description. Never use quality tags.
-(Provisional master prompt: to be reviewed against the model's documentation.)""",
+- There is no negative prompt (guidance 1): turn "avoid" terms into positive description.
+(Provisional master prompt: its structure follows the model's own prompt enhancer, in our own words; to be reviewed against the model's documentation.)""",
     "z_image": """- This is a distilled turbo model with no negative prompt and no numeric weights. It likes long, detailed prompts: describe the scene in full.
 - The very first sentence must be the style or medium (before the subject). Do not frame the image as "a photograph" or "a cinematic frame from a film": that framing overrides the style even in first position.
 - Turn "avoid" terms into positive description.""",

@@ -112,6 +112,28 @@ struct DataTests {
     }
   }
 
+  @Test func qwenImage21HasAMaximumOf500WordsAndFollowsTheEnhancersStructureInOurOwnWords() {
+    let qwen = PMData.embeddedMasters.families["qwen_image_2.1"]
+    #expect(qwen?.maxWords == 500 && qwen?.words == "300-450")
+    let system = qwen?.system ?? ""
+    for phrase in [
+      "never beyond 500 words", "Begin with one sentence", "position in the frame", "light a sentence of its own",
+      "double quotes", "single sentence that sums up", "RGBA image with an alpha channel",
+    ] {
+      #expect(system.contains(phrase), "\(phrase)")
+    }
+    // Qwen's own wording is not copied (Qwen Research License): none of these phrases of its system prompt, in any case.
+    let lower = system.lowercased()
+    for copied in [
+      "image prompt rewriting expert", "walk the frame", "shadows fall away from the light",
+      "reflections match what is in front of the surface", "shadows and highlights it leaves", "behind the left shoulder",
+      "masterpiece", "highly detailed", "deep navy, pale cream", "brushed metal, weathered wood", "small counts as words",
+      "life stage, never a number", "too small to read", "the top band", "bottom band", "along the lower edge",
+    ] {
+      #expect(!lower.contains(copied), "copied from Qwen: \(copied)")
+    }
+  }
+
   @Test func theFourFamiliesWithoutAReviewAreMarkedProvisional() {
     let provisional = PMData.embeddedMasters.families.filter { $0.value.provisional == true }.keys
     #expect(Set(provisional) == ["flux2", "qwen_image_2.1", "hidream_i1", "cosmos2.5_2b"])

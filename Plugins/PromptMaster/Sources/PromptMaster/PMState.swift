@@ -23,14 +23,17 @@ final class PMState: ObservableObject {
   @Published var status = ""
   @Published var isWriting = false
   @Published var isMakingScene = false
+  /// The format the prompt enhancer suggested for the last prompt, until it is applied or the family changes.
+  @Published var suggestedRatio: String?
   @Published var active = false
   /// The category where the user is typing a new term, and what they typed.
   @Published var addingIn: String?
   @Published var newTermText = ""
 
   private(set) var family: String?
-  private(set) var startImage: String?
-  private(set) var moodboard: [String] = []
+  /// The size of the Generation tab now (from the `context` message).
+  private(set) var currentWidth: Int?
+  private(set) var currentHeight: Int?
   private(set) var languageModels: [DTHubLanguageModel] = []
   private var fullTree: TermTree
 
@@ -74,13 +77,16 @@ final class PMState: ObservableObject {
   // MARK: What the app says
 
   /// The `context` message: the family decides which categories are hidden and which master prompt is used.
-  func update(family: String?, startImage: String?, moodboard: [String], languageModels: [DTHubLanguageModel]) {
+  func update(family: String?, languageModels: [DTHubLanguageModel], width: Int? = nil, height: Int? = nil) {
     let changed = family != self.family
     self.family = family
-    self.startImage = startImage
-    self.moodboard = moodboard
     self.languageModels = languageModels
-    if changed { rebuild() }
+    currentWidth = width
+    currentHeight = height
+    if changed {
+      suggestedRatio = nil
+      rebuild()
+    }
   }
 
   var master: FamilyPrompt? { family.flatMap { data.masters.families[$0] } }
@@ -158,11 +164,14 @@ final class PMState: ObservableObject {
       && (!description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !selectedTerms.isEmpty)
   }
 
+  /// A format was suggested, the plug-in is on and nothing is being written.
+  var canApplyRatio: Bool { active && !isWriting && suggestedRatio != nil }
+
   var writeRequest: PMWriter.Request? {
     guard let family else { return nil }
     return PMWriter.Request(
       family: family, masters: data.masters, description: description, terms: selectedTerms,
-      booru: booru && hasBooruSwitch, startImage: startImage, moodboard: moodboard, languageModels: languageModels)
+      booru: booru && hasBooruSwitch, languageModels: languageModels)
   }
 
   private func persist() {

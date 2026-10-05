@@ -10,11 +10,13 @@ struct MainWindowView: View {
   let generation: GenerationController
   let plugins: PluginRegistry
 
-  /// What the plug-ins are told about: the model and its family.
-  private var contextKey: [String?] {
+  /// What the plug-ins are told about: the model and its family, the start image, the Moodboard and the size.
+  private var contextKey: PluginContextKey {
     let model = connection.selection.selectedModel(in: connection.monitor.catalog)
     let moodboard = generation.control.inputs.moodboard.filter(\.isOn).map { $0.id.uuidString }.joined(separator: ",")
-    return [model?.file, model?.family, generation.control.inputs.image?.id.uuidString, moodboard]
+    return PluginContextKey(
+      model: model?.file, family: model?.family, startImageID: generation.control.inputs.image?.id.uuidString,
+      moodboardIDs: moodboard, width: generation.parameters.width, height: generation.parameters.height)
   }
 
   var body: some View {
@@ -42,7 +44,7 @@ struct MainWindowView: View {
       ContributionConflictSheet(plugins: plugins)
     }
     .task(id: contextKey) {
-      plugins.updateContext(model: contextKey[0], family: contextKey[1], parameters: generation.parameters)
+      plugins.updateContext(model: contextKey.model, family: contextKey.family, parameters: generation.parameters)
       workspace.setPluginTabs(plugins.activeTabs)
     }
     .onChange(of: plugins.activeTabs) { workspace.setPluginTabs(plugins.activeTabs) }

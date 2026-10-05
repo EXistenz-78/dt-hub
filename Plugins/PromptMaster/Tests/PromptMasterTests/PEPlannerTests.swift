@@ -17,14 +17,12 @@ struct PEPlannerTests {
 
   /// Every enhancer folder has its system prompt file, unless the test says otherwise.
   private func plan(
-    family: String? = "qwen_image_2.1", start: String? = nil, moodboard: [String] = [],
-    models: [DTHubLanguageModel], sizes: [String: Int64] = [:], files: [String: String]? = nil
+    family: String? = "qwen_image_2.1", models: [DTHubLanguageModel], sizes: [String: Int64] = [:],
+    files: [String: String]? = nil
   ) -> PEPlan {
-    let defaults = ["system_prompt.txt": "T2I SYSTEM", "system_prompt_edit.txt": "EDIT SYSTEM"]
-    return PEPlanner.plan(
-      family: family, startImage: start, moodboard: moodboard, languageModels: models,
-      folderSize: { sizes[$0] ?? 0 },
-      readFile: { url in (files ?? defaults)[url.lastPathComponent] })
+    PEPlanner.plan(
+      family: family, languageModels: models, folderSize: { sizes[$0] ?? 0 },
+      readFile: { url in (files ?? ["system_prompt.txt": "T2I SYSTEM"])[url.lastPathComponent] })
   }
 
   private func enhancer(_ plan: PEPlan) -> Enhancer? {
@@ -37,36 +35,25 @@ struct PEPlannerTests {
     #expect(plan(family: nil, models: [model(t2i)]) == .generic(reason: nil))
   }
 
-  @Test func withoutAStartImageItIsT2IWithQwensSettings() throws {
-    let chosen = try #require(enhancer(plan(models: [model(t2i), model(i2i)])))
-    #expect(chosen.kind == .t2i && chosen.model == t2i && chosen.system == "T2I SYSTEM" && chosen.images.isEmpty)
-    #expect(chosen.options.temperature == 1 && chosen.options.topK == 20 && chosen.options.presencePenalty == 1.5)
-    #expect(chosen.options.maxTokens == 16256 && chosen.options.thinking == true)
+  @Test func qwenImage21UsesTheTextToImageEnhancerWithQwensSettings() throws {
+    let chosen = try #require(enhancer(plan(models: [model(t2i)])))
+    #expect(chosen.model == t2i && chosen.system == "T2I SYSTEM")
+    #expect(chosen.options.temperature == 1 && chosen.options.topP == 0.95 && chosen.options.topK == 20)
+    #expect(chosen.options.presencePenalty == 1.5 && chosen.options.maxTokens == 16256 && chosen.options.thinking == true)
+    #expect(chosen.options.timeout == 900)
   }
 
-  @Test func aMoodboardAloneDoesNotMakeItI2IAndSendsNoPictures() throws {
-    let chosen = try #require(enhancer(plan(moodboard: ["/m1.png", "/m2.png"], models: [model(t2i), model(i2i)])))
-    #expect(chosen.kind == .t2i && chosen.images.isEmpty)
-  }
-
-  @Test func aStartImageMakesItI2IWithTheStartImageFirstThenTheMoodboard() throws {
-    let chosen = try #require(enhancer(plan(start: "/s.png", moodboard: ["/m1.png", "/m2.png"], models: [model(t2i), model(i2i)])))
-    #expect(chosen.kind == .i2i && chosen.model == i2i && chosen.system == "EDIT SYSTEM")
-    #expect(chosen.images == ["/s.png", "/m1.png", "/m2.png"])
-    #expect(chosen.options.presencePenalty == 0 && chosen.options.maxTokens == 24000)
-  }
-
-  @Test func atMostTenPicturesGoAndTheStartImageIsNeverTheOneCut() throws {
-    let moodboard = (1...12).map { "/m\($0).png" }
-    let chosen = try #require(enhancer(plan(start: "/s.png", moodboard: moodboard, models: [model(i2i)])))
-    #expect(chosen.images.count == 10 && chosen.images.first == "/s.png" && chosen.images.last == "/m9.png")
+  @Test func theImageEditingEnhancerIsNeverUsedWhateverIsInTheFolder() {
+    // It belongs to a plug-in of its own: with only the I2I enhancer there is no enhancer here.
+    #expect(plan(models: [model(i2i)]) == .generic(reason: .modelMissing))
+    let both = enhancer(plan(models: [model(i2i), model(t2i)]))
+    #expect(both?.model == t2i)
   }
 
   @Test func namesWithDashesDotsOrUnderscoresAndAnySuffixAreRecognised() {
     for name in ["qwen3.5_9b_qwen_image_2.1_pe_t2i", "Qwen-Image-2.1-PE-T2I-MLX-4bit", "x/Qwen-Image-2_1-PE-T2I-8bit"] {
       #expect(enhancer(plan(models: [model(name)])) != nil, "\(name)")
     }
-    #expect(enhancer(plan(models: [model("Qwen-Image-2.1-PE-I2I-MLX-4bit")])) == nil)  // I2I is not T2I
   }
 
   @Test func ofTwoFoldersTheBiggestWins() throws {
@@ -76,13 +63,8 @@ struct PEPlannerTests {
     #expect(try #require(enhancer(plan(models: [big, small], sizes: sizes))).model == big.name)
   }
 
-  @Test func theI2IEnhancerMustReadImages() {
-    #expect(plan(start: "/s.png", models: [model(i2i, vision: false)]) == .generic(reason: .modelMissing(.i2i)))
-  }
-
-  @Test func withoutTheModelTheGenericOneIsUsedAndTheReasonSaysWhich() {
-    #expect(plan(models: []) == .generic(reason: .modelMissing(.t2i)))
-    #expect(plan(start: "/s.png", models: [model(t2i)]) == .generic(reason: .modelMissing(.i2i)))
+  @Test func withoutTheModelTheGenericOneIsUsedAndTheReasonSaysSo() {
+    #expect(plan(models: []) == .generic(reason: .modelMissing))
   }
 
   @Test func withoutTheSystemPromptFileTheGenericOneIsUsedAndTheReasonNamesTheModel() {
@@ -90,11 +72,9 @@ struct PEPlannerTests {
     #expect(plan(models: [model(t2i)], files: ["system_prompt.txt": "  \n "]) == .generic(reason: .systemPromptMissing(model: t2i)))
   }
 
-  @Test func theOtherSystemPromptFileNamesAreAccepted() throws {
-    let t2iFile = try #require(enhancer(plan(models: [model(t2i)], files: ["system_prompt_t2i.txt": "T"])))
-    #expect(t2iFile.system == "T")
-    let edit = try #require(enhancer(plan(start: "/s.png", models: [model(i2i)], files: ["system_prompt_i2i.txt": "E"])))
-    #expect(edit.system == "E")
+  @Test func theOtherSystemPromptFileNameIsAccepted() throws {
+    let chosen = try #require(enhancer(plan(models: [model(t2i)], files: ["system_prompt_t2i.txt": "T"])))
+    #expect(chosen.system == "T")
   }
 
   @Test func theFolderSizeAddsTheFilesOfTheFolder() throws {
