@@ -31,7 +31,7 @@ primi due. Le copie incorporate e i file di `Data/` si rigenerano con `Scripts/m
 ## Costruirlo
 
     Plugins/PromptMaster/Scripts/build.sh OUT_FOLDER     # fa OUT_FOLDER/PromptMaster.dthubplugin
-    cd Plugins/PromptMaster && swift test                # 96 test
+    cd Plugins/PromptMaster && swift test                # 97 test
 
 Poi si aggiunge in DT Hub › Preferenze › Plug-in e si accende dal menu Plug-in dell'header. Richiede il contratto `llm`
 con `system`, `model` e `options` e il `context` con `startImage`, `moodboard` e `languageModels` (tappa 1).

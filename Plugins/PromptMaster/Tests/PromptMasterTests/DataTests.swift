@@ -92,6 +92,26 @@ struct DataTests {
     #expect((PMData.embeddedMasters.families["hidream_i1"]?.maxWords ?? 999) < (PMData.embeddedMasters.families["flux1"]?.maxWords ?? 0))
   }
 
+  /// The families that read natural language are told to enrich the scene, as long as nothing contradicts it.
+  private let enriching: Set<String> = [
+    "flux1", "flux2", "flux2_9b", "flux2_4b", "krea_2", "qwen_image", "qwen_image_2.1", "z_image", "ernie_image",
+    "hidream_i1",
+  ]
+
+  @Test func theFamiliesThatReadNaturalLanguageAreAskedToEnrichWithoutContradicting() {
+    for (family, prompt) in PMData.embeddedMasters.families {
+      let asked = prompt.system.contains("Enrich the description")
+      #expect(asked == enriching.contains(family), "\(family)")
+      if asked {
+        #expect(prompt.system.contains("never contradicts"), "\(family): the additions must not contradict the scene")
+        #expect(!prompt.system.contains("Do not add subjects"), "\(family): the old ban on additions is replaced")
+      } else {
+        // Tag-based families keep the old, stricter rule.
+        #expect(prompt.system.contains("Do not add subjects"), "\(family)")
+      }
+    }
+  }
+
   @Test func theFourFamiliesWithoutAReviewAreMarkedProvisional() {
     let provisional = PMData.embeddedMasters.families.filter { $0.value.provisional == true }.keys
     #expect(Set(provisional) == ["flux2", "qwen_image_2.1", "hidream_i1", "cosmos2.5_2b"])
