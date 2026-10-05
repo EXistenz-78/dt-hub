@@ -1,6 +1,6 @@
 # DT Hub — Plug-in Prompt Master (PM)
 
-Data: 5 ottobre 2026 · Stato: da rileggere · Estende `2026-10-03-plugin-design.md` (contratto 1), `2026-10-04-plugin-sphere-light-design.md` (come si costruisce un plug-in) e `2026-10-05-plugin-design-system-design.md` (l'aspetto dell'app)
+Data: 5 ottobre 2026 · Stato: approvata il 5 ottobre 2026; tappa 1 (il contratto) realizzata, tappe 2 e 3 da fare · Estende `2026-10-03-plugin-design.md` (contratto 1), `2026-10-04-plugin-sphere-light-design.md` (come si costruisce un plug-in) e `2026-10-05-plugin-design-system-design.md` (l'aspetto dell'app)
 
 ## 1. Scopo
 
