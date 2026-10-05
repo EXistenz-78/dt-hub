@@ -162,3 +162,12 @@ I test di sessione dell'M3 (`GenerationSessionTests`) sono stati resi determinis
 - **`DesktopSaver`** va in overflow con un file chiamato `Sphere Light 9223372036854775807.png` (usare `addingReportingOverflow`).
 - **Stringhe `active`/`inactive`** di `Strings.swift` inutilizzate; test da rafforzare: l'ordine preset → pipeline, i segnaposto uguali nelle due lingue, `describe` con `problems`, valori salvati fuori intervallo.
 
+## Rimandi del design system nel kit
+
+- **Il kit non riesporta il design system:** un plug-in prende due prodotti con due alias (vedi `PluginKit/README.md`). Se in futuro SwiftPM propaga l'alias, si può riesportare.
+- **L'esempio `Sample` non usa il design system** (resta con i controlli standard).
+- **`DSStatusDot` resta in `HubKit`** perché dipende da `ConnectionStatus`.
+- **Commenti da correggere:** `PluginKit/Package.swift` e il README del kit dicono che `DTHubDesign` è «SwiftUI only, senza classi Objective-C», ma `DSWindowConfigurator` ha una sottoclasse di `NSView` (è il motivo per cui l'alias serve).
+- **Spec del design system:** §6 dice ancora che la risoluzione di `PluginKit` in Xcode è da provare (è provata); §5 nomina `DS.accent` mentre il test usa `DS.panelRadius`.
+- **Il cambio di tab tra due plug-in** non ha un test automatico (è una riga di interfaccia, provata dal vivo).
+
