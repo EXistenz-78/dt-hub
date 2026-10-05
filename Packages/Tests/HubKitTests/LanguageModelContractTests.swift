@@ -54,6 +54,15 @@ struct LanguageModelContractTests {
     #expect(options.thinking == nil)  // 1 is a number, not a boolean
   }
 
+  @Test func hugeNumbersAreBroughtIntoRangeAndDoNotCrash() throws {
+    let big = LanguageModelOptions(message: try message(#"{"options":{"maxTokens":1e20,"topK":-1e20}}"#))
+    #expect(big.maxTokens == 32768)
+    #expect(big.topK == 0)
+    // What a plug-in means by "no limit": Int.max, which JSON carries as 2^63 once read as a double.
+    let max = LanguageModelOptions(message: try message(#"{"options":{"maxTokens":9223372036854775807}}"#))
+    #expect(max.maxTokens == 32768)
+  }
+
   @Test func thinkingCanBeSwitchedOffToo() throws {
     #expect(LanguageModelOptions(message: try message(#"{"options":{"thinking":false}}"#)).thinking == false)
   }
