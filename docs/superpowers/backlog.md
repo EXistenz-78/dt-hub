@@ -183,3 +183,15 @@ I test di sessione dell'M3 (`GenerationSessionTests`) sono stati resi determinis
 - **Due domande insieme a modelli diversi** (due plug-in, o un doppio clic) non si vedono tra loro: possono caricare due modelli insieme. Esisteva già con lo stesso modello; il caricamento per nome lo rende un po' più probabile.
 - **Un plug-in futuro che contribuisce un Moodboard a ogni contesto** ne rimanderebbe uno nuovo a ogni invio (le immagini cambiano id, il contesto si rimanda): nessun plug-in lo fa oggi.
 - **`startImage` è il file salvato**, senza ritaglio né disegno del Brush: se il PE deve vedere l'immagine incorniciata è una scelta di prodotto.
+
+## Rimandi del plug-in Prompt Master (tappa 2)
+
+- **I master prompt sono provvisori:** quelli di `flux2`, `qwen_image_2.1`, `hidream_i1` e `cosmos2.5_2b` sono scritti senza ricerca, gli altri nove partono dalle note del vecchio PM tradotte; la revisione con le fonti online (spec §9) arriva come nuovo `master-prompts.json`.
+- **Lo Shuffle non pesca i termini personali** e sostituisce tutta la selezione, personali compresi.
+- **I termini a evitare** (categoria «negative_terms») vanno all'LLM in un elenco a parte; nelle famiglie senza negativo l'LLM li trasforma in descrizione positiva. Non c'è un campo negativo scritto a mano.
+- **Il pulsante «Scrivi prompt» non si può annullare** (il contratto non lo prevede); il PE con il thinking può metterci minuti.
+- **Il formato suggerito dal PE** (`wh_ratio`) si mostra e non si applica.
+- **Il kit non ha un `init` pubblico per `DTHubLanguageModel`:** i test lo costruiscono da JSON.
+- **La colla** (`PromptMasterPlugin`, le viste) non ha test automatici; la logica sta in `PMWriter`, `PMState`, `PEPlanner`, `TermTree` e gli altri tipi puri. Il tab è stato visto in un PNG disegnato fuori dall'app, non dal vivo nella finestra.
+- **Provato dal vivo solo con il modello generico locale** (Qwen3-VL-2B): i PE di Qwen (tappa 3) e un modello più grande per i master prompt non ancora.
+
