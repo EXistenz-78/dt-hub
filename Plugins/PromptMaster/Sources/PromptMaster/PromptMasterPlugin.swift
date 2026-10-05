@@ -25,9 +25,7 @@ final class PromptMasterPlugin: DTHubPlugin {
     switch DTHubMessage.type(of: message) {
     case "context":
       if let context = try? JSONDecoder().decode(DTHubContext.self, from: message) {
-        state.update(
-          family: context.family, startImage: context.startImage, moodboard: context.moodboard ?? [],
-          languageModels: context.languageModels ?? [])
+        state.update(family: context.family, languageModels: context.languageModels ?? [])
       }
       return nil
     case "activate":
@@ -43,8 +41,8 @@ final class PromptMasterPlugin: DTHubPlugin {
 
   private func makeWriter(_ host: DTHubHost) -> PMWriter {
     PMWriter(
-      ask: { prompt, images, system, model, options in
-        await host.askLanguageModelAnswer(prompt, images: images, system: system, model: model, options: options)
+      ask: { prompt, system, model, options in
+        await host.askLanguageModelAnswer(prompt, system: system, model: model, options: options)
       },
       contribute: { await host.contribute($0) }, italian: state.italian)
   }
