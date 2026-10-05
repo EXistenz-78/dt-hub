@@ -36,6 +36,12 @@ public enum ControlWarning: Hashable, Sendable {
 public final class ControlStore {
   public private(set) var inputs: ControlInputs
   public private(set) var notice: ControlNotice?
+
+  /// The file of the start image: what a plug-in is told, and what a language model reads.
+  public var startImageURL: URL? { inputs.image.map { storage.url(for: $0.fileName) } }
+
+  /// The files of the Moodboard pictures that are on, in the order of the thumbnails: the references a model can read.
+  public var moodboardURLs: [URL] { inputs.moodboard.filter(\.isOn).map { storage.url(for: $0.image.fileName) } }
   /// Changes with every step of the history, so `canUndo` and `canRedo` can be observed (the
   /// stacks themselves are not).
   private var historyVersion = 0

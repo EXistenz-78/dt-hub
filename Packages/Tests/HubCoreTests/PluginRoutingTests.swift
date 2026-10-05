@@ -72,7 +72,7 @@ struct PluginRoutingTests {
   @Test func aQuestionForTheLanguageModelIsAnswered() async throws {
     let (registry, loader) = try started()
     var asked: (String, [URL])?
-    registry.askLanguageModel = { prompt, images in
+    registry.askLanguageModel = { prompt, images, _, _ in
       asked = (prompt, images)
       return "Sunny."
     }
@@ -83,14 +83,47 @@ struct PluginRoutingTests {
     #expect(asked?.1 == [URL(fileURLWithPath: "/tmp/a.png")])
   }
 
+  @Test func theSystemPromptTheModelAndTheOptionsReachTheLanguageModel() async throws {
+    let (registry, loader) = try started()
+    var asked: (LanguageModelOptions, String?)?
+    registry.askLanguageModel = { _, _, options, name in
+      asked = (options, name)
+      return "ok"
+    }
+    _ = try await send(
+      #"{"type":"llm","prompt":"p","system":"Be brief.","model":"mlx/pe","options":{"temperature":1,"thinking":true}}"#,
+      through: loader)
+    #expect(asked?.0 == LanguageModelOptions(system: "Be brief.", temperature: 1, thinking: true))
+    #expect(asked?.1 == "mlx/pe")
+    // Without the new keys the question is asked as it always was.
+    _ = try await send(#"{"type":"llm","prompt":"p"}"#, through: loader)
+    #expect(asked?.0 == LanguageModelOptions())
+    #expect(asked?.1 == nil)
+  }
+
+  @Test func theReasonIsToldInPlainWords() async throws {
+    let (registry, loader) = try started()
+    registry.askLanguageModel = { _, _, _, _ in throw LanguageModelError.noModelSelected }
+    let reply = try await send(#"{"type":"llm","prompt":"p"}"#, through: loader)
+    #expect(reply["text"] as? String == "No language model is chosen.")
+  }
+
+  @Test func aModelThatIsNotThereIsAnError() async throws {
+    let (registry, loader) = try started()
+    registry.askLanguageModel = { _, _, _, name in throw LanguageModelError.modelNotFound(name ?? "") }
+    let reply = try await send(#"{"type":"llm","prompt":"p","model":"nowhere"}"#, through: loader)
+    #expect(reply["type"] as? String == "error")
+    #expect((reply["text"] as? String)?.contains("nowhere") == true)
+  }
+
   @Test func aQuestionThatCannotBeAnsweredGetsAnError() async throws {
     let (registry, loader) = try started()
     #expect(try await send(#"{"type":"llm","prompt":"hi"}"#, through: loader)["type"] as? String == "error")
-    registry.askLanguageModel = { _, _ in throw LanguageModelError.noModelSelected }
+    registry.askLanguageModel = { _, _, _, _ in throw LanguageModelError.noModelSelected }
     #expect(try await send(#"{"type":"llm","prompt":"hi"}"#, through: loader)["type"] as? String == "error")
     #expect(try await send(#"{"type":"llm"}"#, through: loader)["type"] as? String == "error")
     registry.setActive("a", false)
-    registry.askLanguageModel = { _, _ in "never" }
+    registry.askLanguageModel = { _, _, _, _ in "never" }
     #expect(try await send(#"{"type":"llm","prompt":"hi"}"#, through: loader)["type"] as? String == "error")
   }
 }
