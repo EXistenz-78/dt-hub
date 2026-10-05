@@ -1,3 +1,4 @@
+import DTHubDesign
 import SwiftUI
 
 /// Traffic-light dot for the Draw Things connection: green connected, yellow connecting,
