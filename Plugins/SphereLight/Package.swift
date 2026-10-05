@@ -8,11 +8,14 @@ let package = Package(
   products: [.library(name: "SphereLight", type: .dynamic, targets: ["SphereLight"])],
   dependencies: [.package(name: "PluginKit", path: "../../PluginKit")],
   targets: [
-    // Every plug-in carries its own copy of the kit; `moduleAliases` gives it a name of its own, so two plug-ins
-    // do not define the same Objective-C classes twice in one process.
+    // Every plug-in carries its own copy of the kit and of the design system; `moduleAliases` gives them
+    // names of their own, so two plug-ins (and the app) do not define the same classes twice in one process.
     .target(
       name: "SphereLight",
-      dependencies: [.product(name: "DTHubPluginKit", package: "PluginKit", moduleAliases: ["DTHubPluginKit": "SphereLightKit"])]),
+      dependencies: [
+        .product(name: "DTHubPluginKit", package: "PluginKit", moduleAliases: ["DTHubPluginKit": "SphereLightKit"]),
+        .product(name: "DTHubDesign", package: "PluginKit", moduleAliases: ["DTHubDesign": "SphereLightDesign"]),
+      ]),
     .testTarget(name: "SphereLightTests", dependencies: ["SphereLight"]),
   ]
 )
