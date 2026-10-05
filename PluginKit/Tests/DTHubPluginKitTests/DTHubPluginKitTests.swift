@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 
 @testable import DTHubPluginKit
@@ -10,5 +11,48 @@ struct DTHubPluginKitTests {
 
   @Test func aBareMessageIsAnObjectWithItsType() {
     #expect(DTHubMessage.type(of: DTHubMessage.bare("ok")) == "ok")
+  }
+
+  @Test func aQuestionWithoutTheNewKeysIsTheOldMessage() throws {
+    let message = DTHubHost.llmMessage(prompt: "hi", images: [], system: nil, model: nil, options: DTHubLLMOptions())
+    #expect(Set(message.keys) == ["type", "prompt", "images"])
+    #expect(DTHubHost.llmMessage(prompt: "hi", images: [], system: "", model: "", options: DTHubLLMOptions()).count == 3)
+  }
+
+  @Test func theSystemPromptTheModelAndTheOptionsGoInTheMessage() throws {
+    let options = DTHubLLMOptions(temperature: 1, topK: 20, maxTokens: 100, thinking: false, timeout: 900)
+    let message = DTHubHost.llmMessage(
+      prompt: "hi", images: ["/a.png"], system: "Be brief.", model: "mlx/pe", options: options)
+    #expect(message["system"] as? String == "Be brief.")
+    #expect(message["model"] as? String == "mlx/pe")
+    let sent = try #require(message["options"] as? [String: Any])
+    #expect(sent["temperature"] as? Double == 1)
+    #expect(sent["topK"] as? Int == 20)
+    #expect(sent["maxTokens"] as? Int == 100)
+    #expect(sent["thinking"] as? Bool == false)
+    #expect(sent["timeout"] == nil)  // the wait is this library's business
+    #expect(sent["topP"] == nil)
+  }
+
+  @Test func theWaitIsFiveMinutesUnlessAskedAndNeverMoreThanHalfAnHour() {
+    #expect(DTHubLLMOptions().effectiveTimeout == 300)
+    #expect(DTHubLLMOptions(timeout: 900).effectiveTimeout == 900)
+    #expect(DTHubLLMOptions(timeout: 99_999).effectiveTimeout == 1800)
+    #expect(DTHubLLMOptions(timeout: 0).effectiveTimeout == 1)
+  }
+
+  @Test func theContextReadsTheStartImageTheMoodboardAndTheModelsWhenTheyAreThereAndNotWhenTheyAreNot() throws {
+    let full = try JSONDecoder().decode(
+      DTHubContext.self,
+      from: Data(
+        #"""
+        {"type":"context","tempFolder":"/t","startImage":"/s.png","moodboard":["/m1.png","/m2.png"],
+         "languageModels":[{"name":"a/b","path":"/m/a/b","supportsImages":true}]}
+        """#.utf8))
+    #expect(full.startImage == "/s.png")
+    #expect(full.moodboard == ["/m1.png", "/m2.png"])
+    #expect(full.languageModels == [DTHubLanguageModel(name: "a/b", path: "/m/a/b", supportsImages: true)])
+    let old = try JSONDecoder().decode(DTHubContext.self, from: Data(#"{"type":"context","tempFolder":"/t"}"#.utf8))
+    #expect(old.startImage == nil && old.moodboard == nil && old.languageModels == nil)
   }
 }
