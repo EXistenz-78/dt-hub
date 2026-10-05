@@ -24,9 +24,11 @@ let package = Package(
     .package(url: "https://github.com/ml-explore/mlx-swift", .upToNextMinor(from: "0.32.3")),
     .package(url: "https://github.com/huggingface/swift-huggingface", from: "0.9.0"),
     .package(url: "https://github.com/huggingface/swift-transformers", from: "1.3.0"),
+    // The design system (cards, buttons, colours) is shared with the plug-ins: it lives in the plug-in kit package.
+    .package(name: "PluginKit", path: "../PluginKit"),
   ],
   targets: [
-    .target(name: "HubKit"),
+    .target(name: "HubKit", dependencies: [.product(name: "DTHubDesign", package: "PluginKit")]),
     .target(name: "HubCore", dependencies: ["HubKit"]),
     // The only module that knows DrawThings-Swift and gRPC (spec §4).
     .target(

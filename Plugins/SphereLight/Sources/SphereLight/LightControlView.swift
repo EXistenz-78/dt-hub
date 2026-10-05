@@ -1,6 +1,7 @@
+import DTHubDesign
 import SwiftUI
 
-/// One light: a block that opens and closes, with its five controls.
+/// One light: a card of the app's look that opens and closes, with its four sliders and its colour.
 struct LightControlView: View {
   @Binding var light: LightParams
   let index: Int
@@ -10,46 +11,29 @@ struct LightControlView: View {
   let onChange: () -> Void
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 10) {
-      header
-      if isExpanded {
-        VStack(alignment: .leading, spacing: 10) {
-          sliderRow(L.text(.rotation), value: $light.rotationDeg, range: -180...180, format: "%.0f°")
-          sliderRow(L.text(.elevation), value: $light.elevationDeg, range: -90...90, format: "%.0f°")
-          sliderRow(L.text(.intensity), value: $light.intensity, range: 0.2...3, format: "%.2f")
-          sliderRow(L.text(.hardness), value: $light.hardness, range: 0...1, format: "%.2f")
-          HStack {
-            Text(L.text(.color)).font(.subheadline.weight(.semibold))
-            Spacer()
-            ColorPicker("", selection: $light.color, supportsOpacity: false)
-              .labelsHidden()
-              .onChange(of: light.color) { _, _ in onChange() }
-          }
+    DSCollapsibleCard(
+      L.format(.light, index + 1), systemImage: "lightbulb", isExpanded: $isExpanded,
+      trailing: {
+        if canRemove {
+          Button(action: onRemove) { Image(systemName: "minus.circle.fill") }
+            .buttonStyle(.plain)
+            .foregroundStyle(DS.remove)
+            .help(L.text(.removeLight))
         }
       }
-    }
-  }
-
-  private var header: some View {
-    HStack {
-      Button {
-        withAnimation(.easeInOut(duration: 0.18)) { isExpanded.toggle() }
-      } label: {
-        HStack(spacing: 6) {
-          Image(systemName: "chevron.right")
-            .font(.system(size: 9, weight: .bold))
-            .rotationEffect(.degrees(isExpanded ? 90 : 0))
-          Text(L.format(.light, index + 1)).font(.headline)
-          Spacer(minLength: 0)
+    ) {
+      VStack(alignment: .leading, spacing: DS.rowGap) {
+        sliderRow(L.text(.rotation), value: $light.rotationDeg, range: -180...180, format: "%.0f°")
+        sliderRow(L.text(.elevation), value: $light.elevationDeg, range: -90...90, format: "%.0f°")
+        sliderRow(L.text(.intensity), value: $light.intensity, range: 0.2...3, format: "%.2f")
+        sliderRow(L.text(.hardness), value: $light.hardness, range: 0...1, format: "%.2f")
+        HStack {
+          Text(L.text(.color)).font(.subheadline.weight(.semibold))
+          Spacer()
+          ColorPicker("", selection: $light.color, supportsOpacity: false)
+            .labelsHidden()
+            .onChange(of: light.color) { _, _ in onChange() }
         }
-        .contentShape(Rectangle())
-      }
-      .buttonStyle(.plain)
-      if canRemove {
-        Button(action: onRemove) { Image(systemName: "minus.circle.fill") }
-          .buttonStyle(.plain)
-          .foregroundStyle(.orange)
-          .help(L.text(.removeLight))
       }
     }
   }
@@ -61,7 +45,9 @@ struct LightControlView: View {
         Spacer()
         Text(String(format: format, value.wrappedValue)).font(.caption).foregroundStyle(.secondary).monospacedDigit()
       }
-      Slider(value: value, in: range).controlSize(.small)
+      Slider(value: value, in: range)
+        .controlSize(.small)
+        .tint(DS.accent)
         .onChange(of: value.wrappedValue) { _, _ in onChange() }
     }
   }

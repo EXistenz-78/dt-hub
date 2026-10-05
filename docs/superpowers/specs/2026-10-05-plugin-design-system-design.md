@@ -1,6 +1,6 @@
 # DT Hub — Il design system nel kit dei plug-in
 
-Data: 5 ottobre 2026 · Stato: bozza da approvare · Estende `2026-10-03-plugin-design.md` (§3 confine app/plug-in, §7 tab) e `2026-10-04-plugin-sphere-light-design.md`
+Data: 5 ottobre 2026 · Stato: realizzata · Estende `2026-10-03-plugin-design.md` (§3 confine app/plug-in, §7 tab) e `2026-10-04-plugin-sphere-light-design.md`
 
 ## 1. Scopo
 
@@ -17,10 +17,10 @@ Il pacchetto `PluginKit/` ottiene un secondo modulo e un secondo prodotto:
 | Modulo | Contenuto | Chi lo usa |
 |---|---|---|
 | **`DTHubDesign`** (nuovo, prodotto `DTHubDesign`) | `DS` (colori, raggi, spaziature), `dsPanel`, `DSPanelHeader`, `DSGroupHeader`, `DSCollapsibleCard`, `DSCardRow`, `DSTabFrame`, `DSBackground`/`DSWindowConfigurator`, `dsGlass`, pulsanti e stili (`DSPillButtonStyle`, `DSGlassCircleButtonStyle`, `DSTabButtonStyle`, `DSCheckboxToggleStyle`, `DSMenuLabel`, `dsMenuPill`) — i file di `Packages/Sources/HubKit/DesignSystem/`, tranne `DSStatusDot` | `HubKit`; i plug-in |
-| `DTHubPluginKit` (esistente) | contratto del plug-in; ora **riesporta** `DTHubDesign` (`@_exported import`): chi importa il kit ha anche il design system | i plug-in |
+| `DTHubPluginKit` (esistente) | contratto del plug-in, invariato; **non** riesporta il design system (vedi sotto) | i plug-in |
 | `HubKit` | tiene `DSStatusDot` (dipende da `ConnectionStatus`, un tipo dell'app) e **riesporta** `DTHubDesign`: per l'app e per i suoi moduli niente cambia (`import HubKit` basta ancora) | l'app |
 
-Dipendenze: `Packages/Package.swift` dipende da `../PluginKit` (solo il prodotto `DTHubDesign`); `DTHubPluginKit` dipende da `DTHubDesign`. L'app non collega `DTHubPluginKit`, quindi non ha le sue classi Objective-C (nessun duplicato con quelle dei plug-in).
+Dipendenze: `Packages/Package.swift` dipende da `../PluginKit` (solo il prodotto `DTHubDesign`); `DTHubPluginKit` non dipende da `DTHubDesign`: un plug-in prende i due prodotti, ognuno con il suo alias. L'app non collega `DTHubPluginKit`, quindi non ha le sue classi Objective-C (nessun duplicato con quelle dei plug-in).
 
 **Un plug-in ha la sua copia**, rinominata: come già per il kit, `moduleAliases` dà nomi propri ai due moduli (`SphereLightKit`, `SphereLightDesign`). I tipi del design system sono tutti SwiftUI (struct, stili); l'unica sottoclasse di `NSView` (`DSWindowConfigurator`) prende il nome del modulo rinominato, quindi due plug-in e l'app non si urtano.
 
@@ -45,7 +45,7 @@ Le stringhe restano nella tabella `L` (niente `Bundle.module`).
 
 ## 6. Rischi aperti
 
-- `@_exported import` di un modulo rinominato con `moduleAliases` nel kit è da provare nel prototipo; se non regge, il plug-in importa i due prodotti con i loro alias (e il README lo dice).
+- **Provato e non regge:** `@_exported import DTHubDesign` dentro il kit con `moduleAliases` dà «unable to resolve module dependency: 'DTHubDesign'». Un plug-in importa quindi i due prodotti con i loro alias (il README del kit lo dice).
 - Xcode deve risolvere `PluginKit` come pacchetto locale tramite `Packages`: da provare con una build vera.
 - Chi ha già un plug-in costruito con il kit vecchio non è toccato (il contratto non cambia); per usare il design system deve ricostruirlo.
 
