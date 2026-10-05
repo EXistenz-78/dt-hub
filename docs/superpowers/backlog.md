@@ -190,10 +190,10 @@ I test di sessione dell'M3 (`GenerationSessionTests`) sono stati resi determinis
 - **Lo Shuffle non pesca i termini personali** e sostituisce tutta la selezione, personali compresi.
 - **I termini a evitare** (categoria «negative_terms») vanno all'LLM in un elenco a parte; nelle famiglie senza negativo l'LLM li trasforma in descrizione positiva. Non c'è un campo negativo scritto a mano.
 - **Il pulsante «Scrivi prompt» non si può annullare** (il contratto non lo prevede); il PE con il thinking può metterci minuti.
-- **Il formato suggerito dal PE** (`wh_ratio`) si mostra e non si applica.
+- **Il formato suggerito dal PE** (`wh_ratio`) si applica solo con il pulsante «Applica» (stessa area, multipli di 64, tra 64 e 4096); non c'è un'applicazione automatica.
 - **Il kit non ha un `init` pubblico per `DTHubLanguageModel`:** i test lo costruiscono da JSON.
 - **La colla** (`PromptMasterPlugin`, le viste) non ha test automatici; la logica sta in `PMWriter`, `PMState`, `PEPlanner`, `TermTree` e gli altri tipi puri. Il tab è stato visto in un PNG disegnato fuori dall'app, non dal vivo nella finestra.
-- **Provato dal vivo solo con il modello generico locale** (Qwen3-VL-2B): i PE di Qwen (tappa 3) e un modello più grande per i master prompt non ancora.
+- **Il PE T2I è provato** (modello 4 bit della comunità: carica in 17 s, risponde in 44 s con thinking); un modello generico più grande dell'8B per i master prompt e il PE nell'app dall'interfaccia dipendono dalla prova dell'utente.
 
 - **Una risposta fatta solo di virgolette** (`""`) o un JSON con `"prompt": "  "` diventa un prompt vuoto (o il testo del JSON) e finisce nella Generazione: `AnswerParser` dovrebbe dare nil.
 - **Un clic su una freccia durante la ricerca** cambia lo stato aperto/chiuso salvato senza che si veda; `toggleOpen` non dovrebbe fare nulla mentre la lista è filtrata.
@@ -225,3 +225,11 @@ Prima i master prompt davano «lunghezze obiettivo» prese dalle note del vecchi
 - **Criterio:** il limite è dell'encoder di testo del modello e dell'implementazione di riferimento, non del programma che lo esegue; Draw Things è stato usato solo come riscontro (FLUX.1, HiDream). Un programma può comunque imporre un tetto proprio più basso.
 - **Non verificato:** come Draw Things tratta i prompt oltre 77 token su SD/SDXL (concatenazione a blocchi o troncamento) e se imposta un limite proprio per le famiglie a 512 token; il massimo di Qwen Image 2.1 (assunto uguale a Qwen Image); i consigli di *efficacia* (cosa rende un prompt migliore, oltre al limite) restano da rivedere nella ricerca della spec §9.
 
+
+## Rimandi della tappa 3 di Prompt Master
+
+- **Il PE I2I** (riscrive istruzioni di modifica di un'immagine, con `<image1>`, `<image2>`…, e risponde con `wh_ratio` o `ratio_follow`) è per un plug-in dedicato a Qwen Image 2.1; il contratto ha già `startImage` e `moodboard` nel `context`.
+- **La richiesta al PE ignora i termini da evitare** (non ha un negativo); per Qwen 2.1 la categoria dei termini da evitare è comunque nascosta.
+- **La risposta del PE ha paragrafi separati da righe vuote:** vanno nel campo Prompt così come sono; se Draw Things li trattasse male, `AnswerParser` potrebbe unirli.
+- **«Applica» legge la dimensione dal `context`** (`parameters.width` e `.height`): se l'utente cambia la dimensione a mano dopo, vale quella aggiornata solo al prossimo `context`.
+- **Il PE T2I è una conversione della comunità** (`prithivMLmods`, 4 bit): non si è confrontata la qualità con il modello originale.
