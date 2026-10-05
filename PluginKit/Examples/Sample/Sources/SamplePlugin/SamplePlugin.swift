@@ -159,7 +159,12 @@ final class SamplePlugin: DTHubPlugin {
   /// A question for the language model; the answer is shown, and sent as the prompt.
   func askModel() async {
     state.status = "Asking the language model…"
-    guard let text = await host?.askLanguageModel("Describe a quiet harbour at dawn in one short sentence.") else {
+    // `system` and `options` are optional: a system prompt, and how the model should write.
+    let answer = await host?.askLanguageModelAnswer(
+      "Describe a quiet harbour at dawn.", system: "Answer with one short sentence, in English.",
+      options: DTHubLLMOptions(temperature: 0.7, maxTokens: 120))
+    guard case .text(let text)? = answer else {
+      if case .failure(let reason)? = answer { return state.status = reason }
       return state.status = "No answer: is a language model chosen, and is this plug-in on?"
     }
     state.answer = text
