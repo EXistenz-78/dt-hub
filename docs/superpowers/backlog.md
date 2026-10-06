@@ -265,3 +265,13 @@ Prima i master prompt davano «lunghezze obiettivo» prese dalle note del vecchi
 - **Piccoli:** «1 conflitti» (plurale), un background che finisce con «,» dà «,,» nel JSON, un termine Text & Lettering sparito dal vocabolario sparisce senza dirlo dalla `desc`, le avvertenze sui dati spariscono al primo «Invia».
 - **I test di Prompt Master (`pm-state-*`) lasciano file di preferenze** in `~/Library/Preferences` (quelli di I4 usano una memoria in RAM).
 
+## Rimandi della tappa 2 di Prompt Master I4 (il canvas)
+
+- **I gesti si sono provati con eventi mouse sintetici** su una finestra mai mostrata (disegno, spostamento, ridimensionamento, clic sull'etichetta, clic sul vuoto); con una card aperta (c'è un campo di testo) quel banco di prova non riceve i gesti, quindi **il caso «scrivo nel campo posizione e poi disegno sul canvas» va visto con il mouse vero**.
+- **Il cursore non cambia** sulle maniglie e sui riquadri (resta la freccia).
+- **Nessun controllo da tastiera** sul canvas (spostare un riquadro con le frecce, selezionarlo con Tab) né etichette per VoiceOver sui riquadri.
+- **La dimensione si legge dal `context`** (`parameters.width` e `.height`); l'app lo rimanda quando cambiano (`PluginContextKey`).
+- **Le maniglie sono quadrati di 10 punti** con un raggio di presa di 12: su un riquadro molto piccolo gli angoli si sovrappongono (vince l'ordine nordovest, nordest, sudovest, sudest).
+- **Un riquadro è sempre dentro la griglia**, ma più grande del canvas visibile non può essere: non c'è zoom.
+- **Un elemento senza posizione non ha etichetta** (decisione dell'utente): il tipo si cambia solo dopo avergli dato i numeri della posizione, oppure lo si toglie e si rifà; non c'è «Disegna».
+
