@@ -307,3 +307,7 @@ Prima i master prompt davano «lunghezze obiettivo» prese dalle note del vecchi
 - **Dopo 600 secondi di attesa** non si sa se l'app continua a generare: le richieste del ripiego si accodano dietro.
 - **`PromptMasterI4Plugin.write()` non ha un test proprio** (la logica è in `I4Writer` e `I4State`).
 
+
+## Idee dell'utente (da fare)
+
+- **Zoom con la rotella sull'immagine** (6 ottobre 2026): sull'immagine del Disegno, nella card Canvas e nella sua finestra separata, la rotella (e il pizzico) ingrandisce e rimpicciolisce l'immagine, per disegnare i dettagli con la Pencil o con le dita. Da decidere nel disegno: lo zoom è solo di vista (maschera e disegno restano alle dimensioni del canvas), come si sposta l'immagine ingrandita (trascinamento a due dita o barra spaziatrice), e come si torna alla vista intera.
