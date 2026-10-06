@@ -42,7 +42,7 @@ plug-in non scrive mai nessuno dei due. Le copie incorporate e i file di `Data/`
 ## Costruirlo
 
     Plugins/PromptMasterI4/Scripts/build.sh OUT_FOLDER   # fa OUT_FOLDER/PromptMasterI4.dthubplugin
-    cd Plugins/PromptMasterI4 && swift test              # 124 test (I4_RENDER_DIR=cartella salva i PNG del tab)
+    cd Plugins/PromptMasterI4 && swift test              # 140 test (I4_RENDER_DIR=cartella salva i PNG del tab)
 
 Poi si aggiunge in DT Hub › Preferenze › Plug-in e si accende dal menu Plug-in dell'header. Il tab è grigio sulle famiglie
 diverse da `ideogram_4` (e Prompt Master è grigio su `ideogram_4`).
