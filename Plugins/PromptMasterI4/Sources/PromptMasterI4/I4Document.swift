@@ -138,6 +138,21 @@ struct I4Document: Codable, Equatable, Sendable {
 
   mutating func removeElement(_ id: Int) { elements.removeAll { $0.id == id } }
 
+  /// Every element goes; the ids already given are never given again.
+  mutating func clearElements() { elements.removeAll() }
+
+  /// The General card goes empty: the description, the chosen terms, the palette and the background. The mode stays.
+  mutating func clearGeneral() {
+    description = ""
+    selection = []
+    colors = []
+    background = ""
+  }
+
+  var hasGeneralContent: Bool {
+    !description.isEmpty || !selection.isEmpty || !colors.isEmpty || !background.isEmpty
+  }
+
   /// Moves an element one place up (-1) or down (+1) in the list: the order is the stacking order of the caption.
   mutating func moveElement(_ id: Int, by step: Int) {
     guard let index = elements.firstIndex(where: { $0.id == id }), elements.indices.contains(index + step) else { return }

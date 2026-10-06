@@ -8,6 +8,9 @@ struct I4LeftCard: View {
   var body: some View {
     VStack(spacing: 0) {
       DSPanelHeader(icon: "curlybraces", title: L.text(.title, italian: state.italian))
+        .overlay(alignment: .trailing) {
+          ClearButton(help: L.text(.clearGeneral, italian: state.italian), enabled: state.canClearGeneral) { state.clearGeneral() }
+        }
       ScrollView {
         VStack(alignment: .leading, spacing: DS.rowGap) {
           FieldLabel(text: L.text(.description, italian: state.italian))
