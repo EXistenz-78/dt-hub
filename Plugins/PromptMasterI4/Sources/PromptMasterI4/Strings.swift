@@ -15,6 +15,9 @@ enum L {
     case canvas, generation, canvasHint
     // The JSON
     case reviewJSON, jsonEdited, restore, copy, close, send, sending
+    // The language model
+    case writeWithLLM, writing, llmTable, stateRaw, stateWritten, stateStale, stateEmpty, writtenCount, writingField
+    case failedFields, llmFailed, handEditedDropped, nothingToWrite
     // What happened
     case sent, sentWithConflicts, notAnswered, missingCategory
     case unreadableFile, unknownSchema, repeatedIDs
@@ -48,7 +51,12 @@ enum L {
     .moveUp: "Move up", .moveDown: "Move down", .removeElement: "Remove this element",
     .noDescription: "(no description)", .emptyText: "(no text)",
     .canvas: "Canvas", .generation: "Generation",
-    .canvasHint: "Drag on empty canvas to make an object; drag a box to move it, its corners to resize it. Click the tag of a selected box to turn it into text, or back into an object.",
+    .canvasHint: "Drag on the empty canvas to make an object. Click the tag of a selected box to switch object ↔ text.",
+    .writeWithLLM: "Write with LLM", .writing: "Writing…", .llmTable: "What the LLM gets", .stateRaw: "raw",
+    .stateWritten: "written", .stateStale: "to rewrite", .stateEmpty: "empty",
+    .writtenCount: "%d sentence(s) written.", .writingField: "Writing… field %d of %d",
+    .failedFields: "No sentence for: %@ (the raw text stays).", .llmFailed: "%@",
+    .handEditedDropped: "The JSON you edited by hand was replaced.", .nothingToWrite: "Every field with something in it already has its sentence.",
     .reviewJSON: "Review JSON", .jsonEdited: "JSON edited by hand", .restore: "Restore from the fields", .copy: "Copy",
     .close: "Close", .send: "Send", .sending: "Sending…",
     .sent: "Caption sent to Generation.", .sentWithConflicts: "Caption sent. %d conflict(s) waiting in the app.",
@@ -73,7 +81,12 @@ enum L {
     .moveUp: "Sposta su", .moveDown: "Sposta giù", .removeElement: "Togli questo elemento",
     .noDescription: "(nessuna descrizione)", .emptyText: "(testo vuoto)",
     .canvas: "Canvas", .generation: "Generazione",
-    .canvasHint: "Trascina sul vuoto per fare un oggetto; trascina un riquadro per spostarlo, gli angoli per ridimensionarlo. Clic sull'etichetta di un riquadro selezionato per farlo diventare testo, o di nuovo oggetto.",
+    .canvasHint: "Trascina sul vuoto per fare un oggetto. Clic sull'etichetta di un riquadro selezionato: oggetto ↔ testo.",
+    .writeWithLLM: "Scrivi con LLM", .writing: "Sto scrivendo…", .llmTable: "Cosa riceve l'LLM", .stateRaw: "grezzo",
+    .stateWritten: "riscritto", .stateStale: "da riscrivere", .stateEmpty: "vuoto",
+    .writtenCount: "%d frasi scritte.", .writingField: "Sto scrivendo… campo %d di %d",
+    .failedFields: "Nessuna frase per: %@ (resta il testo grezzo).", .llmFailed: "%@",
+    .handEditedDropped: "Il JSON modificato a mano è stato sostituito.", .nothingToWrite: "Ogni campo con qualcosa dentro ha già la sua frase.",
     .reviewJSON: "Rivedi JSON", .jsonEdited: "JSON modificato a mano", .restore: "Ripristina dai campi", .copy: "Copia",
     .close: "Chiudi", .send: "Invia", .sending: "Invio…",
     .sent: "Didascalia inviata alla Generazione.", .sentWithConflicts: "Didascalia inviata. %d conflitti in attesa nell'app.",
