@@ -970,6 +970,23 @@
         }
       }
     },
+    "canvas.window.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Canvas"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Canvas"
+          }
+        }
+      }
+    },
     "card.batch.count": {
       "extractionState": "manual",
       "localizations": {
@@ -2636,6 +2653,40 @@
         }
       }
     },
+    "control.stage.detach.help": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open the canvas in its own window"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apri il canvas in una finestra separata"
+          }
+        }
+      }
+    },
+    "control.stage.detached": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The canvas is open in its own window."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il canvas è aperto in una finestra separata."
+          }
+        }
+      }
+    },
     "control.stage.drag": {
       "extractionState": "manual",
       "localizations": {
@@ -2836,6 +2887,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Disegno"
+          }
+        }
+      }
+    },
+    "control.stage.reattach": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bring it back here"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Riporta qui"
           }
         }
       }
@@ -3754,6 +3822,74 @@
           "stringUnit": {
             "state": "translated",
             "value": "Scegli prima un modello."
+          }
+        }
+      }
+    },
+    "menu.results": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Results"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Risultati"
+          }
+        }
+      }
+    },
+    "menu.tabs": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tabs"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tab"
+          }
+        }
+      }
+    },
+    "menu.tabs.next": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Next Tab"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tab successivo"
+          }
+        }
+      }
+    },
+    "menu.tabs.previous": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Previous Tab"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tab precedente"
           }
         }
       }

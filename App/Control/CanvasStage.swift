@@ -12,6 +12,10 @@ struct CanvasStage: View {
   let generation: GenerationController
   /// Reports what went wrong while drawing.
   let report: (ControlMessage) -> Void
+  /// Opens the card in its own window; nil in that window itself, which has no such button.
+  var detach: (() -> Void)?
+  /// True in the card's own window: the card is always open there.
+  var isInOwnWindow = false
 
   private enum Mode: Hashable {
     case canvas, draw
@@ -43,8 +47,18 @@ struct CanvasStage: View {
   var body: some View {
     DSCollapsibleCard(
       String(localized: "control.stage.title"), systemImage: "rectangle.dashed",
-      isExpanded: generation.cards.binding("control.stage")
+      isExpanded: isInOwnWindow ? .constant(true) : generation.cards.binding("control.stage")
     ) {
+      if let detach {
+        Button(action: detach) {
+          Image(systemName: "arrow.up.forward.square").font(.system(size: 13, weight: .semibold))
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.secondary)
+        .help(String(localized: "control.stage.detach.help"))
+        .accessibilityLabel(String(localized: "control.stage.detach.help"))
+      }
+    } content: {
       VStack(spacing: DS.rowGap) {
         if let image = control.inputs.image {
           modePicker
