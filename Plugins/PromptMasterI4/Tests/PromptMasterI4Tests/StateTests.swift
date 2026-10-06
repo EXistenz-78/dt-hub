@@ -48,15 +48,24 @@ struct StateTests {
     let state = state()
     for _ in 0..<20 { state.addColor() }
     #expect(state.document.colors.count == 16 && state.document.colors.allSatisfy { $0 == "#ABCDEF" })
-    state.addElement()
+    state.addElement(.obj)
     let id = state.document.elements[0].id
     for _ in 0..<9 { state.addColor(toElement: id) }
     #expect(state.document.elements[0].colors.count == 5)
   }
 
+  @Test func anObjectOrATextCanBeAddedAndTheTypeIsTheOneOfTheButton() {
+    let state = state()
+    state.addElement(.text)
+    state.addElement(.obj)
+    #expect(state.document.elements.map(\.type) == [.text, .obj])
+    #expect(state.document.elements.allSatisfy { $0.bbox == nil })
+    #expect(state.expandedElements == Set(state.document.elements.map(\.id)))
+  }
+
   @Test func aNewElementOpensAndARemovedOneIsForgotten() {
     let state = state()
-    state.addElement()
+    state.addElement(.obj)
     let id = state.document.elements[0].id
     #expect(state.expandedElements == [id])
     state.toggleExpanded(id)

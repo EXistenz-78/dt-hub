@@ -28,19 +28,18 @@ struct RenderTests {
     state.toggleOpen(section: "aesthetics")
     state.toggleOpen(category: "ij_mood_merged")
     state.toggleOpen(section: "lighting")
-    state.addElement()
+    state.addElement(.obj)
     state.document.updateElement(state.document.elements[0].id) {
       $0.desc = "un cliente solo al bancone con una tazza"
       $0.bbox = BBox(y0: 320, x0: 120, y1: 900, x1: 560)
     }
-    state.addElement()
+    state.addElement(.text)
     state.document.updateElement(state.document.elements[1].id) {
-      $0.type = .text
       $0.text = "OPEN ALL NIGHT"
       $0.lettering = "ty_neon_sign"
       $0.desc = "insegna sopra la finestra"
     }
-    state.addElement()
+    state.addElement(.obj)
     state.toggleExpanded(state.document.elements[2].id)
     return state
   }
