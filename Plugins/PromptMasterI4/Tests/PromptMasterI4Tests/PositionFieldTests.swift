@@ -24,7 +24,7 @@ struct PositionFieldTests {
       store: I4Store(storage: MemoryStorage()), italian: true)
     state.active = true
     state.addElement(type)
-    let view = NSHostingView(rootView: I4View(state: state, send: {}))
+    let view = NSHostingView(rootView: I4View(state: state, send: {}, write: {}))
     let frame = NSRect(x: -30000, y: -30000, width: 1180, height: 1000)
     let window = NSWindow(contentRect: frame, styleMask: [.borderless], backing: .buffered, defer: false)
     window.contentView = view
