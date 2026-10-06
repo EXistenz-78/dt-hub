@@ -35,18 +35,21 @@ struct RenderTests {
     }
     state.addElement(.text)
     state.document.updateElement(state.document.elements[1].id) {
+      $0.bbox = BBox(y0: 60, x0: 180, y1: 200, x1: 820)
       $0.text = "OPEN ALL NIGHT"
       $0.lettering = "ty_neon_sign"
       $0.desc = "insegna sopra la finestra"
     }
     state.addElement(.obj)
     state.toggleExpanded(state.document.elements[2].id)
+    state.update(generationSize: CGSize(width: 1280, height: 832))
+    state.select(state.document.elements[0].id)
     return state
   }
 
   private func render(_ state: I4State, dark: Bool, name: String) throws -> NSBitmapImageRep {
     let view = NSHostingView(rootView: I4View(state: state, send: {}))
-    view.frame = NSRect(x: 0, y: 0, width: 1180, height: 820)
+    view.frame = NSRect(x: 0, y: 0, width: 1180, height: 1000)
     let window = NSWindow(contentRect: view.frame, styleMask: [.titled], backing: .buffered, defer: false)
     window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
     window.contentView = view

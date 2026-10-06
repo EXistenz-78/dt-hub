@@ -9,7 +9,11 @@ struct I4View: View {
   var body: some View {
     HStack(alignment: .top, spacing: DS.groupGap) {
       I4LeftCard(state: state).frame(minWidth: 340, idealWidth: 420, maxWidth: 460)
-      I4ElementsCard(state: state, send: send).frame(minWidth: 340, maxWidth: .infinity)
+      VStack(spacing: DS.groupGap) {
+        I4CanvasCard(state: state)
+        I4ElementsCard(state: state, send: send).frame(maxHeight: .infinity)
+      }
+      .frame(minWidth: 340, maxWidth: .infinity)
     }
     .padding(DS.groupGap)
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
