@@ -239,3 +239,15 @@ Prima i master prompt davano «lunghezze obiettivo» prese dalle note del vecchi
 - **`applyRatio` moltiplica larghezza × altezza** senza controllare l'overflow; i valori vengono dai parametri dell'app, già limitati.
 - **Un termine personale con a capo dentro** non viene ripulito: finisce così com'è nella richiesta all'LLM (non rompe nessuna struttura che leggiamo noi).
 
+## Rimandi della tappa 1 di Prompt Master I4
+
+- **Il canvas non c'è ancora** (tappa 2): la posizione di un elemento si scrive come quattro numeri; un testo che non si legge torna a quello di prima.
+- **Senza l'LLM** (tappa 3) il JSON porta i nomi inglesi delle voci uniti da virgole e i testi come scritti; la descrizione generale e il background restano nella lingua dell'utente.
+- **Il negativo vuoto** (`negativePrompt: ""`): l'app lo scarta se la famiglia non legge il negativo (`JobComposer`); verificare dal vivo che per `ideogram_4` il campo si svuoti davvero.
+- **Un solo `family`**: il plug-in non legge il `context` (il tab è grigio sulle altre famiglie dal manifesto); la dimensione della Generazione serve al canvas nella tappa 2.
+- **Il database è copiato in due plug-in** (Prompt Master e I4, due copie incorporate): `Scripts/make-i4-data.py` lo rilegge da `Plugins/PromptMaster/Data/`; un modulo condiviso si estrae se un terzo plug-in lo chiede.
+- **La finestra «Rivedi JSON» non controlla che il testo sia JSON valido:** è una finestra di modifica, non un importatore (decisione dell'utente).
+- **Nessun termine personale, nessuna ricerca** nelle liste (non richiesti).
+- **I colori** si scelgono con il selettore di sistema; non c'è un campo per scrivere l'esadecimale.
+- **La colla** (`PromptMasterI4Plugin`, le viste) non ha test automatici; la logica sta nei tipi puri. Il tab è stato visto in un PNG disegnato fuori dall'app (`RenderTests`).
+
