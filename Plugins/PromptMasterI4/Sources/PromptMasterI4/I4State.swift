@@ -20,6 +20,10 @@ final class I4State: ObservableObject {
   @Published var status = ""
   @Published var isSending = false
   @Published var active = false
+  /// The element selected on the canvas or in the list (view state: not remembered).
+  @Published var selectedElement: Int?
+  /// The size of the Generation tab, as the app last said it: the canvas takes its proportions.
+  @Published private(set) var generationSize: CGSize?
 
   init(
     data: I4Data = I4Data.load(), store: I4Store = I4Store(), italian: Bool = L.systemIsItalian,
@@ -62,6 +66,16 @@ final class I4State: ObservableObject {
     }
   }
 
+  // MARK: What the app says
+
+  func update(generationSize: CGSize?) { self.generationSize = generationSize }
+
+  /// Width over height of the Generation tab; a square until the app has said.
+  var canvasAspect: Double {
+    guard let size = generationSize, size.width > 0, size.height > 0 else { return 1 }
+    return Double(size.width / size.height)
+  }
+
   // MARK: The lists
 
   func isChosen(_ termID: String) -> Bool { document.selection.contains(termID) }
@@ -89,9 +103,43 @@ final class I4State: ObservableObject {
   func removeElement(_ id: Int) {
     document.removeElement(id)
     expandedElements.remove(id)
+    if selectedElement == id { selectedElement = nil }
   }
 
   func toggleExpanded(_ id: Int) { if !expandedElements.insert(id).inserted { expandedElements.remove(id) } }
+
+  // MARK: The canvas
+
+  /// The elements that have a box, in the order of the list (the stacking order), with their numbers.
+  var canvasItems: [CanvasItem] {
+    document.elements.enumerated().compactMap { index, element in
+      element.bbox.map { CanvasItem(id: element.id, number: index + 1, type: element.type, box: $0) }
+    }
+  }
+
+  func select(_ id: Int?) { selectedElement = id }
+
+  /// A gesture on the canvas is over (spec §5). A box drawn makes a new object; a click on empty canvas selects
+  /// nothing; moving or resizing sets the box and selects it; a click on a tag selects the box, and
+  /// when it is already selected changes its type.
+  func canvasEnd(_ drag: CanvasDrag, geometry: CanvasGeometry) {
+    switch drag.mode {
+    case .draw:
+      guard let box = geometry.result(of: drag) else {
+        selectedElement = nil
+        return
+      }
+      let id = document.addElement(type: .obj, bbox: box)
+      expandedElements.insert(id)
+      selectedElement = id
+    case .move(let id, _), .resize(let id, _, _):
+      if drag.moved, let box = geometry.result(of: drag) { document.updateElement(id) { $0.bbox = box } }
+      selectedElement = id
+    case .tag(let id):
+      guard !drag.moved else { return }
+      if selectedElement == id { document.toggleType(id) } else { selectedElement = id }
+    }
+  }
 
   // MARK: The JSON
 

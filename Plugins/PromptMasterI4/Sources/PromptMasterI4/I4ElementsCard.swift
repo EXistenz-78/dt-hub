@@ -12,15 +12,21 @@ struct I4ElementsCard: View {
     VStack(spacing: 0) {
       DSPanelHeader(icon: "square.on.square.dashed", title: L.text(.elements, italian: state.italian))
       VStack(alignment: .leading, spacing: DS.rowGap) {
-        ScrollView {
-          LazyVStack(spacing: 8) {
-            ForEach(Array(state.document.elements.enumerated()), id: \.element.id) { index, element in
-              ElementCard(state: state, element: element, number: index + 1)
+        ScrollViewReader { reader in
+          ScrollView {
+            LazyVStack(spacing: 8) {
+              ForEach(Array(state.document.elements.enumerated()), id: \.element.id) { index, element in
+                ElementCard(state: state, element: element, number: index + 1).id(element.id)
+              }
             }
           }
+          .scrollIndicators(.hidden)
+          // A box drawn on the canvas, or a click on one, brings its card into view.
+          .onChange(of: state.selectedElement) { _, id in
+            if let id { withAnimation { reader.scrollTo(id, anchor: .center) } }
+          }
         }
-        .scrollIndicators(.hidden)
-        .frame(maxHeight: .infinity)
+        .frame(minHeight: 140, maxHeight: .infinity)
         HStack(spacing: DS.controlGap) {
           addButton(.obj, key: .addObject, icon: "cube")
           addButton(.text, key: .addText, icon: "textformat")
@@ -119,10 +125,16 @@ private struct ElementCard: View {
           .buttonStyle(.plain).foregroundStyle(DS.remove).help(L.text(.removeElement, italian: state.italian))
       }
       .padding(10).contentShape(Rectangle())
-      .onTapGesture { state.toggleExpanded(element.id) }
+      .onTapGesture {
+        state.toggleExpanded(element.id)
+        state.select(element.id)
+      }
       if isOpen { details.padding([.horizontal, .bottom], 10) }
     }
     .background(RoundedRectangle(cornerRadius: DS.minorRadius, style: .continuous).fill(Color.primary.opacity(0.06)))
+    .overlay(
+      RoundedRectangle(cornerRadius: DS.minorRadius, style: .continuous)
+        .strokeBorder(DS.accent, lineWidth: state.selectedElement == element.id ? 2 : 0))
   }
 
   private func iconButton(_ name: String, help: String, enabled: Bool, action: @escaping () -> Void) -> some View {
@@ -167,30 +179,38 @@ private struct ElementCard: View {
 }
 
 /// The box as four numbers: `y0, x0, y1, x1`. It is kept as soon as the numbers can be read (no Return needed); an empty
-/// field means no position; half-typed numbers leave the box as it was, and the field shows the box again when it is left.
+/// field means no position. Text that cannot be read is never wiped: it stays as written, with a line that says what a
+/// position is, and the box stays what it was. Leaving the field with a readable text writes the box out in full.
 private struct BBoxField: View {
   @Binding var box: BBox?
   let italian: Bool
   @State private var text = ""
   @FocusState private var focused: Bool
 
+  private var isUnreadable: Bool { BBox.isUnreadable(text) }
+
   var body: some View {
-    TextField(L.text(.positionPlaceholder, italian: italian), text: $text)
-      .textFieldStyle(.roundedBorder).font(.body.monospaced())
-      .focused($focused)
-      .onAppear { text = box?.text ?? "" }
-      .onChange(of: text) { _, new in
-        let resolved = BBox.resolve(new, current: box)
-        if resolved != box { box = resolved }
+    VStack(alignment: .leading, spacing: 4) {
+      TextField(L.text(.positionPlaceholder, italian: italian), text: $text)
+        .textFieldStyle(.roundedBorder).font(.body.monospaced())
+        .focused($focused)
+        .onAppear { text = box?.text ?? "" }
+        .onChange(of: text) { _, new in
+          let resolved = BBox.resolve(new, current: box)
+          if resolved != box { box = resolved }
+        }
+        .onChange(of: box) { _, new in
+          // A change that did not come from this field (the canvas, an undo): show it.
+          if !isUnreadable && BBox.resolve(text, current: new) != new { text = new?.text ?? "" }
+        }
+        .onChange(of: focused) { _, isFocused in
+          if !isFocused && !isUnreadable { text = box?.text ?? "" }
+        }
+        .onSubmit { if !isUnreadable { text = box?.text ?? "" } }
+      if isUnreadable {
+        Text(L.text(.positionInvalid, italian: italian)).font(.caption).foregroundStyle(DS.remove)
       }
-      .onChange(of: box) { _, new in
-        // A change that did not come from this field (the canvas, an undo): show it.
-        if BBox.resolve(text, current: new) != new { text = new?.text ?? "" }
-      }
-      .onChange(of: focused) { _, isFocused in
-        if !isFocused { text = box?.text ?? "" }
-      }
-      .onSubmit { text = box?.text ?? "" }
+    }
   }
 }
 

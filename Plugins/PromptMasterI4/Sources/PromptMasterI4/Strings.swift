@@ -9,8 +9,10 @@ enum L {
     case none, palette, addColor, removeColor, background, backgroundPlaceholder
     // The elements
     case elements, addObject, addText, objectPlaceholder, textPlaceholder, lettering, printedText
-    case printedTextPlaceholder, position, noPosition, positionPlaceholder, moveUp, moveDown, removeElement
+    case printedTextPlaceholder, position, noPosition, positionPlaceholder, positionInvalid, moveUp, moveDown, removeElement
     case noDescription, emptyText
+    // The canvas
+    case canvas, generation, canvasHint
     // The JSON
     case reviewJSON, jsonEdited, restore, copy, close, send, sending
     // What happened
@@ -42,8 +44,11 @@ enum L {
     .objectPlaceholder: "Describe the object", .textPlaceholder: "How the lettering looks, not what it says",
     .lettering: "Text & Lettering", .printedText: "Text (rendered as written)", .printedTextPlaceholder: "The words in the picture",
     .position: "Position", .noPosition: "no position", .positionPlaceholder: "y0, x0, y1, x1 (0–1000, sides of at least 20)",
+    .positionInvalid: "Not a position: four numbers from 0 to 1000, each side at least 20 long.",
     .moveUp: "Move up", .moveDown: "Move down", .removeElement: "Remove this element",
     .noDescription: "(no description)", .emptyText: "(no text)",
+    .canvas: "Canvas", .generation: "Generation",
+    .canvasHint: "Drag on empty canvas to make an object; drag a box to move it, its corners to resize it. Click the tag of a selected box to turn it into text, or back into an object.",
     .reviewJSON: "Review JSON", .jsonEdited: "JSON edited by hand", .restore: "Restore from the fields", .copy: "Copy",
     .close: "Close", .send: "Send", .sending: "Sending…",
     .sent: "Caption sent to Generation.", .sentWithConflicts: "Caption sent. %d conflict(s) waiting in the app.",
@@ -64,8 +69,11 @@ enum L {
     .objectPlaceholder: "Descrivi l'oggetto", .textPlaceholder: "Com'è la scritta, non che cosa dice",
     .lettering: "Text & Lettering", .printedText: "Testo (reso verbatim)", .printedTextPlaceholder: "Le parole che compaiono nell'immagine",
     .position: "Posizione", .noPosition: "nessuna posizione", .positionPlaceholder: "y0, x0, y1, x1 (0–1000, lati di almeno 20)",
+    .positionInvalid: "Non è una posizione: servono quattro numeri da 0 a 1000, con lati lunghi almeno 20.",
     .moveUp: "Sposta su", .moveDown: "Sposta giù", .removeElement: "Togli questo elemento",
     .noDescription: "(nessuna descrizione)", .emptyText: "(testo vuoto)",
+    .canvas: "Canvas", .generation: "Generazione",
+    .canvasHint: "Trascina sul vuoto per fare un oggetto; trascina un riquadro per spostarlo, gli angoli per ridimensionarlo. Clic sull'etichetta di un riquadro selezionato per farlo diventare testo, o di nuovo oggetto.",
     .reviewJSON: "Rivedi JSON", .jsonEdited: "JSON modificato a mano", .restore: "Ripristina dai campi", .copy: "Copia",
     .close: "Chiudi", .send: "Invia", .sending: "Invio…",
     .sent: "Didascalia inviata alla Generazione.", .sentWithConflicts: "Didascalia inviata. %d conflitti in attesa nell'app.",
