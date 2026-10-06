@@ -22,6 +22,7 @@ final class PromptMasterI4Plugin: DTHubPlugin {
   func handle(_ message: Data) async -> Data? {
     switch DTHubMessage.type(of: message) {
     case "context":
+      state.update(generationSize: GenerationSize.read(fromContext: message))
       return nil
     case "activate":
       state.active = true

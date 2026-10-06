@@ -114,6 +114,11 @@ struct I4Document: Codable, Equatable, Sendable {
     return id
   }
 
+  /// Object ↔ text: the description, the lettering term and the printed text are all kept.
+  mutating func toggleType(_ id: Int) {
+    updateElement(id) { $0.type = $0.type == .obj ? .text : .obj }
+  }
+
   mutating func removeElement(_ id: Int) { elements.removeAll { $0.id == id } }
 
   /// Moves an element one place up (-1) or down (+1) in the list: the order is the stacking order of the caption.
