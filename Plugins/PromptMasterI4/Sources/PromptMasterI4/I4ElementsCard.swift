@@ -1,0 +1,216 @@
+import AppKit
+import DTHubDesign
+import SwiftUI
+
+/// The right card: the elements, one card each (closed at first), and the buttons: add, review the JSON, send.
+struct I4ElementsCard: View {
+  @ObservedObject var state: I4State
+  let send: () -> Void
+  @State private var reviewing = false
+
+  var body: some View {
+    VStack(spacing: 0) {
+      DSPanelHeader(icon: "square.on.square.dashed", title: L.text(.elements, italian: state.italian))
+      VStack(alignment: .leading, spacing: DS.rowGap) {
+        ScrollView {
+          LazyVStack(spacing: 8) {
+            ForEach(Array(state.document.elements.enumerated()), id: \.element.id) { index, element in
+              ElementCard(state: state, element: element, number: index + 1)
+            }
+          }
+        }
+        .scrollIndicators(.hidden)
+        .frame(maxHeight: .infinity)
+        Button { state.addElement() } label: {
+          HStack(spacing: DS.pillIconGap) {
+            Image(systemName: "plus")
+            Text(L.text(.addElement, italian: state.italian))
+          }
+        }
+        .buttonStyle(DSPillButtonStyle())
+        if state.hasEditedJSON {
+          HStack(spacing: 8) {
+            Text(L.text(.jsonEdited, italian: state.italian)).font(.caption).foregroundStyle(DS.remove)
+            Button(L.text(.restore, italian: state.italian)) { state.restoreJSON() }
+              .buttonStyle(.plain).font(.caption.weight(.semibold)).foregroundStyle(DS.accent)
+          }
+        }
+        HStack(spacing: DS.controlGap) {
+          Button { reviewing = true } label: {
+            HStack(spacing: DS.pillIconGap) {
+              Image(systemName: "doc.text.magnifyingglass")
+              Text(L.text(.reviewJSON, italian: state.italian))
+            }
+          }
+          .buttonStyle(DSPillButtonStyle())
+          Spacer(minLength: 0)
+          Button(action: send) {
+            if state.isSending {
+              HStack(spacing: DS.pillIconGap) {
+                ProgressView().controlSize(.small)
+                Text(L.text(.sending, italian: state.italian))
+              }
+            } else {
+              HStack(spacing: DS.pillIconGap) {
+                Image(systemName: "paperplane")
+                Text(L.text(.send, italian: state.italian))
+              }
+            }
+          }
+          .buttonStyle(DSPillButtonStyle(prominent: true))
+          .disabled(!state.canSend)
+        }
+        if !state.status.isEmpty {
+          Text(state.status).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+        }
+      }
+      .padding(DS.panelPadding)
+    }
+    .dsPanel()
+    .sheet(isPresented: $reviewing) { JSONSheet(state: state, close: { reviewing = false }) }
+  }
+}
+
+private struct ElementCard: View {
+  @ObservedObject var state: I4State
+  let element: I4Element
+  let number: Int
+
+  private var isOpen: Bool { state.expandedElements.contains(element.id) }
+
+  private var excerpt: String {
+    let source = element.type == .text ? element.text : element.desc
+    let empty = L.text(element.type == .text ? .emptyText : .noDescription, italian: state.italian)
+    let line = source.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "\n", with: " ")
+    if line.isEmpty { return empty }
+    return line.count > 46 ? String(line.prefix(46)) + "…" : line
+  }
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 0) {
+      HStack(spacing: 8) {
+        Image(systemName: "chevron.right").font(.system(size: 9, weight: .bold)).foregroundStyle(.secondary)
+          .rotationEffect(.degrees(isOpen ? 90 : 0))
+        Text("E\(number)").font(.caption.monospaced().weight(.semibold))
+          .padding(.horizontal, 6).padding(.vertical, 1)
+          .background(RoundedRectangle(cornerRadius: 5).fill(element.type == .text ? Color.yellow.opacity(0.35) : DS.accent.opacity(0.35)))
+        Text(excerpt).font(.callout).lineLimit(1).truncationMode(.tail)
+        Spacer(minLength: 0)
+        if element.bbox == nil {
+          Text(L.text(.noPosition, italian: state.italian)).font(.caption2).foregroundStyle(DS.remove)
+        }
+        iconButton("arrow.up", help: L.text(.moveUp, italian: state.italian), enabled: number > 1) {
+          state.document.moveElement(element.id, by: -1)
+        }
+        iconButton("arrow.down", help: L.text(.moveDown, italian: state.italian), enabled: number < state.document.elements.count) {
+          state.document.moveElement(element.id, by: 1)
+        }
+        Button { state.removeElement(element.id) } label: { Image(systemName: "xmark").font(.caption) }
+          .buttonStyle(.plain).foregroundStyle(DS.remove).help(L.text(.removeElement, italian: state.italian))
+      }
+      .padding(10).contentShape(Rectangle())
+      .onTapGesture { state.toggleExpanded(element.id) }
+      if isOpen { details.padding([.horizontal, .bottom], 10) }
+    }
+    .background(RoundedRectangle(cornerRadius: DS.minorRadius, style: .continuous).fill(Color.primary.opacity(0.06)))
+  }
+
+  private func iconButton(_ name: String, help: String, enabled: Bool, action: @escaping () -> Void) -> some View {
+    Button(action: action) { Image(systemName: name).font(.caption) }
+      .buttonStyle(.plain).foregroundStyle(.secondary).disabled(!enabled).help(help)
+  }
+
+  private func binding<T>(_ keyPath: WritableKeyPath<I4Element, T>) -> Binding<T> {
+    Binding(
+      get: { element[keyPath: keyPath] },
+      set: { value in state.document.updateElement(element.id) { $0[keyPath: keyPath] = value } })
+  }
+
+  private var details: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      Picker("", selection: binding(\.type)) {
+        Text(L.text(.elementObject, italian: state.italian)).tag(ElementType.obj)
+        Text(L.text(.elementText, italian: state.italian)).tag(ElementType.text)
+      }
+      .pickerStyle(.segmented).labelsHidden().fixedSize()
+      NoteField(
+        text: binding(\.desc),
+        placeholder: L.text(element.type == .text ? .textPlaceholder : .objectPlaceholder, italian: state.italian),
+        minHeight: 56, maxHeight: 110)
+      if element.type == .text {
+        FieldLabel(text: L.text(.lettering, italian: state.italian))
+        Picker("", selection: Binding(get: { element.lettering ?? "" }, set: { value in
+          state.document.updateElement(element.id) { $0.lettering = value.isEmpty ? nil : value }
+        })) {
+          Text(L.text(.none, italian: state.italian)).tag("")
+          ForEach(state.catalog.lettering) { Text(state.italian ? $0.it : $0.en).tag($0.id) }
+        }
+        .labelsHidden()
+        FieldLabel(text: L.text(.printedText, italian: state.italian))
+        TextField(L.text(.printedTextPlaceholder, italian: state.italian), text: binding(\.text)).textFieldStyle(.roundedBorder)
+      }
+      FieldLabel(text: L.text(.position, italian: state.italian))
+      BBoxField(box: binding(\.bbox), italian: state.italian)
+      FieldLabel(text: L.text(.palette, italian: state.italian))
+      PaletteRow(
+        colors: element.colors, limit: Palette.elementLimit, italian: state.italian,
+        set: { index, hex in state.document.updateElement(element.id) { $0.colors[index] = hex } },
+        remove: { index in state.document.updateElement(element.id) { $0.colors.remove(at: index) } },
+        add: { state.addColor(toElement: element.id) })
+    }
+  }
+}
+
+/// The box as four numbers: `y0, x0, y1, x1`. An empty field means no position; one that cannot be read goes back to
+/// the box it had.
+private struct BBoxField: View {
+  @Binding var box: BBox?
+  let italian: Bool
+  @State private var text = ""
+
+  var body: some View {
+    TextField(L.text(.positionPlaceholder, italian: italian), text: $text)
+      .textFieldStyle(.roundedBorder).font(.body.monospaced())
+      .onAppear { text = box?.text ?? "" }
+      .onChange(of: box) { _, new in text = new?.text ?? "" }
+      .onSubmit {
+        if text.trimmingCharacters(in: .whitespaces).isEmpty {
+          box = nil
+        } else if let parsed = BBox.parse(text) {
+          box = parsed
+        }
+        text = box?.text ?? ""
+      }
+  }
+}
+
+/// The window with the JSON: a text anyone can copy and change by hand.
+private struct JSONSheet: View {
+  @ObservedObject var state: I4State
+  let close: () -> Void
+
+  var body: some View {
+    VStack(spacing: 0) {
+      DSPanelHeader(icon: "doc.text", title: L.text(.reviewJSON, italian: state.italian))
+      VStack(alignment: .leading, spacing: DS.rowGap) {
+        JSONEditor(text: Binding(get: { state.jsonText }, set: { state.editJSON($0) }))
+          .background(RoundedRectangle(cornerRadius: DS.minorRadius, style: .continuous).fill(Color.primary.opacity(0.06)))
+          .frame(minHeight: 360)
+        HStack(spacing: DS.controlGap) {
+          if state.hasEditedJSON { Text(L.text(.jsonEdited, italian: state.italian)).font(.caption).foregroundStyle(DS.remove) }
+          Spacer(minLength: 0)
+          Button(L.text(.copy, italian: state.italian)) {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(state.jsonText, forType: .string)
+          }
+          .buttonStyle(DSPillButtonStyle())
+          Button(L.text(.restore, italian: state.italian)) { state.restoreJSON() }
+            .buttonStyle(DSPillButtonStyle()).disabled(!state.hasEditedJSON)
+          Button(L.text(.close, italian: state.italian), action: close).buttonStyle(DSPillButtonStyle(prominent: true))
+        }
+      }
+      .padding(DS.panelPadding)
+    }
+    .frame(minWidth: 640, minHeight: 480)
+  }
+}
