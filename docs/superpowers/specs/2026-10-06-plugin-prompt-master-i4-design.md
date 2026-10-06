@@ -33,7 +33,7 @@ Ogni tappa ha il suo piano e il suo merge; questa spec le copre tutte.
 
 ## 3. Dati
 
-Il database è lo **stesso file** di Prompt Master: `~/Library/Application Support/DT Hub/Data/prompt-database.json` (id, `it`, `en`, gruppi con `restricted`, categorie con `en` e `descIt`), con la sua copia incorporata. Valgono le stesse regole di scelta (file della cartella, altrimenti incorporata; schema sconosciuto, versione più vecchia, id ripetuti o file illeggibile → incorporata e un avviso; il plug-in non lo scrive mai). Un secondo file è solo di I4:
+Il database è lo **stesso file** di Prompt Master: `~/Library/Application Support/DT Hub/Data/prompt-database.json` (id, `it`, `en`, gruppi con `restricted`, categorie con `en` e `descIt`), con la sua copia incorporata. Valgono le stesse regole di scelta (file della cartella, altrimenti incorporata; schema sconosciuto, id ripetuti o file illeggibile → incorporata e un avviso; versione più vecchia → incorporata, senza avviso; il plug-in non lo scrive mai). Un secondo file è solo di I4:
 
 | File | Contenuto |
 |---|---|

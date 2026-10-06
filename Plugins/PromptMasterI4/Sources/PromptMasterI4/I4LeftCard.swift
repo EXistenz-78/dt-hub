@@ -21,7 +21,7 @@ struct I4LeftCard: View {
           FieldLabel(text: L.text(.palette, italian: state.italian))
           PaletteRow(
             colors: state.document.colors, limit: Palette.styleLimit, italian: state.italian,
-            set: { state.document.colors[$0] = $1 }, remove: { state.document.colors.remove(at: $0) },
+            set: { state.document.setColor(at: $0, to: $1) }, remove: { state.document.removeColor(at: $0) },
             add: { state.addColor() })
           Divider()
           FieldLabel(text: L.text(.background, italian: state.italian))

@@ -28,6 +28,13 @@ struct BBox: Codable, Equatable, Sendable {
     return normalized(y0: numbers[0], x0: numbers[1], y1: numbers[2], x1: numbers[3])
   }
 
+  /// The box a position field holds after the user typed `text`: no text, no position; a readable one, that box; anything
+  /// else (half typed, a side too short) leaves `current` as it was.
+  static func resolve(_ text: String, current: BBox?) -> BBox? {
+    if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return nil }
+    return parse(text) ?? current
+  }
+
   var array: [Int] { [y0, x0, y1, x1] }
   var text: String { "[\(y0), \(x0), \(y1), \(x1)]" }
 }

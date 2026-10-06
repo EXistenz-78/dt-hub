@@ -154,33 +154,38 @@ private struct ElementCard: View {
       FieldLabel(text: L.text(.palette, italian: state.italian))
       PaletteRow(
         colors: element.colors, limit: Palette.elementLimit, italian: state.italian,
-        set: { index, hex in state.document.updateElement(element.id) { $0.colors[index] = hex } },
-        remove: { index in state.document.updateElement(element.id) { $0.colors.remove(at: index) } },
+        set: { index, hex in state.document.setElementColor(element.id, at: index, to: hex) },
+        remove: { index in state.document.removeElementColor(element.id, at: index) },
         add: { state.addColor(toElement: element.id) })
     }
   }
 }
 
-/// The box as four numbers: `y0, x0, y1, x1`. An empty field means no position; one that cannot be read goes back to
-/// the box it had.
+/// The box as four numbers: `y0, x0, y1, x1`. It is kept as soon as the numbers can be read (no Return needed); an empty
+/// field means no position; half-typed numbers leave the box as it was, and the field shows the box again when it is left.
 private struct BBoxField: View {
   @Binding var box: BBox?
   let italian: Bool
   @State private var text = ""
+  @FocusState private var focused: Bool
 
   var body: some View {
     TextField(L.text(.positionPlaceholder, italian: italian), text: $text)
       .textFieldStyle(.roundedBorder).font(.body.monospaced())
+      .focused($focused)
       .onAppear { text = box?.text ?? "" }
-      .onChange(of: box) { _, new in text = new?.text ?? "" }
-      .onSubmit {
-        if text.trimmingCharacters(in: .whitespaces).isEmpty {
-          box = nil
-        } else if let parsed = BBox.parse(text) {
-          box = parsed
-        }
-        text = box?.text ?? ""
+      .onChange(of: text) { _, new in
+        let resolved = BBox.resolve(new, current: box)
+        if resolved != box { box = resolved }
       }
+      .onChange(of: box) { _, new in
+        // A change that did not come from this field (the canvas, an undo): show it.
+        if BBox.resolve(text, current: new) != new { text = new?.text ?? "" }
+      }
+      .onChange(of: focused) { _, isFocused in
+        if !isFocused { text = box?.text ?? "" }
+      }
+      .onSubmit { text = box?.text ?? "" }
   }
 }
 

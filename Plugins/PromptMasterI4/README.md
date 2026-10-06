@@ -25,14 +25,14 @@ si scrivono i testi, si definiscono gli elementi (oggetti e scritte, con il loro
 | `ideogram4.json` | `…/Data/prompt-master/` | tu: quali categorie alimentano ogni campo, le impostazioni dell'LLM, il master prompt |
 
 Vale il file se esiste, si legge, ha `schema` 1, nessun id ripetuto e una `version` non più vecchia di quella incorporata;
-altrimenti vale la copia incorporata (e se il file non si legge o ha un layout sconosciuto la riga di stato lo dice). Il
+altrimenti vale la copia incorporata (e se il file non si legge, ha un layout sconosciuto o usa lo stesso id due volte la riga di stato lo dice; un file più vecchio si ignora senza dirlo). Il
 plug-in non scrive mai nessuno dei due. Le copie incorporate e i file di `Data/` si rigenerano con `Scripts/make-i4-data.py`
 (il database si copia da `Plugins/PromptMaster/Data/`, che non viene modificato; un test controlla che siano uguali).
 
 ## Costruirlo
 
     Plugins/PromptMasterI4/Scripts/build.sh OUT_FOLDER   # fa OUT_FOLDER/PromptMasterI4.dthubplugin
-    cd Plugins/PromptMasterI4 && swift test              # 58 test (I4_RENDER_DIR=cartella salva i PNG del tab)
+    cd Plugins/PromptMasterI4 && swift test              # 60 test (I4_RENDER_DIR=cartella salva i PNG del tab)
 
 Poi si aggiunge in DT Hub › Preferenze › Plug-in e si accende dal menu Plug-in dell'header. Il tab è grigio sulle famiglie
 diverse da `ideogram_4` (e Prompt Master è grigio su `ideogram_4`).

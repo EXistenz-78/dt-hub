@@ -251,3 +251,17 @@ Prima i master prompt davano «lunghezze obiettivo» prese dalle note del vecchi
 - **I colori** si scelgono con il selettore di sistema; non c'è un campo per scrivere l'esadecimale.
 - **La colla** (`PromptMasterI4Plugin`, le viste) non ha test automatici; la logica sta nei tipi puri. Il tab è stato visto in un PNG disegnato fuori dall'app (`RenderTests`).
 
+## Rimandi della revisione della tappa 1 di Prompt Master I4
+
+- **`ideogram4.json` scritto a mano non si controlla** per id di categoria ripetuti (la stessa categoria due volte in un campo, o in due campi): la lista mostrerebbe id doppi e lo Shuffle potrebbe pescare due voci della stessa categoria.
+- **Un `ideogram4.json` più vecchio dell'incorporato** si ignora senza avviso (come in Prompt Master): dopo un aggiornamento del plug-in che alza la versione, un file modificato dall'utente smette di valere senza dirlo.
+- **`BBox.parse` spezza i decimali** (`100.5` diventa `100` e `5`).
+- **Accessibilità:** le card degli elementi si aprono solo con il clic sull'intestazione (non da tastiera/VoiceOver); i pulsanti con solo icona (su, giù, togli, + e × dei colori) hanno solo il tooltip; i selettori di colore non hanno un nome.
+- **Le palette usano l'indice come identità:** togliere un colore mentre il pannello colori di un altro è aperto fa modificare il colore che ha preso quel posto (non crasha: gli indici sono controllati).
+- **Test:** i golden byte per byte sono solo quello dell'esempio Foto della spec vecchia; l'esempio Arte e gli altri casi si controllano per posizione delle chiavi e per valore.
+- **`JSONEditor` lascia `smartInsertDeleteEnabled` acceso** (incollando una parola dentro una stringa può aggiungere uno spazio); l'annullamento (Cmd-Z) dopo «Ripristina dai campi» non è stato provato.
+- **I campi di prosa** (descrizione, testo verbatim) seguono le sostituzioni di sistema (virgolette tipografiche, trattini lunghi): il testo di una scritta potrebbe averle.
+- **Codice non usato:** `I4Catalog.term(_:)` (solo test), `I4Sender.Outcome.sent`, `LoadedData.fromFile`.
+- **Piccoli:** «1 conflitti» (plurale), un background che finisce con «,» dà «,,» nel JSON, un termine Text & Lettering sparito dal vocabolario sparisce senza dirlo dalla `desc`, le avvertenze sui dati spariscono al primo «Invia».
+- **I test di Prompt Master (`pm-state-*`) lasciano file di preferenze** in `~/Library/Preferences` (quelli di I4 usano una memoria in RAM).
+

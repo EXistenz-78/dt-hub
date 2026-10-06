@@ -92,6 +92,18 @@ struct I4Document: Codable, Equatable, Sendable {
     colors.append(value)
   }
 
+  /// Changes or removes the color at `index`; an index that is not there any more (the view may act on a swatch that has
+  /// just gone) does nothing.
+  mutating func setColor(at index: Int, to hex: String) {
+    guard colors.indices.contains(index), let value = Palette.normalize(hex) else { return }
+    colors[index] = value
+  }
+
+  mutating func removeColor(at index: Int) {
+    guard colors.indices.contains(index) else { return }
+    colors.remove(at: index)
+  }
+
   // MARK: The elements
 
   @discardableResult
@@ -118,6 +130,15 @@ struct I4Document: Codable, Equatable, Sendable {
   mutating func addElementColor(_ id: Int, _ hex: String) {
     guard let value = Palette.normalize(hex) else { return }
     updateElement(id) { if $0.colors.count < Palette.elementLimit { $0.colors.append(value) } }
+  }
+
+  mutating func setElementColor(_ id: Int, at index: Int, to hex: String) {
+    guard let value = Palette.normalize(hex) else { return }
+    updateElement(id) { if $0.colors.indices.contains(index) { $0.colors[index] = value } }
+  }
+
+  mutating func removeElementColor(_ id: Int, at index: Int) {
+    updateElement(id) { if $0.colors.indices.contains(index) { $0.colors.remove(at: index) } }
   }
 
   // MARK: The caption

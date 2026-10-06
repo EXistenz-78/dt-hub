@@ -192,6 +192,39 @@ struct DocumentTests {
     #expect(box.text == "[10, 20, 300, 400]" && box.array == [10, 20, 300, 400])
   }
 
+  @Test func aPositionIsKeptAsSoonAsItIsReadableAndAnUnreadableTextChangesNothing() {
+    let box = BBox(y0: 10, x0: 20, y1: 300, x1: 400)
+    #expect(BBox.resolve("10, 20, 300, 400", current: nil) == box)
+    #expect(BBox.resolve("", current: box) == nil && BBox.resolve("  ", current: box) == nil)  // emptied: no position
+    #expect(BBox.resolve("10, 20, 3", current: box) == box)  // half typed: the old box stays
+    #expect(BBox.resolve("0 0 5 500", current: box) == box && BBox.resolve("a b c d", current: nil) == nil)
+  }
+
+  @Test func colorsAreChangedAndRemovedOnlyWhenTheirIndexStillExists() {
+    var document = I4Document()
+    document.colors = ["#111111", "#222222"]
+    let id = document.addElement()
+    document.updateElement(id) { $0.colors = ["#333333"] }
+    document.setColor(at: 1, to: "#abcdef")
+    document.setColor(at: 7, to: "#000000")  // gone: no trap, no change
+    document.setColor(at: 0, to: "nonsense")
+    #expect(document.colors == ["#111111", "#ABCDEF"])
+    document.removeColor(at: 9)
+    document.removeColor(at: -1)
+    #expect(document.colors.count == 2)
+    document.removeColor(at: 0)
+    #expect(document.colors == ["#ABCDEF"])
+    document.setElementColor(id, at: 0, to: "#ffffff")
+    document.setElementColor(id, at: 4, to: "#000000")
+    document.setElementColor(999, at: 0, to: "#000000")
+    #expect(document.elements[0].colors == ["#FFFFFF"])
+    document.removeElementColor(id, at: 3)
+    document.removeElementColor(999, at: 0)
+    #expect(document.elements[0].colors == ["#FFFFFF"])
+    document.removeElementColor(id, at: 0)
+    #expect(document.elements[0].colors.isEmpty)
+  }
+
   // MARK: Persistence of the document itself
 
   @Test func aDocumentSurvivesBeingEncodedAndDecoded() throws {
