@@ -7,13 +7,19 @@ import UniformTypeIdentifiers
 /// Where generated images are written (spec §7: saved automatically, as PNG with the prompt
 /// and the configuration inside).
 public protocol ImageStore: Sendable {
-  /// Saves one image of a RUN and returns its file.
-  func save(_ image: CGImage, job: GenerationJob, index: Int, date: Date) throws -> URL
+  /// Saves one image of a RUN and returns its file. `elapsed` is the time it took to make, in seconds
+  /// (nil when unknown); it goes into the file's metadata.
+  func save(_ image: CGImage, job: GenerationJob, index: Int, date: Date, elapsed: TimeInterval?) throws -> URL
   /// Moves a saved file to the Trash (a file that is not there any more counts as done).
   func trash(_ url: URL) throws
 }
 
 extension ImageStore {
+  /// Saves an image whose time is not known.
+  public func save(_ image: CGImage, job: GenerationJob, index: Int, date: Date) throws -> URL {
+    try save(image, job: job, index: index, date: date, elapsed: nil)
+  }
+
   public func trash(_ url: URL) throws {
     do {
       try FileManager.default.trashItem(at: url, resultingItemURL: nil)
@@ -31,16 +37,19 @@ public enum ImageStoreError: Error, Equatable, Sendable {
 }
 
 /// PNG files in `folder/yyyy-MM-dd/HHmmss-<seed>[-<n>].png`. The PNG "Description" holds the
-/// prompt; the EXIF "UserComment" holds the whole job as JSON (read back by `job(in:)`).
+/// prompt; the EXIF "UserComment" holds the whole job as JSON (read back by `job(in:)`), with one more
+/// key, `elapsedSeconds`, for the time the image took (read back by `elapsed(in:)`).
 /// ImageIO does not write the PNG "Comment" chunk, hence EXIF.
 public struct PNGImageStore: ImageStore {
   public let folder: URL
+  /// The key of the time in the job's JSON; the job's own decoding ignores it.
+  static let elapsedKey = "elapsedSeconds"
 
   public init(folder: URL) {
     self.folder = folder
   }
 
-  public func save(_ image: CGImage, job: GenerationJob, index: Int, date: Date) throws -> URL {
+  public func save(_ image: CGImage, job: GenerationJob, index: Int, date: Date, elapsed: TimeInterval?) throws -> URL {
     let day = Self.format(date, "yyyy-MM-dd")
     let directory = folder.appendingPathComponent(day, isDirectory: true)
     do {
@@ -53,7 +62,7 @@ public struct PNGImageStore: ImageStore {
 
     guard let destination = CGImageDestinationCreateWithURL(url as CFURL, UTType.png.identifier as CFString, 1, nil)
     else { throw ImageStoreError.cannotWrite(url.path) }
-    let json = (try? JSONEncoder().encode(job)).flatMap { String(data: $0, encoding: .utf8) } ?? ""
+    let json = Self.comment(for: job, elapsed: elapsed)
     let properties: [CFString: Any] = [
       kCGImagePropertyPNGDictionary: [
         kCGImagePropertyPNGDescription: job.promptWithTriggers,
@@ -80,12 +89,37 @@ public struct PNGImageStore: ImageStore {
 
   /// The job saved inside a PNG written by this store, or nil.
   public static func job(in url: URL) -> GenerationJob? {
+    guard let json = comment(in: url) else { return nil }
+    return try? JSONDecoder().decode(GenerationJob.self, from: Data(json.utf8))
+  }
+
+  /// The seconds the image took, saved inside a PNG written by this store; nil for a file from before
+  /// the time was kept.
+  public static func elapsed(in url: URL) -> TimeInterval? {
+    guard let json = comment(in: url),
+      let object = try? JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any]
+    else { return nil }
+    return object[elapsedKey] as? Double
+  }
+
+  /// The job as JSON, with the time when it is known.
+  private static func comment(for job: GenerationJob, elapsed: TimeInterval?) -> String {
+    guard let data = try? JSONEncoder().encode(job) else { return "" }
+    if let elapsed, var object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+      object[elapsedKey] = elapsed
+      if let withTime = try? JSONSerialization.data(withJSONObject: object) {
+        return String(data: withTime, encoding: .utf8) ?? ""
+      }
+    }
+    return String(data: data, encoding: .utf8) ?? ""
+  }
+
+  private static func comment(in url: URL) -> String? {
     guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
       let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
-      let exif = properties[kCGImagePropertyExifDictionary] as? [CFString: Any],
-      let json = exif[kCGImagePropertyExifUserComment] as? String
+      let exif = properties[kCGImagePropertyExifDictionary] as? [CFString: Any]
     else { return nil }
-    return try? JSONDecoder().decode(GenerationJob.self, from: Data(json.utf8))
+    return exif[kCGImagePropertyExifUserComment] as? String
   }
 
   private static func unusedURL(in directory: URL, base: String) -> URL {

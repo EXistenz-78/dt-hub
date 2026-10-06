@@ -168,7 +168,9 @@ struct ResultsView: View {
         .clipShape(RoundedRectangle(cornerRadius: DS.boxRadius, style: .continuous))
         .overlay(
           RoundedRectangle(cornerRadius: DS.boxRadius, style: .continuous)
-            .strokeBorder(isSelected ? DS.accent : Color.clear, lineWidth: 2))
+            .strokeBorder(isSelected ? DS.accent : Color.clear, lineWidth: 2)
+        )
+        .overlay(alignment: .top) { elapsedLabel(result.elapsed) }
     }
     .buttonStyle(.plain)
     .accessibilityLabel(result.job.prompt)
@@ -182,6 +184,19 @@ struct ResultsView: View {
       button.draggable(url)
     } else {
       button
+    }
+  }
+
+  /// The time the picture took, over the top of its thumbnail ("42sec"); nothing for a picture without one.
+  @ViewBuilder private func elapsedLabel(_ elapsed: TimeInterval?) -> some View {
+    if let text = ElapsedText.label(elapsed) {
+      Text(verbatim: text)
+        .font(.system(size: 10, weight: .semibold, design: .monospaced))
+        .foregroundStyle(.white)
+        .padding(.horizontal, 5).padding(.vertical, 1)
+        .background(Capsule().fill(Color.black.opacity(0.6)))
+        .padding(.top, 3)
+        .accessibilityLabel(text)
     }
   }
 

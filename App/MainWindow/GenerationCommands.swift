@@ -24,5 +24,37 @@ struct GenerationCommands: View {
     }
     .keyboardShortcut(".", modifiers: .command)
     .disabled(!generation.session.isRunning && !generation.isPreparing)
+
+    Divider()
+
+    // Brings the window forward when it is open already.
+    Button {
+      openWindow(id: ResultsWindow.id)
+    } label: {
+      Text("menu.results")
+    }
+    .keyboardShortcut("r", modifiers: .command)
+  }
+}
+
+/// ⌃Page Up and ⌃Page Down step through the tabs. Menu commands, not bare arrow keys: those belong to
+/// the text fields, the sliders and the lists.
+struct TabCommands: View {
+  let workspace: WorkspaceState
+
+  var body: some View {
+    Button {
+      workspace.selectPrevious()
+    } label: {
+      Text("menu.tabs.previous")
+    }
+    .keyboardShortcut(.pageUp, modifiers: .control)
+
+    Button {
+      workspace.selectNext()
+    } label: {
+      Text("menu.tabs.next")
+    }
+    .keyboardShortcut(.pageDown, modifiers: .control)
   }
 }

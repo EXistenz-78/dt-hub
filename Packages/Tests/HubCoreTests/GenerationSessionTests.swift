@@ -9,6 +9,7 @@ import Testing
 final class MemoryImageStore: ImageStore, @unchecked Sendable {
   private let lock = NSLock()
   private var saved: [(GenerationJob, Int)] = []
+  private var savedElapsed: [TimeInterval?] = []
   private var trashedPaths: [String] = []
   let fails: Bool
   /// Paths the "Trash" refuses.
@@ -20,6 +21,7 @@ final class MemoryImageStore: ImageStore, @unchecked Sendable {
   }
 
   var count: Int { lock.withLock { saved.count } }
+  var elapsedTimes: [TimeInterval?] { lock.withLock { savedElapsed } }
   var trashed: [String] { lock.withLock { trashedPaths } }
 
   func trash(_ url: URL) throws {
@@ -27,9 +29,12 @@ final class MemoryImageStore: ImageStore, @unchecked Sendable {
     lock.withLock { trashedPaths.append(url.path) }
   }
 
-  func save(_ image: CGImage, job: GenerationJob, index: Int, date: Date) throws -> URL {
+  func save(_ image: CGImage, job: GenerationJob, index: Int, date: Date, elapsed: TimeInterval?) throws -> URL {
     if fails { throw ImageStoreError.cannotWrite("disk full") }
-    lock.withLock { saved.append((job, index)) }
+    lock.withLock {
+      saved.append((job, index))
+      savedElapsed.append(elapsed)
+    }
     return URL(fileURLWithPath: "/tmp/\(job.parameters.seed)-\(index).png")
   }
 }
@@ -60,6 +65,33 @@ struct GenerationSessionTests {
     session.start(job, backend: backend, monitor: monitor)
     await session.waitUntilFinished()
     #expect(await backend.inputs.last?.isEmpty == true)
+  }
+
+  @Test func everyImageKeepsTheTimeItTookAndTheStoreGetsIt() async {
+    let backend = FakeBackend(.success(catalog))
+    await backend.setGeneration([.finished([testImage(), testImage()])], stepDelay: .milliseconds(200))
+    let monitor = await connected(backend)
+    let store = MemoryImageStore()
+    let session = GenerationSession(store: store)
+    session.start(job, backend: backend, monitor: monitor)
+    await session.waitUntilFinished()
+    #expect(session.results.count == 2)
+    let times = session.results.compactMap(\.elapsed)
+    #expect(times.count == 2)
+    // Two images made in one call share its time: about 0.2 s in all, so about 0.1 s each.
+    #expect(times.allSatisfy { $0 > 0.05 && $0 < 0.19 })
+    #expect(store.elapsedTimes.compactMap { $0 }.count == 2)
+  }
+
+  @Test func aRestoredImageReadsItsTimeBackFromItsFile() async throws {
+    let folder = FileManager.default.temporaryDirectory.appendingPathComponent("elapsed-\(UUID())", isDirectory: true)
+    let history = ResultsHistoryStore(fileURL: folder.appendingPathComponent("results.json"))
+    let png = PNGImageStore(folder: folder)
+    let url = try png.save(testImage(), job: job, index: 0, date: Date(), elapsed: 12.4)
+    history.save([ResultsHistoryEntry(path: url.path, date: Date())])
+    let session = GenerationSession(store: png, history: history)
+    await session.restoreHistory()
+    #expect(session.results.first?.elapsed == 12.4)
   }
 
   @Test func aRunThatCannotStartCanBeReportedAsAFailure() {
