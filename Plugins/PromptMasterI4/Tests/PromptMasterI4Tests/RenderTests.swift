@@ -49,7 +49,7 @@ struct RenderTests {
 
   private func render(_ state: I4State, dark: Bool, name: String) throws -> NSBitmapImageRep {
     let view = NSHostingView(rootView: I4View(state: state, send: {}))
-    view.frame = NSRect(x: 0, y: 0, width: 1180, height: 1000)
+    view.frame = NSRect(x: 0, y: 0, width: 1180, height: 700)
     let window = NSWindow(contentRect: view.frame, styleMask: [.titled], backing: .buffered, defer: false)
     window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
     window.contentView = view

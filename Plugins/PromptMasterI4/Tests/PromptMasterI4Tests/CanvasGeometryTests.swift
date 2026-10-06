@@ -88,6 +88,21 @@ struct CanvasGeometryTests {
     #expect(canvas.begin(at: onTag, items: [first, item(5, BBox(y0: 0, x0: 0, y1: 1000, x1: 1000))], selected: nil) == .tag(id: 1))
   }
 
+  @Test func theTagOfTheSelectedBoxWinsWhereTagsOverlapAndOverItsOwnCornerHandles() {
+    // Two boxes touching the top edge at the same x: both tags sit inside the boxes at the same place.
+    let small = item(1, BBox(y0: 0, x0: 0, y1: 500, x1: 500))
+    let big = item(2, BBox(y0: 0, x0: 0, y1: 1000, x1: 1000))
+    let onTag = CGPoint(x: canvas.tagRect(for: small).midX, y: canvas.tagRect(for: small).midY)
+    #expect(canvas.begin(at: onTag, items: [small, big], selected: nil) == .tag(id: 2))  // the topmost
+    #expect(canvas.begin(at: onTag, items: [small, big], selected: 1) == .tag(id: 1))  // the selected one is drawn on top
+    // The tag of a selected box that touches the top edge covers the north-west handle: the tag wins.
+    let cornerOfTag = CGPoint(x: canvas.tagRect(for: small).minX + 2, y: canvas.tagRect(for: small).minY + 2)
+    #expect(canvas.begin(at: cornerOfTag, items: [small], selected: 1) == .tag(id: 1))
+    // Away from the tag the handle still resizes.
+    let handle = canvas.handlePoint(.se, of: canvas.rect(of: small.box))
+    #expect(canvas.begin(at: handle, items: [small], selected: 1) == .resize(id: 1, corner: .se, original: small.box))
+  }
+
   // MARK: Drawing
 
   @Test func drawingMakesABoxFromTwoCornersInAnyDirectionInsideTheGrid() {

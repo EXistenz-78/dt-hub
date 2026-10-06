@@ -107,17 +107,19 @@ struct CanvasGeometry: Equatable, Sendable {
 
   // MARK: Where a press begins
 
-  /// What a press at `point` starts. The corners of the selected box come first, then the tags (the topmost box first),
-  /// then the boxes (the selected one first, then the topmost); anywhere else it draws. `items` are in the order of the
-  /// list, which is the stacking order.
+  /// What a press at `point` starts. The tag of the selected box comes first (it is drawn on top), then the corners of the
+  /// selected box, then the other tags (the topmost box first), then the boxes (the selected one first, then the topmost);
+  /// anywhere else it draws. `items` are in the order of the list, which is the stacking order.
   func begin(at point: CGPoint, items: [CanvasItem], selected: Int?) -> CanvasMode {
     guard isUsable else { return .draw }
-    if let selected, let item = items.first(where: { $0.id == selected }) {
-      let box = rect(of: item.box)
+    let chosen = items.first { $0.id == selected }
+    if let chosen, tagRect(for: chosen).contains(point) { return .tag(id: chosen.id) }
+    if let chosen {
+      let box = rect(of: chosen.box)
       for corner in CanvasCorner.allCases {
         let handle = handlePoint(corner, of: box)
         if hypot(point.x - handle.x, point.y - handle.y) <= Self.handleRadius {
-          return .resize(id: item.id, corner: corner, original: item.box)
+          return .resize(id: chosen.id, corner: corner, original: chosen.box)
         }
       }
     }

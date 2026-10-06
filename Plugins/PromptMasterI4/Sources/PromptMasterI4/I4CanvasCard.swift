@@ -7,8 +7,8 @@ import SwiftUI
 struct I4CanvasCard: View {
   @ObservedObject var state: I4State
 
-  /// The most height the canvas takes: the elements below need room too.
-  static let maxHeight: CGFloat = 300
+  /// The most height the canvas takes: the elements below need room too (the tab is about 650 points tall).
+  static let maxHeight: CGFloat = 240
 
   var body: some View {
     VStack(spacing: 0) {
@@ -18,14 +18,16 @@ struct I4CanvasCard: View {
           Text("\(L.text(.generation, italian: state.italian)): \(Int(size.width)) × \(Int(size.height))")
             .font(.caption).foregroundStyle(.secondary).monospacedDigit()
         }
-        GeometryReader { proxy in
-          let stage = CanvasGeometry.fit(
-            aspect: state.canvasAspect, in: CGSize(width: proxy.size.width, height: min(proxy.size.height, Self.maxHeight)))
-          CanvasStage(state: state, geometry: CanvasGeometry(size: stage))
-            .frame(width: stage.width, height: stage.height)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-        .frame(height: Self.maxHeight)
+        // The room is exactly the stage: the proportions of the Generation, at most `maxHeight` high.
+        Color.clear
+          .aspectRatio(state.canvasAspect, contentMode: .fit)
+          .overlay {
+            GeometryReader { proxy in
+              CanvasStage(state: state, geometry: CanvasGeometry(size: proxy.size))
+                .frame(width: proxy.size.width, height: proxy.size.height)
+            }
+          }
+          .frame(maxWidth: .infinity, maxHeight: Self.maxHeight)
         Text(L.text(.canvasHint, italian: state.italian)).font(.caption).foregroundStyle(.secondary)
       }
       .padding(DS.panelPadding)

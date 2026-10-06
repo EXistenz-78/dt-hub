@@ -12,15 +12,21 @@ struct I4ElementsCard: View {
     VStack(spacing: 0) {
       DSPanelHeader(icon: "square.on.square.dashed", title: L.text(.elements, italian: state.italian))
       VStack(alignment: .leading, spacing: DS.rowGap) {
-        ScrollView {
-          LazyVStack(spacing: 8) {
-            ForEach(Array(state.document.elements.enumerated()), id: \.element.id) { index, element in
-              ElementCard(state: state, element: element, number: index + 1)
+        ScrollViewReader { reader in
+          ScrollView {
+            LazyVStack(spacing: 8) {
+              ForEach(Array(state.document.elements.enumerated()), id: \.element.id) { index, element in
+                ElementCard(state: state, element: element, number: index + 1).id(element.id)
+              }
             }
           }
+          .scrollIndicators(.hidden)
+          // A box drawn on the canvas, or a click on one, brings its card into view.
+          .onChange(of: state.selectedElement) { _, id in
+            if let id { withAnimation { reader.scrollTo(id, anchor: .center) } }
+          }
         }
-        .scrollIndicators(.hidden)
-        .frame(maxHeight: .infinity)
+        .frame(minHeight: 140, maxHeight: .infinity)
         HStack(spacing: DS.controlGap) {
           addButton(.obj, key: .addObject, icon: "cube")
           addButton(.text, key: .addText, icon: "textformat")
