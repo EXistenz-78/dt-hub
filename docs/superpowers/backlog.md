@@ -239,3 +239,29 @@ Prima i master prompt davano «lunghezze obiettivo» prese dalle note del vecchi
 - **`applyRatio` moltiplica larghezza × altezza** senza controllare l'overflow; i valori vengono dai parametri dell'app, già limitati.
 - **Un termine personale con a capo dentro** non viene ripulito: finisce così com'è nella richiesta all'LLM (non rompe nessuna struttura che leggiamo noi).
 
+## Rimandi della tappa 1 di Prompt Master I4
+
+- **Il canvas non c'è ancora** (tappa 2): la posizione di un elemento si scrive come quattro numeri; un testo che non si legge torna a quello di prima.
+- **Senza l'LLM** (tappa 3) il JSON porta i nomi inglesi delle voci uniti da virgole e i testi come scritti; la descrizione generale e il background restano nella lingua dell'utente.
+- **Il negativo vuoto** (`negativePrompt: ""`): l'app lo scarta se la famiglia non legge il negativo (`JobComposer`); verificare dal vivo che per `ideogram_4` il campo si svuoti davvero.
+- **Un solo `family`**: il plug-in non legge il `context` (il tab è grigio sulle altre famiglie dal manifesto); la dimensione della Generazione serve al canvas nella tappa 2.
+- **Il database è copiato in due plug-in** (Prompt Master e I4, due copie incorporate): `Scripts/make-i4-data.py` lo rilegge da `Plugins/PromptMaster/Data/`; un modulo condiviso si estrae se un terzo plug-in lo chiede.
+- **La finestra «Rivedi JSON» non controlla che il testo sia JSON valido:** è una finestra di modifica, non un importatore (decisione dell'utente).
+- **Nessun termine personale, nessuna ricerca** nelle liste (non richiesti).
+- **I colori** si scelgono con il selettore di sistema; non c'è un campo per scrivere l'esadecimale.
+- **La colla** (`PromptMasterI4Plugin`, le viste) non ha test automatici; la logica sta nei tipi puri. Il tab è stato visto in un PNG disegnato fuori dall'app (`RenderTests`).
+
+## Rimandi della revisione della tappa 1 di Prompt Master I4
+
+- **`ideogram4.json` scritto a mano non si controlla** per id di categoria ripetuti (la stessa categoria due volte in un campo, o in due campi): la lista mostrerebbe id doppi e lo Shuffle potrebbe pescare due voci della stessa categoria.
+- **Un `ideogram4.json` più vecchio dell'incorporato** si ignora senza avviso (come in Prompt Master): dopo un aggiornamento del plug-in che alza la versione, un file modificato dall'utente smette di valere senza dirlo.
+- **`BBox.parse` spezza i decimali** (`100.5` diventa `100` e `5`).
+- **Accessibilità:** le card degli elementi si aprono solo con il clic sull'intestazione (non da tastiera/VoiceOver); i pulsanti con solo icona (su, giù, togli, + e × dei colori) hanno solo il tooltip; i selettori di colore non hanno un nome.
+- **Le palette usano l'indice come identità:** togliere un colore mentre il pannello colori di un altro è aperto fa modificare il colore che ha preso quel posto (non crasha: gli indici sono controllati).
+- **Test:** i golden byte per byte sono solo quello dell'esempio Foto della spec vecchia; l'esempio Arte e gli altri casi si controllano per posizione delle chiavi e per valore.
+- **`JSONEditor` lascia `smartInsertDeleteEnabled` acceso** (incollando una parola dentro una stringa può aggiungere uno spazio); l'annullamento (Cmd-Z) dopo «Ripristina dai campi» non è stato provato.
+- **I campi di prosa** (descrizione, testo verbatim) seguono le sostituzioni di sistema (virgolette tipografiche, trattini lunghi): il testo di una scritta potrebbe averle.
+- **Codice non usato:** `I4Catalog.term(_:)` (solo test), `I4Sender.Outcome.sent`, `LoadedData.fromFile`.
+- **Piccoli:** «1 conflitti» (plurale), un background che finisce con «,» dà «,,» nel JSON, un termine Text & Lettering sparito dal vocabolario sparisce senza dirlo dalla `desc`, le avvertenze sui dati spariscono al primo «Invia».
+- **I test di Prompt Master (`pm-state-*`) lasciano file di preferenze** in `~/Library/Preferences` (quelli di I4 usano una memoria in RAM).
+

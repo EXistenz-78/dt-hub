@@ -1,6 +1,6 @@
 # DT Hub — Plug-in Prompt Master I4 (Ideogram 4)
 
-Data: 6 ottobre 2026 · Stato: bozza da approvare · Estende `2026-10-05-plugin-prompt-master-design.md` (stessi dati, stesso contratto 1, stesso modo di costruire un plug-in) e `2026-10-05-plugin-design-system-design.md` (l'aspetto) · Mockup interattivo di riferimento: `docs/superpowers/mockups/2026-10-06-prompt-master-i4.html` (la stessa pagina, con dati veri e invii simulati).
+Data: 6 ottobre 2026 · Stato: approvata; tappa 1 (il JSON) realizzata il 6 ottobre, tappe 2 (canvas) e 3 (LLM) da fare · Estende `2026-10-05-plugin-prompt-master-design.md` (stessi dati, stesso contratto 1, stesso modo di costruire un plug-in) e `2026-10-05-plugin-design-system-design.md` (l'aspetto) · Mockup interattivo di riferimento: `docs/superpowers/mockups/2026-10-06-prompt-master-i4.html` (la stessa pagina, con dati veri e invii simulati).
 
 ## 1. Scopo
 
@@ -33,7 +33,7 @@ Ogni tappa ha il suo piano e il suo merge; questa spec le copre tutte.
 
 ## 3. Dati
 
-Il database è lo **stesso file** di Prompt Master: `~/Library/Application Support/DT Hub/Data/prompt-database.json` (id, `it`, `en`, gruppi con `restricted`, categorie con `en` e `descIt`), con la sua copia incorporata. Valgono le stesse regole di scelta (file della cartella, altrimenti incorporata; schema sconosciuto, versione più vecchia, id ripetuti o file illeggibile → incorporata e un avviso; il plug-in non lo scrive mai). Un secondo file è solo di I4:
+Il database è lo **stesso file** di Prompt Master: `~/Library/Application Support/DT Hub/Data/prompt-database.json` (id, `it`, `en`, gruppi con `restricted`, categorie con `en` e `descIt`), con la sua copia incorporata. Valgono le stesse regole di scelta (file della cartella, altrimenti incorporata; schema sconosciuto, id ripetuti o file illeggibile → incorporata e un avviso; versione più vecchia → incorporata, senza avviso; il plug-in non lo scrive mai). Un secondo file è solo di I4:
 
 | File | Contenuto |
 |---|---|
@@ -99,7 +99,7 @@ Due colonne, come i tab di DT Hub, con i componenti di `DTHubDesign` (`DSCollaps
 - bordo tratteggiato per gli oggetti, pieno per i testi; etichetta `E{n} · tipo` con `n` la posizione nell'elenco; il selezionato in primo piano.
 Cambiare proporzioni non tocca i riquadri (sono frazioni).
 
-**Destra, in basso — Elementi.** Una card per elemento, **chiusa** all'inizio: etichetta `E{n}`, estratto, ↑ ↓ (riordinano: cambiano z, etichette, ordine nel JSON), **×**. Aperta: *Oggetto / Testo*; descrizione; per il testo il menu **Text & Lettering** (una voce, 14) e il campo «testo (reso verbatim)»; la riga `[y0, x0, y1, x1]` o «nessuna posizione» con «Disegna»; la palette (fino a 5). Cambiare tipo non cancella nulla. Sotto: **+ Aggiungi elemento senza posizione**, **Scrivi con LLM** (§7), **Rivedi JSON**, **Invia**, la riga di stato.
+**Destra, in basso — Elementi.** Una card per elemento, **chiusa** all'inizio: etichetta `E{n}`, estratto, ↑ ↓ (riordinano: cambiano z, etichette, ordine nel JSON), **×**. Aperta: descrizione (il tipo, *Oggetto* o *Testo*, non si cambia sulla card: si sceglie con i pulsanti per aggiungere, e con il tag sopra il riquadro nel canvas, tappa 2); per il testo il menu **Text & Lettering** (una voce, 14) e il campo «testo (reso verbatim)»; la riga `[y0, x0, y1, x1]` o «nessuna posizione» con «Disegna»; la palette (fino a 5). Cambiare tipo non cancella nulla. Sotto: **Aggiungi oggetto** e **Aggiungi testo** (creano un elemento senza posizione), **Scrivi con LLM** (§7), **Rivedi JSON**, **Invia**, la riga di stato.
 
 **Cosa riceve l'LLM.** Una tabella (nel mockup, sotto il canvas) con i campi e il loro stato: *grezzo*, *riscritto*, *da riscrivere* (cambiato dopo l'ultima riscrittura), *vuoto*. Si apre per vedere cosa uscirà.
 
@@ -262,6 +262,7 @@ Le viste: `I4View` (due colonne), `TermSectionsView`, `CanvasView`, `ElementCard
 
 ## 11. Decisioni prese da me (da correggere se non vanno)
 
+- Il tipo dell'elemento non si cambia sulla card (decisione dell'utente, 6 ottobre, per risparmiare spazio): oggi si sceglie solo aggiungendo; col canvas lo cambierà il tag sopra il riquadro.
 - Il codice di Prompt Master si copia, non si condivide.
 - I campi e le categorie per modalità stanno in `ideogram4.json`, non nel codice.
 - Il Mood fuso si calcola all'avvio dal database (nessuna categoria nuova nel file condiviso).
