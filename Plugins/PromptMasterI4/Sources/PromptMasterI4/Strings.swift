@@ -17,7 +17,7 @@ enum L {
     case reviewJSON, jsonEdited, restore, copy, close, send, sending
     // The language model
     case writeWithLLM, writing, llmTable, stateRaw, stateWritten, stateStale, stateEmpty, writtenCount, writingField
-    case failedFields, llmFailed, handEditedDropped, nothingToWrite
+    case failedFields, llmFailed, handEditedDropped, handEditedKept, nothingToWrite
     // What happened
     case sent, sentWithConflicts, notAnswered, missingCategory
     case unreadableFile, unknownSchema, repeatedIDs
@@ -56,7 +56,7 @@ enum L {
     .stateWritten: "written", .stateStale: "to rewrite", .stateEmpty: "empty",
     .writtenCount: "%d sentence(s) written.", .writingField: "Writing… field %d of %d",
     .failedFields: "No sentence for: %@ (the raw text stays).", .llmFailed: "%@",
-    .handEditedDropped: "The JSON you edited by hand was replaced.", .nothingToWrite: "Every field with something in it already has its sentence.",
+    .handEditedDropped: "The JSON you edited by hand was replaced.", .handEditedKept: "The JSON you edited while it wrote was kept.", .nothingToWrite: "Every field with something in it already has its sentence.",
     .reviewJSON: "Review JSON", .jsonEdited: "JSON edited by hand", .restore: "Restore from the fields", .copy: "Copy",
     .close: "Close", .send: "Send", .sending: "Sending…",
     .sent: "Caption sent to Generation.", .sentWithConflicts: "Caption sent. %d conflict(s) waiting in the app.",
@@ -86,7 +86,7 @@ enum L {
     .stateWritten: "riscritto", .stateStale: "da riscrivere", .stateEmpty: "vuoto",
     .writtenCount: "%d frasi scritte.", .writingField: "Sto scrivendo… campo %d di %d",
     .failedFields: "Nessuna frase per: %@ (resta il testo grezzo).", .llmFailed: "%@",
-    .handEditedDropped: "Il JSON modificato a mano è stato sostituito.", .nothingToWrite: "Ogni campo con qualcosa dentro ha già la sua frase.",
+    .handEditedDropped: "Il JSON modificato a mano è stato sostituito.", .handEditedKept: "Il JSON modificato mentre scriveva è rimasto.", .nothingToWrite: "Ogni campo con qualcosa dentro ha già la sua frase.",
     .reviewJSON: "Rivedi JSON", .jsonEdited: "JSON modificato a mano", .restore: "Ripristina dai campi", .copy: "Copia",
     .close: "Chiudi", .send: "Invia", .sending: "Invio…",
     .sent: "Didascalia inviata alla Generazione.", .sentWithConflicts: "Didascalia inviata. %d conflitti in attesa nell'app.",

@@ -22,6 +22,8 @@ final class I4State: ObservableObject {
   @Published var isSending = false
   /// «Write with LLM» is running.
   @Published var isWriting = false
+  /// The JSON edited by hand when the writing began: an edit made after that is the user's and is kept.
+  private var editedAtStart: String?
   @Published var active = false
   /// The element selected on the canvas or in the list (view state: not remembered).
   @Published var selectedElement: Int?
@@ -173,6 +175,12 @@ final class I4State: ObservableObject {
       temperature: settings.temperature, maxTokens: settings.maxTokens, thinking: settings.thinking, timeout: settings.timeout)
   }
 
+  /// The writing begins: the buttons are off and the hand-edited JSON, if any, is noted.
+  func beginWriting() {
+    isWriting = true
+    editedAtStart = editedJSON
+  }
+
   /// Keeps the sentences that came back, throws away those of fields that are gone, and, when there is something new, the
   /// JSON edited by hand (which would hide it). Nothing is thrown away when nothing was written.
   func apply(_ outcome: I4Writer.Outcome) {
@@ -184,8 +192,12 @@ final class I4State: ObservableObject {
     document.pruneWritten(catalog: catalog)
     var lines = [outcome.status]
     if editedJSON != nil {
-      editedJSON = nil
-      lines.append(L.text(.handEditedDropped, italian: italian))
+      if editedJSON == editedAtStart {
+        editedJSON = nil
+        lines.append(L.text(.handEditedDropped, italian: italian))
+      } else {
+        lines.append(L.text(.handEditedKept, italian: italian))
+      }
     }
     status = lines.filter { !$0.isEmpty }.joined(separator: " ")
   }

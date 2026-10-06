@@ -43,7 +43,7 @@ struct FieldsTests {
     #expect(field(document, "background").raw == "la strada bagnata, blurred background")
   }
 
-  @Test func anObjectIsItsDescriptionAndATextIsItsNotesItsLetteringTermAndTheWordsAsContextOnly() {
+  @Test func anObjectIsItsDescriptionAndATextIsItsNotesItsLetteringTermAndNeverTheWordsItPrints() {
     var document = I4Document()
     let object = document.addElement(type: .obj)
     let text = document.addElement(type: .text)
