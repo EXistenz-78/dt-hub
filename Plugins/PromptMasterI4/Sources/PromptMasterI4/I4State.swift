@@ -1,3 +1,4 @@
+import DTHubPluginKit
 import Foundation
 import SwiftUI
 
@@ -19,6 +20,8 @@ final class I4State: ObservableObject {
   @Published var expandedElements: Set<Int> { didSet { persist() } }
   @Published var status = ""
   @Published var isSending = false
+  /// «Write with LLM» is running.
+  @Published var isWriting = false
   @Published var active = false
   /// The element selected on the canvas or in the list (view state: not remembered).
   @Published var selectedElement: Int?
@@ -154,7 +157,38 @@ final class I4State: ObservableObject {
   func restoreJSON() { editedJSON = nil }
 
   /// The plug-in is on, nothing is being sent and there is something to send (a text emptied by hand sends nothing).
-  var canSend: Bool { active && !isSending && !jsonText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+  var canSend: Bool { active && !isSending && !isWriting && !jsonText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+
+  // MARK: The language model
+
+  /// Every field with its state, for the table and the request.
+  var fields: [I4FieldInfo] { document.fields(catalog: catalog) }
+  var fieldsToWrite: [I4FieldInfo] { fields.filter(\.needsWriting) }
+  var canWrite: Bool { active && !isWriting && !isSending && !fieldsToWrite.isEmpty }
+
+  var writeSystem: String { data.config.system }
+  var writeOptions: DTHubLLMOptions {
+    let settings = data.config.options
+    return DTHubLLMOptions(
+      temperature: settings.temperature, maxTokens: settings.maxTokens, thinking: settings.thinking, timeout: settings.timeout)
+  }
+
+  /// Keeps the sentences that came back, throws away those of fields that are gone, and, when there is something new, the
+  /// JSON edited by hand (which would hide it). Nothing is thrown away when nothing was written.
+  func apply(_ outcome: I4Writer.Outcome) {
+    guard !outcome.phrases.isEmpty else {
+      status = outcome.status
+      return
+    }
+    document.written.merge(outcome.phrases) { _, new in new }
+    document.pruneWritten(catalog: catalog)
+    var lines = [outcome.status]
+    if editedJSON != nil {
+      editedJSON = nil
+      lines.append(L.text(.handEditedDropped, italian: italian))
+    }
+    status = lines.filter { !$0.isEmpty }.joined(separator: " ")
+  }
 
   private func persist() {
     store.save(

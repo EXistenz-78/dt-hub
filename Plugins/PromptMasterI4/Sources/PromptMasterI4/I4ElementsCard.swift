@@ -6,6 +6,7 @@ import SwiftUI
 struct I4ElementsCard: View {
   @ObservedObject var state: I4State
   let send: () -> Void
+  let write: () -> Void
   @State private var reviewing = false
 
   var body: some View {
@@ -31,6 +32,7 @@ struct I4ElementsCard: View {
           addButton(.obj, key: .addObject, icon: "cube")
           addButton(.text, key: .addText, icon: "textformat")
         }
+        LLMTable(state: state)
         if state.hasEditedJSON {
           HStack(spacing: 8) {
             Text(L.text(.jsonEdited, italian: state.italian)).font(.caption).foregroundStyle(DS.remove)
@@ -46,6 +48,21 @@ struct I4ElementsCard: View {
             }
           }
           .buttonStyle(DSPillButtonStyle())
+          Button(action: write) {
+            if state.isWriting {
+              HStack(spacing: DS.pillIconGap) {
+                ProgressView().controlSize(.small)
+                Text(L.text(.writing, italian: state.italian))
+              }
+            } else {
+              HStack(spacing: DS.pillIconGap) {
+                Image(systemName: "sparkles")
+                Text(L.text(.writeWithLLM, italian: state.italian))
+              }
+            }
+          }
+          .buttonStyle(DSPillButtonStyle())
+          .disabled(!state.canWrite)
           Spacer(minLength: 0)
           Button(action: send) {
             if state.isSending {
@@ -242,5 +259,68 @@ private struct JSONSheet: View {
       .padding(DS.panelPadding)
     }
     .frame(minWidth: 640, minHeight: 480)
+  }
+}
+
+/// «What the LLM gets»: every field with its state, the sentence that goes in the caption and, for a field that needs a
+/// sentence, the raw text that goes there now. Closed at first.
+private struct LLMTable: View {
+  @ObservedObject var state: I4State
+  @State private var isOpen = false
+
+  private func label(_ field: FieldState) -> String {
+    switch field {
+    case .empty: return L.text(.stateEmpty, italian: state.italian)
+    case .raw: return L.text(.stateRaw, italian: state.italian)
+    case .written: return L.text(.stateWritten, italian: state.italian)
+    case .stale: return L.text(.stateStale, italian: state.italian)
+    }
+  }
+
+  private func color(_ field: FieldState) -> Color {
+    switch field {
+    case .written: return DS.accent
+    case .stale: return DS.remove
+    default: return Color.secondary
+    }
+  }
+
+  var body: some View {
+    let fields = state.fields
+    let pending = fields.filter(\.needsWriting).count
+    VStack(alignment: .leading, spacing: 6) {
+      Button { isOpen.toggle() } label: {
+        HStack(spacing: 6) {
+          Image(systemName: "chevron.right").font(.system(size: 9, weight: .bold)).foregroundStyle(.secondary)
+            .rotationEffect(.degrees(isOpen ? 90 : 0))
+          Text(L.text(.llmTable, italian: state.italian)).font(.subheadline.weight(.semibold))
+          Spacer(minLength: 0)
+          if pending > 0 {
+            Text("\(pending)").font(.caption.weight(.semibold)).monospacedDigit()
+              .padding(.horizontal, 7).padding(.vertical, 1).background(Capsule().fill(DS.remove.opacity(0.25)))
+          }
+        }
+        .contentShape(Rectangle())
+      }
+      .buttonStyle(.plain)
+      if isOpen {
+        VStack(alignment: .leading, spacing: 6) {
+          ForEach(fields) { field in
+            VStack(alignment: .leading, spacing: 1) {
+              HStack(spacing: 6) {
+                Text("<\(field.tag)>").font(.caption.monospaced()).foregroundStyle(.secondary)
+                Text(label(field.state)).font(.caption2.weight(.semibold)).foregroundStyle(color(field.state))
+                  .padding(.horizontal, 6).padding(.vertical, 1)
+                  .background(Capsule().fill(color(field.state).opacity(0.18)))
+              }
+              if !field.value.isEmpty {
+                Text(field.value).font(.caption).foregroundStyle(.primary).lineLimit(3).textSelection(.enabled)
+              }
+            }
+          }
+        }
+        .padding(.leading, 15)
+      }
+    }
   }
 }

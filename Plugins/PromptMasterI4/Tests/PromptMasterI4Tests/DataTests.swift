@@ -24,14 +24,16 @@ struct DataTests {
     #expect(config.schema == DataSource.supportedSchema)
     #expect(catalog.missingCategories.isEmpty)
     #expect(config.options == IdeogramConfig.LLMSettings(temperature: 0.6, maxTokens: 4096, thinking: false, timeout: 600))
-    for tag in [
-      "<high_level_description>", "<aesthetics>", "<lighting>", "<photo>", "<art_style>", "<medium>", "<background>",
-      "<element_1>", "<already_written>", #"kind="text""#, "Printed text (never repeat it)", "English only",
+    for phrase in [
+      "high_level_description", "aesthetics", "lighting", "photo", "art_style", "medium", "background", "element",
+      "<already_written>", #"kind="text""#, "English only", "ONE tag", "Reply in exactly this shape",
     ] {
-      #expect(config.system.contains(tag), "\(tag)")
+      #expect(config.system.contains(phrase), "\(phrase)")
     }
+    // The words a lettering prints are never given to the model, so the master prompt does not talk about them.
+    #expect(!config.system.contains("Printed text"))
     // The rule about the overview and the details (spec §8, rule 7).
-    #expect(config.system.contains("overview of the picture") && config.system.contains("never repeat its sentences"))
+    #expect(config.system.contains("is the overview of the picture") && config.system.contains("never repeat its sentences"))
   }
 
   // MARK: The lists
