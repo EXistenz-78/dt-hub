@@ -37,10 +37,10 @@ Il database è lo **stesso file** di Prompt Master: `~/Library/Application Suppo
 
 | File | Contenuto |
 |---|---|
-| `prompt-master/ideogram4.json` | `schema` (`pm-i4`), `version`, `system` (il master prompt, §8), `fields` (quali categorie alimentano ogni campo, sotto), `options` dell'LLM (§7). Sostituibile senza ricompilare, come `master-prompts.json`. |
+| `prompt-master/ideogram4.json` | `schema` (1), `version`, `system` (il master prompt, §8), `fields` (quali categorie alimentano ogni campo, sotto), `options` dell'LLM (§7). Sostituibile senza ricompilare, come `master-prompts.json`. |
 
 ```json
-{ "schema": "pm-i4", "version": 1,
+{ "schema": 1, "version": "1.0.0",
   "fields": {
     "aesthetics": { "common": ["ij_mood_merged","mood_aesthetic_register","atmosphere","color_harmony","genre_aesthetic","atmospheric_fx"], "photoOnly": ["optical_fx"] },
     "lighting":   { "common": ["light_source","light_quality","light_scheme"] },
@@ -273,6 +273,10 @@ Le viste: `I4View` (due colonne), `TermSectionsView`, `CanvasView`, `ElementCard
 - L'LLM non riceve posizioni né colori.
 - Il thinking è spento e la temperatura è 0,6.
 - Il negativo vuoto si manda sempre con «Invia».
+- Un elemento aggiunto con il pulsante si apre da solo (c'è da scrivere); gli altri partono chiusi.
+- Un testo a mano svuotato non si manda («Invia» si disattiva); si torna ai campi con «Ripristina dai campi».
+- La finestra «Rivedi JSON» usa un campo di testo di AppKit senza sostituzioni (virgolette dritte, niente trattini lunghi): quello di SwiftUI le trasformerebbe e il JSON non sarebbe più valido.
+- Nella tappa 1 il plug-in non legge il `context` (il tab è grigio sulle altre famiglie dal manifesto); la dimensione della Generazione arriva con il canvas.
 
 ## 12. Rischi aperti
 
