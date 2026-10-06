@@ -119,10 +119,16 @@ private struct ElementCard: View {
           .buttonStyle(.plain).foregroundStyle(DS.remove).help(L.text(.removeElement, italian: state.italian))
       }
       .padding(10).contentShape(Rectangle())
-      .onTapGesture { state.toggleExpanded(element.id) }
+      .onTapGesture {
+        state.toggleExpanded(element.id)
+        state.select(element.id)
+      }
       if isOpen { details.padding([.horizontal, .bottom], 10) }
     }
     .background(RoundedRectangle(cornerRadius: DS.minorRadius, style: .continuous).fill(Color.primary.opacity(0.06)))
+    .overlay(
+      RoundedRectangle(cornerRadius: DS.minorRadius, style: .continuous)
+        .strokeBorder(DS.accent, lineWidth: state.selectedElement == element.id ? 2 : 0))
   }
 
   private func iconButton(_ name: String, help: String, enabled: Bool, action: @escaping () -> Void) -> some View {
