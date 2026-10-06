@@ -1,6 +1,6 @@
 # DT Hub — Plug-in Prompt Master I4 (Ideogram 4)
 
-Data: 6 ottobre 2026 · Stato: approvata; tappa 1 (il JSON) realizzata il 6 ottobre, tappa 2 (il canvas) realizzata il 6 ottobre, tappa 3 (LLM) da fare · Estende `2026-10-05-plugin-prompt-master-design.md` (stessi dati, stesso contratto 1, stesso modo di costruire un plug-in) e `2026-10-05-plugin-design-system-design.md` (l'aspetto) · Mockup interattivo di riferimento: `docs/superpowers/mockups/2026-10-06-prompt-master-i4.html` (la stessa pagina, con dati veri e invii simulati).
+Data: 6 ottobre 2026 · Stato: approvata; tappa 1 (il JSON) realizzata il 6 ottobre, tappa 2 (il canvas) realizzata e unita il 6 ottobre, tappa 3 (LLM) da fare · Estende `2026-10-05-plugin-prompt-master-design.md` (stessi dati, stesso contratto 1, stesso modo di costruire un plug-in) e `2026-10-05-plugin-design-system-design.md` (l'aspetto) · Mockup interattivo di riferimento: `docs/superpowers/mockups/2026-10-06-prompt-master-i4.html` (la stessa pagina, con dati veri e invii simulati).
 
 ## 1. Scopo
 
