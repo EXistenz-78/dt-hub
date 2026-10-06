@@ -1,0 +1,579 @@
+<title>Ideogram 4 per DT Hub</title>
+<style>
+/* Layout: una finestra a due colonne come i tab di DT Hub. Sinistra: una card lunga (descrizione, Foto/Arte, quattro sezioni di voci, colori, sfondo con le sue 12 voci).
+   Destra: canvas dei riquadri, schede degli elementi con i pulsanti, e il riepilogo di cosa riceve l'LLM. Dark-first come l'app. */
+:root {
+  --bg: #16201f;
+  --panel: #1f2c2b;
+  --panel-2: #283736;
+  --line: rgba(255,255,255,.11);
+  --fg: #e9f1f0;
+  --muted: #9bb0ae;
+  --accent: #3ec8c8;
+  --accent-ink: #06302f;
+  --remove: #f09837;
+  --field: rgba(0,0,0,.22);
+  --stage: #101918;
+  --stage-grid: rgba(255,255,255,.06);
+  --obj: #3ec8c8;
+  --txt: #f4c35c;
+  --good: #7bd88f;
+  --font-ui: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #e8eeed; --panel: #f7fafa; --panel-2: #e3ecec; --line: rgba(10,40,40,.14); --fg: #14282a; --muted: #50696a;
+    --accent: #0f8f8f; --accent-ink: #ffffff; --remove: #c9701a; --field: rgba(255,255,255,.8); --stage: #dce7e6; --stage-grid: rgba(10,40,40,.08);
+    --obj: #0f8f8f; --txt: #a8700a; --good: #1f7a36; color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #e8eeed; --panel: #f7fafa; --panel-2: #e3ecec; --line: rgba(10,40,40,.14); --fg: #14282a; --muted: #50696a;
+  --accent: #0f8f8f; --accent-ink: #ffffff; --remove: #c9701a; --field: rgba(255,255,255,.8); --stage: #dce7e6; --stage-grid: rgba(10,40,40,.08);
+  --obj: #0f8f8f; --txt: #a8700a; --good: #1f7a36; color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-ui); font-size: 14px; line-height: 1.45; margin: 0; padding-inline: 16px; padding-block: 18px 40px; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wrap { max-width: 1320px; margin-inline: auto; display: flex; flex-direction: column; gap: 14px; }
+.note { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.note b { color: var(--fg); font-weight: 600; }
+.tabs { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.tab { padding: 6px 14px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+.tab.on { background: var(--panel-2); color: var(--fg); border-color: var(--accent); }
+.grid { display: grid; grid-template-columns: minmax(340px, 430px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 19px; overflow: hidden; min-width: 0; }
+.card > header { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 14px 11px; background: var(--panel-2); border-bottom: 1px solid var(--line); font-weight: 600; font-size: 15px; position: relative; }
+.card > header .tr { position: absolute; right: 12px; }
+.body { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.lbl { font-family: var(--font-mono); font-size: 11px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); display: flex; gap: 8px; align-items: baseline; justify-content: space-between; }
+textarea, input[type=text], select { width: 100%; background: var(--field); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+textarea { resize: vertical; min-height: 64px; }
+hr { border: 0; border-top: 1px solid var(--line); margin: 0; width: 100%; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel-2); font-size: 13px; }
+.pill:hover { border-color: var(--accent); }
+.pill.on, .pill.prom { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.row.sp { justify-content: space-between; }
+.trans { font-size: 12px; color: var(--muted); border-left: 2px solid var(--accent); padding: 2px 0 2px 8px; }
+.trans i { font-style: normal; font-family: var(--font-mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-right: 6px; }
+.trans.stale { border-left-color: var(--remove); }
+.trans.stale i { color: var(--remove); }
+
+/* lista a tre livelli */
+.list { max-height: 520px; overflow: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 2px; }
+.sec-h, .cat-h { display: flex; align-items: center; gap: 8px; width: 100%; background: none; border: 0; text-align: left; padding: 6px 2px; }
+.sec-h { font-family: var(--font-mono); font-size: 11px; letter-spacing: .09em; text-transform: uppercase; font-weight: 700; padding-top: 10px; }
+.cat-h { font-size: 13px; font-weight: 600; padding-left: 14px; }
+.chev { display: inline-block; width: 10px; font-size: 9px; color: var(--muted); transition: transform .12s; }
+.open > .sec-h .chev, .open > .cat-h .chev { transform: rotate(90deg); }
+.badge { margin-left: auto; font-size: 11px; background: color-mix(in srgb, var(--accent) 30%, transparent); border-radius: 999px; padding: 0 8px; }
+.chosen { margin-left: auto; font-size: 12px; font-weight: 400; color: var(--accent); max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sec-note { font-size: 11px; color: var(--muted); margin: -2px 0 4px 14px; }
+.terms { padding-left: 32px; display: flex; flex-direction: column; gap: 1px; margin-bottom: 6px; }
+.term { display: flex; gap: 9px; align-items: center; padding: 3px 0; cursor: pointer; font-size: 13px; }
+.box { width: 16px; height: 16px; border-radius: 5px; border: 1.5px solid var(--muted); flex: none; display: grid; place-items: center; font-size: 11px; line-height: 1; }
+.term.on .box { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.term.on { font-weight: 600; }
+.sw-row { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
+.sw { position: relative; width: 30px; height: 30px; }
+.sw input { width: 30px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 8px; background: none; cursor: pointer; }
+.sw button { position: absolute; top: -6px; right: -6px; width: 16px; height: 16px; border-radius: 50%; border: 0; background: var(--remove); color: #1a1100; font-size: 11px; line-height: 1; padding: 0; }
+.add { width: 30px; height: 30px; border-radius: 8px; border: 1.5px dashed var(--muted); background: none; color: var(--muted); font-size: 16px; padding: 0; }
+.add:disabled { opacity: .4; cursor: default; }
+.cap { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* canvas */
+.stage-wrap { display: grid; place-items: center; background: var(--field); border-radius: 12px; padding: 12px; }
+.stage { position: relative; background: var(--stage); border: 1px solid var(--line); border-radius: 6px; touch-action: none; cursor: crosshair; user-select: none;
+  background-image: linear-gradient(var(--stage-grid) 1px, transparent 1px), linear-gradient(90deg, var(--stage-grid) 1px, transparent 1px); background-size: 10% 10%; }
+.eb { position: absolute; border: 2px dashed var(--obj); background: color-mix(in srgb, var(--obj) 12%, transparent); cursor: move; }
+.eb.text { border-style: solid; border-color: var(--txt); background: color-mix(in srgb, var(--txt) 12%, transparent); }
+.eb.sel { box-shadow: 0 0 0 2px var(--fg); }
+.eb .tag { position: absolute; left: -2px; top: -20px; font-family: var(--font-mono); font-size: 10px; background: var(--obj); color: var(--accent-ink); padding: 1px 6px; border-radius: 4px; white-space: nowrap; }
+.eb.text .tag { background: var(--txt); color: #1a1100; }
+.hd { position: absolute; width: 11px; height: 11px; background: var(--fg); border-radius: 3px; display: none; }
+.eb.sel .hd { display: block; }
+.hd.nw { left: -6px; top: -6px; cursor: nwse-resize; } .hd.ne { right: -6px; top: -6px; cursor: nesw-resize; }
+.hd.sw { left: -6px; bottom: -6px; cursor: nesw-resize; } .hd.se { right: -6px; bottom: -6px; cursor: nwse-resize; }
+.ghost { position: absolute; border: 2px dashed var(--fg); background: rgba(255,255,255,.08); pointer-events: none; }
+.hint { font-size: 12px; color: var(--muted); }
+.armnote { font-size: 12px; background: color-mix(in srgb, var(--accent) 18%, transparent); border-radius: 8px; padding: 6px 10px; }
+
+/* elementi */
+.el { border: 1px solid var(--line); border-radius: 12px; background: var(--panel-2); }
+.el.sel { border-color: var(--accent); }
+.el-h { display: flex; align-items: center; gap: 8px; padding: 8px 10px; cursor: pointer; }
+.tg { font-family: var(--font-mono); font-size: 11px; padding: 1px 7px; border-radius: 6px; background: var(--obj); color: var(--accent-ink); flex: none; }
+.tg.text { background: var(--txt); color: #1a1100; }
+.ex { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.nopos { font-size: 11px; color: var(--remove); flex: none; }
+.ib { width: 26px; height: 26px; border-radius: 8px; border: 1px solid var(--line); background: none; padding: 0; line-height: 1; }
+.ib.del { color: var(--remove); border-color: color-mix(in srgb, var(--remove) 50%, transparent); }
+.ib:disabled { opacity: .35; cursor: default; }
+.el-b { padding: 4px 12px 12px; display: flex; flex-direction: column; gap: 10px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; align-self: flex-start; }
+.seg button { border: 0; background: none; padding: 5px 14px; font-size: 13px; }
+.seg button.on { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.bbox { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.actions .grow { flex: 1; }
+.status { font-size: 12px; color: var(--muted); min-height: 18px; }
+
+/* riepilogo LLM */
+.llm { display: flex; flex-direction: column; gap: 6px; }
+.llm-r { display: grid; grid-template-columns: minmax(110px, 150px) minmax(0, 1fr) auto; gap: 10px; align-items: baseline; padding: 6px 0; border-top: 1px solid var(--line); font-size: 12px; }
+.llm-r:first-child { border-top: 0; }
+.llm-r .tgn { font-family: var(--font-mono); color: var(--accent); font-size: 11px; }
+.llm-r .in { color: var(--muted); overflow-wrap: anywhere; }
+.chip { font-size: 11px; border-radius: 999px; padding: 1px 9px; border: 1px solid var(--line); white-space: nowrap; }
+.chip.ok { color: var(--good); border-color: color-mix(in srgb, var(--good) 55%, transparent); }
+.chip.stale { color: var(--remove); border-color: color-mix(in srgb, var(--remove) 55%, transparent); }
+.chip.empty { color: var(--muted); }
+
+/* json */
+.sheet { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: grid; place-items: center; padding: 16px; z-index: 10; }
+.sheet-in { width: min(860px, 100%); max-height: 92%; display: flex; flex-direction: column; overflow: auto; }
+.sheet-in textarea { font-family: var(--font-mono); font-size: 12px; min-height: 380px; resize: vertical; }
+.ov { color: var(--remove); font-size: 12px; }
+details.open-q { border: 1px solid var(--line); border-radius: 14px; background: var(--panel); padding: 10px 14px; }
+details.open-q summary { cursor: pointer; font-weight: 600; }
+details.open-q ol { margin: 8px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; color: var(--muted); }
+details.open-q b { color: var(--fg); font-weight: 600; }
+code { font-family: var(--font-mono); font-size: 12px; }
+@media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } .llm-r { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
+@media (prefers-reduced-motion: reduce) { .chev { transition: none; } }
+</style>
+
+<div class="wrap">
+  <div class="note"><b>Mockup interattivo del plug-in Ideogram 4</b><span>Dati veri del database. Finché non si usa l'LLM, le voci scelte e i testi finiscono nel JSON così come sono. L'LLM, la dimensione della Generazione e l'invio sono simulati.</span></div>
+  <div class="tabs" aria-hidden="true"><span class="tab">Control</span><span class="tab">Generazione</span><span class="tab">Prompt Master</span><span class="tab on">Ideogram 4</span></div>
+
+  <div class="grid">
+    <!-- ===== sinistra ===== -->
+    <section class="card" aria-label="Descrizione, stile e sfondo">
+      <header>Ideogram 4</header>
+      <div class="body">
+        <div class="lbl"><span>High level description</span><span class="cap">esempio</span></div>
+        <textarea id="desc" rows="4"></textarea>
+        <div class="trans" id="trDesc" hidden></div>
+        <hr>
+        <div class="row sp">
+          <div class="row">
+            <button class="pill" id="mPhoto" type="button">Foto</button>
+            <button class="pill" id="mArt" type="button">Arte</button>
+          </div>
+          <button class="pill" id="shuffle" type="button" title="Per ogni sezione scegli a caso al massimo 3 voci, una per categoria">Shuffle</button>
+        </div>
+        <div class="list" id="list"></div>
+        <hr>
+        <div class="lbl"><span>Palette colori</span><span class="cap" id="palCap"></span></div>
+        <div class="sw-row" id="palette"></div>
+        <hr>
+        <div class="lbl"><span>Background</span><span class="cap">esempio</span></div>
+        <textarea id="bg" rows="3"></textarea>
+        <div id="bgTerms"></div>
+        <div class="trans" id="trBg" hidden></div>
+      </div>
+    </section>
+
+    <!-- ===== destra ===== -->
+    <div class="col">
+      <section class="card" aria-label="Canvas">
+        <header>Canvas</header>
+        <div class="body">
+          <div class="row sp">
+            <label class="row" for="size"><span class="hint">Dimensione della Generazione (simulata)</span>
+              <select id="size" style="width:auto"></select></label>
+            <span class="hint" id="sizeInfo"></span>
+          </div>
+          <div class="stage-wrap" id="stageWrap"><div class="stage" id="stage" role="application" aria-label="Disegna i riquadri trascinando"></div></div>
+          <div class="armnote" id="armNote" hidden></div>
+          <div class="hint">Trascina sul vuoto per creare un elemento. Trascina un riquadro per spostarlo, gli angoli per ridimensionarlo (lato minimo 20 su 1000). Il canvas ha le proporzioni della Generazione.</div>
+        </div>
+      </section>
+
+      <section class="card" aria-label="Elementi">
+        <header>Elementi<span class="cap tr" id="elCount"></span></header>
+        <div class="body">
+          <div id="els" style="display:flex;flex-direction:column;gap:8px"></div>
+          <div class="actions">
+            <button class="pill" id="addEl" type="button">+ Aggiungi elemento senza posizione</button>
+            <span class="grow"></span>
+            <button class="pill" id="llmRun" type="button" title="Una sola richiesta: l'LLM riscrive in inglese i campi che sono cambiati">Scrivi con LLM</button>
+            <button class="pill" id="review" type="button">Rivedi JSON</button>
+            <button class="pill prom" id="send" type="button">Invia</button>
+          </div>
+          <div class="status" id="status" role="status"></div>
+        </div>
+      </section>
+
+      <section class="card" aria-label="Cosa riceve l'LLM">
+        <header>Cosa riceve l'LLM</header>
+        <div class="body">
+          <div class="hint">Una sola richiesta con un blocco per campo. L'LLM risponde con una frase inglese per campo, dentro un tag. Il plug-in mette ogni frase al suo posto nel JSON; la risposta non va in Generazione.</div>
+          <div class="llm" id="llmTable"></div>
+          <div class="hint">I campi vuoti non partono. Se cambi un campo dopo, solo quello torna «da riscrivere» e il JSON usa di nuovo le voci e il testo così come sono.</div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <details class="open-q" open>
+    <summary>Punti ancora da decidere</summary>
+    <ol>
+      <li><b>Tag della risposta:</b> propongo i nomi delle chiavi del JSON (<code>&lt;high_level_description&gt;</code>, <code>&lt;aesthetics&gt;</code>, <code>&lt;lighting&gt;</code>, <code>&lt;photo&gt;</code> o <code>&lt;art_style&gt;</code>, <code>&lt;medium&gt;</code>, <code>&lt;background&gt;</code>, <code>&lt;element_1&gt;</code>…), senza spazi, così il plug-in li legge senza ambiguità.</li>
+      <li><b>Una chiamata sola</b> con tutti i campi, e per i campi cambiati dopo si riscrivono solo quelli (come la cache della traduzione del vecchio PM). Va bene?</li>
+      <li><b>Il pulsante:</b> «Scrivi con LLM» al posto di «Traduci tutto», perché ora scrive le frasi e non solo traduce.</li>
+      <li><b>«Rivedi JSON»:</b> se modifichi il testo a mano, è quello che parte con «Invia» (c'è «Ripristina dai campi» per tornare indietro). Va bene?</li>
+      <li><b>«Invia» senza LLM:</b> manda il JSON con le voci e i testi grezzi, come adesso. Con il negativo vuoto.</li>
+      <li><b>Elementi di tipo «testo»:</b> il testo verbatim non passa mai dall'LLM; passa la descrizione di come appare.</li>
+    </ol>
+  </details>
+</div>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="sheet-in card" role="dialog" aria-label="Rivedi JSON">
+    <header>Rivedi JSON</header>
+    <div class="body">
+      <textarea id="jsonText" spellcheck="false"></textarea>
+      <div class="ov" id="ovNote" hidden>Hai modificato il JSON a mano: «Invia» manda questo testo. I campi non lo aggiornano finché non premi «Ripristina dai campi».</div>
+      <div class="actions">
+        <span class="hint">È il lavoro fatto dall'LLM, da copiare o ritoccare.</span>
+        <span class="grow"></span>
+        <button class="pill" id="jsonCopy" type="button">Copia</button>
+        <button class="pill" id="jsonReset" type="button">Ripristina dai campi</button>
+        <button class="pill prom" id="jsonClose" type="button">Chiudi</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DATA = {"ij_mood_merged":{"it":"Mood","en":"Mood","terms":[["moodt_moody","Cupo","moody"],["moodt_melancholic","Malinconico","melancholic"],["moodt_serene","Sereno","serene"],["moodt_eerie","Inquietante","eerie"],["moodt_uncanny","Perturbante","uncanny"],["moodt_joyful","Gioioso","joyful"],["moodt_somber","Sommesso","somber"],["moodt_tender","Delicato","tender"],["moodt_playful","Giocoso","playful"],["moodt_wistful","Nostalgico","wistful"],["moodt_unsettling","Inquieto","unsettling"],["moodt_wholesome","Rasserenante","wholesome"],["mo_peaceful","Pacifica","peaceful"],["mo_hopeful","Speranzosa","hopeful"],["mo_romantic","Romantica","romantic"],["mo_intimate","Intima","intimate"],["mo_cozy","Accogliente","cozy"],["mo_nostalgic","Nostalgica","nostalgic"],["mo_bittersweet","Agrodolce","bittersweet"],["mo_lonely","Solitaria","lonely"],["mo_solemn","Solenne","solemn"],["mo_contemplative","Contemplativa","contemplative"],["mo_mysterious","Misteriosa","mysterious"],["mo_tense","Tesa","tense"],["mo_uneasy","Inquieta","uneasy"],["mo_terrifying","Spaventosa","terrifying"],["mo_oppressive","Opprimente","oppressive"],["mo_dramatic","Drammatica","dramatic"],["mo_epic","Epica","epic"],["mo_triumphant","Trionfale","triumphant"],["mo_whimsical","Bizzarra","whimsical"]]},"mood_aesthetic_register":{"it":"Registro estetico","en":"Aesthetic Register","terms":[["moodr_ethereal","Eterico","ethereal"],["moodr_whimsical","Fiabesco","whimsical"],["moodr_dreamlike","Onirico","dreamlike"],["moodr_opulent","Opulento","opulent"],["moodr_minimalist","Minimalista","minimalist"],["moodr_maximalist","Massimalista","maximalist"],["moodr_austere","Austero","austere"],["moodr_romantic","Romantico","romantic"],["moodr_otherworldly","Ultraterreno","otherworldly"],["moodr_surreal","Surreale","surreal"],["moodr_gritty","Grezzo","gritty"],["moodr_painterly","Pittorico","painterly"],["moodr_theatrical","Teatrale","theatrical"],["moodr_timeless","Senza tempo","timeless"],["moodr_intimate","Intimo","intimate"]]},"atmosphere":{"it":"Atmosfera","en":"Atmosphere","terms":[["at_ethereal","Eterea","ethereal"],["at_dreamy","Sognante","dreamy"],["at_surreal","Surreale","surreal"],["at_magical","Magica","magical"],["at_otherworldly","Ultraterrena","otherworldly"],["at_sublime","Sublime","awe-inspiring, sublime"],["at_vast","Vasta","vast"],["at_claustrophobic","Claustrofobica","claustrophobic"],["at_desolate","Desolata","desolate"],["at_liminal","Liminale","liminal"],["at_uncanny","Perturbante","uncanny"],["at_chaotic","Caotica","chaotic"],["at_quiet","Quieta, rarefatta","quiet, sparse"],["at_opulent","Opulenta","opulent"],["at_austere","Austera","austere"],["at_grimy","Sordida","grimy"],["at_sacred","Sacra","sacred, reverent"],["at_futuristic","Futuristica","futuristic"]]},"color_harmony":{"it":"Armonia cromatica","en":"Color Harmony","terms":[["ch_complementary","Colori complementari","Complementary colors"],["ch_analogous","Colori analoghi","Analogous colors"],["ch_triadic","Triade cromatica","Triadic color scheme"],["ch_split_complementary","Complementari adiacenti","Split-complementary scheme"],["ch_tetradic","Tetrade cromatica","Tetradic color scheme"],["ch_high_contrast","Alto contrasto cromatico","High color contrast"],["ch_low_contrast","Basso contrasto cromatico","Low color contrast"],["ch_warm_cool","Contrasto caldo-freddo","Warm-cool contrast"],["ch_selective_color","Colore selettivo","Selective color"],["ch_flat_spot","Colori piatti a tinta unita","Flat spot colors"],["ch_two_color_riso","Due colori risograph","Two-color risograph"],["ch_cmyk_offset","Fuori registro CMYK","CMYK misregistration"]]},"genre_aesthetic":{"it":"Generi ed estetiche","en":"Genres & Aesthetics","terms":[["ga_fantasy","Fantasy","Fantasy art"],["ga_dark_fantasy","Dark fantasy","Dark fantasy"],["ga_grimdark","Grimdark","Grimdark"],["ga_sci_fi","Fantascienza","Science fiction"],["ga_space_opera","Space opera","Space opera"],["ga_cyberpunk","Cyberpunk","Cyberpunk"],["ga_steampunk","Steampunk","Steampunk"],["ga_dieselpunk","Dieselpunk","Dieselpunk"],["ga_atompunk","Atompunk","Atompunk"],["ga_solarpunk","Solarpunk","Solarpunk"],["ga_biopunk","Biopunk","Biopunk"],["ga_retrofuturism","Retrofuturismo","Retrofuturism"],["ga_afrofuturism","Afrofuturismo","Afrofuturism"],["ga_post_apocalyptic","Post-apocalittico","Post-apocalyptic"],["ga_gothic_horror","Horror gotico","Gothic horror"],["ga_folk_horror","Folk horror","Folk horror"],["ga_cosmic_horror","Horror cosmico","Lovecraftian cosmic horror"],["ga_noir","Noir","Film noir aesthetic"],["ga_western","Western","Western"],["ga_vaporwave","Vaporwave","Vaporwave"],["ga_synthwave","Synthwave","Synthwave"],["ga_y2k","Estetica Y2K","Y2K aesthetic"],["ga_liminal","Spazi liminali","Liminal space"],["ga_weirdcore","Weirdcore","Weirdcore"],["ga_cottagecore","Cottagecore","Cottagecore"],["ga_dark_academia","Dark academia","Dark academia"],["ga_psychedelic","Psichedelia","Psychedelic art"],["ga_wabi_sabi","Wabi-sabi","Wabi-sabi"]]},"atmospheric_fx":{"it":"Fenomeni atmosferici","en":"Atmospheric Effects","terms":[["afx_rain","Pioggia che cade","falling rain"],["afx_heavy_rain","Pioggia battente","driving rain"],["afx_snow","Neve che cade","falling snow"],["afx_lightning","Fulmine","lightning"],["afx_storm_clouds","Nubi di tempesta","storm clouds"],["afx_wind","Vento","visible wind"],["afx_mist","Foschia","mist"],["afx_fog_bank","Banco di nebbia","fog bank"],["afx_smoke","Fumo","drifting smoke"],["afx_embers","Braci","floating embers"],["afx_sparks","Scintille","sparks"],["afx_dust_motes","Pulviscolo","dust motes in the air"],["afx_particles","Particelle sospese","floating particles"],["afx_leaves","Foglie che cadono","falling leaves"],["afx_petals","Petali","falling petals"],["afx_bubbles","Bolle","bubbles"],["afx_aurora","Aurora boreale","aurora"],["afx_rainbow","Arcobaleno","rainbow"],["afx_splash","Schizzi d'acqua","splashing water"],["afx_ripples","Increspature","ripples"],["afx_confetti","Coriandoli","confetti"],["afx_debris","Detriti sospesi","floating debris"]]},"optical_fx":{"it":"Effetti ottici e visivi","en":"Optical & Visual Effects","terms":[["ofx_lens_flare","Riflesso di luce","lens flare"],["ofx_anamorphic_flare","Flare anamorfico","anamorphic flare"],["ofx_bloom","Bloom","bloom"],["ofx_halo","Alone","halo"],["ofx_aura","Aura luminosa","light aura"],["ofx_light_trail","Scia luminosa","light trail"],["ofx_vignette","Vignettatura in post","vignette"],["ofx_radial_blur","Sfocatura radiale","radial blur"],["ofx_zoom_blur","Sfocatura da zoom","zoom blur"],["ofx_fade","Dissolvenza","fading out"],["ofx_reflection","Riflesso","reflection"],["ofx_refraction","Rifrazione","refraction"],["ofx_prism","Dispersione prismatica","prismatic dispersion"],["ofx_halftone_dots","Retino a punti","halftone dots"],["ofx_scanlines","Scanline","scanlines"],["ofx_vhs","Artefatti VHS","VHS artifacts"],["ofx_glitch_displace","Glitch digitale","digital glitch displacement"],["ofx_ghosting","Sdoppiamento","ghosting"],["ofx_datamosh","Datamosh","datamosh"],["ofx_xray","Radiografia","x-ray view"],["ofx_thermal","Termografia","thermal imaging view"],["ofx_wireframe_overlay","Sovrapposizione wireframe","wireframe overlay"],["ofx_exploded","Vista esplosa","exploded view"],["ofx_cross_section","Sezione","cross-section view"],["ofx_levitation","Levitazione","levitation"],["ofx_mirror_symmetry","Simmetria a specchio","mirror symmetry effect"],["ofx_shattering","Frantumazione","shattering into fragments"],["ofx_dissolving","Dissoluzione in particelle","dissolving into particles"]]},"light_source":{"it":"Sorgente luminosa","en":"Light Source","terms":[["ls_natural","Luce naturale","Natural light"],["ls_daylight","Luce diurna","Daylight"],["ls_golden_hour","Ora dorata","Golden hour light"],["ls_blue_hour","Ora blu","Blue hour light"],["ls_sunset","Luce del tramonto","Sunset light"],["ls_sunrise","Luce dell'alba","Dawn light"],["ls_midday","Sole a picco","Harsh midday sun"],["ls_overcast","Luce da cielo coperto","Overcast daylight"],["ls_window","Luce da finestra","Window light"],["ls_moonlight","Luce lunare","Moonlight"],["ls_starlight","Luce stellare","Starlight"],["ls_candle","Luce di candela","Candlelight"],["ls_firelight","Luce del fuoco","Firelight"],["ls_lantern","Luce di lanterna","Lantern light"],["ls_neon","Luce al neon","Neon lighting"],["ls_colored_neon","Neon colorato","Colored neon lighting"],["ls_streetlight","Luce di lampione","Streetlight glow"],["ls_practical","Luci pratiche in scena","Practical lights"],["ls_softbox","Softbox da studio","Studio softbox light"],["ls_ring_light","Ring light","Ring light"],["ls_strobe","Flash stroboscopico","Stroboscopic light"],["ls_bioluminescence","Bioluminescenza","Bioluminescent light"]]},"light_quality":{"it":"Qualita della luce e ombre","en":"Light Quality & Shadow","terms":[["lq_soft","Luce soffusa","Soft light"],["lq_hard","Luce dura","Hard light"],["lq_diffused","Luce diffusa","Diffused light"],["lq_direct","Luce diretta","Direct light"],["lq_ambient","Luce ambiente","Ambient light"],["lq_bounced","Luce riflessa","Bounced light"],["lq_volumetric","Luce volumetrica","Volumetric lighting"],["lq_godrays","Raggi di luce","God rays"],["lq_dappled","Luce filtrata dalle foglie","Dappled light"],["lq_hazy","Luce nebbiosa","Hazy light"],["lq_high_key","High key","High key lighting"],["lq_low_key","Low key","Low key lighting"],["lq_dramatic","Luce drammatica","Dramatic lighting"],["lq_moody","Luce cupa","Moody lighting"],["lq_flat","Luce piatta","Flat lighting"],["lq_high_contrast","Forte contrasto luminoso","High-contrast lighting"],["lq_glow","Bagliore diffuso","Ambient glow"],["lq_emissive","Emissione luminosa","Emissive glow"],["lq_caustics","Caustiche","Light caustics"],["lq_subsurface","Diffusione sottosuperficiale","Subsurface scattering"],["lq_gels","Gelatine colorate","Colored gels"],["lq_hard_shadows","Ombre nette","Hard shadows"],["lq_soft_shadows","Ombre morbide","Soft shadows"],["lq_long_shadows","Ombre lunghe","Long shadows"],["lq_cast_shadow","Ombra portata","Strong cast shadow"],["lq_gobo","Ombre a motivo (gobo)","Gobo patterned shadows"],["lq_deep_shadows","Ombre profonde","Deep shadows"],["lq_no_shadows","Senza ombre","No visible shadows"]]},"light_scheme":{"it":"Schema di illuminazione","en":"Lighting Scheme","terms":[["lsc_three_point","Illuminazione a tre punti","Three-point lighting"],["lsc_key","Luce principale","Key light"],["lsc_fill","Luce di riempimento","Fill light"],["lsc_backlight","Controluce","Backlighting"],["lsc_rim","Luce di contorno","Rim lighting"],["lsc_side","Luce laterale","Side lighting"],["lsc_front","Luce frontale","Front lighting"],["lsc_top","Luce dall'alto","Top light"],["lsc_uplight","Luce dal basso","Uplighting"],["lsc_raking","Luce radente","Raking light"],["lsc_rembrandt","Luce Rembrandt","Rembrandt lighting"],["lsc_butterfly","Luce a farfalla","Butterfly lighting"],["lsc_split","Luce divisa","Split lighting"],["lsc_loop","Luce a loop","Loop lighting"],["lsc_broad","Illuminazione ampia","Broad lighting"],["lsc_short","Illuminazione corta","Short lighting"],["lsc_chiaroscuro","Chiaroscuro","Chiaroscuro"],["lsc_silhouette","Silhouette","Silhouette"]]},"framing":{"it":"Inquadratura","en":"Framing","terms":[["fr_extreme_closeup","Primissimo piano","Extreme close-up"],["fr_closeup","Primo piano","Close-up"],["fr_detail","Dettaglio","Detail shot"],["fr_head_shoulders","Testa e spalle","Head-and-shoulders shot"],["fr_bust","Mezzo busto","Bust shot"],["fr_medium_closeup","Mezza figura","Medium close-up"],["fr_medium","Piano medio","Medium shot"],["fr_american","Piano americano","American shot"],["fr_full","Figura intera","Full shot"],["fr_full_length_portrait","Ritratto a figura intera","Full-length portrait"],["fr_wide","Campo lungo","Wide shot"],["fr_extreme_wide","Campo lunghissimo","Extreme wide shot"],["fr_establishing","Campo d'insieme","Establishing shot"],["fr_panoramic","Vista panoramica","Panoramic view"],["fr_two_shot","Inquadratura a due","Two shot"],["fr_group","Inquadratura di gruppo","Group shot"],["fr_lone_in_landscape","Figura isolata nel paesaggio","Lone figure in a vast landscape"],["fr_cropped","Soggetto tagliato dal bordo","Cropped subject"]]},"camera_angle":{"it":"Angolazione e punto di vista","en":"Camera Angle & Viewpoint","terms":[["ca_eye_level","Ad altezza occhi","Eye level"],["ca_low_angle","Ripresa dal basso","Low angle"],["ca_extreme_low","Ripresa dal basso estrema","Extreme low angle"],["ca_worms_eye","Vista dal suolo","Worm's eye view"],["ca_high_angle","Ripresa dall'alto","High angle"],["ca_birdseye","Vista a volo d'uccello","Bird's eye view"],["ca_top_down","Vista zenitale (flat lay)","Top-down view"],["ca_aerial","Ripresa aerea","Aerial view"],["ca_drone","Vista da drone","Drone view"],["ca_dutch","Angolazione obliqua","Dutch angle"],["ca_over_shoulder","Da sopra la spalla","Over-the-shoulder view"],["ca_pov","Soggettiva (prima persona)","First-person POV"],["ca_front","Di fronte","Front view"],["ca_profile","Di profilo","Profile view"],["ca_three_quarter","Di tre quarti","Three-quarter view"],["ca_rear","Di spalle","Rear view"]]},"composition":{"it":"Composizione","en":"Composition","terms":[["co_rule_of_thirds","Regola dei terzi","Rule of thirds"],["co_golden_ratio","Sezione aurea","Golden ratio composition"],["co_fibonacci","Spirale di Fibonacci","Fibonacci spiral composition"],["co_symmetry","Simmetria","Symmetrical composition"],["co_asymmetric","Equilibrio asimmetrico","Asymmetrical balance"],["co_centered","Composizione centrale","Centered composition"],["co_off_center","Soggetto decentrato","Off-center subject"],["co_triangular","Composizione triangolare","Triangular composition"],["co_diagonal","Composizione diagonale","Diagonal composition"],["co_s_curve","Linea a S","S-curve composition"],["co_radial","Composizione radiale","Radial composition"],["co_grid","Composizione a griglia","Grid composition"],["co_leading_lines","Linee guida","Leading lines"],["co_negative_space","Spazio negativo","Negative space"],["co_frame_in_frame","Cornice nella cornice","Frame within a frame"],["co_layered","Composizione stratificata","Layered composition"],["co_repetition","Ripetizione e pattern","Repetition and pattern"],["co_juxtaposition","Accostamento contrastante","Juxtaposition"],["co_high_horizon","Orizzonte alto","High horizon line"],["co_low_horizon","Orizzonte basso","Low horizon line"],["co_full_bleed","Al vivo, senza margini","Full-bleed composition"],["co_knolling","Disposizione ordinata (knolling)","Knolling"],["co_isometric","Proiezione isometrica","Isometric projection"],["co_axonometric","Proiezione assonometrica","Axonometric projection"],["co_one_point","Prospettiva centrale","One-point perspective"],["co_forced_perspective","Prospettiva forzata","Forced perspective"]]},"lens_focus":{"it":"Obiettivo, focale e fuoco","en":"Lens, Focal Length & Focus","terms":[["lf_24mm","Obiettivo 24mm","24mm lens"],["lf_35mm","Obiettivo 35mm","35mm lens"],["lf_50mm","Obiettivo 50mm","50mm lens"],["lf_85mm","Obiettivo 85mm","85mm lens"],["lf_135mm","Obiettivo 135mm","135mm lens"],["lf_200mm","Obiettivo 200mm","200mm lens"],["lf_wide_angle","Grandangolo","Wide-angle lens"],["lf_telephoto","Teleobiettivo","Telephoto lens"],["lf_fisheye","Fisheye","Fisheye lens"],["lf_macro","Macro","Macro lens"],["lf_anamorphic","Anamorfico","Anamorphic lens"],["lf_tilt_shift","Tilt-shift","Tilt-shift lens"],["lf_miniature","Effetto miniatura","Miniature effect"],["lf_wide_aperture","Diaframma aperto f/1.4","Wide aperture f/1.4"],["lf_narrow_aperture","Diaframma chiuso f/16","Narrow aperture f/16"],["lf_shallow_dof","Profondita di campo ridotta","Shallow depth of field"],["lf_deep_dof","Profondita di campo estesa","Deep depth of field"],["lf_selective_focus","Fuoco selettivo","Selective focus"],["lf_soft_focus","Fuoco morbido","Soft focus"],["lf_out_of_focus","Fuori fuoco","Out of focus"],["lf_bokeh","Bokeh","Bokeh"],["lf_foreground_blur","Sfocato in primo piano","Foreground blur"],["lf_split_diopter","Split diopter","Split diopter"],["lf_compression","Compressione da tele","Long-lens compression"],["lf_chromatic_aberration","Aberrazione cromatica","Chromatic aberration"],["lf_barrel_distortion","Distorsione a barile","Barrel distortion"],["lf_vignetting","Vignettatura ottica","Lens vignetting"],["lf_motion_blur","Mosso","Motion blur"]]},"photo_genre":{"it":"Generi fotografici","en":"Photographic Genres","terms":[["pg_photorealistic","Fotorealistico","Photorealistic"],["pg_cinematic","Fotografia cinematografica","Cinematic photography"],["pg_portrait","Ritratto","Portrait photography"],["pg_beauty","Beauty","Beauty photography"],["pg_fashion","Moda","Fashion photography"],["pg_editorial","Editoriale","Editorial photography"],["pg_street","Street photography","Street photography"],["pg_documentary","Documentaristica","Documentary photography"],["pg_photojournalism","Fotogiornalismo","Photojournalism"],["pg_landscape","Paesaggio","Landscape photography"],["pg_architectural","Architettura","Architectural photography"],["pg_still_life","Natura morta","Still life photography"],["pg_food","Food","Food photography"],["pg_product","Fotografia di prodotto","Product photography"],["pg_wildlife","Naturalistica","Wildlife photography"],["pg_sports","Sportiva","Sports photography"],["pg_macro","Macrofotografia","Macro photography"],["pg_aerial","Fotografia aerea","Aerial photography"],["pg_underwater","Subacquea","Underwater photography"],["pg_astrophotography","Astrofotografia","Astrophotography"],["pg_night","Notturna","Night photography"],["pg_long_exposure","Lunga esposizione","Long exposure photography"],["pg_double_exposure","Doppia esposizione","Double exposure"],["pg_fine_art","Fotografia d'autore","Fine art photography"],["pg_studio","Fotografia in studio","Studio photography"],["pg_snapshot","Istantanea amatoriale","Casual snapshot"]]},"art_movement":{"it":"Movimenti artistici","en":"Art Movements","terms":[["am_byzantine","Bizantino","Byzantine"],["am_romanesque","Romanico","Romanesque"],["am_gothic","Gotico","Gothic"],["am_renaissance","Rinascimento","Renaissance"],["am_mannerism","Manierismo","Mannerism"],["am_baroque","Barocco","Baroque"],["am_rococo","Rococo","Rococo"],["am_neoclassical","Neoclassico","Neoclassical"],["am_romanticism","Romanticismo","Romanticism"],["am_realism","Realismo","Realism"],["am_pre_raphaelite","Preraffaellita","Pre-Raphaelite"],["am_impressionism","Impressionismo","Impressionism"],["am_post_impressionism","Postimpressionismo","Post-Impressionism"],["am_symbolism","Simbolismo","Symbolism"],["am_art_nouveau","Art Nouveau","Art Nouveau"],["am_fauvism","Fauvismo","Fauvism"],["am_expressionism","Espressionismo","Expressionism"],["am_cubism","Cubismo","Cubism"],["am_futurism","Futurismo","Futurism"],["am_dadaism","Dadaismo","Dadaism"],["am_suprematism","Suprematismo","Suprematism"],["am_surrealism","Surrealismo","Surrealism"],["am_magic_realism","Realismo magico","Magic realism"],["am_abstract_expressionism","Espressionismo astratto","Abstract expressionism"],["am_pop_art","Pop Art","Pop Art"],["am_op_art","Op Art","Op Art"],["am_hyperrealism","Iperrealismo","Hyperrealism"],["am_naive","Arte naif","Naive art"]]},"design_movement":{"it":"Movimenti del design","en":"Design Movements","terms":[["dm_arts_crafts","Arts and Crafts","Arts and Crafts"],["dm_vienna_secession","Secessione viennese","Vienna Secession"],["dm_bauhaus","Bauhaus","Bauhaus"],["dm_de_stijl","De Stijl","De Stijl"],["dm_constructivism","Costruttivismo","Constructivism"],["dm_art_deco","Art Deco","Art Deco"],["dm_streamline","Streamline Moderne","Streamline Moderne"],["dm_swiss","Stile svizzero","Swiss International typographic style"],["dm_mid_century","Mid-century modern","Mid-century modern"],["dm_brutalism","Brutalismo","Brutalism"],["dm_memphis","Memphis","Memphis design"],["dm_postmodern","Postmoderno","Postmodern design"],["dm_minimalism","Minimalismo","Minimalism"],["dm_flat_design","Flat design","Flat design"],["dm_skeuomorphic","Skeuomorfismo","Skeuomorphic design"],["dm_y2k_design","Design Y2K","Y2K design"]]},"anime_cartoon_style":{"it":"Anime, fumetto e animazione","en":"Anime, Comics & Animation","terms":[["ac_anime","Anime","Anime style"],["ac_manga","Manga","Manga style"],["ac_shonen","Shonen","Shonen style"],["ac_shojo","Shojo","Shojo style"],["ac_seinen","Seinen","Seinen style"],["ac_chibi","Chibi","Chibi style"],["ac_kawaii","Kawaii","Kawaii style"],["ac_mecha","Mecha","Mecha anime style"],["ac_retro_anime","Anime anni 80-90","Retro 1980s anime style"],["ac_ghibli","Stile Studio Ghibli","Studio Ghibli style"],["ac_comic_book","Fumetto americano","American comic book art"],["ac_graphic_novel","Graphic novel","Graphic novel style"],["ac_ligne_claire","Linea chiara","Ligne claire"],["ac_newspaper_strip","Striscia a fumetti","Newspaper comic strip"],["ac_cartoon","Cartoon","Cartoon style"],["ac_rubber_hose","Rubber hose anni 30","1930s rubber hose animation"],["ac_pixar","Stile Pixar","Pixar-style 3D animation"],["ac_storybook","Illustrazione per l'infanzia","Children's storybook illustration"]]},"cultural_tradition":{"it":"Tradizioni figurative","en":"Cultural Traditions","terms":[["ct_ukiyo_e","Ukiyo-e","Ukiyo-e woodblock print"],["ct_chinese_ink","Pittura cinese a inchiostro","Chinese ink landscape painting"],["ct_persian_miniature","Miniatura persiana","Persian miniature"],["ct_mughal","Miniatura moghul","Mughal miniature"],["ct_madhubani","Arte Madhubani","Madhubani folk art"],["ct_celtic","Arte celtica","Celtic knotwork art"],["ct_norse","Arte norrena","Norse Viking art"],["ct_byzantine_icon","Icona bizantina","Byzantine icon painting"],["ct_illuminated_ms","Codice miniato","Illuminated manuscript"],["ct_aboriginal","Arte aborigena","Aboriginal dot painting"],["ct_african_tribal","Arte tribale africana","African tribal art"],["ct_mesoamerican","Arte mesoamericana","Mesoamerican art"],["ct_islamic_geometric","Geometrie islamiche","Islamic geometric pattern"],["ct_folk_art","Arte popolare","Folk art"]]},"artist_classical":{"it":"Autori classici","en":"Classical Artists","terms":[["ar_leonardo","Leonardo da Vinci","by Leonardo da Vinci"],["ar_michelangelo","Michelangelo","by Michelangelo"],["ar_raffaello","Raffaello","by Raphael"],["ar_botticelli","Botticelli","by Sandro Botticelli"],["ar_tiziano","Tiziano","by Titian"],["ar_caravaggio","Caravaggio","by Caravaggio"],["ar_rembrandt","Rembrandt","by Rembrandt"],["ar_vermeer","Vermeer","by Johannes Vermeer"],["ar_velazquez","Velazquez","by Diego Velazquez"],["ar_bruegel","Bruegel il Vecchio","by Pieter Bruegel the Elder"],["ar_bosch","Hieronymus Bosch","by Hieronymus Bosch"],["ar_durer","Albrecht Durer","by Albrecht Durer"],["ar_goya","Goya","by Francisco Goya"],["ar_turner","William Turner","by J.M.W. Turner"],["ar_constable","John Constable","by John Constable"],["ar_friedrich","Caspar David Friedrich","by Caspar David Friedrich"],["ar_delacroix","Delacroix","by Eugene Delacroix"],["ar_ingres","Ingres","by Jean-Auguste-Dominique Ingres"],["ar_piranesi","Piranesi","by Giovanni Battista Piranesi"],["ar_dore","Gustave Dore","by Gustave Dore"],["ar_sargent","John Singer Sargent","by John Singer Sargent"],["ar_alma_tadema","Alma-Tadema","by Lawrence Alma-Tadema"],["ar_hokusai","Hokusai","by Katsushika Hokusai"],["ar_hiroshige","Hiroshige","by Utagawa Hiroshige"]]},"artist_modern":{"it":"Autori moderni","en":"Modern Artists","terms":[["ar_vangogh","Van Gogh","by Vincent van Gogh"],["ar_monet","Monet","by Claude Monet"],["ar_renoir","Renoir","by Pierre-Auguste Renoir"],["ar_degas","Degas","by Edgar Degas"],["ar_cezanne","Cezanne","by Paul Cezanne"],["ar_gauguin","Gauguin","by Paul Gauguin"],["ar_toulouse_lautrec","Toulouse-Lautrec","by Henri de Toulouse-Lautrec"],["ar_klimt","Gustav Klimt","by Gustav Klimt"],["ar_schiele","Egon Schiele","by Egon Schiele"],["ar_mucha","Alphonse Mucha","by Alphonse Mucha"],["ar_munch","Edvard Munch","by Edvard Munch"],["ar_matisse","Henri Matisse","by Henri Matisse"],["ar_picasso","Pablo Picasso","by Pablo Picasso"],["ar_braque","Georges Braque","by Georges Braque"],["ar_kandinsky","Kandinsky","by Wassily Kandinsky"],["ar_klee","Paul Klee","by Paul Klee"],["ar_mondrian","Mondrian","by Piet Mondrian"],["ar_malevich","Malevich","by Kazimir Malevich"],["ar_magritte","Rene Magritte","by Rene Magritte"],["ar_dali","Salvador Dali","by Salvador Dali"],["ar_kahlo","Frida Kahlo","by Frida Kahlo"],["ar_hopper","Edward Hopper","by Edward Hopper"],["ar_okeeffe","Georgia O'Keeffe","by Georgia O'Keeffe"],["ar_escher","M.C. Escher","by M.C. Escher"]]},"artist_illustration":{"it":"Illustratori e visual designer","en":"Illustrators & Designers","terms":[["ar_rockwell","Norman Rockwell","by Norman Rockwell"],["ar_leyendecker","J.C. Leyendecker","by J.C. Leyendecker"],["ar_beardsley","Aubrey Beardsley","by Aubrey Beardsley"],["ar_rackham","Arthur Rackham","by Arthur Rackham"],["ar_dulac","Edmund Dulac","by Edmund Dulac"],["ar_bilibin","Ivan Bilibin","by Ivan Bilibin"],["ar_nielsen","Kay Nielsen","by Kay Nielsen"],["ar_clarke","Harry Clarke","by Harry Clarke"],["ar_mccay","Winsor McCay","by Winsor McCay"],["ar_moebius","Moebius","by Moebius"],["ar_kirby","Jack Kirby","by Jack Kirby"],["ar_herge","Herge","by Herge"],["ar_frazetta","Frank Frazetta","by Frank Frazetta"],["ar_roger_dean","Roger Dean","by Roger Dean"],["ar_syd_mead","Syd Mead","by Syd Mead"],["ar_giger","H.R. Giger","by H.R. Giger"],["ar_amano","Yoshitaka Amano","by Yoshitaka Amano"],["ar_otomo","Katsuhiro Otomo","by Katsuhiro Otomo"],["ar_tezuka","Osamu Tezuka","by Osamu Tezuka"],["ar_saul_bass","Saul Bass","by Saul Bass"],["ar_cassandre","A.M. Cassandre","by A.M. Cassandre"],["ar_glaser","Milton Glaser","by Milton Glaser"]]},"medium_digital_3d":{"it":"Digitale e 3D","en":"Digital & 3D","terms":[["md_3d_render","Render 3D","3D render"],["md_octane","Render Octane","Octane render"],["md_unreal","Render Unreal Engine","Unreal Engine render"],["md_blender","Render Blender","Blender render"],["md_arch_viz","Rendering architettonico","Architectural rendering"],["md_clay_render","Clay render","Clay render"],["md_cel_shaded","Cel shading","Cel-shaded rendering"],["md_low_poly","Low-poly","Low-poly 3D"],["md_voxel","Voxel art","Voxel art"],["md_pixel_art","Pixel art","Pixel art"],["md_vector","Illustrazione vettoriale","Flat vector illustration"],["md_wireframe","Wireframe","Wireframe render"],["md_photobash","Photobashing","Photobashed digital art"],["md_glitch","Glitch art","Glitch art"],["md_ascii","ASCII art","ASCII art"],["md_generative","Arte generativa","Generative art"]]},"film_stock_process":{"it":"Pellicole e processi","en":"Film Stock & Process","terms":[["fs_portra400","Kodak Portra 400","Kodak Portra 400"],["fs_ektar","Kodak Ektar 100","Kodak Ektar 100"],["fs_gold200","Kodak Gold 200","Kodak Gold 200"],["fs_trix","Kodak Tri-X 400 (b/n)","Kodak Tri-X 400"],["fs_hp5","Ilford HP5 (b/n)","Ilford HP5"],["fs_velvia","Fujifilm Velvia 50","Fujifilm Velvia 50"],["fs_pro400h","Fujifilm Pro 400H","Fujifilm Pro 400H"],["fs_cinestill","Cinestill 800T","Cinestill 800T"],["fs_polaroid","Polaroid SX-70","Polaroid SX-70"],["fs_35mm_film","Pellicola 35mm","35mm film stock"],["fs_medium_format","Medio formato","Medium format film"],["fs_large_format","Grande formato","Large format film"],["fs_expired","Pellicola scaduta","Expired film"],["fs_push","Sviluppo forzato","Push-processed film"],["fs_cross_process","Cross-processing","Cross-processed film"],["fs_bleach_bypass","Bleach bypass","Bleach bypass"],["fs_technicolor","Technicolor","Three-strip Technicolor"],["fs_lomography","Lomografia","Lomography"],["fs_tintype","Ferrotipia","Tintype, wet plate collodion"],["fs_daguerreotype","Dagherrotipo","Daguerreotype"],["fs_cyanotype","Cianotipia","Cyanotype"],["fs_infrared","Pellicola infrarossa","Infrared film"],["fs_pinhole","Foro stenopeico","Pinhole photography"],["fs_film_grain","Grana della pellicola","Film grain"]]},"medium_paint_draw":{"it":"Pittura e disegno","en":"Painting & Drawing","terms":[["mp_oil","Pittura a olio","Oil painting"],["mp_watercolor","Acquerello","Watercolor painting"],["mp_acrylic","Acrilico","Acrylic painting"],["mp_gouache","Gouache","Gouache painting"],["mp_tempera","Tempera","Tempera painting"],["mp_fresco","Affresco","Fresco"],["mp_impasto","Impasto","Thick impasto brushwork"],["mp_plein_air","En plein air","En plein air painting"],["mp_graphite","Matita","Graphite pencil drawing"],["mp_charcoal","Carboncino","Charcoal drawing"],["mp_sanguine","Sanguigna","Sanguine chalk drawing"],["mp_chalk","Gessetto","Chalk drawing"],["mp_pastel","Pastelli morbidi","Soft pastel drawing"],["mp_pen_ink","Penna e inchiostro","Pen and ink drawing"],["mp_ink_wash","Inchiostro diluito","Ink wash"],["mp_sumi_e","Sumi-e","Sumi-e ink painting"],["mp_marker","Pennarelli","Marker rendering"],["mp_airbrush","Aerografo","Airbrush painting"],["mp_line_art","Line art","Line art"],["mp_bold_outline","Contorni spessi","Bold outlines"],["mp_thin_line","Tratto sottile","Fine line work"],["mp_crosshatch","Tratteggio incrociato","Cross-hatching"],["mp_digital_painting","Pittura digitale","Digital painting"],["mp_matte_painting","Matte painting","Matte painting"],["mp_concept_art","Concept art","Concept art"],["mp_editorial_ill","Illustrazione editoriale","Editorial illustration"]]},"medium_print_craft":{"it":"Stampa e tecniche artigianali","en":"Print & Craft","terms":[["mpc_woodcut","Xilografia","Woodcut print"],["mpc_linocut","Linoleografia","Linocut print"],["mpc_engraving","Incisione a bulino","Engraving"],["mpc_etching","Acquaforte","Etching"],["mpc_lithograph","Litografia","Lithograph"],["mpc_screenprint","Serigrafia","Screen print"],["mpc_letterpress","Stampa tipografica","Letterpress print"],["mpc_risograph","Risograph","Risograph print"],["mpc_halftone","Retino tipografico","Halftone print"],["mpc_vintage_poster","Manifesto vintage","Vintage poster"],["mpc_collage","Collage","Paper collage"],["mpc_photomontage","Fotomontaggio","Photomontage"],["mpc_papercut","Carta ritagliata","Papercut, kirigami"],["mpc_stained_glass","Vetrata","Stained glass"],["mpc_mosaic","Mosaico","Mosaic"],["mpc_batik","Batik","Batik"],["mpc_embroidery","Ricamo","Embroidery"],["mpc_needle_felt","Feltro ad ago","Needle-felted"],["mpc_claymation","Plastilina, stop-motion","Claymation, stop-motion"],["mpc_diorama","Diorama, modellino","Diorama, scale model"],["mpc_blueprint","Disegno tecnico, blueprint","Technical blueprint drawing"],["mpc_sgraffito","Sgraffito","Sgraffito"]]},"background_setup":{"it":"Fondale e sfondo","en":"Background Setup","terms":[["bg_seamless","Fondale seamless da studio","seamless studio backdrop"],["bg_white","Sfondo bianco","plain white background"],["bg_black","Sfondo nero","plain black background"],["bg_solid_color","Sfondo a tinta unita","solid color background"],["bg_gradient","Sfondo sfumato","gradient background"],["bg_blurred","Sfondo sfocato","blurred background"],["bg_dark_moody","Fondale scuro","dark moody backdrop"],["bg_environmental","Sfondo ambientale","natural environment background"],["bg_cyclorama","Ciclorama","infinity cyclorama"],["bg_textured_wall","Muro materico","textured wall backdrop"],["bg_isolated","Isolato su trasparenza","isolated on transparent background"],["bg_cluttered","Sfondo affollato","cluttered busy background"]]},"typography_text":{"it":"Testo e lettering","en":"Text & Lettering","terms":[["ty_bold_sans","Lettering sans serif marcato","bold sans-serif lettering"],["ty_serif_display","Titolazione con grazie","serif display type"],["ty_condensed","Grottesco stretto","condensed grotesque type"],["ty_script","Lettering a mano","hand-lettered script"],["ty_brush","Lettering a pennello","brush lettering"],["ty_graffiti","Lettering graffiti","graffiti lettering"],["ty_neon_sign","Insegna al neon","neon sign lettering"],["ty_vintage_signage","Insegna vintage","vintage painted signage"],["ty_letterpress","Caratteri tipografici","letterpress type"],["ty_embossed_metal","Lettere in metallo","embossed metal lettering"],["ty_chalk","Lettering a gesso","chalkboard lettering"],["ty_stencil","Lettering a stencil","stencil lettering"],["ty_art_deco_type","Lettering Art Deco","art deco lettering"],["ty_kinetic","Composizione tipografica dinamica","kinetic type layout"]]}};
+const AESTH = ['ij_mood_merged','mood_aesthetic_register','atmosphere','color_harmony','genre_aesthetic','atmospheric_fx'];
+const LIGHT = ['light_source','light_quality','light_scheme'];
+const PHOTO = ['framing','camera_angle','composition','lens_focus','photo_genre'];
+const ART = ['art_movement','design_movement','anime_cartoon_style','cultural_tradition','artist_classical','artist_modern','artist_illustration'];
+const MED_PHOTO = ['medium_digital_3d','film_stock_process'];
+const MED_ART = ['medium_digital_3d','medium_paint_draw','medium_print_craft'];
+const SIZES = [['1024 × 1024',1024,1024],['832 × 1280 (2:3)',832,1280],['1280 × 832 (3:2)',1280,832],['1344 × 768 (16:9)',1344,768],['768 × 1344 (9:16)',768,1344],['896 × 1152 (3:4)',896,1152]];
+const MIN = 20, MAX_SHUFFLE = 3;
+
+const S = {
+  mode: 'photo', sel: {}, openSec: {aesthetics: true, lighting: false, style: false, medium: false}, openCat: {},
+  desc: "Un vecchio pescatore ripara le reti sul molo, all'alba",
+  bg: 'Un porto di pescatori nella nebbia, barche ormeggiate e gabbiani',
+  colors: ['#0B1F3A', '#F2A65A', '#E8D8B9'],
+  els: [
+    {id: 1, type: 'obj', desc: 'Un vecchio pescatore con il berretto di lana, seduto, intento a rammendare una rete', text: '', bbox: [330, 120, 920, 560], colors: ['#7A5C3E'], open: false},
+    {id: 2, type: 'text', desc: 'Insegna in legno dipinta a mano, sopra il molo', text: 'PORTO VECCHIO', bbox: [60, 180, 190, 820], colors: [], open: false},
+    {id: 3, type: 'obj', desc: 'Una cassetta di pesce sul bordo del molo', text: '', bbox: null, colors: [], open: false},
+  ],
+  next: 4, selected: null, armed: null, size: 0, llm: {}, override: null, status: '',
+};
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const rnd = n => Math.floor(Math.random() * n);
+
+function sections() {
+  const p = S.mode === 'photo';
+  return [
+    {id: 'aesthetics', title: 'Aesthetics', cats: AESTH.concat(p ? ['optical_fx'] : [])},
+    {id: 'lighting', title: 'Lighting', cats: LIGHT},
+    {id: 'style', title: p ? 'Photo style' : 'Art style', cats: p ? PHOTO : ART},
+    {id: 'medium', title: 'Medium', cats: p ? MED_PHOTO : MED_ART, single: true},
+  ];
+}
+function termOf(catId, termId) { return DATA[catId].terms.find(t => t[0] === termId) || null; }
+function selTerms(cats) { return cats.map(c => S.sel[c] ? termOf(c, S.sel[c]) : null).filter(Boolean).map(t => t[2]); }
+
+/* ---------- campi che l'LLM può riscrivere ---------- */
+function fieldDefs() {
+  const p = S.mode === 'photo', secs = Object.fromEntries(sections().map(s => [s.id, s]));
+  const bgTerm = S.sel.background_setup ? termOf('background_setup', S.sel.background_setup) : null;
+  const defs = [
+    {key: 'hld', label: 'High level description', tag: 'high_level_description', text: S.desc.trim(), terms: []},
+    {key: 'aesthetics', label: 'Aesthetics', tag: 'aesthetics', text: '', terms: selTerms(secs.aesthetics.cats)},
+    {key: 'lighting', label: 'Lighting', tag: 'lighting', text: '', terms: selTerms(secs.lighting.cats)},
+    {key: 'style', label: p ? 'Photo style' : 'Art style', tag: p ? 'photo' : 'art_style', text: '', terms: selTerms(secs.style.cats)},
+    {key: 'medium', label: 'Medium', tag: 'medium', text: '', terms: selTerms(secs.medium.cats)},
+    {key: 'bg', label: 'Background', tag: 'background', text: S.bg.trim(), terms: bgTerm ? [bgTerm[2]] : []},
+  ];
+  S.els.forEach((el, i) => defs.push({key: 'e' + el.id, label: 'Elemento ' + (i + 1), tag: 'element_' + (i + 1), text: el.desc.trim(), terms: []}));
+  defs.forEach(f => { f.raw = [f.text].concat(f.terms).filter(Boolean).join(', '); f.k = JSON.stringify([f.text, f.terms]); });
+  return defs;
+}
+function llmValue(f) { const v = S.llm[f.key]; return v && v.k === f.k ? v.text : null; }
+function valueOf(f) { const v = llmValue(f); return v !== null ? v : f.raw; }
+function state(f) { if (!f.raw) return 'empty'; if (llmValue(f) !== null) return 'ok'; return S.llm[f.key] ? 'stale' : 'raw'; }
+function fake(f) {
+  const t = f.terms.map(x => x.toLowerCase());
+  if (f.text && t.length) return `${f.text} (EN simulata), with ${t.join(' and ')}.`;
+  if (t.length) return `The image carries ${t.join(' and ')}.`;
+  return `${f.text} (EN simulata).`;
+}
+function transHtml(f) {
+  const v = llmValue(f);
+  if (v !== null && f.raw) return ['<i>LLM</i>' + esc(v), false];
+  if (S.llm[f.key] && f.raw) return ['<i>da riscrivere</i>le voci e il testo vanno nel JSON così come sono', true];
+  return ['', false];
+}
+function renderTrans() {
+  const defs = fieldDefs();
+  [['hld', 'trDesc'], ['bg', 'trBg']].forEach(([k, id]) => {
+    const f = defs.find(d => d.key === k), [h, stale] = transHtml(f), n = $(id);
+    n.hidden = !h; n.innerHTML = h; n.classList.toggle('stale', stale);
+  });
+  document.querySelectorAll('.etr').forEach(n => {
+    const f = defs.find(d => d.key === n.dataset.k); if (!f) return;
+    const [h, stale] = transHtml(f); n.hidden = !h; n.innerHTML = h; n.classList.toggle('stale', stale);
+  });
+}
+function renderLlmPanel() {
+  const names = {ok: 'riscritto', stale: 'da riscrivere', raw: 'grezzo', empty: 'vuoto'};
+  $('llmTable').innerHTML = fieldDefs().map(f => {
+    const st = state(f);
+    const inp = !f.raw ? '—' : [f.text ? 'testo: «' + esc(f.text.length > 70 ? f.text.slice(0, 70) + '…' : f.text) + '»' : '', f.terms.length ? 'voci: ' + esc(f.terms.join(', ')) : ''].filter(Boolean).join(' · ');
+    return `<div class="llm-r"><span class="tgn">&lt;${f.tag}&gt;</span><span class="in">${inp}</span><span class="chip ${st === 'raw' ? '' : st}">${names[st]}</span></div>`;
+  }).join('');
+}
+
+/* ---------- lista ---------- */
+function catBlock(c) {
+  const cat = DATA[c], t = S.sel[c] ? termOf(c, S.sel[c]) : null, o = !!S.openCat[c];
+  const terms = o ? '<div class="terms">' + cat.terms.map(tm => `<div class="term${S.sel[c] === tm[0] ? ' on' : ''}" data-act="term" data-cat="${c}" data-term="${tm[0]}" role="checkbox" aria-checked="${S.sel[c] === tm[0]}" tabindex="0"><span class="box">${S.sel[c] === tm[0] ? '✓' : ''}</span><span>${esc(tm[1])}</span></div>`).join('') + '</div>' : '';
+  return `<div class="${o ? 'open' : ''}"><button class="cat-h" type="button" data-act="cat" data-cat="${c}" style="padding-left:2px"><span class="chev">▶</span>${esc(cat.it)}<span class="chosen">${t ? esc(t[1]) : ''}</span></button>${terms}</div>`;
+}
+function renderList() {
+  $('list').innerHTML = sections().map(sec => {
+    const n = sec.cats.filter(c => S.sel[c]).length, open = !!S.openSec[sec.id];
+    const note = `<div class="sec-note">${sec.single ? 'Una sola voce in tutta la sezione.' : 'Una voce per categoria.'}</div>`;
+    const cats = sec.cats.map(c => catBlock(c).replace('style="padding-left:2px"', '')).join('');
+    return `<div class="${open ? 'open' : ''}"><button class="sec-h" type="button" data-act="sec" data-sec="${sec.id}"><span class="chev">▶</span>${sec.title}${n ? `<span class="badge">${n}</span>` : ''}</button>${open ? note + cats : ''}</div>`;
+  }).join('');
+  $('bgTerms').innerHTML = catBlock('background_setup');
+}
+function onListClick(e) {
+  const n = e.target.closest('[data-act]'); if (!n) return;
+  const a = n.dataset.act;
+  if (a === 'sec') S.openSec[n.dataset.sec] = !S.openSec[n.dataset.sec];
+  else if (a === 'cat') S.openCat[n.dataset.cat] = !S.openCat[n.dataset.cat];
+  else if (a === 'term') pick(n.dataset.cat, n.dataset.term);
+  renderList(); refresh();
+}
+$('list').addEventListener('click', onListClick);
+$('bgTerms').addEventListener('click', onListClick);
+function onListKey(e) { if ((e.key === 'Enter' || e.key === ' ') && e.target.dataset && e.target.dataset.act === 'term') { e.preventDefault(); e.target.click(); } }
+$('list').addEventListener('keydown', onListKey);
+$('bgTerms').addEventListener('keydown', onListKey);
+function pick(catId, termId) {
+  const sec = sections().find(s => s.cats.includes(catId));
+  if (S.sel[catId] === termId) { delete S.sel[catId]; return; }
+  if (sec && sec.single) sec.cats.forEach(c => delete S.sel[c]);   // un solo medium in tutta la sezione
+  S.sel[catId] = termId;                                           // una sola voce per categoria
+}
+function setMode(m) {
+  S.mode = m;
+  const visible = new Set(sections().flatMap(s => s.cats).concat(['background_setup']));
+  Object.keys(S.sel).forEach(c => { if (!visible.has(c)) delete S.sel[c]; });   // le scelte che si nascondono si cancellano
+  $('mPhoto').classList.toggle('on', m === 'photo'); $('mArt').classList.toggle('on', m === 'art');
+  renderList(); refresh();
+}
+$('mPhoto').onclick = () => setMode('photo');
+$('mArt').onclick = () => setMode('art');
+$('shuffle').onclick = () => {
+  S.sel = {};
+  sections().forEach(sec => {
+    if (sec.single) {
+      const pool = sec.cats.flatMap(c => DATA[c].terms.map(t => [c, t[0]])), r = pool[rnd(pool.length)]; S.sel[r[0]] = r[1];
+    } else {
+      const cats = sec.cats.slice(); for (let i = cats.length - 1; i > 0; i--) { const j = rnd(i + 1); [cats[i], cats[j]] = [cats[j], cats[i]]; }
+      cats.slice(0, MAX_SHUFFLE).forEach(c => { const t = DATA[c].terms; S.sel[c] = t[rnd(t.length)][0]; });
+    }
+  });
+  const bg = DATA.background_setup.terms; S.sel.background_setup = bg[rnd(bg.length)][0];
+  renderList(); refresh();
+  setStatus('Shuffle: al massimo 3 voci per sezione, una per categoria (un solo medium, una sola voce di sfondo).');
+};
+
+/* ---------- colori ---------- */
+function swatches(arr, max, key) {
+  const rows = arr.map((h, i) => `<div class="sw"><input type="color" value="${h.toLowerCase()}" data-pal="${key}" data-i="${i}" aria-label="Colore ${i + 1}"><button type="button" data-padel="${key}" data-i="${i}" aria-label="Togli il colore ${i + 1}" title="Togli">×</button></div>`).join('');
+  return rows + `<button class="add" type="button" data-paladd="${key}" ${arr.length >= max ? 'disabled' : ''} aria-label="Aggiungi un colore" title="Aggiungi un colore">+</button><span class="cap">${arr.length}/${max}</span>`;
+}
+function palOf(key) { return key === 'g' ? S.colors : (S.els.find(e => String(e.id) === key.slice(1)) || {colors: []}).colors; }
+function randHex() { return '#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0').toUpperCase(); }
+function renderPalette() { $('palette').innerHTML = swatches(S.colors, 16, 'g'); $('palCap').textContent = 'fino a 16'; }
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (t.dataset && t.dataset.pal) { palOf(t.dataset.pal)[+t.dataset.i] = t.value.toUpperCase(); refresh(); }
+});
+document.addEventListener('click', e => {
+  const del = e.target.closest('[data-padel]'), add = e.target.closest('[data-paladd]');
+  if (del) { palOf(del.dataset.padel).splice(+del.dataset.i, 1); rerenderPal(del.dataset.padel); }
+  if (add) { const k = add.dataset.paladd, a = palOf(k); if (a.length < (k === 'g' ? 16 : 5)) a.push(randHex()); rerenderPal(k); }
+});
+function rerenderPal(k) { if (k === 'g') renderPalette(); else renderEls(); refresh(); }
+
+/* ---------- canvas ---------- */
+function gcd(a, b) { return b ? gcd(b, a % b) : a; }
+function layoutStage() {
+  const [, w, h] = SIZES[S.size], wrap = $('stageWrap'), st = $('stage');
+  const maxW = Math.max(200, wrap.clientWidth - 24), maxH = 460, r = w / h;
+  const sw = Math.min(maxW, maxH * r), sh = sw / r;
+  st.style.width = sw + 'px'; st.style.height = sh + 'px';
+  const g = gcd(w, h); $('sizeInfo').textContent = `proporzioni ${w / g}:${h / g}`;
+}
+function boxStyle(b) { const [y0, x0, y1, x1] = b; return `left:${x0 / 10}%;top:${y0 / 10}%;width:${(x1 - x0) / 10}%;height:${(y1 - y0) / 10}%`; }
+function renderStage() {
+  $('stage').innerHTML = S.els.map((el, i) => !el.bbox ? '' : `<div class="eb ${el.type === 'text' ? 'text' : ''} ${el.id === S.selected ? 'sel' : ''}" data-id="${el.id}" style="${boxStyle(el.bbox)};z-index:${i + 1}"><span class="tag">E${i + 1} · ${el.type}</span><i class="hd nw" data-c="nw"></i><i class="hd ne" data-c="ne"></i><i class="hd sw" data-c="sw"></i><i class="hd se" data-c="se"></i></div>`).join('');
+  const note = $('armNote');
+  if (S.armed) { const i = S.els.findIndex(e => e.id === S.armed); note.hidden = false; note.textContent = `Disegna sul canvas per posizionare E${i + 1}: trascina per tracciare il riquadro.`; } else note.hidden = true;
+}
+let drag = null;
+function pt(e) { const r = $('stage').getBoundingClientRect(); return {x: clamp((e.clientX - r.left) / r.width * 1000, 0, 1000), y: clamp((e.clientY - r.top) / r.height * 1000, 0, 1000)}; }
+function norm(y0, x0, y1, x1) { return [Math.round(Math.min(y0, y1)), Math.round(Math.min(x0, x1)), Math.round(Math.max(y0, y1)), Math.round(Math.max(x0, x1))]; }
+$('stage').addEventListener('pointerdown', e => {
+  const st = $('stage'), box = e.target.closest('.eb'), h = e.target.closest('.hd');
+  st.setPointerCapture(e.pointerId);
+  const p = pt(e);
+  if (box) {
+    const el = S.els.find(x => x.id === +box.dataset.id);
+    S.selected = el.id; markSel();
+    drag = h ? {mode: 'resize', el, c: h.dataset.c, box} : {mode: 'move', el, box, start: p, orig: el.bbox.slice()};
+  } else {
+    drag = {mode: 'draw', start: p, cur: p};
+    const g = document.createElement('div'); g.className = 'ghost'; g.id = 'ghost'; st.appendChild(g);
+    g.style.cssText = boxStyle([p.y, p.x, p.y, p.x]);
+  }
+});
+$('stage').addEventListener('pointermove', e => {
+  if (!drag) return;
+  const p = pt(e), z = drag.el ? ';z-index:' + (S.els.indexOf(drag.el) + 1) : '';
+  if (drag.mode === 'draw') { drag.cur = p; $('ghost').style.cssText = boxStyle(norm(drag.start.y, drag.start.x, p.y, p.x)); }
+  else if (drag.mode === 'move') {
+    const [y0, x0, y1, x1] = drag.orig, w = x1 - x0, h = y1 - y0;
+    const nx = clamp(x0 + p.x - drag.start.x, 0, 1000 - w), ny = clamp(y0 + p.y - drag.start.y, 0, 1000 - h);
+    drag.el.bbox = [ny, nx, ny + h, nx + w]; drag.box.style.cssText = boxStyle(drag.el.bbox) + z;
+  } else if (drag.mode === 'resize') {
+    let [y0, x0, y1, x1] = drag.el.bbox;
+    if (drag.c.includes('n')) y0 = clamp(p.y, 0, y1 - MIN); else y1 = clamp(p.y, y0 + MIN, 1000);
+    if (drag.c.includes('w')) x0 = clamp(p.x, 0, x1 - MIN); else x1 = clamp(p.x, x0 + MIN, 1000);
+    drag.el.bbox = [y0, x0, y1, x1]; drag.box.style.cssText = boxStyle(drag.el.bbox) + z;
+  }
+});
+function endDrag() {
+  if (!drag) return;
+  const d = drag; drag = null;
+  if (d.mode === 'draw') {
+    const g = $('ghost'); if (g) g.remove();
+    const b = norm(d.start.y, d.start.x, d.cur.y, d.cur.x);
+    if (b[3] - b[1] >= MIN && b[2] - b[0] >= MIN) {
+      if (S.armed) { const el = S.els.find(x => x.id === S.armed); if (el) el.bbox = b; S.selected = S.armed; S.armed = null; }
+      else { const el = {id: S.next++, type: 'obj', desc: '', text: '', bbox: b, colors: [], open: true}; S.els.push(el); S.selected = el.id; }
+    } else if (!S.armed) S.selected = null;
+  } else d.el.bbox = d.el.bbox.map(Math.round);
+  renderStage(); renderEls(); refresh();
+}
+$('stage').addEventListener('pointerup', endDrag);
+$('stage').addEventListener('pointercancel', endDrag);
+function markSel() { document.querySelectorAll('.eb').forEach(b => b.classList.toggle('sel', +b.dataset.id === S.selected)); document.querySelectorAll('.el').forEach(c => c.classList.toggle('sel', +c.dataset.id === S.selected)); }
+$('size').innerHTML = SIZES.map((s, i) => `<option value="${i}">${s[0]}</option>`).join('');
+$('size').onchange = () => { S.size = +$('size').value; layoutStage(); };
+window.addEventListener('resize', layoutStage);
+
+/* ---------- elementi ---------- */
+function excerpt(el) { const s = el.type === 'text' ? (el.text || '(testo vuoto)') : (el.desc || '(nessuna descrizione)'); return s.length > 56 ? s.slice(0, 56) + '…' : s; }
+function renderEls() {
+  $('elCount').textContent = S.els.length;
+  $('els').innerHTML = S.els.map((el, i) => {
+    const typo = el.type === 'text' ? `<div><div class="lbl"><span>Testo e lettering</span></div><select data-typo="${el.id}"><option value="">— scegli per aggiungere alla descrizione —</option>${DATA.typography_text.terms.map(t => `<option value="${esc(t[2])}">${esc(t[1])}</option>`).join('')}</select></div>
+      <div><div class="lbl"><span>Testo (reso verbatim, non passa dall'LLM)</span></div><input type="text" data-f="text" data-id="${el.id}" value="${esc(el.text)}" placeholder="Testo esatto da scrivere nell'immagine"></div>` : '';
+    const body = !el.open ? '' : `<div class="el-b">
+      <div class="seg" role="group" aria-label="Tipo"><button type="button" class="${el.type === 'obj' ? 'on' : ''}" data-type="obj" data-id="${el.id}">Oggetto</button><button type="button" class="${el.type === 'text' ? 'on' : ''}" data-type="text" data-id="${el.id}">Testo</button></div>
+      <div><div class="lbl"><span>Descrizione</span></div><textarea rows="2" data-f="desc" data-id="${el.id}" placeholder="${el.type === 'text' ? 'Come e dove appare (non è il testo che compare)' : "Descrizione dell'oggetto"}">${esc(el.desc)}</textarea><div class="trans etr" data-k="e${el.id}" hidden></div></div>
+      ${typo}
+      <div class="row sp"><span class="bbox">${el.bbox ? '[' + el.bbox.join(', ') + ']' : '— nessuna posizione —'}</span>${!el.bbox || S.armed === el.id ? `<button class="pill" type="button" data-arm="${el.id}">${S.armed === el.id ? 'In attesa…' : 'Disegna'}</button>` : ''}</div>
+      <div><div class="lbl"><span>Colori dell'elemento</span><span class="cap">fino a 5</span></div><div class="sw-row">${swatches(el.colors, 5, 'e' + el.id)}</div></div>
+    </div>`;
+    return `<div class="el ${el.id === S.selected ? 'sel' : ''}" data-id="${el.id}"><div class="el-h" data-toggle="${el.id}"><span class="chev">${el.open ? '▼' : '▶'}</span><span class="tg ${el.type === 'text' ? 'text' : ''}">E${i + 1} · ${el.type === 'text' ? 'testo' : 'oggetto'}</span><span class="ex">${esc(excerpt(el))}</span>${el.bbox ? '' : '<span class="nopos">senza posizione</span>'}<button class="ib" type="button" data-up="${el.id}" ${i === 0 ? 'disabled' : ''} aria-label="Sposta su">↑</button><button class="ib" type="button" data-down="${el.id}" ${i === S.els.length - 1 ? 'disabled' : ''} aria-label="Sposta giù">↓</button><button class="ib del" type="button" data-del="${el.id}" aria-label="Elimina elemento">×</button></div>${body}</div>`;
+  }).join('') || '<div class="hint">Nessun elemento: trascina sul canvas o aggiungine uno senza posizione.</div>';
+  renderTrans();
+}
+function elOf(id) { return S.els.find(e => e.id === +id); }
+$('els').addEventListener('click', e => {
+  const t = e.target;
+  const del = t.closest('[data-del]'), up = t.closest('[data-up]'), down = t.closest('[data-down]'), ty = t.closest('[data-type]'), arm = t.closest('[data-arm]'), tg = t.closest('[data-toggle]');
+  if (del) { const id = +del.dataset.del; S.els = S.els.filter(x => x.id !== id); delete S.llm['e' + id]; if (S.selected === id) S.selected = null; if (S.armed === id) S.armed = null; }
+  else if (up || down) { const id = +(up || down).dataset[up ? 'up' : 'down'], i = S.els.findIndex(x => x.id === id), j = up ? i - 1 : i + 1; if (j >= 0 && j < S.els.length) [S.els[i], S.els[j]] = [S.els[j], S.els[i]]; }
+  else if (ty) { elOf(ty.dataset.id).type = ty.dataset.type; S.selected = +ty.dataset.id; }
+  else if (arm) { const id = +arm.dataset.arm; S.armed = S.armed === id ? null : id; S.selected = id; }
+  else if (tg && !t.closest('button')) { const el = elOf(tg.dataset.toggle); el.open = !el.open; S.selected = el.id; }
+  else return;
+  renderEls(); renderStage(); refresh();
+});
+$('els').addEventListener('input', e => {
+  const t = e.target;
+  if (t.dataset.f) { const el = elOf(t.dataset.id); el[t.dataset.f] = t.value; t.closest('.el').querySelector('.ex').textContent = excerpt(el); refresh(); }
+});
+$('els').addEventListener('change', e => {
+  const t = e.target;
+  if (t.dataset.typo && t.value) { const el = elOf(t.dataset.typo); const base = el.desc.trim().replace(/[,\s]+$/, ''); el.desc = base ? base + ', ' + t.value : t.value; renderEls(); refresh(); }
+});
+$('addEl').onclick = () => { const el = {id: S.next++, type: 'obj', desc: '', text: '', bbox: null, colors: [], open: true}; S.els.push(el); S.selected = el.id; renderEls(); renderStage(); refresh(); };
+
+/* ---------- json ---------- */
+function payload() {
+  const p = S.mode === 'photo', v = {}; fieldDefs().forEach(f => { v[f.key] = valueOf(f); });
+  const style = {aesthetics: v.aesthetics, lighting: v.lighting};
+  if (p) style.photo = v.style;
+  style.medium = v.medium;
+  if (!p) style.art_style = v.style;
+  style.color_palette = S.colors.slice();
+  return {
+    high_level_description: v.hld, style_description: style,
+    compositional_deconstruction: {background: v.bg, elements: S.els.map(el => {
+      const o = {type: el.type}; if (el.bbox) o.bbox = el.bbox.slice(); if (el.type === 'text') o.text = el.text; o.desc = v['e' + el.id]; if (el.colors.length) o.color_palette = el.colors.slice(); return o;
+    })},
+  };
+}
+function jsonText() { return JSON.stringify(payload(), null, 2); }
+function currentJson() { return S.override !== null ? S.override : jsonText(); }
+function refresh() {
+  renderLlmPanel(); renderTrans();
+  if (!$('sheet').hidden && S.override === null) $('jsonText').value = jsonText();
+  $('ovNote').hidden = S.override === null;
+}
+function setStatus(t) { S.status = t; $('status').textContent = t; }
+$('desc').addEventListener('input', e => { S.desc = e.target.value; refresh(); });
+$('bg').addEventListener('input', e => { S.bg = e.target.value; refresh(); });
+$('llmRun').onclick = () => {
+  const targets = fieldDefs().filter(f => f.raw && llmValue(f) === null), done = fieldDefs().filter(f => f.raw && llmValue(f) !== null).length;
+  if (!targets.length) { setStatus('Niente da riscrivere: ogni campo pieno ha già la sua frase.'); return; }
+  targets.forEach(f => { S.llm[f.key] = {k: f.k, text: fake(f)}; });
+  const dropped = S.override !== null; S.override = null;
+  renderEls(); refresh();
+  setStatus(`LLM (simulato): una sola richiesta, ${targets.length} frasi scritte${done ? `, ${done} già aggiornate` : ''}. Il JSON qui sotto usa le frasi.${dropped ? ' Le modifiche a mano al JSON sono state scartate.' : ''}`);
+};
+$('review').onclick = () => { $('jsonText').value = currentJson(); $('sheet').hidden = false; $('ovNote').hidden = S.override === null; };
+$('jsonText').addEventListener('input', e => { const v = e.target.value; S.override = v === jsonText() ? null : v; $('ovNote').hidden = S.override === null; });
+$('jsonClose').onclick = () => { $('sheet').hidden = true; };
+$('jsonReset').onclick = () => { S.override = null; $('jsonText').value = jsonText(); $('ovNote').hidden = true; };
+$('jsonCopy').onclick = () => { const t = $('jsonText'); t.select(); try { navigator.clipboard.writeText(t.value).catch(() => {}); } catch (e) {} };
+$('send').onclick = () => { const t = currentJson(); setStatus(`Inviato alla Generazione (simulato): ${S.override !== null ? 'il JSON modificato a mano' : 'il JSON'}, ${t.length} caratteri, nel campo Prompt. Il negative prompt resta vuoto.`); };
+
+/* ---------- avvio ---------- */
+S.sel.ij_mood_merged = DATA.ij_mood_merged.terms[0][0];
+S.sel.light_source = DATA.light_source.terms[0][0];
+S.sel.film_stock_process = DATA.film_stock_process.terms[0][0];
+$('desc').value = S.desc; $('bg').value = S.bg;
+setMode('photo'); renderPalette(); renderEls(); layoutStage(); renderStage(); refresh();
+</script>
