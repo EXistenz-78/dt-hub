@@ -86,4 +86,30 @@ struct WorkspaceStateTests {
     defaults.set("promptmaster", forKey: WorkspaceState.selectedTabKey)
     #expect(state(defaults).selectedTabID == WorkspaceTab.generationID)
   }
+
+  @Test func selectNextAndPreviousWalkTheBarAndStopAtTheEnds() {
+    let state = state()
+    state.setPluginTabs([promptMaster, sphereLight])
+    state.select(promptMaster.id)
+    state.selectPrevious()
+    #expect(state.selectedTabID == promptMaster.id)
+    state.selectNext()
+    #expect(state.selectedTabID == sphereLight.id)
+    state.selectNext()
+    #expect(state.selectedTabID == WorkspaceTab.controlID)
+    state.selectNext()
+    #expect(state.selectedTabID == WorkspaceTab.generationID)
+    state.selectNext()
+    #expect(state.selectedTabID == WorkspaceTab.generationID)
+    state.selectPrevious()
+    #expect(state.selectedTabID == WorkspaceTab.controlID)
+  }
+
+  @Test func theTabChosenWithTheKeysIsRemembered() {
+    let defaults = UserDefaults(suiteName: "WorkspaceStateTests-\(UUID())")!
+    let state = state(defaults)
+    state.selectPrevious()
+    #expect(state.selectedTabID == WorkspaceTab.controlID)
+    #expect(defaults.string(forKey: WorkspaceState.selectedTabKey) == WorkspaceTab.controlID)
+  }
 }

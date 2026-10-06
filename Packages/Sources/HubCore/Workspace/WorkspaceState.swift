@@ -42,4 +42,16 @@ public final class WorkspaceState {
     selectedTabID = id
     defaults.set(id, forKey: Self.selectedTabKey)
   }
+
+  /// The tab to the right of the selected one (⌘⌥→); the last one stays.
+  public func selectNext() { select(offset: 1) }
+
+  /// The tab to the left of the selected one (⌘⌥←); the first one stays.
+  public func selectPrevious() { select(offset: -1) }
+
+  private func select(offset: Int) {
+    guard let index = tabs.firstIndex(where: { $0.id == selectedTabID }) else { return }
+    let target = min(max(index + offset, 0), tabs.count - 1)
+    select(tabs[target].id)
+  }
 }
