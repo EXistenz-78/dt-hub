@@ -227,6 +227,18 @@ struct DocumentTests {
 
   // MARK: Persistence of the document itself
 
+  @Test func decimalsInAPositionAreRoundedAndNotSplitIntoSeparateNumbers() {
+    #expect(BBox.parse("100.5, 100, 600, 600") == BBox(y0: 101, x0: 100, y1: 600, x1: 600))
+    #expect(BBox.parse("10,5 20 300 400") == nil)  // a decimal comma is a separator: five numbers
+    #expect(BBox.parse("1.2.3 4 5 6") == nil)
+    #expect(BBox.parse("-5, 0, 300, 400") == BBox(y0: 0, x0: 0, y1: 300, x1: 400))  // clamped into the grid
+  }
+
+  @Test func textThatIsNeitherEmptyNorAPositionIsUnreadable() {
+    #expect(!BBox.isUnreadable("") && !BBox.isUnreadable("   ") && !BBox.isUnreadable("100, 100, 600, 600"))
+    #expect(BBox.isUnreadable("100, 100, 110, 110") && BBox.isUnreadable("1, 2, 3") && BBox.isUnreadable("abc"))
+  }
+
   @Test func aDocumentSurvivesBeingEncodedAndDecoded() throws {
     var document = I4Document()
     document.description = "x"

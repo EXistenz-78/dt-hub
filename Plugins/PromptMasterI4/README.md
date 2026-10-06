@@ -8,6 +8,10 @@ si scrivono i testi, si definiscono gli elementi (oggetti e scritte, con il loro
   che spariscono si cancellano); **Shuffle** (al massimo 3 categorie per sezione, una voce ciascuna; Medium e Background una
   sola); le sezioni **Aesthetics**, **Lighting**, **Photo** o **Art style**, **Medium** (categorie e voci, una voce per
   categoria, un solo Medium); la palette (fino a 16 colori); il background (testo e una voce di «Fondale e sfondo»).
+- **Canvas:** un rettangolo con le proporzioni della Generazione (quadrato finché l'app non le dice). Trascina sul vuoto per fare
+  un oggetto (lato minimo 20 su 1000); trascina un riquadro per spostarlo, gli angoli del selezionato per ridimensionarlo; clic
+  sull'etichetta `E1 · obj` per selezionarlo e, se è già selezionato, per farlo diventare testo (e viceversa). Un riquadro disegnato è sempre
+  un elemento nuovo; un elemento senza posizione (aggiunto con i pulsanti) prende un riquadro scrivendone i numeri sulla sua card.
 - **Card destra:** gli elementi, una card ciascuno, chiusa all'inizio (un elemento nuovo si apre da solo): descrizione (il tipo si sceglie
   aggiungendo l'elemento: **Aggiungi oggetto** o **Aggiungi testo**), menu **Text & Lettering** e testo verbatim (per le scritte), posizione `y0, x0, y1, x1` su 0–1000 (lati di
   almeno 20), palette fino a 5 colori, su/giù (l'ordine è l'ordine z), togli. In fondo **Aggiungi oggetto**, **Aggiungi testo**,
@@ -32,7 +36,7 @@ plug-in non scrive mai nessuno dei due. Le copie incorporate e i file di `Data/`
 ## Costruirlo
 
     Plugins/PromptMasterI4/Scripts/build.sh OUT_FOLDER   # fa OUT_FOLDER/PromptMasterI4.dthubplugin
-    cd Plugins/PromptMasterI4 && swift test              # 61 test (I4_RENDER_DIR=cartella salva i PNG del tab)
+    cd Plugins/PromptMasterI4 && swift test              # 88 test (I4_RENDER_DIR=cartella salva i PNG del tab)
 
 Poi si aggiunge in DT Hub › Preferenze › Plug-in e si accende dal menu Plug-in dell'header. Il tab è grigio sulle famiglie
 diverse da `ideogram_4` (e Prompt Master è grigio su `ideogram_4`).
