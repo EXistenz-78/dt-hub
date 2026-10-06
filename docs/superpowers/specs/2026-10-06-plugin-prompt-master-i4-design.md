@@ -1,6 +1,6 @@
 # DT Hub — Plug-in Prompt Master I4 (Ideogram 4)
 
-Data: 6 ottobre 2026 · Stato: approvata; tappa 1 (il JSON) realizzata il 6 ottobre, tappe 2 (canvas) e 3 (LLM) da fare · Estende `2026-10-05-plugin-prompt-master-design.md` (stessi dati, stesso contratto 1, stesso modo di costruire un plug-in) e `2026-10-05-plugin-design-system-design.md` (l'aspetto) · Mockup interattivo di riferimento: `docs/superpowers/mockups/2026-10-06-prompt-master-i4.html` (la stessa pagina, con dati veri e invii simulati).
+Data: 6 ottobre 2026 · Stato: approvata; tappa 1 (il JSON) realizzata il 6 ottobre, tappa 2 (il canvas) realizzata il 6 ottobre, tappa 3 (LLM) da fare · Estende `2026-10-05-plugin-prompt-master-design.md` (stessi dati, stesso contratto 1, stesso modo di costruire un plug-in) e `2026-10-05-plugin-design-system-design.md` (l'aspetto) · Mockup interattivo di riferimento: `docs/superpowers/mockups/2026-10-06-prompt-master-i4.html` (la stessa pagina, con dati veri e invii simulati).
 
 ## 1. Scopo
 
@@ -26,7 +26,7 @@ Fuori: tradurre con altro che non sia l'LLM; reimportare un JSON nei campi; term
 | Tappa | Cosa | Perché in quest'ordine |
 |---|---|---|
 | **1 — Il JSON** | Pacchetto, dati, card sinistra (descrizione, Foto/Arte, Shuffle, quattro sezioni, palette, background), card degli elementi (senza canvas: tipo, testi, palette; la posizione si scrive come numeri `[y0, x0, y1, x1]`), «Rivedi JSON», «Invia». | Il valore sta nel writer ordinato del JSON e nelle liste. Già utilizzabile da solo, senza LLM. |
-| **2 — Il canvas** | Disegno, spostamento, ridimensionamento dei riquadri con le proporzioni della Generazione; «Disegna» per un elemento già creato. | È l'unica parte con gesti e geometria: si prova da sola. |
+| **2 — Il canvas** | Disegno, spostamento, ridimensionamento dei riquadri con le proporzioni della Generazione; il clic sull'etichetta che cambia il tipo. | È l'unica parte con gesti e geometria: si prova da sola. |
 | **3 — L'LLM** | «Scrivi con LLM»: richiesta a tag, stati dei campi, parser, ripiego, master prompt, prova dal vivo. | Dipende dai campi della tappa 1 e dagli elementi della 2. |
 
 Ogni tappa ha il suo piano e il suo merge; questa spec le copre tutte.
@@ -95,11 +95,11 @@ Due colonne, come i tab di DT Hub, con i componenti di `DTHubDesign` (`DSCollaps
 **Destra, in alto — Canvas** (tappa 2). Un rettangolo con **le proporzioni di larghezza × altezza della Generazione** (da `context.parameters`; se mancano, quadrato) che segue la Generazione quando l'utente le cambia. Sulla griglia 0–1000:
 - trascinare sul vuoto crea un elemento `obj` con quel riquadro (se è almeno 20 × 20; altrimenti si scarta);
 - trascinare un riquadro lo sposta (resta dentro il canvas); le quattro maniglie del selezionato lo ridimensionano (lato minimo 20; il lato opposto resta fermo);
-- «Disegna» sulla card di un elemento senza posizione lo arma: il prossimo riquadro valido va a quell'elemento invece di crearne uno nuovo;
-- bordo tratteggiato per gli oggetti, pieno per i testi; etichetta `E{n} · tipo` con `n` la posizione nell'elenco; il selezionato in primo piano.
+- **l'etichetta** (`E1 · obj`, `E2 · text`; `n` è la posizione nell'elenco) sta sopra l'angolo in alto a sinistra del riquadro (dentro, se non c'è posto sopra): **un clic sull'etichetta seleziona il riquadro; se è già selezionato, cambia il tipo, da `obj` a `text` e viceversa** (descrizione, voce Text & Lettering e testo restano); un trascinamento che parte dall'etichetta non fa nulla;
+- bordo tratteggiato per gli oggetti, pieno per i testi; il selezionato in primo piano, con le quattro maniglie e la card evidenziata; un clic sul vuoto toglie la selezione; un clic sulla testata di una card la seleziona;
 Cambiare proporzioni non tocca i riquadri (sono frazioni).
 
-**Destra, in basso — Elementi.** Una card per elemento, **chiusa** all'inizio: etichetta `E{n}`, estratto, ↑ ↓ (riordinano: cambiano z, etichette, ordine nel JSON), **×**. Aperta: descrizione (il tipo, *Oggetto* o *Testo*, non si cambia sulla card: si sceglie con i pulsanti per aggiungere, e con il tag sopra il riquadro nel canvas, tappa 2); per il testo il menu **Text & Lettering** (una voce, 14) e il campo «testo (reso verbatim)»; la riga `[y0, x0, y1, x1]` o «nessuna posizione» con «Disegna»; la palette (fino a 5). Cambiare tipo non cancella nulla. Sotto: **Aggiungi oggetto** e **Aggiungi testo** (creano un elemento senza posizione), **Scrivi con LLM** (§7), **Rivedi JSON**, **Invia**, la riga di stato.
+**Destra, in basso — Elementi.** Una card per elemento, **chiusa** all'inizio: etichetta `E{n}`, estratto, ↑ ↓ (riordinano: cambiano z, etichette, ordine nel JSON), **×**. Aperta: descrizione (il tipo, *Oggetto* o *Testo*, non si cambia sulla card: si sceglie con i pulsanti per aggiungere, e con il tag sopra il riquadro nel canvas, tappa 2); per il testo il menu **Text & Lettering** (una voce, 14) e il campo «testo (reso verbatim)»; la riga `[y0, x0, y1, x1]` o «nessuna posizione» (i numeri si possono scrivere a mano: il riquadro compare nel canvas); la palette (fino a 5). Cambiare tipo non cancella nulla. Sotto: **Aggiungi oggetto** e **Aggiungi testo** (creano un elemento senza posizione), **Scrivi con LLM** (§7), **Rivedi JSON**, **Invia**, la riga di stato.
 
 **Cosa riceve l'LLM.** Una tabella (nel mockup, sotto il canvas) con i campi e il loro stato: *grezzo*, *riscritto*, *da riscrivere* (cambiato dopo l'ultima riscrittura), *vuoto*. Si apre per vedere cosa uscirà.
 
@@ -262,7 +262,7 @@ Le viste: `I4View` (due colonne), `TermSectionsView`, `CanvasView`, `ElementCard
 
 ## 11. Decisioni prese da me (da correggere se non vanno)
 
-- Il tipo dell'elemento non si cambia sulla card (decisione dell'utente, 6 ottobre, per risparmiare spazio): oggi si sceglie solo aggiungendo; col canvas lo cambierà il tag sopra il riquadro.
+- Il tipo dell'elemento non si cambia sulla card (decisione dell'utente, 6 ottobre, per risparmiare spazio): si sceglie aggiungendo l'elemento e, per un elemento con riquadro, si cambia con il clic sull'etichetta del riquadro selezionato. Un elemento senza posizione non ha etichetta: per cambiarne il tipo si toglie e si rifà (decisione dell'utente, 6 ottobre); non c'è un «Disegna» che assegni un riquadro a un elemento già creato: un riquadro disegnato sul canvas è sempre un elemento nuovo.
 - Il codice di Prompt Master si copia, non si condivide.
 - I campi e le categorie per modalità stanno in `ideogram4.json`, non nel codice.
 - Il Mood fuso si calcola all'avvio dal database (nessuna categoria nuova nel file condiviso).
