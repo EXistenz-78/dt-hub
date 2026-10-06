@@ -12,6 +12,9 @@ struct I4ElementsCard: View {
   var body: some View {
     VStack(spacing: 0) {
       DSPanelHeader(icon: "square.on.square.dashed", title: L.text(.elements, italian: state.italian))
+        .overlay(alignment: .trailing) {
+          ClearButton(help: L.text(.clearElements, italian: state.italian), enabled: state.canClearElements) { state.clearElements() }
+        }
       VStack(alignment: .leading, spacing: DS.rowGap) {
         ScrollViewReader { reader in
           ScrollView {
@@ -322,5 +325,23 @@ private struct LLMTable: View {
         .padding(.leading, 15)
       }
     }
+  }
+}
+
+/// The orange cross at the right of a card title: empties the card.
+struct ClearButton: View {
+  let help: String
+  let enabled: Bool
+  let action: () -> Void
+
+  var body: some View {
+    Button(action: action) {
+      Image(systemName: "xmark.circle.fill").font(.system(size: 18)).foregroundStyle(DS.remove)
+    }
+    .buttonStyle(.plain)
+    .padding(.trailing, DS.panelPadding)
+    .help(help)
+    .disabled(!enabled)
+    .opacity(enabled ? 1 : 0.35)
   }
 }

@@ -111,6 +111,25 @@ final class I4State: ObservableObject {
     if selectedElement == id { selectedElement = nil }
   }
 
+  var hasGeneralContent: Bool { document.hasGeneralContent }
+  var hasElements: Bool { !document.elements.isEmpty }
+  var canClearGeneral: Bool { hasGeneralContent && !isWriting }
+  var canClearElements: Bool { hasElements && !isWriting }
+
+  /// Empties the General card. The JSON edited by hand is not touched (its Restore button is where it goes).
+  func clearGeneral() {
+    document.clearGeneral()
+    document.pruneWritten(catalog: catalog)
+  }
+
+  /// Takes every element away, with their selection and their open cards.
+  func clearElements() {
+    document.clearElements()
+    expandedElements = []
+    selectedElement = nil
+    document.pruneWritten(catalog: catalog)
+  }
+
   func toggleExpanded(_ id: Int) { if !expandedElements.insert(id).inserted { expandedElements.remove(id) } }
 
   // MARK: The canvas

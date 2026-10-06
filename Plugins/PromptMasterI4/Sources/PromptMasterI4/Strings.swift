@@ -17,6 +17,7 @@ enum L {
     case reviewJSON, jsonEdited, restore, copy, close, send, sending
     // The language model
     case writeWithLLM, writing, llmTable, stateRaw, stateWritten, stateStale, stateEmpty, writtenCount, writingField
+    case clearGeneral, clearElements
     case failedFields, llmFailed, handEditedDropped, handEditedKept, nothingToWrite
     // What happened
     case sent, sentWithConflicts, notAnswered, missingCategory
@@ -38,7 +39,7 @@ enum L {
   }
 
   private static let en: [Key: String] = [
-    .title: "Ideogram 4", .description: "High level description",
+    .title: "General", .description: "High level description",
     .descriptionPlaceholder: "The whole picture: who or what, doing what, where", .photo: "Photo", .art: "Art",
     .shuffle: "Shuffle", .aesthetics: "Aesthetics", .lighting: "Lighting", .photoStyle: "Photo", .artStyle: "Art style",
     .medium: "Medium", .none: "—", .palette: "Color palette", .addColor: "Add a color", .removeColor: "Remove this color",
@@ -55,6 +56,7 @@ enum L {
     .writeWithLLM: "Write with LLM", .writing: "Writing…", .llmTable: "What the LLM gets", .stateRaw: "raw",
     .stateWritten: "written", .stateStale: "to rewrite", .stateEmpty: "empty",
     .writtenCount: "%d sentence(s) written.", .writingField: "Writing… field %d of %d",
+    .clearGeneral: "Clear the General card", .clearElements: "Remove every element",
     .failedFields: "No sentence for: %@ (the raw text stays).", .llmFailed: "%@",
     .handEditedDropped: "The JSON you edited by hand was replaced.", .handEditedKept: "The JSON you edited while it wrote was kept.", .nothingToWrite: "Every field with something in it already has its sentence.",
     .reviewJSON: "Review JSON", .jsonEdited: "JSON edited by hand", .restore: "Restore from the fields", .copy: "Copy",
@@ -68,7 +70,7 @@ enum L {
   ]
 
   private static let it: [Key: String] = [
-    .title: "Ideogram 4", .description: "High level description",
+    .title: "Generale", .description: "High level description",
     .descriptionPlaceholder: "L'immagine intera: chi o che cosa, che cosa fa, dove", .photo: "Foto", .art: "Arte",
     .shuffle: "Shuffle", .aesthetics: "Aesthetics", .lighting: "Lighting", .photoStyle: "Photo", .artStyle: "Art style",
     .medium: "Medium", .none: "—", .palette: "Palette colori", .addColor: "Aggiungi un colore", .removeColor: "Togli questo colore",
@@ -85,6 +87,7 @@ enum L {
     .writeWithLLM: "Scrivi con LLM", .writing: "Sto scrivendo…", .llmTable: "Cosa riceve l'LLM", .stateRaw: "grezzo",
     .stateWritten: "riscritto", .stateStale: "da riscrivere", .stateEmpty: "vuoto",
     .writtenCount: "%d frasi scritte.", .writingField: "Sto scrivendo… campo %d di %d",
+    .clearGeneral: "Svuota la card Generale", .clearElements: "Togli tutti gli elementi",
     .failedFields: "Nessuna frase per: %@ (resta il testo grezzo).", .llmFailed: "%@",
     .handEditedDropped: "Il JSON modificato a mano è stato sostituito.", .handEditedKept: "Il JSON modificato mentre scriveva è rimasto.", .nothingToWrite: "Ogni campo con qualcosa dentro ha già la sua frase.",
     .reviewJSON: "Rivedi JSON", .jsonEdited: "JSON modificato a mano", .restore: "Ripristina dai campi", .copy: "Copia",
