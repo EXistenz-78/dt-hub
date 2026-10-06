@@ -1,6 +1,6 @@
 # DT Hub — Plug-in Prompt Master I4 (Ideogram 4)
 
-Data: 6 ottobre 2026 · Stato: approvata; tappa 1 (il JSON) realizzata il 6 ottobre, tappa 2 (il canvas) realizzata e unita il 6 ottobre, tappa 3 (LLM) da fare · Estende `2026-10-05-plugin-prompt-master-design.md` (stessi dati, stesso contratto 1, stesso modo di costruire un plug-in) e `2026-10-05-plugin-design-system-design.md` (l'aspetto) · Mockup interattivo di riferimento: `docs/superpowers/mockups/2026-10-06-prompt-master-i4.html` (la stessa pagina, con dati veri e invii simulati).
+Data: 6 ottobre 2026 · Stato: approvata; tappa 1 (il JSON) realizzata il 6 ottobre, tappa 2 (il canvas) realizzata e unita il 6 ottobre, tappa 3 (LLM) realizzata il 6 ottobre · Estende `2026-10-05-plugin-prompt-master-design.md` (stessi dati, stesso contratto 1, stesso modo di costruire un plug-in) e `2026-10-05-plugin-design-system-design.md` (l'aspetto) · Mockup interattivo di riferimento: `docs/superpowers/mockups/2026-10-06-prompt-master-i4.html` (la stessa pagina, con dati veri e invii simulati).
 
 ## 1. Scopo
 
@@ -150,7 +150,7 @@ Framing: Medium shot
 Lens, Focal Length & Focus: Wide aperture f/1.4
 </photo>
 <medium>
-Film Stock & Process: Expired film
+Film Stock & Process: Film grain
 </medium>
 <background>
 la strada bagnata dalla finestra
@@ -161,17 +161,25 @@ un cliente solo al bancone con una tazza
 </element_1>
 <element_2 kind="text">
 Lettering style notes: insegna sopra la finestra
-Text & Lettering: lettering formed from glowing neon tube
-Printed text (never repeat it): OPEN ALL NIGHT
+Text & Lettering: neon sign lettering
 </element_2>
 <already_written>
 lighting: lit by the cold glow of neon signs
 </already_written>
+Reply in exactly this shape, replacing the dots with the sentence:
+<high_level_description>...</high_level_description>
+<aesthetics>...</aesthetics>
+<photo>...</photo>
+<medium>...</medium>
+<background>...</background>
+<element_1>...</element_1>
+<element_2>...</element_2>
 ```
 
 - Nomi dei tag: `high_level_description`, `aesthetics`, `lighting`, `photo` o `art_style`, `medium`, `background`, `element_1` … `element_N`. Il numero è la posizione nell'elenco (1-based). L'attributo `kind` è `object` o `text`.
 - Le righe di voci sono `Categoria: voce` con **la categoria in inglese e la voce in `en`** (il motivo è quello di Prompt Master: «butterfly lighting» senza la categoria diventa farfalle). Più voci della stessa categoria non ci sono (una per categoria).
-- Il testo libero resta nella lingua dell'utente. Il testo verbatim di un elemento `text` si manda **solo come contesto** («Printed text (never repeat it)»); una descrizione vuota e nessuna voce non fanno richiedere l'elemento.
+- Il testo libero resta nella lingua dell'utente. **Le parole che una scritta stampa (il testo verbatim di un elemento `text`) non si mandano mai**: il modello, anche con l'ordine di non farlo, le scrive nella frase; l'app le mette da sé nel JSON. Una descrizione vuota e nessuna voce non fanno richiedere l'elemento.
+- **La forma della risposta** chiude la richiesta (le righe `<tag>...</tag>`, una per ogni campo richiesto): un modello piccolo a cui si dice solo «rispondi con i tag» risponde per alcuni, ne inventa altri o fa di una frase un tag (provato dal vivo con l'8B, §12); con la forma davanti li riempie tutti.
 - Posizioni e dimensioni dei riquadri e i colori delle palette **non** si mandano.
 - `<already_written>` elenca, in sola lettura, le frasi già buone dei campi non richiesti (nome del campo e testo), perché le nuove restino coerenti con esse. Manca se non ce ne sono.
 
@@ -181,43 +189,22 @@ Toglie i blocchi `<think>…</think>` e le recinzioni ```; poi cerca i tag **ric
 
 ## 8. Il master prompt
 
-È il file `system` di `ideogram4.json` (sostituibile). Prima versione, da rivedere alla prova:
+È il file `system` di `ideogram4.json` (sostituibile). È stato provato dal vivo con il modello vero (l'8B dell'utente) e accorciato di conseguenza: la versione lunga con tutti i campi in elenco e il tetto di parole per campo faceva sbagliare i tag più di quella corta. Versione 1.1.0:
 
 ```
-You write short pieces of English text for the fields of a structured image caption. The caption is read by Ideogram 4, an image model trained on captions with a fixed layout. You never write the caption itself: the app puts each piece of text where it belongs, so every piece must make sense on its own.
+You write short English sentences for the fields of a structured image caption read by the image model Ideogram 4. The request has one block for each field to write, wrapped in a tag named after the field. A block holds the user's own words (any language) and/or lines shaped like "Category: term": terms the user picked from a vocabulary; the category says what kind of thing the term is. For example "Lighting Scheme: butterfly lighting" is a way to light a face, not butterflies, and "Art Movement: Pop Art" is a style, not a picture of a pop singer.
 
-WHAT YOU RECEIVE
-The request holds one block for each field to write. The block is wrapped in a tag named after the field: <high_level_description>, <aesthetics>, <lighting>, <photo> or <art_style>, <medium>, <background>, and <element_1> up to <element_N>. A block contains the user's own words, in any language, and/or lines shaped like "Category: term". Those lines are terms the user picked from a vocabulary; the category tells you what kind of thing the term is. For example "Lighting Scheme: butterfly lighting" is a way to light a face, not butterflies, and "Art Movement: Pop Art" is a style, not a picture of a pop singer.
-An <already_written> block may follow. It lists fields that are final. Read it so your new text agrees with it. Never rewrite it and never answer for it.
-An element block has a kind. kind="object" is something that appears in the picture. kind="text" is lettering that appears in the picture; its block may carry a line "Printed text (never repeat it)": that is what the lettering says, given to you only so you know what you are describing.
+Answer with ONE tag for each block of the request, with the same name, in the same order, and ONE English sentence inside each tag. Write nothing else: no JSON, no markdown, no notes, no tags that are not in the request.
 
-WHAT YOU WRITE
-Reply with one tag for each block in the request, with the same names, in the same order. Inside each tag, one piece of English text. Nothing else: no JSON, no markdown, no notes, no extra tags, no tag inside another tag.
+Rules for every sentence:
+1. English only, whatever language the input is in. A complete sentence that stands alone, written as a plain description of the picture: no commands, no keyword lists, no labels, no quotation marks around it.
+2. Use every term of the block with the meaning its category gives it; never drop, soften or contradict one. Add only a few connecting words: invent no new objects, people, places, colors or events. Too much information makes the picture worse.
+3. Stay in the field of the tag. high_level_description (up to 60 words): the whole picture in plain words (who or what, doing what, where); no style, light or camera. aesthetics (35): mood, atmosphere, color harmony, genre, visual effects. lighting (35): source, quality, direction, shadows. photo (35): framing, angle, lens, depth of field, composition. art_style (35): movement, tradition, artists the look recalls. medium (25): material, technique, process. background (40): what lies behind everything else; no foreground subject. element, kind="object" (50): that one thing alone: what it is, looks like, its material, pose, own colors; nothing about the rest of the scene or about where it sits. element, kind="text" (40): the lettering itself: letterforms, material, color, finish; never invent the words it says.
+4. Never write hex codes, sizes, coordinates or position words such as "top left".
+5. high_level_description is the overview of the picture; background and elements are details inside it: add detail, never contradict it, never repeat its sentences, never put into one element what belongs to another. If the user's own words disagree, keep each as written.
+6. <already_written> is context only: stay consistent with it, never answer for it.
 
-RULES FOR EVERY PIECE
-1. English only, whatever language the input is in.
-2. One complete sentence that stands alone (high_level_description may use two). Write it as a plain description of the picture, not as a command and not as a list of keywords.
-3. Be faithful. Every term in the block must show up in the sentence with the meaning its category gives it. The user's own words say what they want; the terms refine it. Never drop a term, soften it, or say the opposite of it.
-4. Stay short. Add at most a few words of connecting detail so the sentence reads naturally. Do not invent new objects, people, places, colors or events. Too much information makes the picture worse.
-5. Stay in your field. Each piece covers only the topic of its own tag (see below). Do not mention anything that belongs to another field, do not repeat what <already_written> says, and never write hex codes, pixel sizes, coordinates, or position words such as "top left" or "in the corner": position is handled elsewhere.
-6. No labels, no quotation marks around the whole piece, no opening such as "This image shows".
-7. The high_level_description is the overview of the picture. The background and the elements are parts of that same picture, seen in detail. Let them add detail inside the overview: never contradict it, never repeat its sentences, and never pull into one element something that belongs to another. If the user's own words disagree with each other, keep each as written and do not settle the matter.
-
-WHAT EACH FIELD COVERS
-- high_level_description (up to 60 words): the whole picture in plain words: who or what is there, what they do, where. No style, no light, no camera.
-- aesthetics (up to 35 words): the overall feeling of the picture: mood, atmosphere, color harmony, genre, visual effects.
-- lighting (up to 35 words): where the light comes from, how it looks, its direction and the shadows it casts.
-- photo (up to 35 words): how the picture was photographed: framing, camera angle, lens, depth of field, composition, photographic genre.
-- art_style (up to 35 words): the art style: movement, tradition, designers or artists the look recalls ("in the style of …"), how it looks.
-- medium (up to 25 words): what the picture is made of or with: the material, technique or process.
-- background (up to 40 words): what lies behind everything else: the setting or backdrop and its depth. No foreground subject.
-- element, kind="object" (up to 50 words): that one thing alone: what it is, what it looks like, materials, pose, its own colors. Nothing about the rest of the scene, nothing about where it sits.
-- element, kind="text" (up to 40 words): the lettering itself: letterforms, material, color, finish, and how it sits with what is around it. Never write, quote or translate the printed words; the app adds them on its own.
-
-If a block holds only a few words, still write a full sentence from them, without adding anything the user did not hint at.
-
-EXAMPLE
-Request:
+Example. Request:
 <aesthetics>
 Mood: melancholic
 Color Harmony: Split-complementary scheme
@@ -225,18 +212,16 @@ Color Harmony: Split-complementary scheme
 <element_1 kind="text">
 Lettering style notes: sopra la porta
 Text & Lettering: hand-painted vintage signage
-Printed text (never repeat it): BAR
 </element_1>
-Reply:
-<aesthetics>
-A melancholic mood, with colors set against each other in a split-complementary scheme.
-</aesthetics>
-<element_1>
-Hand-painted vintage signage with slightly worn letterforms, set above the door.
-</element_1>
+Reply in exactly this shape, replacing the dots with the sentence:
+<aesthetics>...</aesthetics>
+<element_1>...</element_1>
+Answer:
+<aesthetics>A melancholic mood, with colors set against each other in a split-complementary scheme.</aesthetics>
+<element_1>Hand-painted vintage signage with slightly worn letterforms, set above the door.</element_1>
 ```
 
-Il master prompt dichiara l'inglese come unica lingua d'uscita; i limiti di parole sono provvisori e si regolano alla prova. Le fonti sul formato di Ideogram 4 sono la spec vecchia e le didascalie d'esempio; una ricerca online sulle didascalie ben riuscite è un lavoro a parte, come per i master prompt di Prompt Master (§9 di quella spec).
+Il master prompt dichiara l'inglese come unica lingua d'uscita; i limiti di parole per campo sono quelli del testo e si regolano a ogni prova. Le fonti sul formato di Ideogram 4 sono la spec vecchia e le didascalie d'esempio; una ricerca online sulle didascalie ben riuscite è un lavoro a parte, come per i master prompt di Prompt Master (§9 di quella spec).
 
 ## 9. Codice
 
@@ -275,6 +260,10 @@ Le viste: `I4View` (due colonne), `TermSectionsView`, `CanvasView`, `ElementCard
 - L'LLM non riceve posizioni né colori.
 - Il thinking è spento e la temperatura è 0,6.
 - Il negativo vuoto si manda sempre con «Invia».
+- Le parole stampate da una scritta non vanno mai al modello (le riscrive nella frase).
+- Il ripiego si ferma al primo campo che fallisce da solo se anche la richiesta intera aveva fallito (l'app ha detto no due volte di fila: chiedere per ogni campo ripeterebbe solo il no).
+- «Cosa riceve l'LLM» è una riga a tendina nella card Elementi (chiusa, con il numero dei campi da riscrivere), non una card a parte: lo spazio è poco.
+- La regola 7 del master prompt (descrizione generale e dettagli) resta: nella prova A/B con l'8B non cambia la ripetizione tra i campi, e il modello inventa meno dettagli con la regola che senza.
 - Un elemento aggiunto con il pulsante si apre da solo (c'è da scrivere); gli altri partono chiusi.
 - Un testo a mano svuotato non si manda («Invia» si disattiva); si torna ai campi con «Ripristina dai campi».
 - La finestra «Rivedi JSON» usa un campo di testo di AppKit senza sostituzioni (virgolette dritte, niente trattini lunghi): quello di SwiftUI le trasformerebbe e il JSON non sarebbe più valido.
@@ -282,7 +271,7 @@ Le viste: `I4View` (due colonne), `TermSectionsView`, `CanvasView`, `ElementCard
 
 ## 12. Rischi aperti
 
-- **L'LLM generico decide la qualità delle frasi.** Un modello piccolo può non rispettare i tag; per questo il ripiego e il master prompt con un esempio. Si prova con l'8B dell'utente.
+- **L'LLM generico decide la qualità delle frasi.** Provato con l'8B (Qwen3-VL 8B 4 bit, thinking spento, temperatura 0,6): con la forma della risposta in fondo alla richiesta riempie tutti i tag in 24 prove su 24 (da 3 a 12 secondi); senza la forma, su 6 scene, con la sola istruzione «rispondi con i tag» 5 risposte erano incomplete e con un elenco dei tag in fondo 2. Un modello più piccolo non è provato. Qualche frase aggiunge un dettaglio che non c'era (un cacciavite, «dall'alto e dai lati»): il master prompt lo vieta e non sempre basta.
 - **I limiti di parole sono ipotesi.** Ideogram 4 non ha un tetto dichiarato nelle fonti a disposizione; si regolano alla prova.
 - **Il canvas segue la dimensione della Generazione solo quando l'app rimanda `context`.** Valgono le regole di Prompt Master (`PluginContextKey`): da verificare dal vivo cambiando larghezza e altezza a mano.
 - **Il JSON è più lungo di un prompt comune.** Draw Things lo accetta com'è (spec vecchia §17.1); la verifica con un'immagine vera è un passo della prova della tappa 1.

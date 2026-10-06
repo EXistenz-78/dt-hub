@@ -285,3 +285,15 @@ Prima i master prompt davano «lunghezze obiettivo» prese dalle note del vecchi
 - **Se la dimensione del canvas cambia a metà gesto** (finestra ridimensionata, Generazione cambiata) il risultato usa la geometria nuova con punti della vecchia.
 - **Uno scorrimento animato verso la card selezionata** non è provato con più di una dozzina di elementi.
 
+## Rimandi della tappa 3 di Prompt Master I4 (Scrivi con LLM)
+
+- **Provato dal vivo solo con l'8B** (Qwen3-VL 8B 4 bit, thinking spento): 24 prove su 24 con tutti i tag; un modello più piccolo (il 2B) o un altro 8B non sono provati. Il master prompt sta in `ideogram4.json` e si rivede senza ricompilare.
+- **Le frasi aggiungono ogni tanto un dettaglio che non c'era** («con un cacciavite in mano», «dall'alto e dai lati»): il master prompt lo vieta e non sempre basta; con la regola 7 l'8B ne inventa meno, ma non zero.
+- **Le parole stampate da una scritta non si mandano** (il modello le scrive nella frase): la frase di una scritta non sa quanto è lunga la parola né di che lingua è.
+- **Non c'è un modo di scrivere un solo campo** a richiesta (un pulsante per campo): si riscrive tutto quello che è da riscrivere; per rifare un campo già riscritto lo si cambia.
+- **Il ripiego chiede un campo per volta, in sequenza**: con molti campi mancanti dura quanto quelli (3–12 secondi l'uno con l'8B); non c'è annullamento (il contratto non lo prevede).
+- **Una frase arrivata dopo che l'ingresso è cambiato** si salva come da riscrivere (corretto), ma non si dice all'utente che è successo.
+- **Il JSON del ripiego usa la stessa temperatura (0,6)**: due scritture di fila danno frasi diverse.
+- **La tabella «Cosa riceve l'LLM»** mostra i campi in inglese (nomi dei tag) anche con l'interfaccia in italiano.
+- **Il test dal vivo** (`ZZLiveCases`, `ZZCases`) è temporaneo e non si committa: serve il modello su disco.
+
