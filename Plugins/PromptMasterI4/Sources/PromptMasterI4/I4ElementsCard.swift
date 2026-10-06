@@ -21,13 +21,10 @@ struct I4ElementsCard: View {
         }
         .scrollIndicators(.hidden)
         .frame(maxHeight: .infinity)
-        Button { state.addElement() } label: {
-          HStack(spacing: DS.pillIconGap) {
-            Image(systemName: "plus")
-            Text(L.text(.addElement, italian: state.italian))
-          }
+        HStack(spacing: DS.controlGap) {
+          addButton(.obj, key: .addObject, icon: "cube")
+          addButton(.text, key: .addText, icon: "textformat")
         }
-        .buttonStyle(DSPillButtonStyle())
         if state.hasEditedJSON {
           HStack(spacing: 8) {
             Text(L.text(.jsonEdited, italian: state.italian)).font(.caption).foregroundStyle(DS.remove)
@@ -68,6 +65,19 @@ struct I4ElementsCard: View {
     }
     .dsPanel()
     .sheet(isPresented: $reviewing) { JSONSheet(state: state, close: { reviewing = false }) }
+  }
+}
+
+extension I4ElementsCard {
+  /// «Add an object» / «Add a text»: the type of a new element is chosen here, not on its card.
+  fileprivate func addButton(_ type: ElementType, key: L.Key, icon: String) -> some View {
+    Button { state.addElement(type) } label: {
+      HStack(spacing: DS.pillIconGap) {
+        Image(systemName: icon)
+        Text(L.text(key, italian: state.italian))
+      }
+    }
+    .buttonStyle(DSPillButtonStyle())
   }
 }
 
@@ -128,11 +138,6 @@ private struct ElementCard: View {
 
   private var details: some View {
     VStack(alignment: .leading, spacing: 8) {
-      Picker("", selection: binding(\.type)) {
-        Text(L.text(.elementObject, italian: state.italian)).tag(ElementType.obj)
-        Text(L.text(.elementText, italian: state.italian)).tag(ElementType.text)
-      }
-      .pickerStyle(.segmented).labelsHidden().fixedSize()
       NoteField(
         text: binding(\.desc),
         placeholder: L.text(element.type == .text ? .textPlaceholder : .objectPlaceholder, italian: state.italian),

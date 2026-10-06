@@ -81,8 +81,8 @@ final class I4State: ObservableObject {
 
   // MARK: The elements
 
-  func addElement() {
-    let id = document.addElement()
+  func addElement(_ type: ElementType) {
+    let id = document.addElement(type: type)
     expandedElements.insert(id)
   }
 
