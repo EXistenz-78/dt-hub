@@ -20,12 +20,19 @@ struct BBox: Codable, Equatable, Sendable {
     return BBox(y0: a, x0: c, y1: b, x1: d)
   }
 
-  /// Four whole numbers written in any common way (`[10, 20, 300, 400]`, `10 20 300 400`); nil if not four numbers or
-  /// a side is too short.
+  /// Four numbers written in any common way (`[10, 20, 300, 400]`, `10 20 300 400`, `100.5, 10, 300, 400`); decimals are
+  /// rounded. Nil when they are not four numbers, or a side is too short.
   static func parse(_ text: String) -> BBox? {
-    let numbers = text.split(whereSeparator: { !$0.isNumber && $0 != "-" }).compactMap { Int($0) }
-    guard numbers.count == 4 else { return nil }
-    return normalized(y0: numbers[0], x0: numbers[1], y1: numbers[2], x1: numbers[3])
+    let tokens = text.split(whereSeparator: { !$0.isNumber && $0 != "-" && $0 != "." })
+    let numbers = tokens.compactMap { Double($0) }
+    guard numbers.count == 4, tokens.count == 4, numbers.allSatisfy({ $0.isFinite && abs($0) < 1e9 }) else { return nil }
+    let whole = numbers.map { Int($0.rounded()) }
+    return normalized(y0: whole[0], x0: whole[1], y1: whole[2], x1: whole[3])
+  }
+
+  /// Text in a position field that is not empty and still cannot be read as a position.
+  static func isUnreadable(_ text: String) -> Bool {
+    !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && parse(text) == nil
   }
 
   /// The box a position field holds after the user typed `text`: no text, no position; a readable one, that box; anything

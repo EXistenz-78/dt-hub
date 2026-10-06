@@ -262,6 +262,7 @@ Le viste: `I4View` (due colonne), `TermSectionsView`, `CanvasView`, `ElementCard
 
 ## 11. Decisioni prese da me (da correggere se non vanno)
 
+- Il campo posizione tiene un riquadro appena i numeri si leggono (quattro numeri, anche decimali, che si arrotondano; lati di almeno 20) e vuoto vuol dire «nessuna posizione»; un testo che non si legge **non si cancella mai**: resta com'è, con una riga che dice cosa serve, e il riquadro resta quello di prima (dopo la prova dell'utente del 6 ottobre: prima si svuotava senza dire nulla).
 - Il tipo dell'elemento non si cambia sulla card (decisione dell'utente, 6 ottobre, per risparmiare spazio): si sceglie aggiungendo l'elemento e, per un elemento con riquadro, si cambia con il clic sull'etichetta del riquadro selezionato. Un elemento senza posizione non ha etichetta: per cambiarne il tipo si toglie e si rifà (decisione dell'utente, 6 ottobre); non c'è un «Disegna» che assegni un riquadro a un elemento già creato: un riquadro disegnato sul canvas è sempre un elemento nuovo.
 - Il codice di Prompt Master si copia, non si condivide.
 - I campi e le categorie per modalità stanno in `ideogram4.json`, non nel codice.

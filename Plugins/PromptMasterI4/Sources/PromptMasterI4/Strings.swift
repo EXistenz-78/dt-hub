@@ -9,7 +9,7 @@ enum L {
     case none, palette, addColor, removeColor, background, backgroundPlaceholder
     // The elements
     case elements, addObject, addText, objectPlaceholder, textPlaceholder, lettering, printedText
-    case printedTextPlaceholder, position, noPosition, positionPlaceholder, moveUp, moveDown, removeElement
+    case printedTextPlaceholder, position, noPosition, positionPlaceholder, positionInvalid, moveUp, moveDown, removeElement
     case noDescription, emptyText
     // The canvas
     case canvas, generation, canvasHint
@@ -44,6 +44,7 @@ enum L {
     .objectPlaceholder: "Describe the object", .textPlaceholder: "How the lettering looks, not what it says",
     .lettering: "Text & Lettering", .printedText: "Text (rendered as written)", .printedTextPlaceholder: "The words in the picture",
     .position: "Position", .noPosition: "no position", .positionPlaceholder: "y0, x0, y1, x1 (0–1000, sides of at least 20)",
+    .positionInvalid: "Not a position: four numbers from 0 to 1000, each side at least 20 long.",
     .moveUp: "Move up", .moveDown: "Move down", .removeElement: "Remove this element",
     .noDescription: "(no description)", .emptyText: "(no text)",
     .canvas: "Canvas", .generation: "Generation",
@@ -68,6 +69,7 @@ enum L {
     .objectPlaceholder: "Descrivi l'oggetto", .textPlaceholder: "Com'è la scritta, non che cosa dice",
     .lettering: "Text & Lettering", .printedText: "Testo (reso verbatim)", .printedTextPlaceholder: "Le parole che compaiono nell'immagine",
     .position: "Posizione", .noPosition: "nessuna posizione", .positionPlaceholder: "y0, x0, y1, x1 (0–1000, lati di almeno 20)",
+    .positionInvalid: "Non è una posizione: servono quattro numeri da 0 a 1000, con lati lunghi almeno 20.",
     .moveUp: "Sposta su", .moveDown: "Sposta giù", .removeElement: "Togli questo elemento",
     .noDescription: "(nessuna descrizione)", .emptyText: "(testo vuoto)",
     .canvas: "Canvas", .generation: "Generazione",
