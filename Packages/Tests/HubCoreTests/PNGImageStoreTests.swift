@@ -53,4 +53,25 @@ struct PNGImageStoreTests {
     let store = PNGImageStore(folder: URL(fileURLWithPath: "/System/DT Hub test"))
     #expect(throws: ImageStoreError.self) { try store.save(testImage(), job: job, index: 0, date: date) }
   }
+
+  @Test func theElapsedTimeIsSavedInsideAndTheJobStaysTheSame() throws {
+    let store = PNGImageStore(folder: tempFolder())
+    let url = try store.save(testImage(), job: job, index: 0, date: date, elapsed: 41.6)
+    #expect(PNGImageStore.elapsed(in: url) == 41.6)
+    #expect(PNGImageStore.job(in: url) == job)
+  }
+
+  @Test func aFileWithoutTheElapsedTimeHasNone() throws {
+    let store = PNGImageStore(folder: tempFolder())
+    let url = try store.save(testImage(), job: job, index: 0, date: date, elapsed: nil)
+    #expect(PNGImageStore.elapsed(in: url) == nil)
+    #expect(PNGImageStore.job(in: url) == job)
+  }
+
+  @Test func theElapsedTimeIsWrittenAsPlainText() {
+    #expect(ElapsedText.label(41.6) == "42sec")
+    #expect(ElapsedText.label(0.2) == "1sec")
+    #expect(ElapsedText.label(1234) == "1234sec")
+    #expect(ElapsedText.label(nil) == nil)
+  }
 }

@@ -12,6 +12,9 @@ public struct GeneratedImage: Identifiable, Sendable {
   /// nil when saving failed; `saveError` says why.
   public let fileURL: URL?
   public let saveError: String?
+  /// Seconds the image took to make (the time of its generation call, shared by the images of one call);
+  /// nil for a picture saved before the time was kept.
+  public var elapsed: TimeInterval?
   /// True for a picture read back from its file at launch: `image` is a small version of it.
   public var isRestored = false
 }
@@ -91,6 +94,7 @@ public final class GenerationSession {
           try Task.checkCancellation()
           batch = Batch(index: number + 1, count: batches.count)
           phase = .running(step: nil, totalSteps: job.parameters.steps)
+          var began = ContinuousClock.now
           for try await update in backend.generate(job, inputs: inputs) {
             switch update {
             case .progress(let step, let total):
@@ -98,7 +102,10 @@ public final class GenerationSession {
             case .preview(let image):
               preview = image
             case .finished(let images):
-              let saved = await Self.save(images, of: job, in: store)
+              let took = began.duration(to: .now)
+              began = .now
+              let seconds = Double(took.components.seconds) + Double(took.components.attoseconds) / 1e18
+              let saved = await Self.save(images, of: job, elapsed: seconds / Double(max(images.count, 1)), in: store)
               results.insert(contentsOf: saved, at: 0)
               persistHistory()
             }
@@ -150,7 +157,8 @@ public final class GenerationSession {
       let image = PNGImageStore.image(at: url, maxPixel: restoredThumbnailSize)
     else { return nil }
     return GeneratedImage(
-      image: image, job: job, date: entry.date, fileURL: url, saveError: nil, isRestored: true)
+      image: image, job: job, date: entry.date, fileURL: url, saveError: nil, elapsed: PNGImageStore.elapsed(in: url),
+      isRestored: true)
   }
 
   /// Writes the strip's files, newest first, keeping the older entries not read back yet (but not
@@ -205,16 +213,18 @@ public final class GenerationSession {
   /// Encodes and writes the images away from the main actor; an image that cannot be saved
   /// is kept with the reason.
   private nonisolated static func save(
-    _ images: [CGImage], of job: GenerationJob, in store: any ImageStore
+    _ images: [CGImage], of job: GenerationJob, elapsed: TimeInterval, in store: any ImageStore
   ) async -> [GeneratedImage] {
     await Task.detached(priority: .userInitiated) {
       let date = Date()
       return images.enumerated().map { index, image in
         do {
-          let url = try store.save(image, job: job, index: index, date: date)
-          return GeneratedImage(image: reduced(image, to: displayPixels), job: job, date: date, fileURL: url, saveError: nil)
+          let url = try store.save(image, job: job, index: index, date: date, elapsed: elapsed)
+          return GeneratedImage(
+            image: reduced(image, to: displayPixels), job: job, date: date, fileURL: url, saveError: nil,
+            elapsed: elapsed)
         } catch {
-          return GeneratedImage(image: image, job: job, date: date, fileURL: nil, saveError: String(describing: error))
+          return GeneratedImage(image: image, job: job, date: date, fileURL: nil, saveError: String(describing: error), elapsed: elapsed)
         }
       }
     }.value
