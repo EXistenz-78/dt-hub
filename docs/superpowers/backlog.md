@@ -275,3 +275,13 @@ Prima i master prompt davano «lunghezze obiettivo» prese dalle note del vecchi
 - **Un riquadro è sempre dentro la griglia**, ma più grande del canvas visibile non può essere: non c'è zoom.
 - **Un elemento senza posizione non ha etichetta** (decisione dell'utente): il tipo si cambia solo dopo avergli dato i numeri della posizione, oppure lo si toglie e si rifà; non c'è «Disegna».
 
+## Rimandi della revisione della tappa 2 di Prompt Master I4
+
+- **Il ridimensionamento fa saltare l'angolo sul puntatore** (la nuova posizione è quella assoluta del puntatore, non l'angolo di partenza più lo spostamento): premendo una maniglia a 8–12 punti dall'angolo il riquadro si accorcia subito di quel tanto.
+- **Un riquadro selezionato piccolo non si sposta:** sotto circa 17 punti per lato ogni punto è entro 12 punti da un angolo, quindi ogni trascinamento ridimensiona; per spostarlo si toglie prima la selezione. Lo stesso su un canvas molto stretto (rapporto 1:4).
+- **Un gesto annullato dal sistema** (vista tolta a metà, mouse-up perso) lascia lo stato `drag` della vista: il gesto successivo ne riusa modo e punto di partenza. Rimedio: ripartire se `startLocation` cambia, o `@GestureState`.
+- **Con un rapporto 1:4 o 4:1 il canvas è molto stretto o basso** (75 punti di larghezza): le etichette, larghe 70–84 punti, restano attaccate a sinistra e coprono gran parte dei riquadri piccoli.
+- **Un elemento tolto o cambiato di tipo durante un gesto** lascia una selezione su un id che non c'è più: innocuo (gli id non si riusano), non raggiungibile con un solo mouse.
+- **Se la dimensione del canvas cambia a metà gesto** (finestra ridimensionata, Generazione cambiata) il risultato usa la geometria nuova con punti della vecchia.
+- **Uno scorrimento animato verso la card selezionata** non è provato con più di una dozzina di elementi.
+
