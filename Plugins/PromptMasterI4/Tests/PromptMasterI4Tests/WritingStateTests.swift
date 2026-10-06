@@ -53,8 +53,28 @@ struct WritingStateTests {
     let state = state()
     state.document.description = "una scena"
     state.editJSON("{ \"mine\": 1 }")
+    state.beginWriting()
     state.apply(I4Writer.Outcome(phrases: ["description": WrittenPhrase(text: "A scene.", input: state.fields[0].input)], status: "1 sentence(s) written."))
     #expect(!state.hasEditedJSON && state.status == "1 sentence(s) written. The JSON you edited by hand was replaced.")
+  }
+
+  @Test func aJSONEditMadeWhileTheModelWritesIsKeptAndSaid() {
+    let state = state()
+    state.document.description = "una scena"
+    state.editJSON("{ \"first\": 1 }")
+    state.beginWriting()
+    #expect(state.isWriting && !state.canSend)
+    state.editJSON("{ \"first\": 1, \"second\": 2 }")  // the user went on while the model worked
+    state.apply(I4Writer.Outcome(phrases: ["description": WrittenPhrase(text: "A scene.", input: state.fields[0].input)], status: "1 sentence(s) written."))
+    #expect(state.hasEditedJSON && state.jsonText == "{ \"first\": 1, \"second\": 2 }")
+    #expect(state.status == "1 sentence(s) written. The JSON you edited while it wrote was kept.")
+    // Edited for the first time while it wrote: kept too.
+    let other = self.state()
+    other.document.description = "una scena"
+    other.beginWriting()
+    other.editJSON("{ \"late\": 1 }")
+    other.apply(I4Writer.Outcome(phrases: ["description": WrittenPhrase(text: "A scene.", input: other.fields[0].input)], status: "x"))
+    #expect(other.hasEditedJSON)
   }
 
   @Test func ifNothingWasWrittenTheJSONEditedByHandStays() {

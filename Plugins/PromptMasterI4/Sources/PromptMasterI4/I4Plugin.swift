@@ -40,7 +40,7 @@ final class PromptMasterI4Plugin: DTHubPlugin {
     guard state.canWrite, let host else { return }
     let all = state.fields
     let targets = all.filter(\.needsWriting)
-    state.isWriting = true
+    state.beginWriting()
     state.status = L.text(.writing, italian: state.italian)
     let writer = I4Writer(
       ask: { prompt, system, options in await host.askLanguageModelAnswer(prompt, system: system, options: options) },

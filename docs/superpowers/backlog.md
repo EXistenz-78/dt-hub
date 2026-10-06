@@ -297,3 +297,13 @@ Prima i master prompt davano «lunghezze obiettivo» prese dalle note del vecchi
 - **La tabella «Cosa riceve l'LLM»** mostra i campi in inglese (nomi dei tag) anche con l'interfaccia in italiano.
 - **Il test dal vivo** (`ZZLiveCases`, `ZZCases`) è temporaneo e non si committa: serve il modello su disco.
 
+## Rimandi della revisione della tappa 3 di Prompt Master I4
+
+- **Un tag annidato** (`<element_1>A <b>bold</b> cup.</element_1>`) lascia i tag interni nella frase; il testo fuori da una recinzione che non apre la risposta entra nella frase di una risposta senza tag; `&amp;` e `&lt;` non si decodificano.
+- **Il ripiego si ferma solo se anche la richiesta intera è fallita:** se la richiesta intera risponde e poi l'app fallisce (o scade) per ogni campo mancante, si chiede lo stesso ogni campo, fino a 600 secondi ciascuno, senza annullamento e con «Invia» spento.
+- **Le parole in italiano e in inglese si mescolano nella riga di stato:** i campi che falliscono si nominano con i titoli inglesi («Lighting, E1 · obj»), il motivo dell'app è quello dell'app, e «1 frasi scritte» è al plurale; `L.Key.nothingToWrite` non è usata.
+- **La riga dei pulsanti a 340 punti** (la larghezza minima della colonna) va a capo («Rivedi / JSON», «Sto scriven…»): serve circa 380 punti per stare su una riga.
+- **Un modello che copia il contenuto del blocco** («Mood: melancholic») o scambia il contenuto fra i tag non si riconosce.
+- **Dopo 600 secondi di attesa** non si sa se l'app continua a generare: le richieste del ripiego si accodano dietro.
+- **`PromptMasterI4Plugin.write()` non ha un test proprio** (la logica è in `I4Writer` e `I4State`).
+
