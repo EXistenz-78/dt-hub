@@ -37,8 +37,8 @@ struct GenerationCommands: View {
   }
 }
 
-/// ⌘⌥← and ⌘⌥→ step through the tabs. Menu commands, not bare arrow keys: those belong to the text
-/// fields, the sliders and the lists.
+/// ⌃Page Up and ⌃Page Down step through the tabs. Menu commands, not bare arrow keys: those belong to
+/// the text fields, the sliders and the lists.
 struct TabCommands: View {
   let workspace: WorkspaceState
 
@@ -48,13 +48,13 @@ struct TabCommands: View {
     } label: {
       Text("menu.tabs.previous")
     }
-    .keyboardShortcut(.leftArrow, modifiers: [.command, .option])
+    .keyboardShortcut(.pageUp, modifiers: .control)
 
     Button {
       workspace.selectNext()
     } label: {
       Text("menu.tabs.next")
     }
-    .keyboardShortcut(.rightArrow, modifiers: [.command, .option])
+    .keyboardShortcut(.pageDown, modifiers: .control)
   }
 }

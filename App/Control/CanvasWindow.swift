@@ -15,19 +15,14 @@ final class CanvasWindowState {
   var isOpen = false
 }
 
-/// The content of the canvas window: the same card, always open, over the Control tab's store.
+/// The content of the canvas window: the drawing of the Canvas card alone, over the Control tab's store.
 struct CanvasWindowView: View {
   let generation: GenerationController
   @Environment(CanvasWindowState.self) private var state
   @State private var message: String?
 
   var body: some View {
-    GeometryReader { proxy in
-      ScrollView {
-        CanvasStage(generation: generation, report: report, isInOwnWindow: true)
-          .environment(\.controlViewportHeight, proxy.size.height)
-          .padding(20)
-      }
+    CanvasStage(generation: generation, report: report, isInOwnWindow: true)
       .overlay(alignment: .top) {
         if let message {
           HStack(spacing: DS.controlGap) {
@@ -39,18 +34,17 @@ struct CanvasWindowView: View {
           .padding(DS.panelPadding)
           .dsPanel()
           .shadow(color: .black.opacity(0.25), radius: 10, y: 3)
-          .padding(20)
+          .padding(10)
         }
       }
-    }
-    .frame(minWidth: 480, idealWidth: 720, minHeight: 520, idealHeight: 780)
-    .background(DSBackground())
-    .background(DSWindowConfigurator())
-    .tint(DS.accent)
-    // ⌘Z and ⇧⌘Z undo the strokes of the tab's history, as in the tab.
-    .background { undoShortcuts }
-    .onAppear { state.isOpen = true }
-    .onDisappear { state.isOpen = false }
+      .frame(minWidth: 400, idealWidth: 720, minHeight: 400, idealHeight: 780)
+      .background(DSBackground())
+      .background(DSWindowConfigurator())
+      .tint(DS.accent)
+      // ⌘Z and ⇧⌘Z undo the strokes of the tab's history, as in the tab.
+      .background { undoShortcuts }
+      .onAppear { state.isOpen = true }
+      .onDisappear { state.isOpen = false }
   }
 
   private func report(_ message: ControlMessage) {

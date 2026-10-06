@@ -43,10 +43,10 @@ public final class WorkspaceState {
     defaults.set(id, forKey: Self.selectedTabKey)
   }
 
-  /// The tab to the right of the selected one (⌘⌥→); the last one stays.
+  /// The tab to the right of the selected one (⌃Page Down); the last one stays.
   public func selectNext() { select(offset: 1) }
 
-  /// The tab to the left of the selected one (⌘⌥←); the first one stays.
+  /// The tab to the left of the selected one (⌃Page Up); the first one stays.
   public func selectPrevious() { select(offset: -1) }
 
   private func select(offset: Int) {
