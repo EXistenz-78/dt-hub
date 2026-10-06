@@ -12,7 +12,8 @@ final class PromptMasterI4Plugin: DTHubPlugin {
   private var host: DTHubHost?
 
   func makeViewController() -> NSViewController {
-    NSHostingController(rootView: I4View(state: state, send: { [weak self] in self?.send() }))
+    NSHostingController(
+      rootView: I4View(state: state, send: { [weak self] in self?.send() }, write: { [weak self] in self?.write() }))
   }
 
   func start(host: DTHubHost) {
@@ -32,6 +33,23 @@ final class PromptMasterI4Plugin: DTHubPlugin {
       return nil
     default:
       return DTHubMessage.bare("unsupported")
+    }
+  }
+
+  private func write() {
+    guard state.canWrite, let host else { return }
+    let all = state.fields
+    let targets = all.filter(\.needsWriting)
+    state.beginWriting()
+    state.status = L.text(.writing, italian: state.italian)
+    let writer = I4Writer(
+      ask: { prompt, system, options in await host.askLanguageModelAnswer(prompt, system: system, options: options) },
+      italian: state.italian, progress: { [state] in state.status = $0 })
+    let (system, options) = (state.writeSystem, state.writeOptions)
+    Task {
+      let outcome = await writer.write(targets: targets, fields: all, system: system, options: options)
+      state.apply(outcome)
+      state.isWriting = false
     }
   }
 

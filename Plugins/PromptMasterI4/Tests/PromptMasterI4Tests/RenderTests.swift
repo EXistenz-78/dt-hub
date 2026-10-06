@@ -43,12 +43,16 @@ struct RenderTests {
     state.addElement(.obj)
     state.toggleExpanded(state.document.elements[2].id)
     state.update(generationSize: CGSize(width: 1280, height: 832))
+    // One sentence already written, one that went out of date.
+    let fields = state.fields
+    state.document.written["lighting"] = WrittenPhrase(text: "Lit by neon signs.", input: fields.first { $0.id == "lighting" }!.input)
+    state.document.written["description"] = WrittenPhrase(text: "A diner.", input: "old")
     state.select(state.document.elements[0].id)
     return state
   }
 
   private func render(_ state: I4State, dark: Bool, name: String) throws -> NSBitmapImageRep {
-    let view = NSHostingView(rootView: I4View(state: state, send: {}))
+    let view = NSHostingView(rootView: I4View(state: state, send: {}, write: {}))
     view.frame = NSRect(x: 0, y: 0, width: 1180, height: 700)
     let window = NSWindow(contentRect: view.frame, styleMask: [.titled], backing: .buffered, defer: false)
     window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
