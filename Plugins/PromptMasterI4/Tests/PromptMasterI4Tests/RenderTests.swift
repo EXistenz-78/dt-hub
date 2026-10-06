@@ -10,9 +10,14 @@ import Testing
 @MainActor
 @Suite("The tab on screen")
 struct RenderTests {
+  /// A state that reads nothing from the user's folders or preferences: the data built into the plug-in and a memory store.
+  private func freshState() -> I4State {
+    let data = I4Data(database: I4Data.embeddedDatabase, config: I4Data.embeddedConfig, warnings: [])
+    return I4State(data: data, store: I4Store(storage: MemoryStorage()), italian: true)
+  }
+
   private func filledState() -> I4State {
-    let state = I4State(
-      store: I4Store(defaults: UserDefaults(suiteName: "i4-render-\(UUID().uuidString)")!), italian: true)
+    let state = freshState()
     state.active = true
     for id in ["mo_peaceful", "ch_analogous", "ls_neon", "lq_soft_shadows", "fr_medium", "lf_wide_aperture", "fs_film_grain", "bg_blurred"] {
       state.choose(id)
@@ -69,8 +74,7 @@ struct RenderTests {
   }
 
   @Test func theTabIsDrawnInLightAndDarkWithAFilledStateAndAnEmptyOne() throws {
-    let empty = I4State(store: I4Store(defaults: UserDefaults(suiteName: "i4-render-\(UUID().uuidString)")!), italian: true)
-    for (state, label) in [(filledState(), "filled"), (empty, "empty")] {
+    for (state, label) in [(filledState(), "filled"), (freshState(), "empty")] {
       for dark in [false, true] {
         let rep = try render(state, dark: dark, name: "tab-\(label)-\(dark ? "dark" : "light").png")
         #expect(rep.pixelsWide >= 1180 && distinctColors(rep) > 20, "\(label) \(dark)")

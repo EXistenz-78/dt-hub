@@ -6,14 +6,14 @@ import Testing
 @MainActor
 @Suite("The state of the tab")
 struct StateTests {
-  private func defaults() -> UserDefaults { UserDefaults(suiteName: "i4-state-\(UUID().uuidString)")! }
+  private func defaults() -> MemoryStorage { MemoryStorage() }
 
   private func state(
-    defaults: UserDefaults? = nil, data: I4Data = I4Data(database: I4Data.embeddedDatabase, config: I4Data.embeddedConfig, warnings: []),
+    defaults: MemoryStorage? = nil, data: I4Data = I4Data(database: I4Data.embeddedDatabase, config: I4Data.embeddedConfig, warnings: []),
     shuffled: Set<String> = ["fr_closeup", "lq_soft"]
   ) -> I4State {
     let state = I4State(
-      data: data, store: I4Store(defaults: defaults ?? self.defaults()), italian: true, shuffler: { _, _ in shuffled },
+      data: data, store: I4Store(storage: defaults ?? self.defaults()), italian: true, shuffler: { _, _ in shuffled },
       colorMaker: { "#ABCDEF" })
     state.active = true
     return state
@@ -183,4 +183,11 @@ struct StringsTests {
       #expect(placeholders(L.text(key, italian: true)) == placeholders(L.text(key, italian: false)), "\(key)")
     }
   }
+}
+
+/// The storage of the tests: a dictionary, so nothing reaches the user's preferences.
+final class MemoryStorage: I4Storage, @unchecked Sendable {
+  private var values: [String: Data] = [:]
+  func data(forKey key: String) -> Data? { values[key] }
+  func set(_ data: Data, forKey key: String) { values[key] = data }
 }
