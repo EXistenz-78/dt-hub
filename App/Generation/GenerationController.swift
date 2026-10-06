@@ -412,8 +412,9 @@ final class GenerationController {
 
 /// Saves into the Output folder chosen at the moment of saving.
 struct CurrentFolderImageStore: ImageStore {
-  func save(_ image: CGImage, job: GenerationJob, index: Int, date: Date) throws -> URL {
-    try PNGImageStore(folder: OutputSettingsStore().folder()).save(image, job: job, index: index, date: date)
+  func save(_ image: CGImage, job: GenerationJob, index: Int, date: Date, elapsed: TimeInterval?) throws -> URL {
+    try PNGImageStore(folder: OutputSettingsStore().folder()).save(
+      image, job: job, index: index, date: date, elapsed: elapsed)
   }
 }
 

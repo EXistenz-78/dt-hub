@@ -21,6 +21,7 @@ struct DTHubApp: App {
   @State private var generation: GenerationController
   @State private var download: LanguageModelDownloadController
   @State private var plugins: PluginRegistry
+  @State private var canvasWindow = CanvasWindowState()
 
   init() {
     let connection = DrawThingsConnection()
@@ -66,6 +67,7 @@ struct DTHubApp: App {
   var body: some Scene {
     WindowGroup(String(localized: "app.title")) {
       MainWindowView(workspace: workspace, connection: connection, generation: generation, plugins: plugins)
+        .environment(canvasWindow)
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
           generation.saveSessionNow()
         }
@@ -75,10 +77,19 @@ struct DTHubApp: App {
       CommandMenu(String(localized: "tab.generation")) {
         GenerationCommands(generation: generation, connection: connection)
       }
+      CommandMenu(String(localized: "menu.tabs")) {
+        TabCommands(workspace: workspace)
+      }
     }
 
     Window(String(localized: "results.title"), id: ResultsWindow.id) {
       ResultsView(controller: generation, connection: connection)
+    }
+    .windowResizability(.contentMinSize)
+
+    Window(String(localized: "canvas.window.title"), id: CanvasWindow.id) {
+      CanvasWindowView(generation: generation)
+        .environment(canvasWindow)
     }
     .windowResizability(.contentMinSize)
 

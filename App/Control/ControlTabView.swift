@@ -9,6 +9,8 @@ struct ControlTabView: View {
   let generation: GenerationController
   let connection: DrawThingsConnection
   @State private var message: ControlMessage?
+  @Environment(CanvasWindowState.self) private var canvasWindow
+  @Environment(\.openWindow) private var openWindow
   /// The tab itself holds focus, so Edit ▸ Paste (⌘V) reaches `onPasteCommand`.
   @FocusState private var hasFocus: Bool
 
@@ -38,7 +40,16 @@ struct ControlTabView: View {
             ImageCard(generation: generation, connection: connection) { message = $0 }
             MoodboardCard(generation: generation, connection: connection) { message = $0 }
           }
-          CanvasStage(generation: generation) { message = $0 }
+          if canvasWindow.isOpen {
+            CanvasDetachedNote()
+          } else {
+            CanvasStage(
+              generation: generation, report: { message = $0 },
+              detach: {
+                canvasWindow.isOpen = true
+                openWindow(id: CanvasWindow.id)
+              })
+          }
         }
       }
       .padding(.bottom, DS.groupGap)

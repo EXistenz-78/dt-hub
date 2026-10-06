@@ -12,6 +12,10 @@ struct CanvasStage: View {
   let generation: GenerationController
   /// Reports what went wrong while drawing.
   let report: (ControlMessage) -> Void
+  /// Opens the card in its own window; nil in that window itself, which has no such button.
+  var detach: (() -> Void)?
+  /// True in the card's own window: the card is always open there.
+  var isInOwnWindow = false
 
   private enum Mode: Hashable {
     case canvas, draw
@@ -41,10 +45,33 @@ struct CanvasStage: View {
   }
 
   var body: some View {
+    Group {
+      if isInOwnWindow { windowContent } else { card }
+    }
+    .task(id: control.inputs.image?.id) {
+      guard let request = control.previewRequest(maxPixel: 1400) else { return picture = nil }
+      picture = await Task.detached { request.render() }.value
+    }
+    .task(id: key) { drawing.sync(with: control) }
+    .onChange(of: brushColor) { brushRGB = rgb(of: brushColor) }
+  }
+
+  /// The card in the Control tab.
+  private var card: some View {
     DSCollapsibleCard(
       String(localized: "control.stage.title"), systemImage: "rectangle.dashed",
-      isExpanded: generation.cards.binding("control.stage")
+      isExpanded: isInOwnWindow ? .constant(true) : generation.cards.binding("control.stage")
     ) {
+      if let detach {
+        Button(action: detach) {
+          Image(systemName: "arrow.up.forward.square").font(.system(size: 13, weight: .semibold))
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.secondary)
+        .help(String(localized: "control.stage.detach.help"))
+        .accessibilityLabel(String(localized: "control.stage.detach.help"))
+      }
+    } content: {
       VStack(spacing: DS.rowGap) {
         if let image = control.inputs.image {
           modePicker
@@ -63,12 +90,34 @@ struct CanvasStage: View {
         }
       }
     }
-    .task(id: control.inputs.image?.id) {
-      guard let request = control.previewRequest(maxPixel: 1400) else { return picture = nil }
-      picture = await Task.detached { request.render() }.value
+  }
+
+  /// The card's own window: no card, no title, no mode choice, only the drawing. The tools on top, the
+  /// settings of the mask at the bottom, and the picture as large as what is left allows (the window may
+  /// be moved to an iPad with Sidecar and drawn on with the Pencil).
+  private var windowContent: some View {
+    VStack(spacing: DS.controlGap) {
+      if let image = control.inputs.image {
+        tools
+        GeometryReader { proxy in
+          let ratio = Double(canvasWidth) / Double(max(canvasHeight, 1))
+          let width = min(proxy.size.width, proxy.size.height * ratio)
+          painting(image: image, crop: cropRect(of: image), size: CGSize(width: width, height: width / ratio))
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        if tool != .brush || control.inputs.mask != nil { maskSettings }
+      } else {
+        empty
+      }
     }
-    .task(id: key) { drawing.sync(with: control) }
-    .onChange(of: brushColor) { brushRGB = rgb(of: brushColor) }
+    .padding(10)
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+  }
+
+  private func cropRect(of image: ReferenceImage) -> CGRect {
+    FramingMath.cropRect(
+      imageWidth: image.pixelWidth, imageHeight: image.pixelHeight, canvasWidth: canvasWidth,
+      canvasHeight: canvasHeight, framing: control.inputs.framing)
   }
 
   /// The two modes, as wide as the card: the top of the card's hierarchy.
@@ -457,9 +506,7 @@ struct CanvasStage: View {
   // MARK: Draw mode: painting
 
   private func drawArea(for image: ReferenceImage) -> some View {
-    let crop = FramingMath.cropRect(
-      imageWidth: image.pixelWidth, imageHeight: image.pixelHeight, canvasWidth: canvasWidth,
-      canvasHeight: canvasHeight, framing: control.inputs.framing)
+    let crop = cropRect(of: image)
     return sized(ratio: Double(canvasWidth) / Double(max(canvasHeight, 1))) {
       GeometryReader { geometry in
         painting(image: image, crop: crop, size: geometry.size)
