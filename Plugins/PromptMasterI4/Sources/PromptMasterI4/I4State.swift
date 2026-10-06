@@ -1,3 +1,4 @@
+import DTHubPluginKit
 import Foundation
 import SwiftUI
 
@@ -19,6 +20,10 @@ final class I4State: ObservableObject {
   @Published var expandedElements: Set<Int> { didSet { persist() } }
   @Published var status = ""
   @Published var isSending = false
+  /// «Write with LLM» is running.
+  @Published var isWriting = false
+  /// The JSON edited by hand when the writing began: an edit made after that is the user's and is kept.
+  private var editedAtStart: String?
   @Published var active = false
   /// The element selected on the canvas or in the list (view state: not remembered).
   @Published var selectedElement: Int?
@@ -106,6 +111,25 @@ final class I4State: ObservableObject {
     if selectedElement == id { selectedElement = nil }
   }
 
+  var hasGeneralContent: Bool { document.hasGeneralContent }
+  var hasElements: Bool { !document.elements.isEmpty }
+  var canClearGeneral: Bool { hasGeneralContent && !isWriting }
+  var canClearElements: Bool { hasElements && !isWriting }
+
+  /// Empties the General card. The JSON edited by hand is not touched (its Restore button is where it goes).
+  func clearGeneral() {
+    document.clearGeneral()
+    document.pruneWritten(catalog: catalog)
+  }
+
+  /// Takes every element away, with their selection and their open cards.
+  func clearElements() {
+    document.clearElements()
+    expandedElements = []
+    selectedElement = nil
+    document.pruneWritten(catalog: catalog)
+  }
+
   func toggleExpanded(_ id: Int) { if !expandedElements.insert(id).inserted { expandedElements.remove(id) } }
 
   // MARK: The canvas
@@ -154,7 +178,48 @@ final class I4State: ObservableObject {
   func restoreJSON() { editedJSON = nil }
 
   /// The plug-in is on, nothing is being sent and there is something to send (a text emptied by hand sends nothing).
-  var canSend: Bool { active && !isSending && !jsonText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+  var canSend: Bool { active && !isSending && !isWriting && !jsonText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+
+  // MARK: The language model
+
+  /// Every field with its state, for the table and the request.
+  var fields: [I4FieldInfo] { document.fields(catalog: catalog) }
+  var fieldsToWrite: [I4FieldInfo] { fields.filter(\.needsWriting) }
+  var canWrite: Bool { active && !isWriting && !isSending && !fieldsToWrite.isEmpty }
+
+  var writeSystem: String { data.config.system }
+  var writeOptions: DTHubLLMOptions {
+    let settings = data.config.options
+    return DTHubLLMOptions(
+      temperature: settings.temperature, maxTokens: settings.maxTokens, thinking: settings.thinking, timeout: settings.timeout)
+  }
+
+  /// The writing begins: the buttons are off and the hand-edited JSON, if any, is noted.
+  func beginWriting() {
+    isWriting = true
+    editedAtStart = editedJSON
+  }
+
+  /// Keeps the sentences that came back, throws away those of fields that are gone, and, when there is something new, the
+  /// JSON edited by hand (which would hide it). Nothing is thrown away when nothing was written.
+  func apply(_ outcome: I4Writer.Outcome) {
+    guard !outcome.phrases.isEmpty else {
+      status = outcome.status
+      return
+    }
+    document.written.merge(outcome.phrases) { _, new in new }
+    document.pruneWritten(catalog: catalog)
+    var lines = [outcome.status]
+    if editedJSON != nil {
+      if editedJSON == editedAtStart {
+        editedJSON = nil
+        lines.append(L.text(.handEditedDropped, italian: italian))
+      } else {
+        lines.append(L.text(.handEditedKept, italian: italian))
+      }
+    }
+    status = lines.filter { !$0.isEmpty }.joined(separator: " ")
+  }
 
   private func persist() {
     store.save(

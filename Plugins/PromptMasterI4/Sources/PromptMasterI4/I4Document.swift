@@ -29,6 +29,23 @@ struct I4Document: Codable, Equatable, Sendable {
   var background = ""
   var elements: [I4Element] = []
   var nextElementID = 1
+  /// The sentences a language model wrote, by field (`I4FieldInfo.id`), each with the input it was written for.
+  var written: [String: WrittenPhrase] = [:]
+
+  init() {}
+
+  /// A session saved before the language model existed has no `written`: it reads as empty.
+  init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    description = try container.decode(String.self, forKey: .description)
+    mode = try container.decode(StyleMode.self, forKey: .mode)
+    selection = try container.decode(Set<String>.self, forKey: .selection)
+    colors = try container.decode([String].self, forKey: .colors)
+    background = try container.decode(String.self, forKey: .background)
+    elements = try container.decode([I4Element].self, forKey: .elements)
+    nextElementID = try container.decode(Int.self, forKey: .nextElementID)
+    written = try container.decodeIfPresent([String: WrittenPhrase].self, forKey: .written) ?? [:]
+  }
 
   static func join(_ parts: [String]) -> String {
     parts.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }.joined(separator: ", ")
@@ -121,6 +138,21 @@ struct I4Document: Codable, Equatable, Sendable {
 
   mutating func removeElement(_ id: Int) { elements.removeAll { $0.id == id } }
 
+  /// Every element goes; the ids already given are never given again.
+  mutating func clearElements() { elements.removeAll() }
+
+  /// The General card goes empty: the description, the chosen terms, the palette and the background. The mode stays.
+  mutating func clearGeneral() {
+    description = ""
+    selection = []
+    colors = []
+    background = ""
+  }
+
+  var hasGeneralContent: Bool {
+    !description.isEmpty || !selection.isEmpty || !colors.isEmpty || !background.isEmpty
+  }
+
   /// Moves an element one place up (-1) or down (+1) in the list: the order is the stacking order of the caption.
   mutating func moveElement(_ id: Int, by step: Int) {
     guard let index = elements.firstIndex(where: { $0.id == id }), elements.indices.contains(index + step) else { return }
@@ -148,16 +180,18 @@ struct I4Document: Codable, Equatable, Sendable {
 
   // MARK: The caption
 
-  /// The caption with the raw texts: the user's words and the English names of the chosen terms.
+  /// The caption: for each field the sentence the language model wrote, when the input it was written for is still the
+  /// current one, and otherwise the raw text (the user's words and the English names of the chosen terms).
   func caption(catalog: I4Catalog) -> I4Caption {
-    I4Caption(
-      description: description.trimmingCharacters(in: .whitespacesAndNewlines),
-      aesthetics: rawText(.aesthetics, catalog: catalog), lighting: rawText(.lighting, catalog: catalog),
-      style: rawText(.style, catalog: catalog), medium: rawText(.medium, catalog: catalog), mode: mode, colors: colors,
-      background: rawBackground(catalog: catalog),
+    let values = Dictionary(uniqueKeysWithValues: fields(catalog: catalog).map { ($0.id, $0.value) })
+    return I4Caption(
+      description: values[I4FieldInfo.descriptionID] ?? "", aesthetics: values[I4Field.aesthetics.rawValue] ?? "",
+      lighting: values[I4Field.lighting.rawValue] ?? "", style: values[I4Field.style.rawValue] ?? "",
+      medium: values[I4Field.medium.rawValue] ?? "", mode: mode, colors: colors,
+      background: values[I4Field.background.rawValue] ?? "",
       elements: elements.map {
         I4Caption.Element(
-          type: $0.type, bbox: $0.bbox, text: $0.text, desc: $0.rawDescription(catalog: catalog), colors: $0.colors)
+          type: $0.type, bbox: $0.bbox, text: $0.text, desc: values[I4FieldInfo.elementID($0.id)] ?? "", colors: $0.colors)
       })
   }
 }
