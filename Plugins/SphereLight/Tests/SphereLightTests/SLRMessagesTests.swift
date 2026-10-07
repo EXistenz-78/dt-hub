@@ -6,6 +6,12 @@ import Testing
 struct SLRMessagesTests {
   private func steps(_ pipeline: [String: Any]) -> [[String: Any]] { pipeline["steps"] as? [[String: Any]] ?? [] }
 
+  /// The sun-direction LoRA is made for the 9B and works on the 4B too (less well): both klein sizes switch the plug-in on.
+  @MainActor @Test func theTabIsAvailableOnBothKleinSizes() {
+    #expect(SphereLightPlugin.families == ["flux2_9b", "flux2_4b"])
+    #expect(SphereLightPlugin().manifest.families == SphereLightPlugin.families)
+  }
+
   @Test func thePresetsCarryTheAcronymOfThePlugin() {
     let names = SLRMessages.presets().compactMap { $0["name"] as? String }
     #expect(names == ["SLR · Overcast", "SLR · Match the sun"])
