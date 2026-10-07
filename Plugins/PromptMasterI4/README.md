@@ -1,48 +1,53 @@
 # Prompt Master I4
 
-Un plug-in di DT Hub per **Ideogram 4** (`ideogram_4`): compone la didascalia JSON a ordine fisso che il modello ha visto in
-addestramento e la manda nel campo Prompt della Generazione. Si scelgono voci dal database dei termini (una per categoria),
-si scrivono i testi, si definiscono gli elementi (oggetti e scritte, con il loro riquadro e i loro colori).
+> **Works with:** **Ideogram 4** only (`ideogram_4`).
+> On any other family the plug-in is switched off and its tab is hidden (and [Prompt Master](../PromptMaster/README.md) is switched off on Ideogram 4).
 
-- **Card sinistra:** la descrizione generale (`high_level_description`); **Foto / Arte** (cambiando, le voci delle categorie
-  che spariscono si cancellano); **Shuffle** (al massimo 3 categorie per sezione, una voce ciascuna; Medium e Background una
-  sola); le sezioni **Aesthetics**, **Lighting**, **Photo** o **Art style**, **Medium** (categorie e voci, una voce per
-  categoria, un solo Medium); la palette (fino a 16 colori); il background (testo e una voce di «Fondale e sfondo»).
-- **Canvas:** un rettangolo con le proporzioni della Generazione (quadrato finché l'app non le dice). Trascina sul vuoto per fare
-  un oggetto (lato minimo 20 su 1000); trascina un riquadro per spostarlo, gli angoli del selezionato per ridimensionarlo; clic
-  sull'etichetta `E1 · obj` per selezionarlo e, se è già selezionato, per farlo diventare testo (e viceversa). Un riquadro disegnato è sempre
-  un elemento nuovo; un elemento senza posizione (aggiunto con i pulsanti) prende un riquadro scrivendone i numeri sulla sua card.
-- **Scrivi con LLM:** manda al modello linguistico scelto nell'app **una sola richiesta** con un blocco a tag per ogni campo da
-  riscrivere (descrizione, Aesthetics, Lighting, Photo/Art style, Medium, Background, ogni elemento) e rimette ogni frase inglese al
-  suo posto nel JSON. Un campo è *da riscrivere* se ha qualcosa dentro e non ha una frase, o è cambiato dopo l'ultima: gli altri non
-  si rigenerano. Se la risposta non ha la frase di un campo, per quel campo parte una richiesta a parte. Le parole che una scritta
-  stampa, le posizioni e i colori non vanno mai al modello. «Cosa riceve l'LLM» (nella card Elementi) mostra ogni campo con il suo
-  stato (grezzo, riscritto, da riscrivere, vuoto). Una scrittura riuscita sostituisce il JSON modificato a mano.
-- **Card destra:** gli elementi, una card ciascuno, chiusa all'inizio (un elemento nuovo si apre da solo): descrizione (il tipo si sceglie
-  aggiungendo l'elemento: **Aggiungi oggetto** o **Aggiungi testo**), menu **Text & Lettering** e testo verbatim (per le scritte), posizione `y0, x0, y1, x1` su 0–1000 (lati di
-  almeno 20), palette fino a 5 colori, su/giù (l'ordine è l'ordine z), togli. In fondo **Aggiungi oggetto**, **Aggiungi testo**,
-  **Rivedi JSON** e **Invia**.
-- **Rivedi JSON:** il testo del JSON, copiabile e modificabile a mano; è quello che «Invia» manda finché non si preme
-  «Ripristina dai campi». **Invia** mette il JSON nel Prompt e svuota il negativo.
-- Il JSON ha le chiavi nell'ordine dello schema: `photo` PRIMA di `medium`, `art_style` DOPO; senza `aspect_ratio`. Finché non
-  si usa l'LLM le voci entrano con il loro nome inglese (`en`) e i testi come sono stati scritti.
+A DT Hub plug-in for **Ideogram 4**: it composes the fixed-order JSON caption the model saw during training and sends it to the
+Prompt field of the Generation tab. You pick entries from the terms database (one per category), write the texts, and define the
+elements (objects and lettering, with their boxes and colours).
 
-## I dati
+![Prompt Master I4](../../docs/images/prompt-master-i4.png)
 
-| File | Dove | Chi lo scrive |
+- **Left card:** the general description (`high_level_description`); **Photo / Art** (when you switch, the entries of the
+  categories that disappear are cleared); **Shuffle** (at most 3 categories per section, one entry each; Medium and Background
+  just one); the **Aesthetics**, **Lighting**, **Photo** or **Art style**, and **Medium** sections (categories and entries, one entry
+  per category, a single Medium); the palette (up to 16 colours); the background (a text and one entry of "Background Setup").
+- **Canvas:** a rectangle with the proportions of the Generation tab (square until the app tells them). Drag on the empty canvas to
+  make an object (minimum side 20 out of 1000); drag a box to move it, the corners of the selected one to resize it; click the
+  `E1 · obj` tag to select a box and, if it is already selected, to turn it into text (and back). A box you draw is always a new
+  element; an element without a position (added with the buttons) gets a box when you type the numbers on its card.
+- **Write with LLM:** sends the language model chosen in the app **a single request** with a tagged block for every field to
+  rewrite (description, Aesthetics, Lighting, Photo/Art style, Medium, Background, every element) and puts each English sentence
+  back in its place in the JSON. A field *needs rewriting* if it has something in it and no sentence yet, or it changed since the
+  last one: the others are not regenerated. If the answer lacks the sentence of a field, that field gets a request of its own. The
+  words a lettering prints, the positions and the colours never go to the model. "What the LLM gets" (in the Elements card) shows
+  every field with its state (raw, rewritten, needs rewriting, empty). A successful write replaces a JSON you edited by hand.
+- **Right card:** the elements, one card each, closed at first (a new element opens by itself): description (the type is chosen by
+  adding the element: **Add an object** or **Add a text**), the **Text & Lettering** menu and the verbatim text (for lettering), the
+  position `y0, x0, y1, x1` on 0–1000 (sides of at least 20), a palette of up to 5 colours, up/down (the order is the z-order),
+  remove. At the bottom: **Add an object**, **Add a text**, **Review JSON** and **Send**.
+- **Review JSON:** the text of the JSON, copyable and editable by hand; it is what **Send** sends until you press "Restore from the
+  fields". **Send** puts the JSON in the Prompt and empties the negative prompt.
+- The JSON keys follow the order of the schema: `photo` BEFORE `medium`, `art_style` AFTER; no `aspect_ratio`. Until the LLM is
+  used, entries go in with their English name (`en`) and the texts as they were written.
+
+## Data
+
+| File | Where | Written by |
 |---|---|---|
-| `prompt-database.json` | `~/Library/Application Support/DT Hub/Data/` (lo stesso di Prompt Master) | tu, per aggiornarlo |
-| `ideogram4.json` | `…/Data/prompt-master/` | tu: quali categorie alimentano ogni campo, le impostazioni dell'LLM, il master prompt (versione 1.1.0, provata con l'8B) |
+| `prompt-database.json` | `~/Library/Application Support/DT Hub/Data/` (the same as Prompt Master's) | you, to update it |
+| `ideogram4.json` | `…/Data/prompt-master/` | you: which categories feed each field, the LLM settings, the master prompt (version 1.1.0, tried with the 8B model) |
 
-Vale il file se esiste, si legge, ha `schema` 1, nessun id ripetuto e una `version` non più vecchia di quella incorporata;
-altrimenti vale la copia incorporata (e se il file non si legge, ha un layout sconosciuto o usa lo stesso id due volte la riga di stato lo dice; un file più vecchio si ignora senza dirlo). Il
-plug-in non scrive mai nessuno dei due. Le copie incorporate e i file di `Data/` si rigenerano con `Scripts/make-i4-data.py`
-(il database si copia da `Plugins/PromptMaster/Data/`, che non viene modificato; un test controlla che siano uguali).
+A file is used if it exists, can be read, has `schema` 1, no repeated id and a `version` not older than the embedded one;
+otherwise the embedded copy is used (and if the file cannot be read, has an unknown layout or uses the same id twice, the status
+line says so; an older file is ignored without a word). The plug-in never writes either of them. The embedded copies and the files
+in `Data/` are regenerated with `Scripts/make-i4-data.py` (the database is copied from `Plugins/PromptMaster/Data/`, which is not
+modified; a test checks that they are equal).
 
-## Costruirlo
+## Install and build
 
-    Plugins/PromptMasterI4/Scripts/build.sh OUT_FOLDER   # fa OUT_FOLDER/PromptMasterI4.dthubplugin
-    cd Plugins/PromptMasterI4 && swift test              # 140 test (I4_RENDER_DIR=cartella salva i PNG del tab)
+Add the `.dthubplugin` bundle in DT Hub › Preferences › Plug-ins (**Add…**), then restart the app. To build the bundle yourself:
 
-Poi si aggiunge in DT Hub › Preferenze › Plug-in e si accende dal menu Plug-in dell'header. Il tab è grigio sulle famiglie
-diverse da `ideogram_4` (e Prompt Master è grigio su `ideogram_4`).
+    Plugins/PromptMasterI4/Scripts/build.sh OUT_FOLDER   # makes OUT_FOLDER/PromptMasterI4.dthubplugin
+    cd Plugins/PromptMasterI4 && swift test              # the plug-in's tests (I4_RENDER_DIR=folder saves PNGs of the tab)

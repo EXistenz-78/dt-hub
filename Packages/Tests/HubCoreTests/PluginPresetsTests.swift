@@ -117,4 +117,19 @@ struct PluginPresetsRoutingTests {
     #expect(try await send(#"{"type":"presets","presets":[{"name":"One"}]}"#, loader)["type"] as? String == "error")
     #expect(presets.names.isEmpty)
   }
+
+  @Test func aLoRAOfAPluginPresetKeepsItsWeightAndItsTriggerWord() throws {
+    let json = #"""
+      {"type": "presets", "presets": [{"name": "SMP · A", "fields": {"prompt": "go"},
+        "loras": [{"file": "sun.ckpt", "weight": 1.0, "trigger": "match the sun"}]}]}
+      """#
+    let presets = try #require(PluginPresets(message: Data(json.utf8))).presets
+    let lora = try #require(presets.first?.parameters.loras.first)
+    #expect(lora.file == "sun.ckpt" && lora.weight == 1.0 && lora.trigger == "match the sun")
+    // On the tab the trigger is the preset's own: the catalog (which says something else) fills in nothing.
+    let catalog = ModelCatalog(
+      models: [], loras: [CatalogLoRA(file: "sun.ckpt", name: "Sun", family: "flux2_9b", trigger: "from the catalog")], fileCount: 1)
+    let load = PresetLoad.of(try #require(presets.first), current: GenerationFields(), catalog: catalog)
+    #expect(load.parameters.loras.first?.trigger == "match the sun")
+  }
 }

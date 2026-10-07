@@ -21,7 +21,7 @@
 ## Global Constraints
 
 - **Repository e dipendenze:**
-  - radice `/Users/existenz/Software developement/DT Hub` (percorsi tra virgolette);
+  - radice `<repo>` (percorsi tra virgolette);
   - branch `m6-servizio-llm` da `main`;
   - macOS 26, Swift 6, Xcode 27;
   - solo `LLMBridge` importa MLX e Hugging Face; HubCore usa il modello solo tramite `LanguageModelService`.
@@ -74,7 +74,7 @@
 - [ ] **Step 1: Creare il branch**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git switch main && git switch -c m6-servizio-llm
+cd "<repo>" && git switch main && git switch -c m6-servizio-llm
 ```
 
 - [ ] **Step 2: Verificare il prerequisito**
@@ -195,7 +195,7 @@ private struct TokenizerBridge: MLXLMCommon.Tokenizer {
 - [ ] **Step 5: Collegare il prodotto all'app con lo script**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && python3 - <<'EOF'
+cd "<repo>" && python3 - <<'EOF'
 p = 'DTHub.xcodeproj/project.pbxproj'
 s = open(p).read()
 pairs = [
@@ -249,13 +249,13 @@ Sostituire in `README.md` la riga `- Requisiti: macOS 26, Apple Silicon, Xcode 2
 
 - [ ] **Step 7: Risolvere, compilare e provare**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift package resolve 2>&1 | tail -2; swift test 2>&1 | grep -E "error:|Test run with" | grep -v started; cd .. && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"; find build -name "default.metallib" | head -2`
+Run: `cd "<repo>/Packages" && swift package resolve 2>&1 | tail -2; swift test 2>&1 | grep -E "error:|Test run with" | grep -v started; cd .. && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"; find build -name "default.metallib" | head -2`
 Expected: i test di prima passano (HubKit 44, HubCore 148, DTBridge 47, Catalog 6); `** BUILD SUCCEEDED **`; compare `default.metallib` nel pacchetto dell'app. La prima compilazione con MLX richiede qualche minuto.
 
 - [ ] **Step 8: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages DTHub.xcodeproj README.md && git commit -m "feat: dipendenze MLX e modulo LLMBridge collegato all'app
+cd "<repo>" && git add Packages DTHub.xcodeproj README.md && git commit -m "feat: dipendenze MLX e modulo LLMBridge collegato all'app
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -300,7 +300,7 @@ struct LanguageModelContractTests {
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter HubKitTests 2>&1 | grep -E "error:" | head -2`
+Run: `cd "<repo>/Packages" && swift test --filter HubKitTests 2>&1 | grep -E "error:" | head -2`
 Expected: `cannot find 'LanguageModelDescriptor' in scope`.
 
 - [ ] **Step 3: Creare `Packages/Sources/HubKit/Language/LanguageModel.swift`**
@@ -373,13 +373,13 @@ public enum RecommendedLanguageModel {
 
 - [ ] **Step 4: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\\(|Test run with" | grep -v started`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\\(|Test run with" | grep -v started`
 Expected: HubKit `46 tests … passed`.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: contratto del modello linguistico (servizio, scaricamento, errori)
+cd "<repo>" && git add Packages && git commit -m "feat: contratto del modello linguistico (servizio, scaricamento, errori)
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -701,7 +701,7 @@ final class MutableMemory: @unchecked Sendable {
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter HubCoreTests 2>&1 | grep -E "error:" | head -2`
+Run: `cd "<repo>/Packages" && swift test --filter HubCoreTests 2>&1 | grep -E "error:" | head -2`
 Expected: `cannot find 'LanguageModelScanner' in scope`.
 
 - [ ] **Step 3: Creare `Packages/Sources/HubCore/Language/LanguageModelScanner.swift`**
@@ -1038,13 +1038,13 @@ public final class LanguageModelManager {
 
 - [ ] **Step 6: Verificare che passino (tre volte: ci sono test con tempi)**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && for i in 1 2 3; do swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\\(|Test run with" | grep -v started | tr '\n' ' '; echo; done`
+Run: `cd "<repo>/Packages" && for i in 1 2 3; do swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\\(|Test run with" | grep -v started | tr '\n' ' '; echo; done`
 Expected: HubCore `168 tests … passed` ogni volta (148 + 20); totale 46 + 168 + 47 + 6 = 267.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: LLM in HubCore — ricerca dei modelli, impostazioni di memoria, gestore con scarico al Run e per inattività
+cd "<repo>" && git add Packages && git commit -m "feat: LLM in HubCore — ricerca dei modelli, impostazioni di memoria, gestore con scarico al Run e per inattività
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -1171,7 +1171,7 @@ struct LiveDownloadTests {
 
 - [ ] **Step 3: Verificare che non compilino ancora**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift build --build-tests 2>&1 | grep -E "error:" | head -2`
+Run: `cd "<repo>/Packages" && swift build --build-tests 2>&1 | grep -E "error:" | head -2`
 Expected: `cannot find 'MLXLanguageModelService' in scope`.
 
 - [ ] **Step 4: Creare `Packages/Sources/LLMBridge/MLXLanguageModelService.swift`**
@@ -1278,27 +1278,27 @@ public struct HubLanguageModelDownloader: LanguageModelDownloader {
 
 - [ ] **Step 6: Provare con `swift test` (i test dal vivo restano inattivi)**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "error:|✘ Test [a-zA-Z]+\\(|Test run with" | grep -v started`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "error:|✘ Test [a-zA-Z]+\\(|Test run with" | grep -v started`
 Expected: tutto passa; la suite LLMBridge `4 tests … passed` (inattivi, saltati senza variabili d'ambiente).
 
 - [ ] **Step 7: Prova dal vivo del motore (richiede un modello e Metal Toolchain)**
 
 Sul Mac dell'utente è già scaricato `/Volumes/LLM-VLM/MLX/mlx-community/Qwen3-VL-2B-Instruct-4bit` (1,8 GB, scaricato con il suo permesso il 1 ottobre 2026). Se manca, **non scaricarlo senza chiedere**: chiedere il permesso indicando repository, file e dimensione.
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && TEST_RUNNER_DTHUB_LIVE_LLM=/Volumes/LLM-VLM/MLX/mlx-community/Qwen3-VL-2B-Instruct-4bit xcodebuild test -scheme DTHubPackages-Package -destination 'platform=macOS' -derivedDataPath ../build/pkg -only-testing:LLMBridgeTests CODE_SIGNING_ALLOWED=NO 2>&1 | grep -E "LIVE|Test .*(passed|failed)|TEST (SUCCEEDED|FAILED)|recorded an issue"`
+Run: `cd "<repo>/Packages" && TEST_RUNNER_DTHUB_LIVE_LLM=/Volumes/LLM-VLM/MLX/mlx-community/Qwen3-VL-2B-Instruct-4bit xcodebuild test -scheme DTHubPackages-Package -destination 'platform=macOS' -derivedDataPath ../build/pkg -only-testing:LLMBridgeTests CODE_SIGNING_ALLOWED=NO 2>&1 | grep -E "LIVE|Test .*(passed|failed)|TEST (SUCCEEDED|FAILED)|recorded an issue"`
 Expected: `LIVE text answer: pong`, `LIVE vision answer:  red`, i due test del motore passano, `** TEST SUCCEEDED **`.
 
 - [ ] **Step 8: Prova dal vivo dello scaricamento (solo due file piccoli)**
 
 Il test scarica `config.json` e `tokenizer_config.json` (pochi KB) dello stesso modello già autorizzato, in una cartella temporanea.
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && TEST_RUNNER_DTHUB_LIVE_HF=1 xcodebuild test -scheme DTHubPackages-Package -destination 'platform=macOS' -derivedDataPath ../build/pkg -only-testing:LLMBridgeTests CODE_SIGNING_ALLOWED=NO 2>&1 | grep -E "LIVE|Test .*(passed|failed)|TEST (SUCCEEDED|FAILED)|recorded an issue"`
+Run: `cd "<repo>/Packages" && TEST_RUNNER_DTHUB_LIVE_HF=1 xcodebuild test -scheme DTHubPackages-Package -destination 'platform=macOS' -derivedDataPath ../build/pkg -only-testing:LLMBridgeTests CODE_SIGNING_ALLOWED=NO 2>&1 | grep -E "LIVE|Test .*(passed|failed)|TEST (SUCCEEDED|FAILED)|recorded an issue"`
 Expected: `LIVE download files: ["config.json", "tokenizer_config.json"]`, i due test di scaricamento passano.
 
 - [ ] **Step 9: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: LLMBridge — servizio MLX (testo e immagini) e scaricamento da Hugging Face con cartella di appoggio
+cd "<repo>" && git add Packages && git commit -m "feat: LLMBridge — servizio MLX (testo e immagini) e scaricamento da Hugging Face con cartella di appoggio
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -1317,7 +1317,7 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 - [ ] **Step 1: Aggiungere le chiavi senza riformattare il catalogo**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && python3 - <<'EOF'
+cd "<repo>" && python3 - <<'EOF'
 import json
 p = 'App/Localizable.xcstrings'
 d = json.load(open(p))
@@ -1374,13 +1374,13 @@ Expected: `1 file changed, 567 insertions(+), 6 deletions(-)` (le righe tolte so
 
 - [ ] **Step 2: Verificare il catalogo**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter CatalogTests 2>&1 | grep -E "Test run with|Missing|Not in"`
+Run: `cd "<repo>/Packages" && swift test --filter CatalogTests 2>&1 | grep -E "Test run with|Missing|Not in"`
 Expected: `6 tests … passed`. (Le chiavi `prefs.empty.*` non sono più nel codice: il Task 6 toglie il segnaposto.)
 
 - [ ] **Step 3: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add App/Localizable.xcstrings && git commit -m "feat: testi dell'LLM (it, en)
+cd "<repo>" && git add App/Localizable.xcstrings && git commit -m "feat: testi dell'LLM (it, en)
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -2460,13 +2460,13 @@ enum LanguageModelErrorText {
 
 - [ ] **Step 8: Build e test**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"; cd Packages && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\\(|Test run with|Missing|Not in|Pass String" | grep -v started`
+Run: `cd "<repo>" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"; cd Packages && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\\(|Test run with|Missing|Not in|Pass String" | grep -v started`
 Expected: `** BUILD SUCCEEDED **`; test HubKit 46, HubCore 168, DTBridge 47, Catalog 6, LLMBridge 4 (inattivi): **271** passati.
 
 - [ ] **Step 9: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add App && git commit -m "feat: scheda LLM nelle Preferenze, memoria condivisa con il modello immagine e collegamento al Run
+cd "<repo>" && git add App && git commit -m "feat: scheda LLM nelle Preferenze, memoria condivisa con il modello immagine e collegamento al Run
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -2480,7 +2480,7 @@ Nessun codice nuovo. Serve il server gestito dalla M5 (programma e cartella dei 
 - [ ] **Step 1: Preparare e avviare**
 
 ```bash
-defaults read com.exiztenz.DTHub drawThings.managedServer 2>&1 | head -1; defaults read com.exiztenz.DTHub languageModel.settings 2>&1 | head -1; open "/Users/existenz/Software developement/DT Hub/build/Build/Products/Debug/DT Hub.app"
+defaults read com.exiztenz.DTHub drawThings.managedServer 2>&1 | head -1; defaults read com.exiztenz.DTHub languageModel.settings 2>&1 | head -1; open "<repo>/build/Build/Products/Debug/DT Hub.app"
 ```
 
 - [ ] **Step 2: Checklist (screenshot)**

@@ -22,7 +22,7 @@
 ## Global Constraints
 
 - **Repository e dipendenze:**
-  - radice `/Users/existenz/Software developement/DT Hub` (percorsi tra virgolette);
+  - radice `<repo>` (percorsi tra virgolette);
   - branch `m4c-json-preset` da `main`;
   - macOS 26, Swift 6, Xcode 27;
   - solo `DTBridge` importa DrawThings-Swift; l'app usa il codec attraverso il protocollo `ConfigurationCodec`.
@@ -87,7 +87,7 @@
 - [ ] **Step 1: Creare il branch**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git switch main && git switch -c m4c-json-preset
+cd "<repo>" && git switch main && git switch -c m4c-json-preset
 ```
 
 - [ ] **Step 2: Scrivere i test che falliscono.** Sostituire `Packages/Tests/HubKitTests/GenerationParametersTests.swift` con:
@@ -364,7 +364,7 @@ struct JSONValueTests {
 
 - [ ] **Step 3: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter HubKitTests 2>&1 | grep -E "error:" | head -3`
+Run: `cd "<repo>/Packages" && swift test --filter HubKitTests 2>&1 | grep -E "error:" | head -3`
 Expected: `cannot find 'JSONValue' in scope`.
 
 - [ ] **Step 4: Creare `Packages/Sources/HubKit/Generation/JSONValue.swift`**
@@ -674,13 +674,13 @@ public struct GenerationParameters: Equatable, Codable, Sendable {
 
 - [ ] **Step 8: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\\(|Test run with" | grep -v started`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\\(|Test run with" | grep -v started`
 Expected: HubKit `44 tests … passed`; HubCore 95, DTBridge 22, Catalog 6 come prima.
 
 - [ ] **Step 9: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: impostazioni extra, contratto del codec JSON e preset nel contratto
+cd "<repo>" && git add Packages && git commit -m "feat: impostazioni extra, contratto del codec JSON e preset nel contratto
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -872,7 +872,7 @@ struct ConfigurationCodecTests {
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter DTBridgeTests 2>&1 | grep -E "error:" | head -3`
+Run: `cd "<repo>/Packages" && swift test --filter DTBridgeTests 2>&1 | grep -E "error:" | head -3`
 Expected: `cannot find 'DrawThingsConfigurationCodec' in scope`.
 
 - [ ] **Step 3: Sostituire `Packages/Sources/DTBridge/JobMapper.swift` con:**
@@ -1193,13 +1193,13 @@ Note:
 
 - [ ] **Step 5: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\\(|Test run with" | grep -v started`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\\(|Test run with" | grep -v started`
 Expected: DTBridge `38 tests … passed`; totale 44 + 95 + 38 + 6 = **183**.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: DTBridge — codec della configurazione JSON di Draw Things e invio delle impostazioni extra
+cd "<repo>" && git add Packages && git commit -m "feat: DTBridge — codec della configurazione JSON di Draw Things e invio delle impostazioni extra
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -1383,7 +1383,7 @@ struct PresetLoadTests {
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter HubCoreTests 2>&1 | grep -E "error:" | head -3`
+Run: `cd "<repo>/Packages" && swift test --filter HubCoreTests 2>&1 | grep -E "error:" | head -3`
 Expected: `cannot find 'PresetStore' in scope`.
 
 - [ ] **Step 3: Creare `Packages/Sources/HubCore/Presets/PresetStore.swift`**
@@ -1584,13 +1584,13 @@ public struct PresetLoad: Equatable, Sendable {
 
 - [ ] **Step 5: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\\(|Test run with" | grep -v started`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\\(|Test run with" | grep -v started`
 Expected: HubCore `108 tests … passed`; totale 44 + 108 + 38 + 6 = **196**.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: preset — archivio, import da file e caricamento
+cd "<repo>" && git add Packages && git commit -m "feat: preset — archivio, import da file e caricamento
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -1609,7 +1609,7 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 - [ ] **Step 1: Aggiungere le chiavi senza riformattare il catalogo**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && python3 - <<'EOF'
+cd "<repo>" && python3 - <<'EOF'
 import json
 p = 'App/Localizable.xcstrings'
 d = json.load(open(p))
@@ -1656,13 +1656,13 @@ Expected: `1 file changed, 459 insertions(+)` e nessuna riga tolta.
 
 - [ ] **Step 2: Verificare il catalogo**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter CatalogTests 2>&1 | grep -E "Test run with|Missing|Not in"`
+Run: `cd "<repo>/Packages" && swift test --filter CatalogTests 2>&1 | grep -E "Test run with|Missing|Not in"`
 Expected: `6 tests … passed`.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add App/Localizable.xcstrings && git commit -m "feat: testi di preset ed editor JSON (it, en)
+cd "<repo>" && git add App/Localizable.xcstrings && git commit -m "feat: testi di preset ed editor JSON (it, en)
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -2288,13 +2288,13 @@ struct GenerationTabView: View {
 
 - [ ] **Step 6: Build e test**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"; cd Packages && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\\(|Test run with|Missing|Not in|Pass String" | grep -v started`
+Run: `cd "<repo>" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"; cd Packages && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\\(|Test run with|Missing|Not in|Pass String" | grep -v started`
 Expected: `** BUILD SUCCEEDED **`; test HubKit 44, HubCore 108, DTBridge 38, Catalog 6: **196** passati.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add App && git commit -m "feat: barra Preset, editor JSON e fogli nel tab Generazione
+cd "<repo>" && git add App && git commit -m "feat: barra Preset, editor JSON e fogli nel tab Generazione
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -2308,14 +2308,14 @@ Nessun codice nuovo. Si prova l'app contro il server Draw Things (API Server acc
 - [ ] **Step 1: Preparare e avviare**
 
 ```bash
-defaults read com.exiztenz.DTHub drawThings.selectedModel; A="$HOME/Library/Application Support/DT Hub"; mkdir -p /tmp/dthub-m4c-backup && cp "$A/session.json" "$A/cards.json" /tmp/dthub-m4c-backup/; ls "$A/presets.json" 2>/dev/null && cp "$A/presets.json" /tmp/dthub-m4c-backup/; defaults write com.exiztenz.DTHub output.folder /tmp/dthub-m4c-check && open "/Users/existenz/Software developement/DT Hub/build/Build/Products/Debug/DT Hub.app"
+defaults read com.exiztenz.DTHub drawThings.selectedModel; A="$HOME/Library/Application Support/DT Hub"; mkdir -p /tmp/dthub-m4c-backup && cp "$A/session.json" "$A/cards.json" /tmp/dthub-m4c-backup/; ls "$A/presets.json" 2>/dev/null && cp "$A/presets.json" /tmp/dthub-m4c-backup/; defaults write com.exiztenz.DTHub output.folder /tmp/dthub-m4c-check && open "<repo>/build/Build/Products/Debug/DT Hub.app"
 ```
 
 - [ ] **Step 2: Test dal vivo delle impostazioni extra (temporaneo, non si committa)**
 
 Creare `Packages/Tests/DTBridgeTests/ZZExtraLiveTests.swift` che applica `{"maskBlur": 3.5, "fps": 10}` a uno stato Klein 512×512 a 4 step con `DrawThingsConfigurationCodec`, genera con `DrawThingsBackend` e verifica un'immagine 512×512; poi cancellarlo.
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && DTHUB_LIVE_DT=1 swift test --filter ZZExtraLiveTests 2>&1 | grep -E "passed after|failed|error:"`
+Run: `cd "<repo>/Packages" && DTHUB_LIVE_DT=1 swift test --filter ZZExtraLiveTests 2>&1 | grep -E "passed after|failed|error:"`
 Expected: passa. Se Draw Things deve ricaricare il modello dal volume esterno può richiedere oltre 10 minuti: si lancia in background.
 
 - [ ] **Step 3: Checklist (screenshot)**

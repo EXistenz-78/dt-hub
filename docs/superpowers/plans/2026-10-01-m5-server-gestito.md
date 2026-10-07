@@ -24,7 +24,7 @@
 ## Global Constraints
 
 - **Repository e dipendenze:**
-  - radice `/Users/existenz/Software developement/DT Hub` (percorsi tra virgolette);
+  - radice `<repo>` (percorsi tra virgolette);
   - branch `m5-server-gestito` da `main`;
   - macOS 26, Swift 6, Xcode 27.
 - **gRPCServerCLI resta fuori dal pacchetto (deciso con l'utente, 1 ottobre 2026):**
@@ -88,7 +88,7 @@
 - [ ] **Step 1: Creare il branch**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git switch main && git switch -c m5-server-gestito
+cd "<repo>" && git switch main && git switch -c m5-server-gestito
 ```
 
 - [ ] **Step 2: Scrivere i test che falliscono.** Creare `Packages/Tests/HubCoreTests/ManagedServerSettingsTests.swift` con:
@@ -211,7 +211,7 @@ struct ServerArgumentsTests {
 
 - [ ] **Step 3: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter HubCoreTests 2>&1 | grep -E "error:" | head -3`
+Run: `cd "<repo>/Packages" && swift test --filter HubCoreTests 2>&1 | grep -E "error:" | head -3`
 Expected: `cannot find 'FileSystemProbe' in scope`.
 
 - [ ] **Step 4: Creare `Packages/Sources/HubCore/Server/ManagedServerSettings.swift`**
@@ -391,13 +391,13 @@ public enum ServerArguments {
 
 - [ ] **Step 5: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\\(|Test run with" | grep -v started`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\\(|Test run with" | grep -v started`
 Expected: HubCore `121 tests … passed` (108 + 13); HubKit 44, DTBridge 47, Catalog 6 come prima.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && mkdir -p Packages/Sources/HubCore/Server && git add Packages && git commit -m "feat: impostazioni del server gestito, ricerca di gRPCServerCLI e riga di comando
+cd "<repo>" && mkdir -p Packages/Sources/HubCore/Server && git add Packages && git commit -m "feat: impostazioni del server gestito, ricerca di gRPCServerCLI e riga di comando
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -723,7 +723,7 @@ struct ServerPidFileTests {
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter HubCoreTests 2>&1 | grep -E "error:" | head -3`
+Run: `cd "<repo>/Packages" && swift test --filter HubCoreTests 2>&1 | grep -E "error:" | head -3`
 Expected: `cannot find 'ServerProcess' in scope`.
 
 - [ ] **Step 3: Creare `Packages/Sources/HubCore/Server/ProcessLauncher.swift`**
@@ -1103,13 +1103,13 @@ Note:
 
 - [ ] **Step 6: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\\(|Test run with" | grep -v started`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\\(|Test run with" | grep -v started`
 Expected: HubCore `138 tests … passed` (121 + 17); totale 44 + 138 + 47 + 6 = **235**.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: ManagedServer — avvio, arresto, uscita inattesa e server rimasto da una sessione precedente
+cd "<repo>" && git add Packages && git commit -m "feat: ManagedServer — avvio, arresto, uscita inattesa e server rimasto da una sessione precedente
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -1128,7 +1128,7 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 - [ ] **Step 1: Aggiungere le chiavi senza riformattare il catalogo**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && python3 - <<'EOF'
+cd "<repo>" && python3 - <<'EOF'
 import json
 p = 'App/Localizable.xcstrings'
 d = json.load(open(p))
@@ -1176,13 +1176,13 @@ Expected: `1 file changed, 476 insertions(+)` e nessuna riga tolta.
 
 - [ ] **Step 2: Verificare il catalogo**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter CatalogTests 2>&1 | grep -E "Test run with|Missing|Not in"`
+Run: `cd "<repo>/Packages" && swift test --filter CatalogTests 2>&1 | grep -E "Test run with|Missing|Not in"`
 Expected: `6 tests … passed`.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add App/Localizable.xcstrings && git commit -m "feat: testi del server gestito (it, en)
+cd "<repo>" && git add App/Localizable.xcstrings && git commit -m "feat: testi del server gestito (it, en)
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -1857,13 +1857,13 @@ struct DTHubApp: App {
 
 - [ ] **Step 8: Build e test**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"; cd Packages && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\\(|Test run with|Missing|Not in|Pass String" | grep -v started`
+Run: `cd "<repo>" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"; cd Packages && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\\(|Test run with|Missing|Not in|Pass String" | grep -v started`
 Expected: `** BUILD SUCCEEDED **`; test HubKit 44, HubCore 138, DTBridge 47, Catalog 6: **235** passati.
 
 - [ ] **Step 9: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add App && git commit -m "feat: modalità server gestito — Preferenze, avviso con Riavvia, pallino giallo, arresto all'uscita
+cd "<repo>" && git add App && git commit -m "feat: modalità server gestito — Preferenze, avviso con Riavvia, pallino giallo, arresto all'uscita
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -1877,7 +1877,7 @@ Nessun codice nuovo. Serve gRPCServerCLI installato (sul Mac dell'utente in `~/A
 - [ ] **Step 1: Avviare l'app** (le Preferenze si aprono con ⌘, o dal menu "DT Hub › Impostazioni…")
 
 ```bash
-defaults read com.exiztenz.DTHub drawThings.managedServer 2>&1 | head -1; open "/Users/existenz/Software developement/DT Hub/build/Build/Products/Debug/DT Hub.app"
+defaults read com.exiztenz.DTHub drawThings.managedServer 2>&1 | head -1; open "<repo>/build/Build/Products/Debug/DT Hub.app"
 ```
 
 - [ ] **Step 2: Checklist (screenshot)**

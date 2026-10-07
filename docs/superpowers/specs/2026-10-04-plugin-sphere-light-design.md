@@ -32,7 +32,7 @@ Il plug-in registra all'**attivazione** (`activate`) due preset con acronimo **S
 | Preset | Prompt | Parametri | LoRA |
 |---|---|---|---|
 | `SLR · Overcast` | «make it an overcast day, remove the shadows» | passi 4, guidance 1, sampler 16 (DDIM Trailing), shift 3 con l'interruttore «Shift in base alla risoluzione» spento (acceso, Draw Things ignora lo shift), batch 1, CFG-Zero* spento | nessuno |
-| `SLR · Match the sun` | «match light direction, colors and intensity from the reference image 2» | gli stessi | `flux_2_sun_direction_lora_v1_lora_f16.ckpt`, peso 0,6 |
+| `SLR · Match the sun` | «match light direction, colors and intensity from the reference image 2» | gli stessi | `flux_2_sun_direction_lora_v1_lora_f16.ckpt`, peso 1,0, trigger word uguale al prompt (7 ottobre 2026) |
 
 I valori sono quelli dello script (`buildMatchSunConfig`, `FLATTEN_SHADOWS_CONFIG`). Il modello non è nei preset: lo sceglie l'utente (Flux 2 Klein 9B), il manifesto dichiara `families: ["flux2_9b"]` e il menu dei plug-in lo mostra grigio sulle altre famiglie.
 

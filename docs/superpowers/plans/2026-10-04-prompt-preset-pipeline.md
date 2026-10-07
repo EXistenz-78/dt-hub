@@ -16,7 +16,7 @@
 
 ## Global Constraints
 
-- **Repository e dipendenze:** radice `/Users/existenz/Software developement/DT Hub` (percorsi tra virgolette); **si lavora sul branch `m8b-plugin`** (già esistente, un solo merge alla fine, deciso con l'utente), senza crearne altri; macOS 26, Swift 6, Xcode 27; solo DTBridge importa DrawThings-Swift, solo LLMBridge importa MLX; `PluginKit/` non dipende da nulla dell'app.
+- **Repository e dipendenze:** radice `<repo>` (percorsi tra virgolette); **si lavora sul branch `m8b-plugin`** (già esistente, un solo merge alla fine, deciso con l'utente), senza crearne altri; macOS 26, Swift 6, Xcode 27; solo DTBridge importa DrawThings-Swift, solo LLMBridge importa MLX; `PluginKit/` non dipende da nulla dell'app.
 - **Il contratto resta la versione 1**; i passaggi di M8b con `fields` e `loras` non si sono mai distribuiti: nessuna compatibilità da mantenere.
 - **Le dimensioni non sono nei preset**: salvare un preset scrive larghezza e altezza di un `GenerationParameters` nuovo; caricarlo lascia quelle del tab (e, se il preset spegne il Tiled Diffusion e un lato supera 2048, `fitSizeToLimit`). Le dimensioni dei file vecchi e degli import restano nel file e non si usano.
 - **Il prompt**: un preset con il prompt vuoto non tocca il prompt del tab; uno con il prompt lo sostituisce. Stessa regola del negativo. Nessuna casella: chi non lo vuole svuota il campo prima di salvare.
@@ -151,7 +151,7 @@ index 5d78df8..825fbad 100644
  }
 ```
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter "PresetPromptTests|PresetLoadTests" 2>&1 | grep -E "error:" | head -2`
+Run: `cd "<repo>/Packages" && swift test --filter "PresetPromptTests|PresetLoadTests" 2>&1 | grep -E "error:" | head -2`
 Expected: un errore di compilazione sulla firma di `PresetLoad.of(_:current:catalog:)` o su `prompt:`/`origin:` di `Preset` (non ci sono ancora).
 
 - [ ] **Step 2: Implementare**
@@ -342,13 +342,13 @@ index 1a719af..03b8f62 100644
 
 - [ ] **Step 3: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
 Expected: HubCore `445 tests … passed` (5 nuovi: PresetPromptTests); gli altri invariati. L'app compila ancora (`xcodebuild … build`, `BUILD SUCCEEDED`).
 
 - [ ] **Step 4: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add -A Packages App && git commit -m "feat: il prompt nei preset; le dimensioni escono dai preset
+cd "<repo>" && git add -A Packages App && git commit -m "feat: il prompt nei preset; le dimensioni escono dai preset
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -460,7 +460,7 @@ index 143ab7f..f1641ee 100644
  }
 ```
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter "PluginPresetsTests|ContributionContractTests" 2>&1 | grep -E "error:" | head -2`
+Run: `cd "<repo>/Packages" && swift test --filter "PluginPresetsTests|ContributionContractTests" 2>&1 | grep -E "error:" | head -2`
 Expected: `cannot find 'PluginPresets' in scope`.
 
 - [ ] **Step 2: Implementare**
@@ -586,13 +586,13 @@ public struct PluginPresets: Equatable, Sendable {
 
 - [ ] **Step 3: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
 Expected: HubKit `93 tests … passed` (due test di `PipelineStep` tolti, due di `PluginPresets` aggiunti), HubCore invariato (`445`). L'app **non** compila più fino al Task 4.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add -A Packages && git commit -m "feat: messaggio presets; i passaggi della pipeline nominano un preset
+cd "<repo>" && git add -A Packages && git commit -m "feat: messaggio presets; i passaggi della pipeline nominano un preset
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -727,7 +727,7 @@ struct PluginPresetsRoutingTests {
 }
 ```
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter "PluginPresetsTests|PluginPresetsRoutingTests" 2>&1 | grep -E "error:" | head -2`
+Run: `cd "<repo>/Packages" && swift test --filter "PluginPresetsTests|PluginPresetsRoutingTests" 2>&1 | grep -E "error:" | head -2`
 Expected: `value of type 'PresetStore' has no member 'add'`.
 
 - [ ] **Step 2: Implementare**
@@ -845,13 +845,13 @@ index 5fe26eb..fec3896 100644
 
 - [ ] **Step 3: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
 Expected: HubCore `453 tests … passed` (8 nuovi).
 
 - [ ] **Step 4: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add -A Packages && git commit -m "feat: i preset dei plug-in nel menu; applicazione di un preset a un passaggio
+cd "<repo>" && git add -A Packages && git commit -m "feat: i preset dei plug-in nel menu; applicazione di un preset a un passaggio
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -1043,16 +1043,16 @@ index 335f461..37f6b10 100644
 
 - [ ] **Step 2: Compilare e provare**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath /tmp/p-dd CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"`
+Run: `cd "<repo>" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath /tmp/p-dd CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"`
 Expected: `** BUILD SUCCEEDED **`.
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
 Expected: gli stessi conteggi del Task 3 (Catalog 6 verdi).
 
 - [ ] **Step 3: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add -A App && git commit -m "feat: la pipeline esegue i preset; il menu Preset segna quelli dei plug-in; avviso del preset mancante
+cd "<repo>" && git add -A App && git commit -m "feat: la pipeline esegue i preset; il menu Preset segna quelli dei plug-in; avviso del preset mancante
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -1092,7 +1092,7 @@ index 5cfeed1..dbf0def 100644
      #expect(host.received.contains { PluginMessageType.of($0.message) == PluginMessageType.llm })
 ```
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter BundlePluginLoaderTests 2>&1 | grep -E "recorded an issue" | head -2`
+Run: `cd "<repo>/Packages" && swift test --filter BundlePluginLoaderTests 2>&1 | grep -E "recorded an issue" | head -2`
 Expected: un'aspettativa fallita sul nome del preset del primo passaggio (`pipeline.steps[0].preset == "Sample · Match the sun"`).
 
 - [ ] **Step 2: Implementare**
@@ -1295,21 +1295,21 @@ index 8afffea..5ca3ec5 100644
 ```
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && chmod +x PluginKit/Scripts/build-sample.sh
+cd "<repo>" && chmod +x PluginKit/Scripts/build-sample.sh
 ```
 
 - [ ] **Step 3: Verificare**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
 Expected: HubKit 93, HubCore 453, DTBridge 66, Catalog 6, LLMBridge 6, PluginHost 6 (totale **630**).
 
-Run: `cd "/Users/existenz/Software developement/DT Hub" && PluginKit/Scripts/build-sample.sh /tmp/p-bundles && PluginKit/Scripts/build-sample.sh /tmp/p-bundles b`
+Run: `cd "<repo>" && PluginKit/Scripts/build-sample.sh /tmp/p-bundles && PluginKit/Scripts/build-sample.sh /tmp/p-bundles b`
 Expected: i percorsi dei due bundle.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add -A PluginKit Packages && git commit -m "feat: DTHubPluginKit registerPresets; plug-in di esempio 1.3 con i suoi preset
+cd "<repo>" && git add -A PluginKit Packages && git commit -m "feat: DTHubPluginKit registerPresets; plug-in di esempio 1.3 con i suoi preset
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -1326,7 +1326,7 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 Servono: il server gestito di DT Hub (nelle preferenze dell'utente), FLUX.2 klein 9B e il LoRA `flux_2_sun_direction_lora_v1_lora_f16.ckpt`. **Le preferenze sono quelle dell'utente anche con `CFFIXED_USER_HOME`**: annotare `defaults read com.exiztenz.DTHub drawThings.selectedModel` e `workspace.selectedTab`, e rimetterli alla fine.
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub"
+cd "<repo>"
 defaults read com.exiztenz.DTHub drawThings.selectedModel    # annotare
 xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath /tmp/p-dd CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "BUILD (SUCCEEDED|FAILED)"
 H=/tmp/phome; rm -rf $H; AS="$H/Library/Application Support/DT Hub"; mkdir -p "$AS/Plug-ins"
@@ -1351,7 +1351,7 @@ Alla fine: chiudere l'app di prova (`pkill -f p-dd`), fermare il server gestito 
 - [ ] **Step 2: Aggiornare spec e backlog**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && python3 - <<'PY'
+cd "<repo>" && python3 - <<'PY'
 p = 'docs/superpowers/specs/2026-10-04-preset-pipeline-design.md'
 s = open(p).read()
 s = s.replace("Stato: da approvare", "Stato: realizzata (P1 e P2)")
@@ -1381,7 +1381,7 @@ Expected: statistica su tre file.
 - [ ] **Step 3: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add docs && git commit -m "docs: prompt nei preset e pipeline di preset realizzati; rimandi nel backlog
+cd "<repo>" && git add docs && git commit -m "docs: prompt nei preset e pipeline di preset realizzati; rimandi nel backlog
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
