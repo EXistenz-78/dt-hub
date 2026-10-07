@@ -17,7 +17,7 @@
 ## Global Constraints
 
 - **Repository e dipendenze:**
-  - radice `/Users/existenz/Software developement/DT Hub` (percorsi tra virgolette);
+  - radice `<repo>` (percorsi tra virgolette);
   - branch `m8b-plugin` da `main`;
   - macOS 26, Swift 6, Xcode 27;
   - solo DTBridge importa DrawThings-Swift, solo LLMBridge importa MLX; **`PluginKit/` non dipende da nulla dell'app**.
@@ -70,7 +70,7 @@
 - [ ] **Step 1: Creare il ramo e scrivere i test**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git switch main && git switch -c m8b-plugin
+cd "<repo>" && git switch main && git switch -c m8b-plugin
 ```
 
 ```swift
@@ -194,7 +194,7 @@ struct PipelineStepTests {
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter ContributionContractTests 2>&1 | grep -E "error:" | head -2`
+Run: `cd "<repo>/Packages" && swift test --filter ContributionContractTests 2>&1 | grep -E "error:" | head -2`
 Expected: `cannot find 'FieldOverlay' in scope`.
 
 - [ ] **Step 3: Implementare**
@@ -518,13 +518,13 @@ index 806bd03..af9dc35 100644
 
 - [ ] **Step 4: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
 Expected: HubKit `92 tests … passed` (10 nuovi); gli altri invariati.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: i tipi del contratto di M8b (campi contribuibili, messaggio contribute, pipeline)
+cd "<repo>" && git add Packages && git commit -m "feat: i tipi del contratto di M8b (campi contribuibili, messaggio contribute, pipeline)
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -826,7 +826,7 @@ struct ContributionStoreTests {
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter ContributionStoreTests 2>&1 | grep -E "error:" | head -2`
+Run: `cd "<repo>/Packages" && swift test --filter ContributionStoreTests 2>&1 | grep -E "error:" | head -2`
 Expected: `cannot find type 'ContributionTarget' in scope`.
 
 - [ ] **Step 3: Implementare**
@@ -1063,13 +1063,13 @@ public final class ContributionStore {
 
 - [ ] **Step 4: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
 Expected: HubCore `422 tests … passed` (24 nuovi).
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: lo store dei contributi (segni sui campi, conflitti, LoRA, Moodboard, immagine di partenza, pipeline)
+cd "<repo>" && git add Packages && git commit -m "feat: lo store dei contributi (segni sui campi, conflitti, LoRA, Moodboard, immagine di partenza, pipeline)
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -1198,7 +1198,7 @@ struct PipelineInputsTests {
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter PipelineInputsTests 2>&1 | grep -E "error:" | head -2`
+Run: `cd "<repo>/Packages" && swift test --filter PipelineInputsTests 2>&1 | grep -E "error:" | head -2`
 Expected: `cannot find 'PipelineInputs' in scope`.
 
 - [ ] **Step 3: Implementare**
@@ -1298,13 +1298,13 @@ index a40a932..b288b44 100644
 
 - [ ] **Step 4: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
 Expected: HubCore `429 tests … passed` (7 nuovi).
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: gli ingressi di un passaggio della pipeline; gli id delle immagini messe nel Control
+cd "<repo>" && git add Packages && git commit -m "feat: gli ingressi di un passaggio della pipeline; gli id delle immagini messe nel Control
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -1430,7 +1430,7 @@ I test esistenti del registro che chiamano `receive` diventano `async` (`await`)
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter PluginRoutingTests 2>&1 | grep -E "error:" | head -2`
+Run: `cd "<repo>/Packages" && swift test --filter PluginRoutingTests 2>&1 | grep -E "error:" | head -2`
 Expected: `value of type 'PluginRegistry' has no member 'contributions'`.
 
 - [ ] **Step 3: Implementare**
@@ -1603,13 +1603,13 @@ index db567f4..6efcf38 100644
 
 - [ ] **Step 4: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
 Expected: HubCore `436 tests … passed` (7 nuovi); PluginHost 5.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: il registro instrada contribute e llm; spegnere un plug-in toglie i suoi segni
+cd "<repo>" && git add Packages && git commit -m "feat: il registro instrada contribute e llm; spegnere un plug-in toglie i suoi segni
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -1660,7 +1660,7 @@ d['strings'] = dict(sorted(d['strings'].items()))
 open(p, 'w').write(json.dumps(d, ensure_ascii=False, indent=2))
 ```
 
-Salvare lo script come `/tmp/m8b_keys.py` e lanciarlo dalla radice: `cd "/Users/existenz/Software developement/DT Hub" && python3 /tmp/m8b_keys.py`. Controllare con `git diff --stat App/Localizable.xcstrings | tail -1`.
+Salvare lo script come `/tmp/m8b_keys.py` e lanciarlo dalla radice: `cd "<repo>" && python3 /tmp/m8b_keys.py`. Controllare con `git diff --stat App/Localizable.xcstrings | tail -1`.
 
 Expected: solo righe aggiunte (`204 insertions(+)`), nessuna cancellata.
 
@@ -2499,16 +2499,16 @@ index ccc8fc9..5f92037 100644
 
 - [ ] **Step 5: Compilare e provare**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath /tmp/m8b-dd CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"`
+Run: `cd "<repo>" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath /tmp/m8b-dd CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"`
 Expected: `** BUILD SUCCEEDED **`.
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
 Expected: gli stessi conteggi del Task 4 (Catalog 6 verdi: le stringhe nuove sono nel catalogo).
 
 - [ ] **Step 6: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add -A App && git commit -m "feat: campi in teal con il valore del plug-in tra parentesi, pop-up dei conflitti, Run con i passaggi, pipeline
+cd "<repo>" && git add -A App && git commit -m "feat: campi in teal con il valore del plug-in tra parentesi, pop-up dei conflitti, Run con i passaggi, pipeline
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -2882,7 +2882,7 @@ fi
 ```
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && chmod +x PluginKit/Scripts/build-sample.sh
+cd "<repo>" && chmod +x PluginKit/Scripts/build-sample.sh
 ```
 
 ```diff
@@ -2980,21 +2980,21 @@ index 87bd939..5cfeed1 100644
  }
 ```
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter BundlePluginLoaderTests 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started"`
+Run: `cd "<repo>/Packages" && swift test --filter BundlePluginLoaderTests 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started"`
 Expected: `Test run with 6 tests … passed` (il test nuovo carica il bundle dell'esempio, preme `plain`, `pipeline` e `ask` e legge i `contribute` ricevuti dall'app finta).
 
 - [ ] **Step 3: Costruire i due bundle e controllare i nomi**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub" && PluginKit/Scripts/build-sample.sh /tmp/m8b-bundles && PluginKit/Scripts/build-sample.sh /tmp/m8b-bundles b && strings /tmp/m8b-bundles/Sample.dthubplugin/Contents/MacOS/Sample | grep -c "_TtC9SampleKit" && strings /tmp/m8b-bundles/SampleB.dthubplugin/Contents/MacOS/SampleB | grep -c "_TtC10SampleBKit"`
+Run: `cd "<repo>" && PluginKit/Scripts/build-sample.sh /tmp/m8b-bundles && PluginKit/Scripts/build-sample.sh /tmp/m8b-bundles b && strings /tmp/m8b-bundles/Sample.dthubplugin/Contents/MacOS/Sample | grep -c "_TtC9SampleKit" && strings /tmp/m8b-bundles/SampleB.dthubplugin/Contents/MacOS/SampleB | grep -c "_TtC10SampleBKit"`
 Expected: i due percorsi dei bundle, poi due numeri maggiori di zero (le classi del kit portano il nome di modulo dell'alias, diverso nei due plug-in).
 
 - [ ] **Step 4: Tutti i test, poi il commit**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
 Expected: HubKit 92, HubCore 436, DTBridge 66, Catalog 6, LLMBridge 6, PluginHost 6 (totale **612**).
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add -A PluginKit Packages && git commit -m "feat: DTHubPluginKit contribute/askLanguageModel; plug-in di esempio 1.2 con variante B; script build-sample.sh
+cd "<repo>" && git add -A PluginKit Packages && git commit -m "feat: DTHubPluginKit contribute/askLanguageModel; plug-in di esempio 1.2 con variante B; script build-sample.sh
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -3011,7 +3011,7 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 Servono: il server gestito di DT Hub (cartella dei modelli e programma già nelle preferenze dell'utente), il modello FLUX.2 klein 9B e il LoRA `flux_2_sun_direction_lora_v1_lora_f16.ckpt`. **Le preferenze (`UserDefaults`) sono quelle dell'utente anche con `CFFIXED_USER_HOME`**: per scegliere il modello senza il menu (gli strumenti per pilotare le finestre non aprono i menu) si scrive il valore e **si rimette alla fine** `ernie_image_turbo_q8p.ckpt` (o quello che l'utente aveva: leggerlo prima con `defaults read com.exiztenz.DTHub drawThings.selectedModel`) e la scheda aperta (`workspace.selectedTab`).
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub"
+cd "<repo>"
 defaults read com.exiztenz.DTHub drawThings.selectedModel workspace.selectedTab    # annotare
 PluginKit/Scripts/build-sample.sh /tmp/m8b-bundles && PluginKit/Scripts/build-sample.sh /tmp/m8b-bundles b
 xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath /tmp/m8b-dd CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "BUILD (SUCCEEDED|FAILED)"
@@ -3039,7 +3039,7 @@ Alla fine: chiudere l'app di prova (`pkill -f m8b-dd`), fermare il server gestit
 - [ ] **Step 2: Aggiornare la spec e il backlog**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && python3 - <<'PY'
+cd "<repo>" && python3 - <<'PY'
 p = 'docs/superpowers/specs/2026-10-03-plugin-design.md'
 s = open(p).read()
 s = s.replace("Stato: M8a realizzata, M8b da fare", "Stato: M8a e M8b realizzate")
@@ -3065,7 +3065,7 @@ Expected: statistica su due file.
 - [ ] **Step 3: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add docs && git commit -m "docs: spec dei plug-in — M8b realizzata; rimandi nel backlog
+cd "<repo>" && git add docs && git commit -m "docs: spec dei plug-in — M8b realizzata; rimandi nel backlog
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```

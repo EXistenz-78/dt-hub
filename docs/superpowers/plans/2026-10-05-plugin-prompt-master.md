@@ -16,7 +16,7 @@
 
 ## Global Constraints
 
-- **Repository:** radice `/Users/existenz/Software developement/DT Hub` (percorsi tra virgolette); branch `prompt-master` da `main`. Si cambiano solo `Plugins/PromptMaster/` e `docs/`: né `App/` né `Packages/` né `PluginKit/`.
+- **Repository:** radice `<repo>` (percorsi tra virgolette); branch `prompt-master` da `main`. Si cambiano solo `Plugins/PromptMaster/` e `docs/`: né `App/` né `Packages/` né `PluginKit/`.
 - **Il plug-in non ha risorse:** tutto è nel codice; le stringhe stanno nella tabella `L` (italiano e inglese, stesse chiavi e stessi segnaposto); i dati JSON sono incorporati in `EmbeddedData.swift` (generato, non si modifica a mano).
 - **Chiavi del contratto usate:** `llm` con `system`, `model`, `options`; `context` con `startImage`, `moodboard`, `languageModels`; `contribute` con `fields` (`prompt`, `negativePrompt`). Il negativo si scrive solo per le famiglie con `negative: true`.
 - **Famiglie** (le `version` di Draw Things): `flux1`, `flux2`, `flux2_9b`, `flux2_4b`, `krea_2`, `qwen_image`, `qwen_image_2.1`, `z_image`, `sdxl_base_v0.9`, `v1`, `ernie_image`, `hidream_i1`, `cosmos2.5_2b`. Provvisori: `flux2`, `qwen_image_2.1`, `hidream_i1`, `cosmos2.5_2b`. Ogni master prompt contiene «exclusively in English».
@@ -53,7 +53,7 @@
 - [ ] **Step 1: Creare il branch, il pacchetto e il test**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git switch main && git switch -c prompt-master && mkdir -p Plugins/PromptMaster/Sources/PromptMaster Plugins/PromptMaster/Tests/PromptMasterTests Plugins/PromptMaster/Scripts
+cd "<repo>" && git switch main && git switch -c prompt-master && mkdir -p Plugins/PromptMaster/Sources/PromptMaster Plugins/PromptMaster/Tests/PromptMasterTests Plugins/PromptMaster/Scripts
 ```
 
 **`Plugins/PromptMaster/Package.swift`** (file nuovo o riscritto per intero):
@@ -215,7 +215,7 @@ struct DataTests {
 
 - [ ] **Step 2: Verificare che fallisca**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Plugins/PromptMaster" && swift test 2>&1 | grep -E "error" | head -2`
+Run: `cd "<repo>/Plugins/PromptMaster" && swift test 2>&1 | grep -E "error" | head -2`
 Expected: un errore (il target `PromptMaster` non ha sorgenti: `Source files for target PromptMaster should be located under 'Sources/PromptMaster'`).
 
 - [ ] **Step 3: Scrivere i modelli, la regola di caricamento e lo script**
@@ -410,7 +410,7 @@ import argparse, json, os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PLUGIN = os.path.dirname(HERE)
-DEFAULT_SOURCE = "/Users/existenz/Software developement/Prompt generator/Prompt Master 2.0"
+DEFAULT_SOURCE = "<Prompt Master 2.0 folder>"
 
 DATABASE_VERSION = "2.1.0"
 MASTER_VERSION = "1.0.0"
@@ -577,23 +577,23 @@ if __name__ == "__main__":
 ```
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && chmod +x Plugins/PromptMaster/Scripts/make-prompt-data.py
+cd "<repo>" && chmod +x Plugins/PromptMaster/Scripts/make-prompt-data.py
 ```
 
 - [ ] **Step 4: Generare i dati**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub" && shasum -a 256 "/Users/existenz/Software developement/Prompt generator/Prompt Master 2.0/prompt_database.json" | cut -c1-16 && python3 Plugins/PromptMaster/Scripts/make-prompt-data.py && shasum -a 256 Plugins/PromptMaster/Data/*.json | cut -c1-16`
+Run: `cd "<repo>" && shasum -a 256 "<Prompt Master 2.0 folder>/prompt_database.json" | cut -c1-16 && python3 Plugins/PromptMaster/Scripts/make-prompt-data.py && shasum -a 256 Plugins/PromptMaster/Data/*.json | cut -c1-16`
 Expected: `20e597d2f327579e` (il database di Prompt Master 2.0, versione 2.0.0 del 2026-08-18), poi `database 2.1.0: 8 groups, 40 categories, 875 terms` e `master prompts 1.0.0: 13 families`, poi `79411168ae3b85fa` (master-prompts.json) e `f957ff368e0a57ef` (prompt-database.json).
 
 - [ ] **Step 5: Verificare**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Plugins/PromptMaster" && swift test 2>&1 | grep -E "Test run with|error:|✘"`
+Run: `cd "<repo>/Plugins/PromptMaster" && swift test 2>&1 | grep -E "Test run with|error:|✘"`
 Expected: `Test run with 11 tests in 1 suite passed`.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add -A Plugins/PromptMaster && git commit -m "feat(pm): pacchetto, modelli, dati generati e regola di caricamento
+cd "<repo>" && git add -A Plugins/PromptMaster && git commit -m "feat(pm): pacchetto, modelli, dati generati e regola di caricamento
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -797,7 +797,7 @@ struct CustomTermsStoreTests {
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Plugins/PromptMaster" && swift test 2>&1 | grep -E "error:" | head -2`
+Run: `cd "<repo>/Plugins/PromptMaster" && swift test 2>&1 | grep -E "error:" | head -2`
 Expected: errori di compilazione (`cannot find 'TermTree' in scope`, `cannot find 'CustomTermsStore' in scope`).
 
 - [ ] **Step 3: Implementare**
@@ -1026,13 +1026,13 @@ struct CustomTermsStore {
 
 - [ ] **Step 4: Verificare**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Plugins/PromptMaster" && swift test 2>&1 | grep -E "Test run with|error:|✘"`
+Run: `cd "<repo>/Plugins/PromptMaster" && swift test 2>&1 | grep -E "Test run with|error:|✘"`
 Expected: `Test run with 29 tests in 3 suites passed`.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add -A Plugins/PromptMaster && git commit -m "feat(pm): lista dei termini con ricerca e conteggi, termini personali
+cd "<repo>" && git add -A Plugins/PromptMaster && git commit -m "feat(pm): lista dei termini con ricerca e conteggi, termini personali
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -1138,7 +1138,7 @@ struct ShufflerTests {
 
 - [ ] **Step 2: Verificare che fallisca**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Plugins/PromptMaster" && swift test 2>&1 | grep -E "error:" | head -2`
+Run: `cd "<repo>/Plugins/PromptMaster" && swift test 2>&1 | grep -E "error:" | head -2`
 Expected: un errore di compilazione (`cannot find 'Shuffler' in scope`).
 
 - [ ] **Step 3: Implementare**
@@ -1198,13 +1198,13 @@ enum Shuffler {
 
 - [ ] **Step 4: Verificare**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Plugins/PromptMaster" && swift test 2>&1 | grep -E "Test run with|error:|✘"`
+Run: `cd "<repo>/Plugins/PromptMaster" && swift test 2>&1 | grep -E "Test run with|error:|✘"`
 Expected: `Test run with 35 tests in 4 suites passed`.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add -A Plugins/PromptMaster && git commit -m "feat(pm): Shuffle
+cd "<repo>" && git add -A Plugins/PromptMaster && git commit -m "feat(pm): Shuffle
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -1466,7 +1466,7 @@ struct PEPlannerTests {
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Plugins/PromptMaster" && swift test 2>&1 | grep -E "error:" | head -2`
+Run: `cd "<repo>/Plugins/PromptMaster" && swift test 2>&1 | grep -E "error:" | head -2`
 Expected: errori di compilazione (`cannot find 'BriefBuilder' in scope`, `cannot find 'AnswerParser'`, `cannot find 'PEPlanner'`).
 
 - [ ] **Step 3: Implementare**
@@ -1676,13 +1676,13 @@ enum PEPlanner {
 
 - [ ] **Step 4: Verificare**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Plugins/PromptMaster" && swift test 2>&1 | grep -E "Test run with|error:|✘"`
+Run: `cd "<repo>/Plugins/PromptMaster" && swift test 2>&1 | grep -E "Test run with|error:|✘"`
 Expected: `Test run with 62 tests in 7 suites passed`.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add -A Plugins/PromptMaster && git commit -m "feat(pm): richiesta all'LLM, lettura della risposta, scelta dei PE di Qwen
+cd "<repo>" && git add -A Plugins/PromptMaster && git commit -m "feat(pm): richiesta all'LLM, lettura della risposta, scelta dei PE di Qwen
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -1893,7 +1893,7 @@ struct PMWriterTests {
 
 - [ ] **Step 2: Verificare che fallisca**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Plugins/PromptMaster" && swift test 2>&1 | grep -E "error:" | head -2`
+Run: `cd "<repo>/Plugins/PromptMaster" && swift test 2>&1 | grep -E "error:" | head -2`
 Expected: errori di compilazione (`cannot find 'PMWriter' in scope`, `cannot find 'L' in scope`).
 
 - [ ] **Step 3: Implementare**
@@ -2110,13 +2110,13 @@ struct PMWriter {
 
 - [ ] **Step 4: Verificare**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Plugins/PromptMaster" && swift test 2>&1 | grep -E "Test run with|error:|✘"`
+Run: `cd "<repo>/Plugins/PromptMaster" && swift test 2>&1 | grep -E "Test run with|error:|✘"`
 Expected: `Test run with 76 tests in 8 suites passed`.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add -A Plugins/PromptMaster && git commit -m "feat(pm): scrittura del prompt e shuffle della scena, con le stringhe
+cd "<repo>" && git add -A Plugins/PromptMaster && git commit -m "feat(pm): scrittura del prompt e shuffle della scena, con le stringhe
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -2325,7 +2325,7 @@ struct PMStateTests {
 
 - [ ] **Step 2: Verificare che fallisca**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Plugins/PromptMaster" && swift test 2>&1 | grep -E "error:" | head -2`
+Run: `cd "<repo>/Plugins/PromptMaster" && swift test 2>&1 | grep -E "error:" | head -2`
 Expected: errori di compilazione (`cannot find 'PMState' in scope`, `cannot find 'PMStore' in scope`).
 
 - [ ] **Step 3: Implementare**
@@ -2550,13 +2550,13 @@ final class PMState: ObservableObject {
 
 - [ ] **Step 4: Verificare**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Plugins/PromptMaster" && swift test 2>&1 | grep -E "Test run with|error:|✘"`
+Run: `cd "<repo>/Plugins/PromptMaster" && swift test 2>&1 | grep -E "Test run with|error:|✘"`
 Expected: `Test run with 90 tests in 9 suites passed`.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add -A Plugins/PromptMaster && git commit -m "feat(pm): stato del tab e memoria
+cd "<repo>" && git add -A Plugins/PromptMaster && git commit -m "feat(pm): stato del tab e memoria
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -3005,12 +3005,12 @@ echo "$OUT/PromptMaster.dthubplugin"
 ```
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && chmod +x Plugins/PromptMaster/Scripts/build.sh
+cd "<repo>" && chmod +x Plugins/PromptMaster/Scripts/build.sh
 ```
 
 - [ ] **Step 2: Compilare, provare e fare il bundle**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Plugins/PromptMaster" && swift build 2>&1 | grep -E "error|Build comp" && swift test 2>&1 | grep -E "Test run with|error:|✘" && rm -rf /tmp/pm-out && Scripts/build.sh /tmp/pm-out | tail -1`
+Run: `cd "<repo>/Plugins/PromptMaster" && swift build 2>&1 | grep -E "error|Build comp" && swift test 2>&1 | grep -E "Test run with|error:|✘" && rm -rf /tmp/pm-out && Scripts/build.sh /tmp/pm-out | tail -1`
 Expected: `Build complete!`, `Test run with 90 tests in 9 suites passed` e `/tmp/pm-out/PromptMaster.dthubplugin`.
 
 Run: `B=/tmp/pm-out/PromptMaster.dthubplugin/Contents/MacOS/PromptMaster; echo "design con alias: $(nm -gU $B | grep -c PromptMasterDesign) · design senza alias: $(nm -gU $B | grep -c DTHubDesign) · kit senza alias: $(nm -gU $B | grep -c 14DTHubPluginKit) · kit con alias: $(nm -gU $B | grep -c PromptMasterKit)"`
@@ -3021,7 +3021,7 @@ Expected: un numero maggiore di 0, poi `0`, poi `0`, poi un numero maggiore di 0
 Un test **temporaneo** (non si committa) carica il bundle con `BundlePluginLoader`, come fa l'app.
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub/Packages" && cat > Tests/PluginHostTests/ZZPromptMasterLoadTests.swift <<'EOF'
+cd "<repo>/Packages" && cat > Tests/PluginHostTests/ZZPromptMasterLoadTests.swift <<'EOF'
 import AppKit
 import Foundation
 import HubCore
@@ -3131,7 +3131,7 @@ Expected: i comportamenti descritti (da provare dall'utente).
 - [ ] **Step 6: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add -A Plugins/PromptMaster docs && git commit -m "feat(pm): tab, plug-in, build.sh e README; rimandi nel backlog
+cd "<repo>" && git add -A Plugins/PromptMaster docs && git commit -m "feat(pm): tab, plug-in, build.sh e README; rimandi nel backlog
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```

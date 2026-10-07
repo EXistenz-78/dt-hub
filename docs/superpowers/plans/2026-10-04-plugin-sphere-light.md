@@ -15,7 +15,7 @@
 
 ## Global Constraints
 
-- **Repository:** radice `/Users/existenz/Software developement/DT Hub` (percorsi tra virgolette); branch `sphere-light` da `main`; il pacchetto sta in `Plugins/SphereLight/` e si prova da lì con `swift test`. Il plug-in non importa HubKit né altro di DT Hub: parla con l'app solo con il kit (selettori e JSON, contratto 1).
+- **Repository:** radice `<repo>` (percorsi tra virgolette); branch `sphere-light` da `main`; il pacchetto sta in `Plugins/SphereLight/` e si prova da lì con `swift test`. Il plug-in non importa HubKit né altro di DT Hub: parla con l'app solo con il kit (selettori e JSON, contratto 1).
 - **Identità:** identificatore `com.exiztenz.dthub.spherelight` (= `manifest.id` = `CFBundleIdentifier`), nome «Sphere Light», versione 1.0, simbolo `lightbulb.max`, classe principale `SphereLightEntry`, `families: ["flux2_9b"]`.
 - **Preset:** nomi `SLR · Overcast` e `SLR · Match the sun` (acronimo, punto mediano, nome); valori dello script: passi 4, guidance 1, sampler 16, shift 3, batch 1, CFG-Zero* spento; solo il secondo ha il LoRA `flux_2_sun_direction_lora_v1_lora_f16.ckpt` a peso 0,6; **né dimensioni né modello**. Prompt: «make it an overcast day, remove the shadows» e «match light direction, colors and intensity from the reference image 2».
 - **Pipeline:** con la casella Overcast accesa due passaggi (il secondo con `useOutputAsStart: true`), spenta uno solo; la sfera sta nel Moodboard del passaggio «Match the sun». Il pulsante «Solo la sfera nel Moodboard» manda solo `moodboard`.
@@ -46,12 +46,12 @@
 
 **Interfaces:**
 - Produces (internal, nel target `SphereLight`): `Vec3`; `LightParams` (`id`, `rotationDeg`, `elevationDeg`, `intensity`, `hardness`, `color`; `static makeDefault(index:)`: 0, 1 e 2 sono le tre luci predefinite); `SphereRenderer.render(width:height:lights:shadowSampleCount:) -> [UInt8]` (RGB8, nessuna luce = tutto nero), `nsImage(fromRGB8:width:height:)`, `pngData(fromRGB8:width:height:)`.
-- Il codice di `Models.swift` e `SphereRenderer.swift` è copiato dall'app standalone (`/Users/existenz/Software developement/Draw Things/LightDirectionApp/Sources/LightDirectionApp`) senza cambiare la logica; manca solo `dataURL`.
+- Il codice di `Models.swift` e `SphereRenderer.swift` è copiato dall'app standalone (`<Sphere Light standalone app>/Sources/LightDirectionApp`) senza cambiare la logica; manca solo `dataURL`.
 
 - [ ] **Step 1: Creare il branch e scrivere il test**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git switch main && git switch -c sphere-light && mkdir -p Plugins/SphereLight/Sources/SphereLight Plugins/SphereLight/Tests/SphereLightTests Plugins/SphereLight/Scripts
+cd "<repo>" && git switch main && git switch -c sphere-light && mkdir -p Plugins/SphereLight/Sources/SphereLight Plugins/SphereLight/Tests/SphereLightTests Plugins/SphereLight/Scripts
 ```
 
 **`Plugins/SphereLight/Tests/SphereLightTests/SphereRendererTests.swift`** (file nuovo o riscritto per intero):
@@ -127,7 +127,7 @@ struct SphereRendererTests {
 }
 ```
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Plugins/SphereLight" && swift test 2>&1 | grep -E "error" | head -2`
+Run: `cd "<repo>/Plugins/SphereLight" && swift test 2>&1 | grep -E "error" | head -2`
 Expected: un errore: il pacchetto non esiste ancora (manca `Package.swift`).
 
 - [ ] **Step 2: Implementare**
@@ -511,13 +511,13 @@ enum SphereRenderer {
 
 - [ ] **Step 3: Verificare**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Plugins/SphereLight" && swift test 2>&1 | grep -E "Test run|error:|issue"`
+Run: `cd "<repo>/Plugins/SphereLight" && swift test 2>&1 | grep -E "Test run|error:|issue"`
 Expected: `Test run with 6 tests in 1 suite passed`.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Plugins && git commit -m "feat: pacchetto del plug-in Sphere Light con il renderer della sfera
+cd "<repo>" && git add Plugins && git commit -m "feat: pacchetto del plug-in Sphere Light con il renderer della sfera
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -619,7 +619,7 @@ struct SLRMessagesTests {
 }
 ```
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Plugins/SphereLight" && swift test 2>&1 | grep -E "error:" | head -2`
+Run: `cd "<repo>/Plugins/SphereLight" && swift test 2>&1 | grep -E "error:" | head -2`
 Expected: `cannot find 'SLRMessages' in scope`.
 
 - [ ] **Step 2: Implementare**
@@ -746,13 +746,13 @@ enum L {
 
 - [ ] **Step 3: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Plugins/SphereLight" && swift test 2>&1 | grep -E "Test run|error:|issue"`
+Run: `cd "<repo>/Plugins/SphereLight" && swift test 2>&1 | grep -E "Test run|error:|issue"`
 Expected: `Test run with 15 tests in 2 suites passed`.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Plugins && git commit -m "feat: messaggi, preset e stringhe del plug-in Sphere Light
+cd "<repo>" && git add Plugins && git commit -m "feat: messaggi, preset e stringhe del plug-in Sphere Light
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -874,7 +874,7 @@ struct SLRStoreTests {
 }
 ```
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Plugins/SphereLight" && swift test 2>&1 | grep -E "error:" | head -2`
+Run: `cd "<repo>/Plugins/SphereLight" && swift test 2>&1 | grep -E "error:" | head -2`
 Expected: `cannot find 'SLRStore' in scope`.
 
 - [ ] **Step 2: Implementare**
@@ -1003,13 +1003,13 @@ struct SLRStore {
 
 - [ ] **Step 3: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Plugins/SphereLight" && swift test 2>&1 | grep -E "Test run|error:|issue"`
+Run: `cd "<repo>/Plugins/SphereLight" && swift test 2>&1 | grep -E "Test run|error:|issue"`
 Expected: `Test run with 24 tests in 3 suites passed`.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Plugins && git commit -m "feat: memoria delle luci e salvataggio sulla Scrivania del plug-in Sphere Light
+cd "<repo>" && git add Plugins && git commit -m "feat: memoria delle luci e salvataggio sulla Scrivania del plug-in Sphere Light
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -1139,7 +1139,7 @@ struct SphereSenderTests {
 }
 ```
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Plugins/SphereLight" && swift test 2>&1 | grep -E "error:" | head -2`
+Run: `cd "<repo>/Plugins/SphereLight" && swift test 2>&1 | grep -E "error:" | head -2`
 Expected: `cannot find 'SphereSender' in scope`.
 
 - [ ] **Step 2: Implementare**
@@ -1238,13 +1238,13 @@ struct SphereSender {
 
 - [ ] **Step 3: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Plugins/SphereLight" && swift test 2>&1 | grep -E "Test run|error:|issue"`
+Run: `cd "<repo>/Plugins/SphereLight" && swift test 2>&1 | grep -E "Test run|error:|issue"`
 Expected: `Test run with 30 tests in 4 suites passed`.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Plugins && git commit -m "feat: SphereSender, il lavoro dei due pulsanti del plug-in Sphere Light
+cd "<repo>" && git add Plugins && git commit -m "feat: SphereSender, il lavoro dei due pulsanti del plug-in Sphere Light
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -1571,7 +1571,7 @@ struct SphereLightView: View {
 
 - [ ] **Step 2: Compilare, provare e fare il bundle**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Plugins/SphereLight" && chmod +x Scripts/build.sh && swift build 2>&1 | tail -2 && swift test 2>&1 | grep -E "Test run|error:|issue" && rm -rf /tmp/slr-bundles && Scripts/build.sh /tmp/slr-bundles | tail -1`
+Run: `cd "<repo>/Plugins/SphereLight" && chmod +x Scripts/build.sh && swift build 2>&1 | tail -2 && swift test 2>&1 | grep -E "Test run|error:|issue" && rm -rf /tmp/slr-bundles && Scripts/build.sh /tmp/slr-bundles | tail -1`
 Expected: `Build complete!`, `Test run with 30 tests in 4 suites passed` (la colla non ha test nuovi) e `/tmp/slr-bundles/SphereLight.dthubplugin`.
 
 Run: `plutil -p /tmp/slr-bundles/SphereLight.dthubplugin/Contents/Info.plist | grep -E "Identifier|PrincipalClass|Contract" && nm -gU /tmp/slr-bundles/SphereLight.dthubplugin/Contents/MacOS/SphereLight | grep -c "SphereLightKit"`
@@ -1580,7 +1580,7 @@ Expected: `com.exiztenz.dthub.spherelight`, `SphereLightEntry`, `DTHubContract =
 - [ ] **Step 3: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Plugins && git commit -m "feat: il tab, il plug-in e lo script per fare il bundle di Sphere Light
+cd "<repo>" && git add Plugins && git commit -m "feat: il tab, il plug-in e lo script per fare il bundle di Sphere Light
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -1598,7 +1598,7 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 **Prima: l'app dell'utente deve essere chiusa** (`ps aux | grep "[D]T Hub"` vuoto), altrimenti gli strumenti per pilotare le finestre agirebbero sulla sua. Annotare `drawThings.selectedModel` e `workspace.selectedTab` e rimetterli alla fine. Servono: l'app costruita (`build/` di `main` va bene), il server gestito, FLUX.2 klein 9B, il LoRA `flux_2_sun_direction_lora_v1_lora_f16.ckpt` e un'immagine di partenza per il Run (il ritratto di test, 896×1152).
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub"
+cd "<repo>"
 defaults read com.exiztenz.DTHub drawThings.selectedModel; defaults read com.exiztenz.DTHub workspace.selectedTab   # annotare
 Plugins/SphereLight/Scripts/build.sh /tmp/slr-bundles
 H=/tmp/slrhome; rm -rf $H; AS="$H/Library/Application Support/DT Hub"; mkdir -p "$AS/Plug-ins"
@@ -1620,7 +1620,7 @@ Checklist:
 - [ ] **Step 2: Scrivere il README e aggiornare spec e backlog**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && cat > Plugins/SphereLight/README.md <<'EOF'
+cd "<repo>" && cat > Plugins/SphereLight/README.md <<'EOF'
 # Sphere Light Reference (SLR)
 
 Un plug-in di DT Hub: dispone fino a tre luci su una sfera, la calcola (ray tracing su CPU) e la manda a Draw Things per far
@@ -1668,7 +1668,7 @@ Expected: statistica su due file.
 - [ ] **Step 3: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Plugins docs && git commit -m "docs: README del plug-in Sphere Light; spec realizzata e rimandi nel backlog
+cd "<repo>" && git add Plugins docs && git commit -m "docs: README del plug-in Sphere Light; spec realizzata e rimandi nel backlog
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```

@@ -16,7 +16,7 @@
 
 ## Global Constraints
 
-- **Repository e dipendenze:** radice `/Users/existenz/Software developement/DT Hub` (percorsi tra virgolette); branch `recommended-settings` da `main`; macOS 26, Swift 6, Xcode 27; solo DTBridge importa DrawThings-Swift, solo LLMBridge importa MLX.
+- **Repository e dipendenze:** radice `<repo>` (percorsi tra virgolette); branch `recommended-settings` da `main`; macOS 26, Swift 6, Xcode 27; solo DTBridge importa DrawThings-Swift, solo LLMBridge importa MLX.
 - **Solo quattro valori (più l'interruttore):** `steps`, `guidanceScale`, `sampler`, `shift` e `resolutionDependentShift`. Non si toccano dimensioni, seed, batch, LoRA, card Avanzate, prompt, negativo.
 - **Quando:** solo la scelta di un modello **diverso** dal menu dell'header. Mai all'avvio, né con un preset che nomina un modello, né in una pipeline, né con «Riprendi parametri», né dall'editor JSON, né da un plug-in. Scegliere lo stesso modello non tocca niente. Un modello senza voce (né per file né per famiglia) lascia i valori. Nessun avviso e nessun annulla.
 - **La tabella:** chiave = nome del file senza quantizzazione e senza estensione (si tolgono dalla fine `_f16`, `_f32`, `_bf16`, `_q<N>p`, `_i8x`, `_svd`); ricerca per file, poi per famiglia (la `version` del catalogo del server). Le voci con LoRA della lista di Draw Things si scartano. `shift` o `resolutionDependentShift` che la lista non dà si lasciano fuori: la voce senza `shift` lascia lo shift del tab. Il campionatore è il numero di Draw Things (lo stesso di `Sampler`); un numero sconosciuto scarta la voce. I valori applicati passano da `clamped()`.
@@ -47,7 +47,7 @@
 - [ ] **Step 1: Creare il branch e scrivere il test**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git switch main && git switch -c recommended-settings
+cd "<repo>" && git switch main && git switch -c recommended-settings
 ```
 
 **`Scripts/test_make_recommended_settings.py`** (file nuovo o riscritto per intero):
@@ -107,7 +107,7 @@ if __name__ == "__main__":
     unittest.main()
 ```
 
-Run: `cd "/Users/existenz/Software developement/DT Hub" && python3 -m unittest Scripts/test_make_recommended_settings.py 2>&1 | tail -3`
+Run: `cd "<repo>" && python3 -m unittest Scripts/test_make_recommended_settings.py 2>&1 | tail -3`
 Expected: un errore perché `Scripts/make-recommended-settings.py` non esiste (`FileNotFoundError`).
 
 - [ ] **Step 2: Implementare lo script e salvare la tabella**
@@ -634,13 +634,13 @@ if __name__ == "__main__":
 
 - [ ] **Step 3: Verificare**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub" && python3 -m unittest Scripts/test_make_recommended_settings.py 2>&1 | tail -3 && python3 -c "import json; d=json.load(open('App/Resources/RecommendedSettings.json')); print(len(d['models']), len(d['families']))"`
+Run: `cd "<repo>" && python3 -m unittest Scripts/test_make_recommended_settings.py 2>&1 | tail -3 && python3 -c "import json; d=json.load(open('App/Resources/RecommendedSettings.json')); print(len(d['models']), len(d['families']))"`
 Expected: `OK` dei 5 test e `46 18`.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Scripts App/Resources && git commit -m "feat: la tabella delle impostazioni consigliate per modello e lo script che la fa
+cd "<repo>" && git add Scripts App/Resources && git commit -m "feat: la tabella delle impostazioni consigliate per modello e lo script che la fa
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -764,7 +764,7 @@ struct RecommendedSettingsTests {
 }
 ```
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter RecommendedSettingsTests 2>&1 | grep -E "error:" | head -2`
+Run: `cd "<repo>/Packages" && swift test --filter RecommendedSettingsTests 2>&1 | grep -E "error:" | head -2`
 Expected: `cannot find 'RecommendedSettings' in scope`.
 
 - [ ] **Step 2: Implementare**
@@ -867,13 +867,13 @@ extension GenerationParameters {
 
 - [ ] **Step 3: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
 Expected: HubKit `101 tests … passed` (8 nuovi, tra cui la lettura della tabella vera di `App/Resources`); gli altri invariati.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: RecommendedSettings — la tabella dei valori consigliati e la sua applicazione ai parametri
+cd "<repo>" && git add Packages && git commit -m "feat: RecommendedSettings — la tabella dei valori consigliati e la sua applicazione ai parametri
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -963,7 +963,7 @@ struct ModelChoiceTests {
 }
 ```
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter ModelChoiceTests 2>&1 | grep -E "error:" | head -2`
+Run: `cd "<repo>/Packages" && swift test --filter ModelChoiceTests 2>&1 | grep -E "error:" | head -2`
 Expected: `value of type 'ModelSelection' has no member 'choose'`.
 
 - [ ] **Step 2: Implementare**
@@ -1000,13 +1000,13 @@ index edf4cf6..fd2c5b9 100644
 
 - [ ] **Step 3: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
 Expected: HubCore `464 tests … passed` (5 nuovi).
 
 - [ ] **Step 4: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: scegliere un modello dall'header applica i valori consigliati se il modello cambia
+cd "<repo>" && git add Packages && git commit -m "feat: scegliere un modello dall'header applica i valori consigliati se il modello cambia
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -1074,19 +1074,19 @@ index bea688c..4d4a421 100644
 
 - [ ] **Step 2: Compilare e provare**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath /tmp/r-dd CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)" && ls "/tmp/r-dd/Build/Products/Debug/DT Hub.app/Contents/Resources/RecommendedSettings.json"`
+Run: `cd "<repo>" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath /tmp/r-dd CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)" && ls "/tmp/r-dd/Build/Products/Debug/DT Hub.app/Contents/Resources/RecommendedSettings.json"`
 Expected: `** BUILD SUCCEEDED **` e il percorso della risorsa dentro l'app.
 
-Run: `cd "/Users/existenz/Software developement/DT Hub" && grep -rn "selection.select(" App`
+Run: `cd "<repo>" && grep -rn "selection.select(" App`
 Expected: nessun uso nel menu dei modelli dell'header (solo `GenerationController` con `load`, `applyJSON` e `resume`).
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
 Expected: gli stessi conteggi del Task 3 (totale **649**).
 
 - [ ] **Step 3: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add -A App && git commit -m "feat: il menu dei modelli dell'header applica le impostazioni consigliate
+cd "<repo>" && git add -A App && git commit -m "feat: il menu dei modelli dell'header applica le impostazioni consigliate
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -1103,7 +1103,7 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 **Se l'app dell'utente è aperta, non pilotare le finestre** (stesso identificatore): chiedere all'utente di provarla lui, o aspettare che la chiuda. Il menu dei modelli è un menu a tendina: gli strumenti per pilotare le finestre in background non lo aprono, quindi la prova è dell'utente o richiede il controllo dello schermo.
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub"
+cd "<repo>"
 xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "BUILD (SUCCEEDED|FAILED)"
 open "build/Build/Products/Debug/DT Hub.app"
 ```
@@ -1121,7 +1121,7 @@ Checklist (connesso al server, con questi modelli installati):
 - [ ] **Step 2: Aggiornare spec e backlog**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && python3 - <<'PY'
+cd "<repo>" && python3 - <<'PY'
 p = 'docs/superpowers/specs/2026-10-04-recommended-settings-design.md'
 s = open(p).read()
 s = s.replace("Stato: da approvare", "Stato: realizzata")
@@ -1146,7 +1146,7 @@ Expected: statistica su due file.
 - [ ] **Step 3: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add docs && git commit -m "docs: impostazioni consigliate realizzate; rimandi nel backlog
+cd "<repo>" && git add docs && git commit -m "docs: impostazioni consigliate realizzate; rimandi nel backlog
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```

@@ -16,7 +16,7 @@
 ## Global Constraints
 
 - **Repository e dipendenze:**
-  - radice `/Users/existenz/Software developement/DT Hub` (percorsi tra virgolette);
+  - radice `<repo>` (percorsi tra virgolette);
   - branch `m7d-outpaint` da `main`;
   - macOS 26, Swift 6, Xcode 27;
   - solo DTBridge importa DrawThings-Swift.
@@ -64,7 +64,7 @@
 - [ ] **Step 1: Creare il ramo e scrivere i test**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git switch main && git switch -c m7d-outpaint
+cd "<repo>" && git switch main && git switch -c m7d-outpaint
 ```
 
 ```diff
@@ -106,7 +106,7 @@ index cd90628..f9c3bf0 100644
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter HubKitTests 2>&1 | grep -E "error:" | head -2`
+Run: `cd "<repo>/Packages" && swift test --filter HubKitTests 2>&1 | grep -E "error:" | head -2`
 Expected: `extra argument 'hasMargins'` o `value of type 'Framing' has no member 'zoom'`.
 
 - [ ] **Step 3: Implementare**
@@ -193,13 +193,13 @@ al posto di `inputs.framing = Framing(mode: inputs.framing.mode, offsetX: x, off
 
 - [ ] **Step 4: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
 Expected: HubKit `65 tests … passed` (2 nuovi), HubCore 312, DTBridge 62, Catalog 6, LLMBridge 6 (totale **451**).
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: lo zoom nel modello dell'inquadratura e la forza automatica con i margini
+cd "<repo>" && git add Packages && git commit -m "feat: lo zoom nel modello dell'inquadratura e la forza automatica con i margini
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -311,7 +311,7 @@ struct OutpaintGeometryTests {
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter OutpaintGeometry 2>&1 | grep -E "error:" | head -2`
+Run: `cd "<repo>/Packages" && swift test --filter OutpaintGeometry 2>&1 | grep -E "error:" | head -2`
 Expected: `type 'FramingMath' has no member 'factor'`.
 
 - [ ] **Step 3: Implementare**
@@ -440,13 +440,13 @@ I calcoli di riempimento (`fillSize`) tengono i rami di prima (immagine più lar
 
 - [ ] **Step 4: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
 Expected: HubCore `321 tests … passed` (9 nuovi; i test dell'inquadratura di prima passano senza modifiche); totale 65 + 321 + 62 + 6 + 6 = **460**.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: la finestra sull'immagine con lo zoom (può uscire dall'immagine), margini, zoom che contiene, quota usata
+cd "<repo>" && git add Packages && git commit -m "feat: la finestra sull'immagine con lo zoom (può uscire dall'immagine), margini, zoom che contiene, quota usata
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -592,7 +592,7 @@ struct OutpaintComposerTests {
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter OutpaintComposer 2>&1 | grep -E "error:|Expectation failed" | head -3`
+Run: `cd "<repo>/Packages" && swift test --filter OutpaintComposer 2>&1 | grep -E "error:|Expectation failed" | head -3`
 Expected: i test falliscono (margini non estesi; `mask(nil, …)` non compila: `nil` non è un `MaskBitmap`).
 
 - [ ] **Step 3: Implementare**
@@ -696,13 +696,13 @@ Nota: il colore di base dell'immagine è impostato nello spazio colore del conte
 
 - [ ] **Step 4: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
 Expected: HubCore `330 tests … passed` (9 nuovi; i test della maschera e dell'inquadratura di prima invariati); totale 65 + 330 + 62 + 6 + 6 = **469**.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: i margini dell'outpaint — bordi estesi nell'immagine, maschera dei margini anche senza maschera dipinta
+cd "<repo>" && git add Packages && git commit -m "feat: i margini dell'outpaint — bordi estesi nell'immagine, maschera dei margini anche senza maschera dipinta
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -839,7 +839,7 @@ struct OutpaintStoreTests {
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter OutpaintStore 2>&1 | grep -E "error:" | head -2`
+Run: `cd "<repo>/Packages" && swift test --filter OutpaintStore 2>&1 | grep -E "error:" | head -2`
 Expected: `value of type 'ControlStore' has no member 'setZoom'`.
 
 - [ ] **Step 3: Implementare**
@@ -948,13 +948,13 @@ index 21d02d5..dbef342 100644
 
 - [ ] **Step 4: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
 Expected: HubCore `338 tests … passed` (8 nuovi); totale 65 + 338 + 62 + 6 + 6 = **477**. (Se un test di sessione dell'M3, `reportsProgressAndPreviewWhileRunning`, fallisce una volta sotto carico, è la flakiness nota del backlog: rilanciare.)
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages App && git commit -m "feat: zoom nello store (non è un passo della cronologia), avvisi, decodifica dalla finestra, RUN con la maschera dei margini
+cd "<repo>" && git add Packages App && git commit -m "feat: zoom nello store (non è un passo della cronologia), avvisi, decodifica dalla finestra, RUN con la maschera dei margini
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -1005,7 +1005,7 @@ d['strings'] = dict(sorted(d['strings'].items()))
 open(p, 'w').write(json.dumps(d, ensure_ascii=False, indent=2))
 ```
 
-Salvare lo script come `/tmp/m7d_keys.py` e lanciarlo dalla radice: `cd "/Users/existenz/Software developement/DT Hub" && python3 /tmp/m7d_keys.py`. Controllare con `git diff --stat App/Localizable.xcstrings` (solo righe aggiunte e due valori cambiati).
+Salvare lo script come `/tmp/m7d_keys.py` e lanciarlo dalla radice: `cd "<repo>" && python3 /tmp/m7d_keys.py`. Controllare con `git diff --stat App/Localizable.xcstrings` (solo righe aggiunte e due valori cambiati).
 
 - [ ] **Step 2: La scheda Immagine**
 
@@ -1293,13 +1293,13 @@ index f3c15b8..6acf6b4 100644
 
 - [ ] **Step 4: Compilare e provare**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath /tmp/m7d-dd CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"; cd Packages && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|Missing|Not in" | grep -v "started\|reportsFailures"`
+Run: `cd "<repo>" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath /tmp/m7d-dd CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"; cd Packages && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|Missing|Not in" | grep -v "started\|reportsFailures"`
 Expected: `** BUILD SUCCEEDED **`; test HubKit 65, HubCore 338, DTBridge 62, Catalog 6, LLMBridge 6 = **477** passati (il test del catalogo controlla le nuove chiavi).
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add App && git commit -m "feat: slider Zoom nella card Canvas — stage con cornice e scacchiera, drag a due assi, scatti, margini in Disegno
+cd "<repo>" && git add App && git commit -m "feat: slider Zoom nella card Canvas — stage con cornice e scacchiera, drag a due assi, scatti, margini in Disegno
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -1400,7 +1400,7 @@ index dd20e29..73a8730 100644
      let context = CGContext(
 ```
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "Test run with|error:" | grep -v "started\|reportsFailures"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "Test run with|error:" | grep -v "started\|reportsFailures"`
 Expected: DTBridge `63 tests … passed` (la prova è inattiva), totale **478**.
 
 - [ ] **Step 2: Provarla con un server vero**
@@ -1409,7 +1409,7 @@ Serve il server di Draw Things con i modelli di `/Volumes/LLM-VLM/Models` (Jugge
 
 ```bash
 mkdir -p /tmp/m7d-out && (nohup "$HOME/Applications/DrawThings-CLI/gRPCServerCLI-macOS" /Volumes/LLM-VLM/Models --address 127.0.0.1 --port 7871 --model-browser > /tmp/m7d-server.log 2>&1 &); sleep 6
-cd "/Users/existenz/Software developement/DT Hub/Packages" && DTHUB_LIVE_OUT=/tmp/m7d-out DTHUB_LIVE_DT=127.0.0.1:7871 swift test --filter theMarginsAreRegenerated 2>&1 | grep -E "LIVE|passed|failed|error:" | grep -v started
+cd "<repo>/Packages" && DTHUB_LIVE_OUT=/tmp/m7d-out DTHUB_LIVE_DT=127.0.0.1:7871 swift test --filter theMarginsAreRegenerated 2>&1 | grep -E "LIVE|passed|failed|error:" | grep -v started
 pkill -TERM -f "gRPCServerCLI-macOS /Volumes/LLM-VLM/Models --address 127.0.0.1 --port 7871"
 ```
 
@@ -1442,7 +1442,7 @@ Alla fine: chiudere l'app (`pkill -f "m7d-dd/Build/Products/Debug/DT Hub.app"`) 
 Dalla radice, con questo script (due correzioni di testo e la nota di tappa):
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && python3 - <<'PY'
+cd "<repo>" && python3 - <<'PY'
 p = 'docs/superpowers/specs/2026-10-03-outpaint-design.md'
 s = open(p).read()
 old = "I margini si riempiono di **grigio neutro** (50%). Il prototipo prova anche l'estensione dei bordi e, se la giunzione è migliore, la sostituisce (ruling)."
@@ -1465,7 +1465,7 @@ Expected: una riga di statistica sulla sola spec dell'outpaint (circa 3 righe ca
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages docs && git commit -m "test: prova dal vivo dell'outpaint (SD 1.5), spec con i bordi estesi al posto del grigio
+cd "<repo>" && git add Packages docs && git commit -m "test: prova dal vivo dell'outpaint (SD 1.5), spec con i bordi estesi al posto del grigio
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```

@@ -28,7 +28,7 @@
 ## Global Constraints
 
 - **Repository e dipendenze:**
-  - radice `/Users/existenz/Software developement/DT Hub` (percorsi sempre tra virgolette);
+  - radice `<repo>` (percorsi sempre tra virgolette);
   - branch `m4a-card-base` da `main`;
   - macOS 26, Swift 6, Xcode 27;
   - solo `DTBridge` importa DrawThings-Swift (spec §4).
@@ -104,7 +104,7 @@
 - [ ] **Step 1: Creare il branch**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git switch main && git switch -c m4a-card-base
+cd "<repo>" && git switch main && git switch -c m4a-card-base
 ```
 
 Expected: `Switched to a new branch 'm4a-card-base'`
@@ -247,7 +247,7 @@ struct LenientDecodingTests {
 
 - [ ] **Step 3: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter HubKitTests 2>&1 | grep -E "error:" | head -5`
+Run: `cd "<repo>/Packages" && swift test --filter HubKitTests 2>&1 | grep -E "error:" | head -5`
 Expected: errori di compilazione `cannot find 'LoRASelection' in scope` / `extra argument 'loras'`.
 
 - [ ] **Step 4: Creare `Packages/Sources/HubKit/Generation/LoRASelection.swift`**
@@ -586,13 +586,13 @@ public struct ModelCatalog: Equatable, Sendable {
 
 - [ ] **Step 7: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with"`
 Expected: HubKit `30 tests … passed`; HubCore, DTBridge e Catalog passano come prima (67, 16, 6).
 
 - [ ] **Step 8: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: LoRA con trigger word e prompt negativo nel contratto, decodifica tollerante
+cd "<repo>" && git add Packages && git commit -m "feat: LoRA con trigger word e prompt negativo nel contratto, decodifica tollerante
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -674,7 +674,7 @@ struct LoRACompatibilityTests {
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter HubCoreTests 2>&1 | grep -E "error:" | head -3`
+Run: `cd "<repo>/Packages" && swift test --filter HubCoreTests 2>&1 | grep -E "error:" | head -3`
 Expected: `cannot find 'FamilyTraits' in scope`.
 
 - [ ] **Step 3: Creare `Packages/Sources/HubCore/Family/FamilyTraits.swift`**
@@ -758,13 +758,13 @@ extension ModelCatalog {
 
 - [ ] **Step 5: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with"`
 Expected: HubCore `74 tests … passed`; le altre suite invariate.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: tabella famiglia → campi e compatibilità delle LoRA
+cd "<repo>" && git add Packages && git commit -m "feat: tabella famiglia → campi e compatibilità delle LoRA
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -887,7 +887,7 @@ struct PNGImageStoreTests {
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter HubCoreTests 2>&1 | grep -E "error:" | head -3`
+Run: `cd "<repo>/Packages" && swift test --filter HubCoreTests 2>&1 | grep -E "error:" | head -3`
 Expected: `cannot find 'JobComposer' in scope`.
 
 - [ ] **Step 3: Creare `Packages/Sources/HubCore/Generation/JobComposer.swift`**
@@ -921,13 +921,13 @@ Sostituire `kCGImagePropertyPNGDescription: job.prompt,` con `kCGImagePropertyPN
 
 - [ ] **Step 4: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with"`
 Expected: HubCore `79 tests … passed`.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: JobComposer — il RUN senza campi e LoRA che la famiglia non usa; PNG con le trigger word
+cd "<repo>" && git add Packages && git commit -m "feat: JobComposer — il RUN senza campi e LoRA che la famiglia non usa; PNG con le trigger word
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -1110,7 +1110,7 @@ struct CatalogBuilderTests {
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter DTBridgeTests 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with"`
+Run: `cd "<repo>/Packages" && swift test --filter DTBridgeTests 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with"`
 Expected: falliscono `sendsTheNegativePromptAndTheLoRAs()`, `triggerWordsArePutInFrontOfThePrompt()` e `loRAsComeFromMetadataPlusUndescribedLoRAFiles()`.
 
 - [ ] **Step 3: Sostituire `Packages/Sources/DTBridge/JobMapper.swift` con:**
@@ -1247,13 +1247,13 @@ enum CatalogBuilder {
 
 - [ ] **Step 4: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with"`
 Expected: DTBridge `18 tests … passed`.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: DTBridge legge le trigger word e invia negativo, LoRA e trigger
+cd "<repo>" && git add Packages && git commit -m "feat: DTBridge legge le trigger word e invia negativo, LoRA e trigger
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -1324,7 +1324,7 @@ struct SessionStoreTests {
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter SessionStoreTests 2>&1 | grep -E "error:" | head -3`
+Run: `cd "<repo>/Packages" && swift test --filter SessionStoreTests 2>&1 | grep -E "error:" | head -3`
 Expected: `cannot find 'SessionStore' in scope`.
 
 - [ ] **Step 3: Creare `Packages/Sources/HubCore/Session/SessionStore.swift`**
@@ -1390,13 +1390,13 @@ public struct SessionStore: Sendable {
 
 - [ ] **Step 4: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with"`
 Expected: HubCore `83 tests … passed`.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: SessionStore — ultimo prompt e parametri in session.json
+cd "<repo>" && git add Packages && git commit -m "feat: SessionStore — ultimo prompt e parametri in session.json
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -1415,7 +1415,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 - [ ] **Step 1: Aggiungere le chiavi senza riformattare il catalogo**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && python3 - <<'EOF'
+cd "<repo>" && python3 - <<'EOF'
 import json
 p = 'App/Localizable.xcstrings'
 d = json.load(open(p))
@@ -1453,13 +1453,13 @@ Expected: `1 file changed, 306 insertions(+)` e nessuna riga tolta. Se compaiono
 
 - [ ] **Step 2: Verificare il catalogo**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter CatalogTests 2>&1 | grep -E "Test run with|Missing|Not in"`
+Run: `cd "<repo>/Packages" && swift test --filter CatalogTests 2>&1 | grep -E "Test run with|Missing|Not in"`
 Expected: `6 tests … passed`.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add App/Localizable.xcstrings && git commit -m "feat: testi del prompt negativo e della card LoRA con trigger word (it, en)
+cd "<repo>" && git add App/Localizable.xcstrings && git commit -m "feat: testi del prompt negativo e della card LoRA con trigger word (it, en)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -2021,13 +2021,13 @@ struct DTHubApp: App {
 
 - [ ] **Step 8: Build e test**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"; cd Packages && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|Missing|Not in|Pass String"`
+Run: `cd "<repo>" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"; cd Packages && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|Missing|Not in|Pass String"`
 Expected: `** BUILD SUCCEEDED **`; test HubKit 30, HubCore 83, DTBridge 18, Catalog 6: **137** passati.
 
 - [ ] **Step 9: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add App && git commit -m "feat: prompt negativo, card LoRA con trigger word, campi per famiglia e ripristino della sessione
+cd "<repo>" && git add App && git commit -m "feat: prompt negativo, card LoRA con trigger word, campi per famiglia e ripristino della sessione
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -2041,7 +2041,7 @@ Nessun codice nuovo. Si prova l'app vera contro il server Draw Things: API Serve
 - [ ] **Step 1: Preparare e avviare**
 
 ```bash
-defaults read com.exiztenz.DTHub drawThings.selectedModel; defaults write com.exiztenz.DTHub output.folder /tmp/dthub-m4a-check && defaults write com.exiztenz.DTHub drawThings.selectedModel flux_2_klein_9b_f16.ckpt && open "/Users/existenz/Software developement/DT Hub/build/Build/Products/Debug/DT Hub.app"
+defaults read com.exiztenz.DTHub drawThings.selectedModel; defaults write com.exiztenz.DTHub output.folder /tmp/dthub-m4a-check && defaults write com.exiztenz.DTHub drawThings.selectedModel flux_2_klein_9b_f16.ckpt && open "<repo>/build/Build/Products/Debug/DT Hub.app"
 ```
 
 - [ ] **Step 2: Checklist (screenshot)**

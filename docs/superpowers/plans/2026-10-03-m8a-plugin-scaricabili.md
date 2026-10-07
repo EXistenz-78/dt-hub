@@ -18,7 +18,7 @@
 ## Global Constraints
 
 - **Repository e dipendenze:**
-  - radice `/Users/existenz/Software developement/DT Hub` (percorsi tra virgolette);
+  - radice `<repo>` (percorsi tra virgolette);
   - branch `m8a-plugin` da `main`;
   - macOS 26, Swift 6, Xcode 27;
   - solo DTBridge importa DrawThings-Swift, solo LLMBridge importa MLX; **`PluginKit/` non dipende da nulla dell'app**.
@@ -66,7 +66,7 @@
 - [ ] **Step 1: Creare il ramo e scrivere i test**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git switch main && git switch -c m8a-plugin
+cd "<repo>" && git switch main && git switch -c m8a-plugin
 ```
 
 ```swift
@@ -132,7 +132,7 @@ struct PluginContractTests {
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter HubKitTests 2>&1 | grep -E "error:" | head -2`
+Run: `cd "<repo>/Packages" && swift test --filter HubKitTests 2>&1 | grep -E "error:" | head -2`
 Expected: `cannot find 'PluginManifest' in scope`.
 
 - [ ] **Step 3: Implementare**
@@ -277,13 +277,13 @@ public struct PluginNotice: Codable, Equatable, Sendable {
 
 - [ ] **Step 4: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
 Expected: HubKit `82 tests … passed` (6 nuovi), HubCore 363, DTBridge 66, Catalog 6, LLMBridge 6 (totale **523**).
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: i tipi del contratto dei plug-in (manifesto, versioni, messaggi)
+cd "<repo>" && git add Packages && git commit -m "feat: i tipi del contratto dei plug-in (manifesto, versioni, messaggi)
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -458,7 +458,7 @@ struct PluginSettingsTests {
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter "PluginBundleReader|PluginFolder|PluginSettings" 2>&1 | grep -E "error:" | head -2`
+Run: `cd "<repo>/Packages" && swift test --filter "PluginBundleReader|PluginFolder|PluginSettings" 2>&1 | grep -E "error:" | head -2`
 Expected: `cannot find 'PluginBundleReader' in scope`.
 
 - [ ] **Step 3: Implementare**
@@ -684,13 +684,13 @@ public struct PluginSettingsStore: Sendable {
 
 - [ ] **Step 4: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
 Expected: HubCore `376 tests … passed` (13 nuovi); totale 82 + 376 + 66 + 6 + 6 = **536**.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: lettura, scansione, installazione e rimozione dei bundle dei plug-in, impostazioni
+cd "<repo>" && git add Packages && git commit -m "feat: lettura, scansione, installazione e rimozione dei bundle dei plug-in, impostazioni
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -920,7 +920,7 @@ struct PluginRegistryTests {
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter PluginRegistry 2>&1 | grep -E "error:" | head -2`
+Run: `cd "<repo>/Packages" && swift test --filter PluginRegistry 2>&1 | grep -E "error:" | head -2`
 Expected: `cannot find type 'LoadedPlugin' in scope`.
 
 - [ ] **Step 3: Implementare**
@@ -1192,13 +1192,13 @@ public final class PluginRegistry: PluginHosting {
 
 - [ ] **Step 4: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
 Expected: HubCore `387 tests … passed` (11 nuovi); totale 82 + 387 + 66 + 6 + 6 = **547**.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: il registro dei plug-in (stati, installazione con offerta, attivazione, tab, messaggi, avvisi)
+cd "<repo>" && git add Packages && git commit -m "feat: il registro dei plug-in (stati, installazione con offerta, attivazione, tab, messaggi, avvisi)
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -1409,7 +1409,7 @@ index 807da32..38e5632 100644
    ]
 ```
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter PluginHostTests 2>&1 | grep -E "error:" | head -2`
+Run: `cd "<repo>/Packages" && swift test --filter PluginHostTests 2>&1 | grep -E "error:" | head -2`
 Expected: `no such module 'PluginHost'` o `cannot find 'BundlePluginLoader' in scope`.
 
 - [ ] **Step 3: Implementare**
@@ -1814,18 +1814,18 @@ final class OnceReply: @unchecked Sendable {
 ```
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && chmod +x PluginKit/Scripts/make-bundle.sh
+cd "<repo>" && chmod +x PluginKit/Scripts/make-bundle.sh
 ```
 
 - [ ] **Step 4: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
 Expected: PluginHost `5 tests … passed` (circa 10 secondi); HubKit 82, HubCore 387, DTBridge 66, Catalog 6, LLMBridge 6 (totale **552**).
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages PluginKit && git commit -m "feat: DTHubPluginKit per gli autori, plug-in di esempio, script del bundle e caricatore vero (PluginHost)
+cd "<repo>" && git add Packages PluginKit && git commit -m "feat: DTHubPluginKit per gli autori, plug-in di esempio, script del bundle e caricatore vero (PluginHost)
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -1846,7 +1846,7 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 
 @@KEYS@@
 
-Salvare lo script come `/tmp/m8a_keys.py` e lanciarlo dalla radice: `cd "/Users/existenz/Software developement/DT Hub" && python3 /tmp/m8a_keys.py`. Controllare con `git diff --stat App/Localizable.xcstrings` (solo righe aggiunte).
+Salvare lo script come `/tmp/m8a_keys.py` e lanciarlo dalla radice: `cd "<repo>" && python3 /tmp/m8a_keys.py`. Controllare con `git diff --stat App/Localizable.xcstrings` (solo righe aggiunte).
 
 - [ ] **Step 2: Le viste nuove e l'entitlement**
 
@@ -2305,13 +2305,13 @@ index a3494e6..22e1b63 100644
 
 - [ ] **Step 4: Compilare e provare**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath /tmp/m8a-dd CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"; cd Packages && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|Missing|Not in" | grep -v "started\|reportsFailures"`
+Run: `cd "<repo>" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath /tmp/m8a-dd CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"; cd Packages && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|Missing|Not in" | grep -v "started\|reportsFailures"`
 Expected: `** BUILD SUCCEEDED **`; test HubKit 82, HubCore 387, PluginHost 5, DTBridge 66, Catalog 6, LLMBridge 6 = **552** passati (il test del catalogo controlla le nuove chiavi e che nessun titolo sia una stringa vuota).
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add App DTHub.entitlements DTHub.xcodeproj && git commit -m "feat: Preferenze › Plug-in, menu Plug-in dell'header, tab e avvisi dei plug-in, entitlement
+cd "<repo>" && git add App DTHub.entitlements DTHub.xcodeproj && git commit -m "feat: Preferenze › Plug-in, menu Plug-in dell'header, tab e avvisi dei plug-in, entitlement
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -2328,7 +2328,7 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 Non si toccano i dati dell'utente: l'app parte con `CFFIXED_USER_HOME` (cartella Application Support e preferenze a parte) e il plug-in di esempio già installato e acceso.
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && (cd PluginKit/Examples/Sample && swift build 2>&1 | tail -1)
+cd "<repo>" && (cd PluginKit/Examples/Sample && swift build 2>&1 | tail -1)
 H=/tmp/m8ahome; rm -rf $H; AS="$H/Library/Application Support/DT Hub"; mkdir -p "$AS/Plug-ins"
 PluginKit/Scripts/make-bundle.sh PluginKit/Examples/Sample/.build/out/Products/Debug/libSamplePlugin.dylib "$AS/Plug-ins/com.example.dthub.sample.dthubplugin" com.example.dthub.sample Sample 1.0 SampleEntry
 echo '{"enabled":["com.example.dthub.sample"]}' > "$AS/plugins.json"
@@ -2351,7 +2351,7 @@ Alla fine: chiudere l'app di prova (`pkill -f m8a-dd`), togliere `/tmp/m8ahome`.
 - [ ] **Step 2: Aggiornare la spec**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && python3 - <<'PY'
+cd "<repo>" && python3 - <<'PY'
 p = 'docs/superpowers/specs/2026-10-03-plugin-design.md'
 s = open(p).read()
 s = s.replace("Stato: bozza da approvare", "Stato: M8a realizzata, M8b da fare")
@@ -2365,7 +2365,7 @@ Expected: una riga di statistica sulla sola spec dei plug-in (1 riga cambiata).
 - [ ] **Step 3: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add docs && git commit -m "docs: spec dei plug-in — M8a realizzata
+cd "<repo>" && git add docs && git commit -m "docs: spec dei plug-in — M8a realizzata
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```

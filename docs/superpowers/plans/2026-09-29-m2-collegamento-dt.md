@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- Radice del repository: `/Users/existenz/Software developement/DT Hub` (percorsi sempre tra virgolette).
+- Radice del repository: `<repo>` (percorsi sempre tra virgolette).
 - Branch `m2-collegamento-dt`, creato da `m1-ossatura` (M1 non è ancora in `main`).
 - macOS 26.0, Apple Silicon, Xcode 27, Swift 6, pacchetto `swift-tools-version: 6.2`.
 - Regole di dipendenza (spec §4): `HubKit` nessuna dipendenza; `HubCore` → solo `HubKit`; `DTBridge` → `HubKit` + `DrawThingsClient`; l'app → tutti e tre. **Solo `DTBridge` importa DrawThings-Swift.**
@@ -102,7 +102,7 @@ DTHub.xcodeproj/project.pbxproj                     (modifica) l'app collega il 
 - [ ] **Step 1: Creare il branch**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git switch m1-ossatura && git switch -c m2-collegamento-dt
+cd "<repo>" && git switch m1-ossatura && git switch -c m2-collegamento-dt
 ```
 
 Expected: `Switched to a new branch 'm2-collegamento-dt'`
@@ -156,7 +156,7 @@ struct ModelCatalogTests {
 
 - [ ] **Step 4: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter HubKitTests 2>&1 | grep -E "error:" | head -3`
+Run: `cd "<repo>/Packages" && swift test --filter HubKitTests 2>&1 | grep -E "error:" | head -3`
 Expected: `cannot find 'CatalogModel' in scope`
 
 - [ ] **Step 5: Implementare — `Packages/Sources/HubKit/Catalog/ModelCatalog.swift`**
@@ -267,13 +267,13 @@ public protocol GenerationBackend: Sendable {
 
 - [ ] **Step 7: Verificare che i test passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "Test run|error:"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "Test run|error:"`
 Expected: `Test run with 3 tests in 1 suite passed` (HubKitTests), `Test run with 12 tests in 2 suites passed` (HubCoreTests), `Test run with 4 tests in 1 suite passed` (CatalogTests).
 
 - [ ] **Step 8: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: contratto HubKit per il catalogo dei modelli e il backend di generazione
+cd "<repo>" && git add Packages && git commit -m "feat: contratto HubKit per il catalogo dei modelli e il backend di generazione
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -401,7 +401,7 @@ struct CatalogBuilderTests {
 
 - [ ] **Step 3: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter CatalogBuilderTests 2>&1 | grep -E "error:" | head -3`
+Run: `cd "<repo>/Packages" && swift test --filter CatalogBuilderTests 2>&1 | grep -E "error:" | head -3`
 Expected: FAIL. La prima volta SwiftPM scarica DrawThings-Swift e le sue dipendenze (gRPC, protobuf, flatbuffers: qualche minuto). Poi errore di compilazione `cannot find 'ModelSpecInfo' in scope`, oppure un errore di target `DTBridge` senza sorgenti: entrambi valgono come "fallisce".
 
 - [ ] **Step 4: Implementare — `Packages/Sources/DTBridge/CatalogBuilder.swift`**
@@ -547,16 +547,16 @@ struct LiveServerTests {
 
 - [ ] **Step 7: Verificare che i test passino, poi i test sul server vero**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "Test run|error:"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "Test run|error:"`
 Expected: tutte le righe `passed`; DTBridgeTests `Test run with 7 tests in 2 suites passed` (i 2 test live risultano saltati).
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && DTHUB_LIVE_DT=localhost:7859 swift test --filter LiveServerTests 2>&1 | grep -E "Test run|failed"`
+Run: `cd "<repo>/Packages" && DTHUB_LIVE_DT=localhost:7859 swift test --filter LiveServerTests 2>&1 | grep -E "Test run|failed"`
 Expected: `Test run with 2 tests in 1 suite passed`. Se il server DT non è in ascolto su 7859 (verificare con `lsof -nP -iTCP:7859 -sTCP:LISTEN`), annotare nel registro che il test live non è stato eseguito e proseguire.
 
 - [ ] **Step 8: Commit (con `Package.resolved`)**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git status --short && git commit -m "feat: DTBridge, catalogo dei modelli dal server Draw Things via gRPC
+cd "<repo>" && git add Packages && git status --short && git commit -m "feat: DTBridge, catalogo dei modelli dal server Draw Things via gRPC
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -630,7 +630,7 @@ struct ConnectionSettingsTests {
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter ConnectionSettingsTests 2>&1 | grep -E "error:" | head -3`
+Run: `cd "<repo>/Packages" && swift test --filter ConnectionSettingsTests 2>&1 | grep -E "error:" | head -3`
 Expected: `cannot find 'ConnectionSettings' in scope`
 
 - [ ] **Step 3: Implementare — `Packages/Sources/HubCore/Connection/ConnectionSettings.swift`**
@@ -700,13 +700,13 @@ public struct ConnectionSettingsStore {
 
 - [ ] **Step 4: Verificare che i test passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter ConnectionSettingsTests 2>&1 | grep -E "Test run|error:"`
+Run: `cd "<repo>/Packages" && swift test --filter ConnectionSettingsTests 2>&1 | grep -E "Test run|error:"`
 Expected: `Test run with 5 tests in 1 suite passed`
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: impostazioni di connessione a Draw Things con validazione e salvataggio
+cd "<repo>" && git add Packages && git commit -m "feat: impostazioni di connessione a Draw Things con validazione e salvataggio
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -750,7 +750,7 @@ struct KeychainSecretStoreTests {
 
 - [ ] **Step 2: Verificare che fallisca**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter KeychainSecretStoreTests 2>&1 | grep -E "error:" | head -3`
+Run: `cd "<repo>/Packages" && swift test --filter KeychainSecretStoreTests 2>&1 | grep -E "error:" | head -3`
 Expected: `cannot find 'KeychainSecretStore' in scope`
 
 - [ ] **Step 3: Implementare — `Packages/Sources/HubCore/Connection/SecretStore.swift`**
@@ -813,13 +813,13 @@ public struct KeychainSecretStore: SecretStore {
 
 - [ ] **Step 4: Verificare che il test passi**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter KeychainSecretStoreTests 2>&1 | grep -E "Test run|error:"`
+Run: `cd "<repo>/Packages" && swift test --filter KeychainSecretStoreTests 2>&1 | grep -E "Test run|error:"`
 Expected: `Test run with 1 test in 1 suite passed`. Se macOS mostra una richiesta di accesso al Portachiavi, va accettata dall'utente: annotarlo e proseguire.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: codice di accesso di Draw Things nel Portachiavi
+cd "<repo>" && git add Packages && git commit -m "feat: codice di accesso di Draw Things nel Portachiavi
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -1001,7 +1001,7 @@ actor SleepCounter {
 
 - [ ] **Step 3: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter ConnectionMonitorTests 2>&1 | grep -E "error:" | head -3`
+Run: `cd "<repo>/Packages" && swift test --filter ConnectionMonitorTests 2>&1 | grep -E "error:" | head -3`
 Expected: `cannot find 'ConnectionMonitor' in scope`
 
 - [ ] **Step 4: Implementare — `Packages/Sources/HubCore/Connection/ConnectionMonitor.swift`**
@@ -1081,13 +1081,13 @@ public final class ConnectionMonitor {
 
 - [ ] **Step 5: Verificare che i test passino (tre volte: alcuni usano tempi brevi)**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && for i in 1 2 3; do swift test --filter ConnectionMonitorTests 2>&1 | grep -E "Test run with|error:"; done`
+Run: `cd "<repo>/Packages" && for i in 1 2 3; do swift test --filter ConnectionMonitorTests 2>&1 | grep -E "Test run with|error:"; done`
 Expected: tre volte `Test run with 11 tests in 1 suite passed`.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: ConnectionMonitor, stato della connessione e controllo periodico del server
+cd "<repo>" && git add Packages && git commit -m "feat: ConnectionMonitor, stato della connessione e controllo periodico del server
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -1128,7 +1128,7 @@ con:
 
 - [ ] **Step 2: Verificare che fallisca**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter CatalogTests 2>&1 | grep -E "Test run|failed" | head -3`
+Run: `cd "<repo>/Packages" && swift test --filter CatalogTests 2>&1 | grep -E "Test run|failed" | head -3`
 Expected: `findsLocalizedLiteralsInSource` fallisce (mancano `d.key` ed `e.key`).
 
 - [ ] **Step 3: Estendere l'espressione regolare**
@@ -1138,7 +1138,7 @@ Nella stessa funzione `localizedLiterals(in:)`, sostituire `Text|Label|Tab|Butto
 - [ ] **Step 4: Aggiungere le chiavi di M2 al catalogo**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && python3 - App/Localizable.xcstrings <<'EOF'
+cd "<repo>" && python3 - App/Localizable.xcstrings <<'EOF'
 import json, sys
 p = sys.argv[1]
 catalog = json.load(open(p))
@@ -1175,13 +1175,13 @@ Expected: `38 keys`
 
 - [ ] **Step 5: Verificare che i test passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter CatalogTests 2>&1 | grep -E "Test run|Missing|Not in"`
+Run: `cd "<repo>/Packages" && swift test --filter CatalogTests 2>&1 | grep -E "Test run|Missing|Not in"`
 Expected: `Test run with 4 tests in 1 suite passed`
 
 - [ ] **Step 6: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add App/Localizable.xcstrings Packages && git commit -m "feat: stringhe di M2 e test del catalogo esteso a TextField e SecureField
+cd "<repo>" && git add App/Localizable.xcstrings Packages && git commit -m "feat: stringhe di M2 e test del catalogo esteso a TextField e SecureField
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -1285,7 +1285,7 @@ struct RunAvailabilityTests {
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter HubCoreTests 2>&1 | grep -E "error:" | head -3`
+Run: `cd "<repo>/Packages" && swift test --filter HubCoreTests 2>&1 | grep -E "error:" | head -3`
 Expected: errori `cannot find 'ModelSelection' in scope` e/o `extra argument 'catalog' in call`.
 
 - [ ] **Step 3: Implementare — `Packages/Sources/HubCore/Selection/ModelSelection.swift`**
@@ -1373,16 +1373,16 @@ e nello `switch runBlocker` di `runHelp` aggiungere, dopo il caso `.noModelSelec
 
 - [ ] **Step 6: Verificare test e build**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "Test run|error:"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "Test run|error:"`
 Expected: tutte `passed`; HubCoreTests `Test run with 33 tests in 6 suites passed`.
 
-Run: `cd "/Users/existenz/Software developement/DT Hub" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"`
+Run: `cd "<repo>" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"`
 Expected: `** BUILD SUCCEEDED **`
 
 - [ ] **Step 7: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add App Packages && git commit -m "feat: modello scelto ricordato e RUN bloccato se il modello non è sul server
+cd "<repo>" && git add App Packages && git commit -m "feat: modello scelto ricordato e RUN bloccato se il modello non è sul server
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -1414,7 +1414,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 Lo script aggiunge al progetto le stesse voci che XcodeGen ha scritto per HubCore (file di build, fase Frameworks, dipendenza di prodotto), con identificativi fissi.
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && python3 - DTHub.xcodeproj/project.pbxproj <<'EOF'
+cd "<repo>" && python3 - DTHub.xcodeproj/project.pbxproj <<'EOF'
 # Links the DTBridge product of the local package to the DTHub app target,
 # mirroring the entries XcodeGen wrote for HubCore.
 import re, sys
@@ -1784,7 +1784,7 @@ struct PreferencesView: View {
 - [ ] **Step 8: Compilare e rieseguire i test**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"; cd Packages && swift test 2>&1 | grep -E "Test run|Missing|Not in"
+cd "<repo>" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"; cd Packages && swift test 2>&1 | grep -E "Test run|Missing|Not in"
 ```
 
 Expected: `** BUILD SUCCEEDED **`; tutte le righe `Test run … passed`, nessuna `Missing` / `Not in the catalog`.
@@ -1792,7 +1792,7 @@ Expected: `** BUILD SUCCEEDED **`; tutte le righe `Test run … passed`, nessuna
 - [ ] **Step 9: Verifica dal vivo (server DT su 7859)**
 
 ```bash
-open "/Users/existenz/Software developement/DT Hub/build/Build/Products/Debug/DT Hub.app"
+open "<repo>/build/Build/Products/Debug/DT Hub.app"
 ```
 
 Checklist (screenshot della finestra):
@@ -1805,7 +1805,7 @@ Se il menu non si può aprire da strumenti in background, basta impostare la sce
 - [ ] **Step 10: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add App Packages DTHub.xcodeproj && git commit -m "feat: l'app si collega da sola a Draw Things, menu modelli per famiglia e RUN reale
+cd "<repo>" && git add App Packages DTHub.xcodeproj && git commit -m "feat: l'app si collega da sola a Draw Things, menu modelli per famiglia e RUN reale
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -1952,7 +1952,7 @@ private struct PreferencesPlaceholder: View {
 - [ ] **Step 3: Compilare e rieseguire i test**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"; cd Packages && swift test 2>&1 | grep -E "Test run|Missing|Not in"
+cd "<repo>" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"; cd Packages && swift test 2>&1 | grep -E "Test run|Missing|Not in"
 ```
 
 Expected: `** BUILD SUCCEEDED **`; tutte le righe `passed`; nessuna `Missing` / `Not in the catalog`.
@@ -1971,7 +1971,7 @@ A fine verifica: `defaults delete com.exiztenz.DTHub`.
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add App && git commit -m "feat: Preferenze › Draw Things (indirizzo, porta, TLS, codice di accesso, stato)
+cd "<repo>" && git add App && git commit -m "feat: Preferenze › Draw Things (indirizzo, porta, TLS, codice di accesso, stato)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```

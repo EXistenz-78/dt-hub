@@ -32,7 +32,7 @@ Ogni campo compare solo se il modello scelto lo usa. I valori modificati che il 
 ## Global Constraints
 
 - **Repository e dipendenze:**
-  - radice `/Users/existenz/Software developement/DT Hub` (percorsi tra virgolette);
+  - radice `<repo>` (percorsi tra virgolette);
   - branch `m4b-card-avanzate` da `main`;
   - macOS 26, Swift 6, Xcode 27;
   - solo `DTBridge` importa DrawThings-Swift.
@@ -101,7 +101,7 @@ Ogni campo compare solo se il modello scelto lo usa. I valori modificati che il 
 - [ ] **Step 1: Creare il branch**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git switch main && git switch -c m4b-card-avanzate
+cd "<repo>" && git switch main && git switch -c m4b-card-avanzate
 ```
 
 - [ ] **Step 2: Scrivere i test che falliscono.** Sostituire `Packages/Tests/HubKitTests/GenerationParametersTests.swift` con:
@@ -328,7 +328,7 @@ struct AdvancedParametersTests {
 
 - [ ] **Step 3: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter HubKitTests 2>&1 | grep -E "error:" | head -3`
+Run: `cd "<repo>/Packages" && swift test --filter HubKitTests 2>&1 | grep -E "error:" | head -3`
 Expected: `cannot find 'AdvancedParameters' in scope`.
 
 - [ ] **Step 4: Creare `Packages/Sources/HubKit/Generation/AdvancedParameters.swift`**
@@ -837,13 +837,13 @@ public struct ModelCatalog: Equatable, Sendable {
 
 - [ ] **Step 8: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with"`
 Expected: HubKit `38 tests … passed`; HubCore 83, DTBridge 18, Catalog 6 come prima.
 
 - [ ] **Step 9: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: valori delle card Avanzate e capacità del modello nel contratto
+cd "<repo>" && git add Packages && git commit -m "feat: valori delle card Avanzate e capacità del modello nel contratto
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -950,7 +950,7 @@ struct AdvancedFieldTests {
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter HubCoreTests 2>&1 | grep -E "error:" | head -3`
+Run: `cd "<repo>/Packages" && swift test --filter HubCoreTests 2>&1 | grep -E "error:" | head -3`
 Expected: `cannot find 'AdvancedField' in scope`.
 
 - [ ] **Step 3: Creare `Packages/Sources/HubCore/Family/AdvancedField.swift`**
@@ -1135,13 +1135,13 @@ extension AdvancedParameters {
 
 - [ ] **Step 4: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with"`
 Expected: HubCore `90 tests … passed`.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: campi avanzati — visibilità dalle capacità del modello, valori modificati e nascosti
+cd "<repo>" && git add Packages && git commit -m "feat: campi avanzati — visibilità dalle capacità del modello, valori modificati e nascosti
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -1213,7 +1213,7 @@ struct AdvancedCompositionTests {
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter AdvancedCompositionTests 2>&1 | grep -E "Test run with|Expectation failed" | head -5`
+Run: `cd "<repo>/Packages" && swift test --filter AdvancedCompositionTests 2>&1 | grep -E "Test run with|Expectation failed" | head -5`
 Expected: la suite fallisce: CLIP skip, file assenti e Hires fix passano invariati.
 
 - [ ] **Step 3: Sostituire `Packages/Sources/HubCore/Generation/JobComposer.swift` con:**
@@ -1272,13 +1272,13 @@ public enum JobComposer {
 
 - [ ] **Step 4: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with"`
 Expected: HubCore `94 tests … passed`.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: il RUN invia solo i valori avanzati che il modello usa e il server ha
+cd "<repo>" && git add Packages && git commit -m "feat: il RUN invia solo i valori avanzati che il modello usa e il server ha
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -1560,7 +1560,7 @@ struct JobMapperTests {
 
 - [ ] **Step 3: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter DTBridgeTests 2>&1 | grep -E "error:" | head -3`
+Run: `cd "<repo>/Packages" && swift test --filter DTBridgeTests 2>&1 | grep -E "error:" | head -3`
 Expected: `type 'CatalogBuilder' has no member 'capabilities'`.
 
 - [ ] **Step 4: Sostituire `Packages/Sources/DTBridge/CatalogBuilder.swift` con:**
@@ -1791,13 +1791,13 @@ enum JobMapper {
 
 - [ ] **Step 6: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with"`
 Expected: DTBridge `22 tests … passed`; totale 38 + 94 + 22 + 6 = **160**.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: DTBridge legge le capacità dei modelli, riconosce upscaler e restauro, invia i valori avanzati
+cd "<repo>" && git add Packages && git commit -m "feat: DTBridge legge le capacità dei modelli, riconosce upscaler e restauro, invia i valori avanzati
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -1816,7 +1816,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 - [ ] **Step 1: Aggiungere le chiavi senza riformattare il catalogo**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && python3 - <<'EOF'
+cd "<repo>" && python3 - <<'EOF'
 import json
 p = 'App/Localizable.xcstrings'
 d = json.load(open(p))
@@ -1892,13 +1892,13 @@ Expected: `1 file changed, 952 insertions(+)` e nessuna riga tolta.
 
 - [ ] **Step 2: Verificare il catalogo**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter CatalogTests 2>&1 | grep -E "Test run with|Missing|Not in"`
+Run: `cd "<repo>/Packages" && swift test --filter CatalogTests 2>&1 | grep -E "Test run with|Missing|Not in"`
 Expected: `6 tests … passed`.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add App/Localizable.xcstrings && git commit -m "feat: testi delle card Avanzate (it, en)
+cd "<repo>" && git add App/Localizable.xcstrings && git commit -m "feat: testi delle card Avanzate (it, en)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -2475,13 +2475,13 @@ struct GenerationTabView: View {
 
 - [ ] **Step 5: Build e test**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"; cd Packages && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|Missing|Not in|Pass String"`
+Run: `cd "<repo>" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"; cd Packages && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|Missing|Not in|Pass String"`
 Expected: `** BUILD SUCCEEDED **`; test HubKit 38, HubCore 94, DTBridge 22, Catalog 6: **160** passati.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add App && git commit -m "feat: card Avanzate dietro l'interruttore, con avviso dei valori non usati
+cd "<repo>" && git add App && git commit -m "feat: card Avanzate dietro l'interruttore, con avviso dei valori non usati
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -2502,7 +2502,7 @@ Alla fine si rimettono.
 - [ ] **Step 1: Preparare e avviare**
 
 ```bash
-defaults read com.exiztenz.DTHub drawThings.selectedModel; A="$HOME/Library/Application Support/DT Hub"; mkdir -p /tmp/dthub-m4b-backup && cp "$A/session.json" "$A/cards.json" /tmp/dthub-m4b-backup/; defaults write com.exiztenz.DTHub output.folder /tmp/dthub-m4b-check && defaults write com.exiztenz.DTHub drawThings.selectedModel flux_1_dev_q5p.ckpt && open "/Users/existenz/Software developement/DT Hub/build/Build/Products/Debug/DT Hub.app"
+defaults read com.exiztenz.DTHub drawThings.selectedModel; A="$HOME/Library/Application Support/DT Hub"; mkdir -p /tmp/dthub-m4b-backup && cp "$A/session.json" "$A/cards.json" /tmp/dthub-m4b-backup/; defaults write com.exiztenz.DTHub output.folder /tmp/dthub-m4b-check && defaults write com.exiztenz.DTHub drawThings.selectedModel flux_1_dev_q5p.ckpt && open "<repo>/build/Build/Products/Debug/DT Hub.app"
 ```
 
 - [ ] **Step 2: Checklist (screenshot)**

@@ -16,7 +16,7 @@
 
 ## Global Constraints
 
-- **Repository e dipendenze:** radice `/Users/existenz/Software developement/DT Hub` (percorsi tra virgolette); **si lavora sul branch `m8b-plugin`** già esistente, senza crearne altri; macOS 26, Swift 6, Xcode 27; solo DTBridge importa DrawThings-Swift, solo LLMBridge importa MLX.
+- **Repository e dipendenze:** radice `<repo>` (percorsi tra virgolette); **si lavora sul branch `m8b-plugin`** già esistente, senza crearne altri; macOS 26, Swift 6, Xcode 27; solo DTBridge importa DrawThings-Swift, solo LLMBridge importa MLX.
 - **Nessuna migrazione:** l'app non è uscita; `presets.json` non si legge più (decisione dell'utente). La cartella è `~/Library/Application Support/DT Hub/Presets/`.
 - **Il nome è il file:** `<nome>.json`; nel JSON non ci sono `name`, `id`, `origin`. Un nome **non può essere vuoto, contenere `/` o `:`, né cominciare con un punto**; maiuscole e accenti non distinguono due nomi (lo stesso preset); salvare con un nome già presente sostituisce quel file (con la sua scrittura delle maiuscole). Le dimensioni non si salvano (`withoutSize`). Un import da Draw Things cambia `/` e `:` in `-`.
 - **Letture:** l'elenco viene dai nomi dei file (`refresh()` all'avvio, dopo ogni scrittura dell'app, quando la finestra torna attiva e prima di leggere un preset); il contenuto si legge solo al bisogno. Un file che non si decodifica compare nell'elenco e dà `unreadable` quando lo si carica; non rovina gli altri. File non `.json` e file nascosti non sono preset.
@@ -529,7 +529,7 @@ index dbf0def..60005fb 100644
      #expect(list[1].prompt.hasPrefix("match light direction"))
 ```
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter "PresetStoreTests|PluginPresetsTests" 2>&1 | grep -E "error:" | head -2`
+Run: `cd "<repo>/Packages" && swift test --filter "PresetStoreTests|PluginPresetsTests" 2>&1 | grep -E "error:" | head -2`
 Expected: un errore di compilazione (`extra argument 'folder'`/`PresetError` non esiste: lo store a cartella non c'è ancora).
 
 - [ ] **Step 2: Implementare**
@@ -983,13 +983,13 @@ index b6ed821..91409af 100644
 
 - [ ] **Step 3: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
 Expected: HubKit `93 tests … passed`, HubCore `454`, DTBridge 66, Catalog 6, LLMBridge 6, PluginHost 6.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add -A Packages && git commit -m "feat: un file per preset (cartella Presets), letti al bisogno; i preset dei plug-in senza origine
+cd "<repo>" && git add -A Packages && git commit -m "feat: un file per preset (cartella Presets), letti al bisogno; i preset dei plug-in senza origine
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -1411,16 +1411,16 @@ index cc31650..01484ae 100644
 
 - [ ] **Step 2: Compilare e provare**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath /tmp/q-dd CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"`
+Run: `cd "<repo>" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath /tmp/q-dd CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"`
 Expected: `** BUILD SUCCEEDED **`.
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
 Expected: gli stessi conteggi del Task 1 (Catalog 6 verdi).
 
 - [ ] **Step 3: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add -A App && git commit -m "feat: i preset nell'app sono i file della cartella; messaggi per nomi non validi e preset illeggibili
+cd "<repo>" && git add -A App && git commit -m "feat: i preset nell'app sono i file della cartella; messaggi per nomi non validi e preset illeggibili
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -1460,7 +1460,7 @@ index 60005fb..2984337 100644
  
 ```
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter BundlePluginLoaderTests 2>&1 | grep -E "recorded an issue" | head -2`
+Run: `cd "<repo>/Packages" && swift test --filter BundlePluginLoaderTests 2>&1 | grep -E "recorded an issue" | head -2`
 Expected: aspettative fallite sul nome del preset («SMP · Match the sun»).
 
 - [ ] **Step 2: Implementare**
@@ -1528,16 +1528,16 @@ index 8a4c79a..9df224a 100644
 
 - [ ] **Step 3: Verificare**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
 Expected: gli stessi conteggi del Task 1 (totale **631**).
 
-Run: `cd "/Users/existenz/Software developement/DT Hub" && PluginKit/Scripts/build-sample.sh /tmp/q-bundles && PluginKit/Scripts/build-sample.sh /tmp/q-bundles b`
+Run: `cd "<repo>" && PluginKit/Scripts/build-sample.sh /tmp/q-bundles && PluginKit/Scripts/build-sample.sh /tmp/q-bundles b`
 Expected: i percorsi dei due bundle.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add -A PluginKit Packages && git commit -m "feat: i preset del Sample portano l'acronimo del plug-in; convenzione nel README
+cd "<repo>" && git add -A PluginKit Packages && git commit -m "feat: i preset del Sample portano l'acronimo del plug-in; convenzione nel README
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -1551,10 +1551,10 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 
 - [ ] **Step 1: Provare nell'app vera con il server vero, in una cartella dati a parte**
 
-**Prima: l'app dell'utente deve essere chiusa** (`ps aux | grep "[D]T Hub.app"` vuoto), altrimenti gli strumenti per pilotare le finestre agirebbero sulla sua. Servono: il server gestito di DT Hub (nelle preferenze dell'utente), FLUX.2 klein 9B, il LoRA `flux_2_sun_direction_lora_v1_lora_f16.ckpt` e un'immagine di partenza (il ritratto del test: `/Users/existenz/Desktop/0______high_level_description____a_fine_art_portrait_of_an_asian_girl_…_4027213388.png`, 896×1152). **Le preferenze sono quelle dell'utente**: annotare e rimettere `drawThings.selectedModel` e `workspace.selectedTab`.
+**Prima: l'app dell'utente deve essere chiusa** (`ps aux | grep "[D]T Hub.app"` vuoto), altrimenti gli strumenti per pilotare le finestre agirebbero sulla sua. Servono: il server gestito di DT Hub (nelle preferenze dell'utente), FLUX.2 klein 9B, il LoRA `flux_2_sun_direction_lora_v1_lora_f16.ckpt` e un'immagine di partenza (il ritratto del test: `~/Desktop/0______high_level_description____a_fine_art_portrait_of_an_asian_girl_…_4027213388.png`, 896×1152). **Le preferenze sono quelle dell'utente**: annotare e rimettere `drawThings.selectedModel` e `workspace.selectedTab`.
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub"
+cd "<repo>"
 defaults read com.exiztenz.DTHub drawThings.selectedModel    # annotare
 xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath /tmp/q-dd CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "BUILD (SUCCEEDED|FAILED)"
 PluginKit/Scripts/build-sample.sh /tmp/q-bundles
@@ -1581,7 +1581,7 @@ Alla fine: chiudere l'app di prova (`pkill -f q-dd`), fermare il server gestito 
 - [ ] **Step 2: Aggiornare spec e backlog**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && python3 - <<'PY'
+cd "<repo>" && python3 - <<'PY'
 p = 'docs/superpowers/specs/2026-10-04-preset-pipeline-design.md'
 s = open(p).read()
 s = s.replace("Stato: P1 e P2 realizzate, P3 (un file per preset) da fare", "Stato: P1, P2 e P3 realizzate")
@@ -1606,7 +1606,7 @@ Expected: statistica su due file.
 - [ ] **Step 3: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add docs && git commit -m "docs: un file per preset realizzato; rimandi nel backlog
+cd "<repo>" && git add docs && git commit -m "docs: un file per preset realizzato; rimandi nel backlog
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```

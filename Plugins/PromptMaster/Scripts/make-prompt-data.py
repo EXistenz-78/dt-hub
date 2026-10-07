@@ -11,7 +11,7 @@ import argparse, json, os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PLUGIN = os.path.dirname(HERE)
-DEFAULT_SOURCE = "/Users/existenz/Software developement/Prompt generator/Prompt Master 2.0"
+DEFAULT_SOURCE = os.environ.get("PM2_SOURCE")  # the folder of Prompt Master 2.0; or pass --source
 
 DATABASE_VERSION = "2.1.0"
 MASTER_VERSION = "1.3.0"
@@ -214,7 +214,7 @@ def swift_literal(name, text):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--source", default=DEFAULT_SOURCE)
+    parser.add_argument("--source", default=DEFAULT_SOURCE, required=DEFAULT_SOURCE is None)
     args = parser.parse_args()
     database, masters = build(args.source)
     os.makedirs(os.path.join(PLUGIN, "Data"), exist_ok=True)
