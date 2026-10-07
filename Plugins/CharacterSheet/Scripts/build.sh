@@ -10,6 +10,6 @@ mkdir -p "$OUT"
 SCRATCH="$(mktemp -d)"
 trap 'rm -rf "$SCRATCH"' EXIT
 swift build -c release --package-path "$HERE/.." --scratch-path "$SCRATCH" >/dev/null
-"$HERE/../../../PluginKit/Scripts/make-bundle.sh" "$(find "$SCRATCH" -name libCharacterSheet.dylib | head -1)" \
+"$HERE/../../../PluginKit/Scripts/make-bundle.sh" "$(find "$SCRATCH" -name libCharacterSheet.dylib -not -path '*.dSYM/*' | head -1)" \
   "$OUT/CharacterSheet.dthubplugin" com.exiztenz.dthub.charactersheet CharacterSheet "$VERSION" CharacterSheetEntry
 echo "$OUT/CharacterSheet.dthubplugin"
