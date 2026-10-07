@@ -18,24 +18,33 @@ so the tab bar only ever shows what can be used with the model you picked.
 
 ## Install
 
-In DT Hub open **Preferences › Plug-ins**, press **Add…** and pick the plug-in's `.dthubplugin` bundle, then restart the app (turning a
+Every [release](https://github.com/EXistenz-78/dt-hub/releases/latest) carries the three plug-ins. Download the one you want, unzip it (you get a `.dthubplugin` bundle):
+
+- [Prompt Master](https://github.com/EXistenz-78/dt-hub/releases/latest/download/PromptMaster.dthubplugin.zip)
+- [Prompt Master I4](https://github.com/EXistenz-78/dt-hub/releases/latest/download/PromptMasterI4.dthubplugin.zip)
+- [Sphere Light Reference](https://github.com/EXistenz-78/dt-hub/releases/latest/download/SphereLight.dthubplugin.zip)
+
+Then, in DT Hub, open **Preferences › Plug-ins**, press **Add…**, pick the `.dthubplugin` bundle and restart the app (turning a
 plug-in on or off, or removing it, takes effect at the next launch). Each plug-in then appears as a tab, and can be switched on and off
 there or from the plug-in menu in the header.
 
 ![Preferences › Plug-ins](../docs/images/preferences-plugins.png)
 
-A plug-in runs code on your Mac with the same permissions as DT Hub: add only plug-ins you trust.
+A plug-in runs code on your Mac with the same permissions as DT Hub: add only plug-ins you trust. The bundles are ad-hoc signed; if
+macOS reports one as blocked, clear its quarantine flag with `xattr -dr com.apple.quarantine <the .dthubplugin>` and add it again.
 
-## Build a plug-in bundle (from a terminal)
+## Build a plug-in bundle yourself
 
-Pre-built bundles will be attached to the [Releases](../../../releases) when they are available. Until then, each plug-in has a
-`Scripts/build.sh` that makes the bundle. For example, for Prompt Master I4:
+Each plug-in has a `Scripts/build.sh` that makes the bundle. For example, for Prompt Master I4:
 
     Plugins/PromptMasterI4/Scripts/build.sh "$TMPDIR/pm-i4"
 
-The bundle is `$TMPDIR/pm-i4/PromptMasterI4.dthubplugin`: add it from Preferences as above. As an alternative to the Add… button, copy it
-into `~/Library/Application Support/DT Hub/Plug-ins/` with the bundle identifier as its name
-(`com.exiztenz.dthub.promptmasteri4.dthubplugin`) and restart DT Hub.
+The bundle is `$TMPDIR/pm-i4/PromptMasterI4.dthubplugin`: add it from Preferences as above. As an alternative to the Add… button, put it
+into `~/Library/Application Support/DT Hub/Plug-ins/` with the bundle identifier as its name, replacing any older version (remove it first:
+`cp -R` onto an existing folder would copy *inside* it), and restart DT Hub:
+
+    D="$HOME/Library/Application Support/DT Hub/Plug-ins/com.exiztenz.dthub.promptmasteri4.dthubplugin"
+    rm -rf "$D" && cp -R "$TMPDIR/pm-i4/PromptMasterI4.dthubplugin" "$D"
 
 Run a plug-in's tests from its folder: `cd Plugins/PromptMasterI4 && swift test`.
 
