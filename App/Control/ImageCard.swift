@@ -86,6 +86,19 @@ struct ImageCard: View {
           .help(String(localized: "control.image.adapt.help"))
         }
         .padding(.top, 4)
+        HStack(spacing: DS.controlGap) {
+          Button {
+            Task { await generation.promptFromImage(in: connection) }
+          } label: {
+            Label("control.image.describe", systemImage: "text.viewfinder")
+          }
+          .buttonStyle(DSPillButtonStyle())
+          .help(String(localized: "control.image.describe.help"))
+          .disabled(generation.assistant.working != nil)
+          if generation.assistant.working == .describe { ProgressView().controlSize(.small) }
+          PromptAssistUndo(controller: generation)
+        }
+        PromptAssistError(assistant: generation.assistant, hiding: .emptyPrompt)
       }
     }
   }

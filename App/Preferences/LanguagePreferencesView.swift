@@ -238,6 +238,18 @@ struct LanguagePreferencesView: View {
 }
 
 /// The words for what went wrong with the language model.
+/// The line under the Enhance/Generate Prompt buttons when an operation did not produce a prompt.
+enum PromptAssistantText {
+  static func message(_ failure: PromptAssistant.Failure) -> String {
+    switch failure {
+    case .model(let error): return LanguageModelErrorText.message(error)
+    case .emptyPrompt: return String(localized: "prompt.assist.error.empty")
+    case .noImage: return String(localized: "prompt.assist.error.noImage")
+    case .emptyAnswer: return String(localized: "prompt.assist.error.noAnswer")
+    }
+  }
+}
+
 enum LanguageModelErrorText {
   static func message(_ error: any Error) -> String {
     guard let error = error as? LanguageModelError else { return error.localizedDescription }

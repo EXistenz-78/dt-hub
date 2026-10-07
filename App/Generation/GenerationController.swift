@@ -47,6 +47,8 @@ final class GenerationController {
   @ObservationIgnored let languageModel: LanguageModelManager
   /// The Control tab's images (tab Control spec): the start image goes with every RUN.
   @ObservationIgnored let control: ControlStore
+  /// Enhance Prompt and Generate Prompt. The views read its own observed state (`working`, `failure`).
+  @ObservationIgnored let assistant: PromptAssistant
   /// True between pressing RUN and the generation starting: the language model is being freed
   /// and a parked server brought back. Also true all through a pipeline, between its passes.
   private(set) var isPreparing = false
@@ -67,6 +69,9 @@ final class GenerationController {
   ) {
     self.languageModel = languageModel
     self.control = control
+    assistant = PromptAssistant(respond: { prompt, images, options throws(LanguageModelError) in
+      try await languageModel.respond(to: prompt, images: images, options: options)
+    })
     // The strip of the Results window comes back from the last launches.
     Task { [session] in await session.restoreHistory() }
     self.sessionStore = sessionStore
@@ -178,6 +183,25 @@ final class GenerationController {
   /// Which base fields the chosen model's family uses.
   func traits(in connection: DrawThingsConnection) -> FamilyTraits {
     FamilyTraits.of(family(in: connection))
+  }
+
+  /// Enhance Prompt: the language model rewrites the prompt (and the negative prompt, where the family uses one).
+  func enhancePrompt(in connection: DrawThingsConnection) async {
+    let current = PromptPair(prompt: prompt, negative: negativePrompt)
+    if let result = await assistant.enhance(current, family: family(in: connection)) {
+      prompt = result.prompt
+      negativePrompt = result.negative
+    }
+  }
+
+  /// Generate Prompt: the language model describes the start image of the Control tab as a prompt.
+  func promptFromImage(in connection: DrawThingsConnection) async {
+    let url = control.inputs.image.flatMap { control.copyURL(of: $0) }
+    let current = PromptPair(prompt: prompt, negative: negativePrompt)
+    if let result = await assistant.describe(imageAt: url, current: current, family: family(in: connection)) {
+      prompt = result.prompt
+      negativePrompt = result.negative
+    }
   }
 
   /// Writes the session half a second after the last change, so typing does not write

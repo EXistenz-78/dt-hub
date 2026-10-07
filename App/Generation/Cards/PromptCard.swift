@@ -30,7 +30,58 @@ struct PromptCard: View {
               .foregroundStyle(.secondary)
           }
         }
+        enhanceRow
+        PromptAssistError(assistant: controller.assistant, hiding: .noImage)
       }
+    }
+  }
+
+  /// Enhance Prompt (the language model rewrites the prompt), its spinner, and Undo while the fields still hold the result.
+  private var enhanceRow: some View {
+    HStack(spacing: DS.controlGap) {
+      Button {
+        Task { await controller.enhancePrompt(in: connection) }
+      } label: {
+        Label("prompt.enhance", systemImage: "wand.and.stars")
+      }
+      .buttonStyle(DSPillButtonStyle())
+      .help(String(localized: "prompt.enhance.help"))
+      .disabled(controller.assistant.working != nil)
+      if controller.assistant.working == .enhance { ProgressView().controlSize(.small) }
+      Spacer(minLength: 0)
+      PromptAssistUndo(controller: controller)
+    }
+  }
+}
+
+/// The Undo link of Enhance/Generate Prompt: shown while the fields still hold what the last operation wrote.
+struct PromptAssistUndo: View {
+  let controller: GenerationController
+
+  var body: some View {
+    let current = PromptPair(prompt: controller.prompt, negative: controller.negativePrompt)
+    if let before = controller.assistant.undoOffer(current: current) {
+      Button("prompt.undo") {
+        controller.prompt = before.prompt
+        controller.negativePrompt = before.negative
+        controller.assistant.clearUndo()
+      }
+      .buttonStyle(.plain).font(.caption.weight(.semibold)).foregroundStyle(DS.accent)
+    }
+  }
+}
+
+/// Why the last Enhance/Generate Prompt produced nothing. `hiding` is the failure that belongs to the other button.
+struct PromptAssistError: View {
+  let assistant: PromptAssistant
+  let hiding: PromptAssistant.Failure
+
+  var body: some View {
+    if let failure = assistant.failure, failure != hiding {
+      Text(verbatim: PromptAssistantText.message(failure))
+        .font(.caption)
+        .foregroundStyle(DS.remove)
+        .fixedSize(horizontal: false, vertical: true)
     }
   }
 }
