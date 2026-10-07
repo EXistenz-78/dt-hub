@@ -32,13 +32,17 @@ struct SLRMessagesTests {
     }
   }
 
-  @Test func onlyTheMatchPresetHasTheLoraAtZeroPointSix() throws {
+  @Test func onlyTheMatchPresetHasTheLoraAtFullStrengthWithItsTriggerWord() throws {
     let presets = SLRMessages.presets()
     #expect(presets[0]["loras"] == nil)
     let loras = try #require(presets[1]["loras"] as? [[String: Any]])
     #expect(loras.count == 1)
     #expect(loras[0]["file"] as? String == "flux_2_sun_direction_lora_v1_lora_f16.ckpt")
-    #expect(loras[0]["weight"] as? Double == 0.6)
+    #expect(loras[0]["weight"] as? Double == 1.0)
+    // The trigger word is the prompt itself, so the preset does not depend on what the server's catalog says.
+    #expect(loras[0]["trigger"] as? String == "match light direction, colors and intensity from the reference image 2")
+    let fields = try #require(presets[1]["fields"] as? [String: Any])
+    #expect(loras[0]["trigger"] as? String == fields["prompt"] as? String)
   }
 
   @Test func thePromptsAreTheOnesOfTheScript() throws {
