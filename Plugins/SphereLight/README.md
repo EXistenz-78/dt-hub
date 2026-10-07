@@ -1,22 +1,32 @@
 # Sphere Light Reference (SLR)
 
-Un plug-in di DT Hub: dispone fino a tre luci su una sfera, la calcola (ray tracing su CPU) e la manda a Draw Things per far
-combaciare luce, colori e direzione del sole di un'immagine con quelli della sfera. Funziona con FLUX.2 Klein 9B e il LoRA
-`flux_2_sun_direction_lora_v1_lora_f16.ckpt`.
+> **Works with:** **FLUX.2 [klein] 9B** only (`flux2_9b`), with the [Sun Direction LoRA](https://huggingface.co/eric-venti-seeds/Sun-Direction-Lora-Flux2Klein9B) (`flux_2_sun_direction_lora_v1_lora_f16.ckpt`).
+> On any other family the plug-in is switched off and its tab is hidden.
 
-- **Invia a Generazione:** la sfera va nel Moodboard e il pulsante Run diventa una pipeline di preset: `SLR · Match the sun`,
-  preceduto da `SLR · Overcast` (appiattisce le ombre del canvas) se la casella «Overcast» è accesa.
-- **Solo la sfera nel Moodboard:** manda solo l'immagine, per usare prompt e parametri tuoi.
-- **I preset** si registrano da soli all'attivazione e stanno nel menu Preset: puoi cambiarli (il peso del LoRA, i passi…) e
-  salvarli con lo stesso nome; il plug-in non li sovrascrive mai. Se ne cancelli uno, «Invia a Generazione» lo ricrea.
-- **Salva anche sulla Scrivania:** una copia della sfera come `Sphere Light NNN.png`.
+A DT Hub plug-in: it places up to three lights on a sphere, renders it (CPU ray tracing) and sends it to Draw Things so that the
+light, the colours and the sun direction of an image match those of the sphere.
 
-Il tab usa i componenti dell'app (`DTHubDesign`, dal pacchetto `PluginKit`): card, pulsanti a pillola, caselle teal.
+**Multiple and coloured lights are exclusive to this plug-in.** SLR pushes the LoRA beyond its original limits: the reference
+sphere can be lit by several lights at once, each with its own colour, rotation, elevation, intensity and shadow hardness.
 
-## Costruirlo
+![Sphere Light Reference](../../docs/images/sphere-light.png)
 
-    Plugins/SphereLight/Scripts/build.sh OUT_FOLDER     # fa OUT_FOLDER/SphereLight.dthubplugin
-    cd Plugins/SphereLight && swift test                # 30 test
+- **Send to Generation:** the sphere goes to the Moodboard and the Run button becomes a preset pipeline: `SLR · Match the sun`,
+  preceded by `SLR · Overcast` (it flattens the shadows of the canvas) if the "Overcast" box is on.
+- **Sphere only, to the Moodboard:** sends just the image, so you can use your own prompt and parameters.
+- **The presets** register themselves when the plug-in is activated and live in the Presets menu: you can change them (the LoRA
+  weight, the steps…) and save them under the same name; the plug-in never overwrites them. If you delete one, "Send to
+  Generation" recreates it.
+- **Also save to Desktop:** a copy of the sphere as `Sphere Light NNN.png`.
 
-Poi si aggiunge in DT Hub › Preferenze › Plug-in (si trascina il file) e si accende dal menu Plug-in dell'header.
-Il codice del renderer viene dall'app `LightDirectionApp` (copia: l'app standalone non si sviluppa più).
+The tab uses the app's own components (`DTHubDesign`, from the `PluginKit` package): cards, pill buttons, teal checkboxes.
+
+## Install and build
+
+Add the `.dthubplugin` bundle in DT Hub › Preferences › Plug-ins (**Add…**, or drag the file in), then restart the app. To build
+the bundle yourself:
+
+    Plugins/SphereLight/Scripts/build.sh OUT_FOLDER     # makes OUT_FOLDER/SphereLight.dthubplugin
+    cd Plugins/SphereLight && swift test                # the plug-in's tests
+
+The renderer's code comes from the standalone `LightDirectionApp` (a copy: the standalone app is no longer developed).
