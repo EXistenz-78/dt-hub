@@ -52,7 +52,24 @@ This is an independent community project, not affiliated with or endorsed by Dra
 
 ## Install
 
-For now DT Hub is built from source (below). A pre-built, signed app will be offered under [Releases](../../releases) when one is available.
+1. Download **`DT-Hub-0.1.0-macOS-arm64.zip`** from the [latest release](https://github.com/EXistenz-78/dt-hub/releases/latest).
+2. Unzip it and drag **DT Hub.app** into `/Applications`.
+3. Read **First launch** below before you open it.
+4. Optional: add the plug-ins (they are in the same release, see [`Plugins/`](Plugins/README.md#install)).
+
+You also need a Draw Things gRPC server (see Requirements).
+
+## First launch (important)
+
+The app is signed with an Apple Development certificate but it is **not notarized**, so macOS Gatekeeper refuses to open it the first time. This is expected, not a broken download.
+
+When you see *"Apple could not verify 'DT Hub' is free of malware"*:
+
+1. Open **System Settings › Privacy & Security**.
+2. Scroll down: there is a line saying **"DT Hub" was blocked**.
+3. Click **Open Anyway** and confirm in the dialog that appears.
+
+You only need to do this once per download. If you would rather not trust a binary, build it yourself from source (below).
 
 ## Build from source
 
@@ -80,7 +97,7 @@ A plug-in is a bundle (`.dthubplugin`) with a dynamic library, loaded into the a
 
 ## Languages
 
-The interface of the app and of the plug-ins is available in **English and Italian** and follows the language of macOS. The design documents in [`docs/superpowers/`](docs/superpowers/) (specs, plans, backlog) are written in Italian.
+The interface of the app and of the plug-ins is available in **English and Italian** and follows the language of macOS. The design documents in [`docs/superpowers/`](docs/superpowers/) (specs and plans) are written in Italian.
 
 ## Repository layout
 
@@ -90,7 +107,7 @@ The interface of the app and of the plug-ins is available in **English and Itali
 | `Packages/` | The logic (`HubCore`, `HubKit`, `DTBridge`, `LLMBridge`, `PluginHost`) and its tests. |
 | `PluginKit/` | The kit and the design system a plug-in is written with; contract 1 of the plug-ins. |
 | `Plugins/` | Prompt Master, Prompt Master I4 and Sphere Light Reference. |
-| `docs/superpowers/` | Specs, plans and the backlog (in Italian). |
+| `docs/superpowers/` | Specs and plans (in Italian). |
 
 ## Status
 
