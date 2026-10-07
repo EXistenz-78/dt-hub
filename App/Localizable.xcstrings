@@ -2058,6 +2058,40 @@
         }
       }
     },
+    "control.image.describe": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Generate Prompt"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Genera Prompt"
+          }
+        }
+      }
+    },
+    "control.image.describe.help": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Describes the image with the LLM and writes the prompt, following the rules of the selected model"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descrive l'immagine con l'LLM e scrive il prompt, secondo le regole del modello scelto"
+          }
+        }
+      }
+    },
     "control.image.drop": {
       "extractionState": "manual",
       "localizations": {
@@ -5726,6 +5760,108 @@
           "stringUnit": {
             "state": "translated",
             "value": "Salva come preset…"
+          }
+        }
+      }
+    },
+    "prompt.assist.error.empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Write a prompt to enhance first."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scrivi prima un prompt da migliorare."
+          }
+        }
+      }
+    },
+    "prompt.assist.error.noAnswer": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The LLM gave no usable answer."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L'LLM non ha dato una risposta utilizzabile."
+          }
+        }
+      }
+    },
+    "prompt.assist.error.noImage": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No image to describe."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessuna immagine da descrivere."
+          }
+        }
+      }
+    },
+    "prompt.enhance": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enhance Prompt"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Migliora Prompt"
+          }
+        }
+      }
+    },
+    "prompt.enhance.help": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rewrites the prompt with the LLM, following the rules of the selected model"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Riscrive il prompt con l'LLM, secondo le regole del modello scelto"
+          }
+        }
+      }
+    },
+    "prompt.undo": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Undo"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annulla"
           }
         }
       }
