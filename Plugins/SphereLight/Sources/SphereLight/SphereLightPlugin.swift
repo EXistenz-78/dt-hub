@@ -4,10 +4,13 @@ import SwiftUI
 
 @MainActor
 final class SphereLightPlugin: DTHubPlugin {
-  /// On the other families the plug-in is switched off and its tab is hidden: the sun-direction LoRA is made for FLUX.2 Klein 9B.
+  /// The families the plug-in works with: the whole FLUX.2 [klein] family. The sun-direction LoRA is made for the 9B and
+  /// gives its best results there; it works on the 4B too. On the other families the plug-in is switched off and its tab
+  /// is hidden.
+  static let families = ["flux2_9b", "flux2_4b"]
   let manifest = DTHubManifest(
     id: "com.exiztenz.dthub.spherelight", name: "Sphere Light", version: "1.0", symbol: "lightbulb.max",
-    families: ["flux2_9b"])
+    families: SphereLightPlugin.families)
   private let state = SLRState()
   private var host: DTHubHost?
 
