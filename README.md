@@ -1,23 +1,44 @@
 # DT Hub
 
-A native macOS app that replaces the interface of [Draw Things](https://drawthings.ai/) for **preparing and launching image generations**. DT Hub talks to a Draw Things gRPC server, adds a local LLM (MLX) that can write and improve prompts for you, and grows through plug-ins that each bring their own tab.
+A native macOS companion for [Draw Things](https://drawthings.ai/): a dedicated workspace for **preparing and launching image generations**. DT Hub connects to the Draw Things gRPC server, which does all the rendering, and adds what sits around it: inputs you can always see, a canvas you can draw on from an iPad, a local LLM that writes and improves prompts, and plug-ins that each bring their own tab.
 
 This is an independent community project, not affiliated with or endorsed by Draw Things Technologies. It started as a personal tool and is published as open source under the GPL-3.0.
 
-<!-- Screenshots go here (see docs/images/). -->
+![The Control tab: start image, Moodboard and Canvas side by side](docs/images/control.png)
 
-## What it does
+## What DT Hub adds
 
-- **One window, one flow.** A header with the model menu, the connection status and a single **Run** button; a tab for the inputs, a tab for the parameters, and one more tab per active plug-in.
-- **Generation tab.** The prompt (with the negative prompt, shown only for families that use it) and collapsible cards for dimensions, sampling, seed and batch, LoRAs and an advanced section. Every value can be typed or stepped; the open/closed state of each card is remembered. A JSON editor shows and edits the whole configuration.
-- **Control tab.** The start image (image-to-image), a **Moodboard** of reference pictures (each can be switched on or off), and a **Canvas** card: frame the image, outpaint, paint an inpainting mask or draw in colour straight onto the image, with undo and redo. The Canvas card can be opened in a window of its own, with nothing but the drawing, so it can be moved to a second screen (an iPad with Sidecar, for instance) and drawn on with an Apple Pencil.
-- **Tiled Diffusion** for sizes up to 8192 × 8192.
+- **Canvas on your iPad.** The Canvas card opens in a window of its own that shows nothing but the drawing, as large as the window allows. Move it to an iPad connected with **Sidecar** and paint the inpainting mask, or draw in colour onto the image, with an **Apple Pencil** or your fingers. Undo and redo keep working in the window.
+- **Image and Moodboard always in sight.** The Control tab shows the start image, the Moodboard and the Canvas side by side, never behind a menu: every Moodboard picture can be switched on or off with its eye, and you drag pictures in from the Results strip, the Finder or the clipboard.
+- **A lock on the canvas proportions.** Width and height follow the ratio you choose: *Lock ratio* keeps it while you type or step either value, and the Ratios menu and the swap button change it in one click.
+- **Everything you made, at hand.** The Results window keeps the images of the session (and brings back the last ones after a restart); each thumbnail shows **how many seconds it took**, can be dragged anywhere, and offers *Use as image*, *Add to Moodboard*, *Show in Finder*, *Resume parameters* and *Trash*. Every PNG is saved with its prompt, its whole configuration and the time it took inside the file.
 - **Presets and preset pipelines.** Save a configuration as a preset and chain several presets into one Run. Recommended settings per model family are suggested for you.
-- **Results window.** Live preview while generating, then the image. A strip keeps the images of the session (and brings back the last ones after a restart): each thumbnail shows how many seconds it took, can be dragged into the Control tab or any other app, and offers *Use as image*, *Add to Moodboard*, *Show in Finder*, *Resume parameters* and *Trash*. Every image is saved as a PNG with its prompt, its whole configuration and the time it took inside the file.
+- **A local LLM (MLX)** that runs inside the app and can see images, with controls to free memory so the image model and the LLM can share a Mac. Nothing is downloaded unless you ask for it.
+- **Plug-ins**, each with its own tab and active only on the model families it was made for: Prompt Master, Prompt Master I4 (Ideogram 4) and Sphere Light Reference. See [`Plugins/`](Plugins/README.md).
 - **Keyboard.** ⌘↩ Run, ⌘. Stop, ⌘R Results, ⌃Page Up / ⌃Page Down to step through the tabs.
 - **Managed server.** DT Hub can start Draw Things' `gRPCServerCLI` by itself, or connect to the server of the Draw Things app.
-- **Local LLM (MLX).** A vision-capable model runs inside the app, with controls to free memory so that the image model and the LLM can share a Mac. Nothing is downloaded unless you ask for it.
-- **Plug-ins.** See [`Plugins/`](Plugins/README.md): Prompt Master, Prompt Master I4 (for Ideogram 4) and Sphere Light Reference.
+
+## A look around
+
+**Generation.** The prompt (with the negative prompt, shown only for the families that use it) and collapsible cards for dimensions, sampling, seed and batch, LoRAs and an advanced section. Every value can be typed or stepped, the open or closed state of each card is remembered, and a JSON editor shows and edits the whole configuration.
+
+<p align="center"><img src="docs/images/generation.png" alt="The Generation tab" width="55%"></p>
+
+**Canvas window.** Only the drawing, for the Pencil.
+
+![The Canvas in its own window](docs/images/canvas-window.png)
+
+**Results.** Live preview while generating, then the image; the strip shows the seconds each picture took.
+
+![The Results window](docs/images/results.png)
+
+**Preferences.** The Draw Things server, the local LLM and its memory behaviour, the output folder and the plug-ins.
+
+<p>
+  <img src="docs/images/preferences-draw-things.png" alt="Preferences: Draw Things" width="32%">
+  <img src="docs/images/preferences-llm.png" alt="Preferences: LLM" width="32%">
+  <img src="docs/images/preferences-plugins.png" alt="Preferences: Plug-ins" width="32%">
+</p>
 
 ## Requirements
 
@@ -51,7 +72,7 @@ DT Hub looks for MLX models (Hugging Face format: a folder with `config.json` an
 
 ## Plug-ins
 
-A plug-in is a bundle (`.dthubplugin`) with a dynamic library, loaded into the app and shown as a tab. You add one in **Preferences › Plug-ins**, or by dropping it into `~/Library/Application Support/DT Hub/Plug-ins/`. The three plug-ins in this repository, and how to build and install them, are described in [`Plugins/README.md`](Plugins/README.md). To write your own, start from [`PluginKit/README.md`](PluginKit/README.md): the app and a plug-in talk only through Objective-C selectors and JSON messages, and the kit includes the design system so a plug-in tab looks like the rest of the app.
+A plug-in is a bundle (`.dthubplugin`) with a dynamic library, loaded into the app and shown as a tab. You add one in **Preferences › Plug-ins**. A plug-in only works with the model families it was made for: on any other family it is switched off and its tab is hidden. The three plug-ins in this repository, which families each one works with, and how to build and install them are described in [`Plugins/README.md`](Plugins/README.md). To write your own, start from [`PluginKit/README.md`](PluginKit/README.md): the app and a plug-in talk only through Objective-C selectors and JSON messages, and the kit includes the design system so a plug-in tab looks like the rest of the app.
 
 ## Languages
 

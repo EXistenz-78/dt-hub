@@ -78,7 +78,7 @@ struct CustomTerm: Codable, Equatable, Identifiable, Sendable {
 }
 
 enum PMFamilies {
-  /// The families the plug-in works with (the tab is grey on the others), in the order of the spec §3.
+  /// The families the plug-in works with (on the others it is switched off and its tab is hidden), in the order of the spec §3.
   static let all = [
     "flux1", "flux2", "flux2_9b", "flux2_4b", "krea_2", "qwen_image", "qwen_image_2.1", "z_image",
     "sdxl_base_v0.9", "v1", "ernie_image", "hidream_i1", "cosmos2.5_2b",
