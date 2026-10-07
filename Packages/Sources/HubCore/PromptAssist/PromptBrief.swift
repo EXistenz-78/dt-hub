@@ -52,6 +52,60 @@ public enum PromptBrief {
       images: [url], options: options(system: system(family: family)))
   }
 
+  /// The prompt (and negative prompt) in an answer. Same logic as Prompt Master's `AnswerParser`, copied because the
+  /// plug-in is a separate package. Reasoning blocks (`<think>…</think>`) and code fences go; a JSON object gives its
+  /// `prompt` (or `rewritten_prompt`, `positive_prompt`) and `negative` (or `negative_prompt`); anything else, a
+  /// malformed JSON included, is the prompt itself. `negative` is "" when the answer has none; nil when nothing is left.
+  public static func parse(_ raw: String) -> PromptPair? {
+    var text = withoutThinking(raw)
+    text = withoutFences(text).trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !text.isEmpty else { return nil }
+    if let start = text.firstIndex(of: "{"), let end = text.lastIndex(of: "}"), start < end,
+      let object = (try? JSONSerialization.jsonObject(with: Data(text[start...end].utf8))) as? [String: Any],
+      let prompt = ["prompt", "rewritten_prompt", "positive_prompt"].lazy.compactMap({ clean(object[$0]) }).first
+    {
+      let negative = ["negative", "negative_prompt"].lazy.compactMap { clean(object[$0]) }.first
+      return PromptPair(prompt: prompt, negative: negative ?? "")
+    }
+    return PromptPair(prompt: unquoted(text), negative: "")
+  }
+
+  private static func clean(_ value: Any?) -> String? {
+    guard let text = (value as? String)?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty else {
+      return nil
+    }
+    return text
+  }
+
+  /// Everything after the last `</think>`; a `<think>` that never closes takes the rest of the text with it.
+  private static func withoutThinking(_ text: String) -> String {
+    var result = text
+    if let close = result.range(of: "</think>", options: .backwards) {
+      result = String(result[close.upperBound...])
+    }
+    if let open = result.range(of: "<think>") { result = String(result[..<open.lowerBound]) }
+    return result
+  }
+
+  /// The inside of a fenced block (```json … ```), when the text is one.
+  private static func withoutFences(_ text: String) -> String {
+    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard trimmed.hasPrefix("```"), let firstBreak = trimmed.firstIndex(of: "\n") else { return text }
+    var inside = String(trimmed[trimmed.index(after: firstBreak)...])
+    if let close = inside.range(of: "```", options: .backwards) { inside = String(inside[..<close.lowerBound]) }
+    return inside
+  }
+
+  /// A prompt wrapped in one pair of quotation marks loses them.
+  private static func unquoted(_ text: String) -> String {
+    for (open, close) in [("\"", "\""), ("“", "”")]
+    where text.count > 1 && text.hasPrefix(open) && text.hasSuffix(close) {
+      let inside = String(text.dropFirst().dropLast())
+      if !inside.contains(open) { return inside.trimmingCharacters(in: .whitespacesAndNewlines) }
+    }
+    return text
+  }
+
   /// A model that reasons by default would spend the tokens on its reasoning: thinking is off.
   private static func options(system: String) -> LanguageModelOptions {
     LanguageModelOptions(system: system, maxTokens: 2048, thinking: false)
