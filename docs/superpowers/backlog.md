@@ -311,3 +311,7 @@ Prima i master prompt davano «lunghezze obiettivo» prese dalle note del vecchi
 ## Idee dell'utente (da fare)
 
 - **Zoom con la rotella sull'immagine** (6 ottobre 2026): sull'immagine del Disegno, nella card Canvas e nella sua finestra separata, la rotella (e il pizzico) ingrandisce e rimpicciolisce l'immagine, per disegnare i dettagli con la Pencil o con le dita. Da decidere nel disegno: lo zoom è solo di vista (maschera e disegno restano alle dimensioni del canvas), come si sposta l'immagine ingrandita (trascinamento a due dita o barra spaziatrice), e come si torna alla vista intera.
+
+## Rimandi della verifica dei preset (7 ottobre 2026)
+
+- **Un trigger word svuotato a mano non si conserva in un preset:** alla lettura un trigger vuoto è indistinguibile da «il preset non dice niente», e `fillingTriggers` lo riempie con quello del catalogo del server. Un trigger scritto a mano (anche diverso da quello del catalogo) si conserva. Disegno pronto: una chiave `keepsTriggers` nel JSON del preset, impostata da «Salva come preset» (`PresetLoad.of` non riempie i preset che la hanno); importati e plug-in restano riempiti dal catalogo.
