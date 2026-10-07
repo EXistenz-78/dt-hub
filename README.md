@@ -24,6 +24,10 @@ This is an independent community project, not affiliated with or endorsed by Dra
 
 <p align="center"><img src="docs/images/generation.png" alt="The Generation tab" width="55%"></p>
 
+**Presets.** Save a configuration as a preset, import and manage them, and let a plug-in register its own: Sphere Light's two presets, for example, are chained into one Run.
+
+<p align="center"><img src="docs/images/presets.png" alt="The Presets menu" width="55%"></p>
+
 **Canvas window.** Only the drawing, for the Pencil.
 
 ![The Canvas in its own window](docs/images/canvas-window.png)

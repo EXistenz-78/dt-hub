@@ -1,6 +1,6 @@
 # Sphere Light Reference (SLR)
 
-> **Works with:** **FLUX.2 [klein] 9B** only (`flux2_9b`), with the [Sun Direction LoRA](https://huggingface.co/eric-venti-seeds/Sun-Direction-Lora-Flux2Klein9B) (`flux_2_sun_direction_lora_v1_lora_f16.ckpt`).
+> **Works with:** the **FLUX.2 [klein]** family, with the [Sun Direction LoRA](https://huggingface.co/eric-venti-seeds/Sun-Direction-Lora-Flux2Klein9B) (`flux_2_sun_direction_lora_v1_lora_f16.ckpt`). The **9B** is recommended: it gives better results; the **4B** works too.
 > On any other family the plug-in is switched off and its tab is hidden.
 
 A DT Hub plug-in: it places up to three lights on a sphere, renders it (CPU ray tracing) and sends it to Draw Things so that the
@@ -10,6 +10,11 @@ light, the colours and the sun direction of an image match those of the sphere.
 sphere can be lit by several lights at once, each with its own colour, rotation, elevation, intensity and shadow hardness.
 
 ![Sphere Light Reference](../../docs/images/sphere-light.png)
+
+A reference picture with the sphere in its corner (left), and what the model made of it (right): the cyan and pink lights of the
+sphere now fall on the face and the scene.
+
+![Before and after](../../docs/images/sphere-light-example.png)
 
 - **Send to Generation:** the sphere goes to the Moodboard and the Run button becomes a preset pipeline: `SLR · Match the sun`,
   preceded by `SLR · Overcast` (it flattens the shadows of the canvas) if the "Overcast" box is on.
