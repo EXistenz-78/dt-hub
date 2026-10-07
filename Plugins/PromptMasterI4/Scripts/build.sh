@@ -10,6 +10,6 @@ mkdir -p "$OUT"
 SCRATCH="$(mktemp -d)"
 trap 'rm -rf "$SCRATCH"' EXIT
 swift build -c release --package-path "$HERE/.." --scratch-path "$SCRATCH" >/dev/null
-"$HERE/../../../PluginKit/Scripts/make-bundle.sh" "$(find "$SCRATCH" -name libPromptMasterI4.dylib | head -1)" \
+"$HERE/../../../PluginKit/Scripts/make-bundle.sh" "$(find "$SCRATCH" -name libPromptMasterI4.dylib -not -path '*.dSYM/*' | head -1)" \
   "$OUT/PromptMasterI4.dthubplugin" com.exiztenz.dthub.promptmasteri4 PromptMasterI4 "$VERSION" PromptMasterI4Entry
 echo "$OUT/PromptMasterI4.dthubplugin"
