@@ -9,7 +9,7 @@ enum SLRMessages {
   static let overcastPrompt = "make it an overcast day, remove the shadows"
   static let matchPrompt = "match light direction, colors and intensity from the reference image 2"
   static let lora = "flux_2_sun_direction_lora_v1_lora_f16.ckpt"
-  static let loraWeight = 0.6
+  static let loraWeight = 1.0
   /// The name of the sphere in the Moodboard.
   static let sphereName = "Sphere light"
   static let pipelineName = "Sphere Light"
@@ -30,7 +30,8 @@ enum SLRMessages {
       ["name": overcastName, "fields": fields(prompt: overcastPrompt)],
       [
         "name": matchName, "fields": fields(prompt: matchPrompt),
-        "loras": [["file": lora, "weight": loraWeight]],
+        // The trigger word is the prompt: the preset carries it, whatever the server's catalog says for the LoRA.
+        "loras": [["file": lora, "weight": loraWeight, "trigger": matchPrompt]],
       ],
     ]
   }

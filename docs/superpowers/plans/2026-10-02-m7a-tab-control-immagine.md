@@ -17,7 +17,7 @@
 ## Global Constraints
 
 - **Repository e dipendenze:**
-  - radice `/Users/existenz/Software developement/DT Hub` (percorsi tra virgolette);
+  - radice `<repo>` (percorsi tra virgolette);
   - branch `m7a-tab-control` da `main`;
   - macOS 26, Swift 6, Xcode 27;
   - solo DTBridge importa DrawThings-Swift (`GenerationRequest`, `DrawThingsConfiguration`); HubKit e HubCore non importano nulla di esterno.
@@ -70,7 +70,7 @@
 - [ ] **Step 1: Creare il ramo e scrivere i test**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git switch main && git switch -c m7a-tab-control
+cd "<repo>" && git switch main && git switch -c m7a-tab-control
 ```
 
 Creare `Packages/Tests/HubKitTests/ControlContractTests.swift`:
@@ -235,7 +235,7 @@ index 72a5c28..b250d1f 100644
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter HubKitTests 2>&1 | grep -E "error:" | head -2`
+Run: `cd "<repo>/Packages" && swift test --filter HubKitTests 2>&1 | grep -E "error:" | head -2`
 Expected: `cannot find type 'ReferenceImage' in scope`.
 
 - [ ] **Step 3: Implementare**
@@ -558,13 +558,13 @@ index 24deace..60976d6 100644
 
 - [ ] **Step 4: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v started`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v started`
 Expected: HubKit `53 tests … passed`, HubCore 175, DTBridge `50`, Catalog 6, LLMBridge 6 (totale 290).
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: contratto degli ingressi del tab Control (immagine, forza, inquadratura) e sua traduzione per Draw Things
+cd "<repo>" && git add Packages && git commit -m "feat: contratto degli ingressi del tab Control (immagine, forza, inquadratura) e sua traduzione per Draw Things
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -701,7 +701,7 @@ struct InputComposerTests {
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter HubCoreTests 2>&1 | grep -E "error:" | head -2`
+Run: `cd "<repo>/Packages" && swift test --filter HubCoreTests 2>&1 | grep -E "error:" | head -2`
 Expected: `cannot find 'FramingMath' in scope`.
 
 - [ ] **Step 3: Implementare**
@@ -813,13 +813,13 @@ public enum InputComposer {
 
 - [ ] **Step 4: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v started`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v started`
 Expected: HubCore `185 tests … passed` (175 + 7 + 3), gli altri invariati.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: matematica dell'inquadratura e compositore dell'immagine di partenza
+cd "<repo>" && git add Packages && git commit -m "feat: matematica dell'inquadratura e compositore dell'immagine di partenza
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -1080,7 +1080,7 @@ struct ControlStoreTests {
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter HubCoreTests 2>&1 | grep -E "error:" | head -2`
+Run: `cd "<repo>/Packages" && swift test --filter HubCoreTests 2>&1 | grep -E "error:" | head -2`
 Expected: `cannot find type 'ControlStore' in scope`.
 
 - [ ] **Step 3: Implementare**
@@ -1411,13 +1411,13 @@ public struct PendingInputs: Sendable {
 
 - [ ] **Step 4: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v started`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v started`
 Expected: HubCore `202 tests … passed` (185 + 17).
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: ControlStore — copie delle immagini, annulla, ripristino e avvisi
+cd "<repo>" && git add Packages && git commit -m "feat: ControlStore — copie delle immagini, annulla, ripristino e avvisi
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -1618,7 +1618,7 @@ index 44e16b6..18af3ad 100644
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter HubCoreTests 2>&1 | grep -E "error:" | head -3`
+Run: `cd "<repo>/Packages" && swift test --filter HubCoreTests 2>&1 | grep -E "error:" | head -3`
 Expected: errori di compilazione (`WorkspaceTab` non ha `controlID`, `extra arguments` su `JobComposer.batches`, `GenerationSession` non ha `fail`).
 
 - [ ] **Step 3: Implementare**
@@ -1773,13 +1773,13 @@ index 5c1594f..1a2921f 100644
 
 - [ ] **Step 4: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v started`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v started`
 Expected: HubCore `207 tests … passed`; totale 53 + 207 + 50 + 6 + 6 = **322**.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: tab Control nella barra, forza nei batch e ingressi alla sessione
+cd "<repo>" && git add Packages && git commit -m "feat: tab Control nella barra, forza nei batch e ingressi alla sessione
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -1854,18 +1854,18 @@ d['strings'] = dict(sorted(d['strings'].items()))
 open(p, 'w').write(json.dumps(d, ensure_ascii=False, indent=2))
 ```
 
-Run: `cd "/Users/existenz/Software developement/DT Hub" && git diff --stat App/Localizable.xcstrings | tail -1`
+Run: `cd "<repo>" && git diff --stat App/Localizable.xcstrings | tail -1`
 Expected: `1 file changed, 680 insertions(+)` e nessuna riga tolta.
 
 - [ ] **Step 2: Verificare il catalogo**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter CatalogTests 2>&1 | grep -E "Test run with|Missing|Not in"`
+Run: `cd "<repo>/Packages" && swift test --filter CatalogTests 2>&1 | grep -E "Test run with|Missing|Not in"`
 Expected: `6 tests … passed`.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add App/Localizable.xcstrings && git commit -m "feat: testi del tab Control (it, en)
+cd "<repo>" && git add App/Localizable.xcstrings && git commit -m "feat: testi del tab Control (it, en)
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -2664,13 +2664,13 @@ index 702abc4..18f85df 100644
 
 - [ ] **Step 3: Compilare e provare**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"; cd Packages && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|Missing|Not in" | grep -v started`
+Run: `cd "<repo>" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"; cd Packages && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|Missing|Not in" | grep -v started`
 Expected: `** BUILD SUCCEEDED **`; test HubKit 53, HubCore 207, DTBridge 50, Catalog 6, LLMBridge 6 = **322** passati (le viste usano solo chiavi del catalogo).
 
 - [ ] **Step 4: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add App && git commit -m "feat: tab Control — striscia, scheda Immagine, anteprima del canvas, importazione e Risultati
+cd "<repo>" && git add App && git commit -m "feat: tab Control — striscia, scheda Immagine, anteprima del canvas, importazione e Risultati
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -2800,14 +2800,14 @@ index df8d099..f2b4245 100644
  }
 ```
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "Test run with|error:" | grep -v started`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "Test run with|error:" | grep -v started`
 Expected: DTBridge `52 tests … passed` (2 inattive), totale **324**.
 
 - [ ] **Step 2: Provarle con un server vero**
 
 ```bash
 (nohup "$HOME/Applications/DrawThings-CLI/gRPCServerCLI-macOS" /Volumes/LLM-VLM/Models --address 127.0.0.1 --port 7860 --model-browser > /tmp/m7a-server.log 2>&1 &); sleep 6
-cd "/Users/existenz/Software developement/DT Hub/Packages" && DTHUB_LIVE_DT=localhost:7860 swift test --filter "anEditModel|aNormalModel" 2>&1 | grep -E "LIVE|passed|failed|error:" | grep -v started
+cd "<repo>/Packages" && DTHUB_LIVE_DT=localhost:7860 swift test --filter "anEditModel|aNormalModel" 2>&1 | grep -E "LIVE|passed|failed|error:" | grep -v started
 ```
 
 Expected: `LIVE edit model: right minus left luminance …` (circa 1,0, soglia 0,15) e `LIVE normal model: green share plain 0.3… guided 0.9…` (guidato superiore di almeno 0,05); i due test passano. Il primo carica il modello dal disco esterno: può volerci qualche minuto.
@@ -2818,7 +2818,7 @@ pkill -TERM -f gRPCServerCLI
 
 - [ ] **Step 3: Provare l'app (screenshot) con un'immagine ripristinata**
 
-Per non toccare i dati dell'utente: salvare `~/Library/Application Support/DT Hub` e le preferenze (`defaults export com.exiztenz.DTHub /tmp/m7a-defaults.plist`), usare una cartella di output temporanea (`defaults write com.exiztenz.DTHub output.folder /tmp/dthub-m7a-out`) e il server gestito (`drawThings.managedServer` con `/Users/existenz/Applications/DrawThings-CLI/gRPCServerCLI-macOS`, `/Volumes/LLM-VLM/Models`, porta 7860). Preparare una copia e un `control.json` a mano (un PNG 600×800 con un gradiente e un cerchio bianco, `source` = file) e aprire l'app.
+Per non toccare i dati dell'utente: salvare `~/Library/Application Support/DT Hub` e le preferenze (`defaults export com.exiztenz.DTHub /tmp/m7a-defaults.plist`), usare una cartella di output temporanea (`defaults write com.exiztenz.DTHub output.folder /tmp/dthub-m7a-out`) e il server gestito (`drawThings.managedServer` con `~/Applications/DrawThings-CLI/gRPCServerCLI-macOS`, `/Volumes/LLM-VLM/Models`, porta 7860). Preparare una copia e un `control.json` a mano (un PNG 600×800 con un gradiente e un cerchio bianco, `source` = file) e aprire l'app.
 
 Checklist:
 1. La barra mostra **Control** prima di Generazione; il tab Control mostra la striscia "Con Run parte" con il chip Immagine (600×800), la scheda Immagine (miniatura, nome, "600×800 · dal Finder", forza 70 con un modello normale) e il canvas con la parte persa oscurata ("Si perde il 25% … sopra e sotto").
@@ -2839,7 +2839,7 @@ Poi rimettere `session.json` e `cards.json` del backup e togliere `control.json`
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "test: prove dal vivo dell'immagine di partenza (modello Edit e modello normale)
+cd "<repo>" && git add Packages && git commit -m "test: prove dal vivo dell'immagine di partenza (modello Edit e modello normale)
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```

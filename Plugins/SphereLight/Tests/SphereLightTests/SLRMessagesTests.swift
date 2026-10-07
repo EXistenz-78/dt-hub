@@ -6,6 +6,12 @@ import Testing
 struct SLRMessagesTests {
   private func steps(_ pipeline: [String: Any]) -> [[String: Any]] { pipeline["steps"] as? [[String: Any]] ?? [] }
 
+  /// The sun-direction LoRA is made for the 9B and works on the 4B too (less well): both klein sizes switch the plug-in on.
+  @MainActor @Test func theTabIsAvailableOnBothKleinSizes() {
+    #expect(SphereLightPlugin.families == ["flux2_9b", "flux2_4b"])
+    #expect(SphereLightPlugin().manifest.families == SphereLightPlugin.families)
+  }
+
   @Test func thePresetsCarryTheAcronymOfThePlugin() {
     let names = SLRMessages.presets().compactMap { $0["name"] as? String }
     #expect(names == ["SLR · Overcast", "SLR · Match the sun"])
@@ -26,13 +32,17 @@ struct SLRMessagesTests {
     }
   }
 
-  @Test func onlyTheMatchPresetHasTheLoraAtZeroPointSix() throws {
+  @Test func onlyTheMatchPresetHasTheLoraAtFullStrengthWithItsTriggerWord() throws {
     let presets = SLRMessages.presets()
     #expect(presets[0]["loras"] == nil)
     let loras = try #require(presets[1]["loras"] as? [[String: Any]])
     #expect(loras.count == 1)
     #expect(loras[0]["file"] as? String == "flux_2_sun_direction_lora_v1_lora_f16.ckpt")
-    #expect(loras[0]["weight"] as? Double == 0.6)
+    #expect(loras[0]["weight"] as? Double == 1.0)
+    // The trigger word is the prompt itself, so the preset does not depend on what the server's catalog says.
+    #expect(loras[0]["trigger"] as? String == "match light direction, colors and intensity from the reference image 2")
+    let fields = try #require(presets[1]["fields"] as? [String: Any])
+    #expect(loras[0]["trigger"] as? String == fields["prompt"] as? String)
   }
 
   @Test func thePromptsAreTheOnesOfTheScript() throws {

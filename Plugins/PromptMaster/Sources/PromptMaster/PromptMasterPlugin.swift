@@ -4,7 +4,7 @@ import SwiftUI
 
 @MainActor
 final class PromptMasterPlugin: DTHubPlugin {
-  /// Its tab is grey on the other families: those are the ones Prompt Master has a master prompt for.
+  /// On the other families the plug-in is switched off and its tab is hidden: those are the ones Prompt Master has a master prompt for.
   let manifest = DTHubManifest(
     id: "com.exiztenz.dthub.promptmaster", name: "Prompt Master", version: "1.0", symbol: "wand.and.stars",
     families: PMFamilies.all)

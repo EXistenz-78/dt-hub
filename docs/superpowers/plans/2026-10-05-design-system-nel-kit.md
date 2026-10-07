@@ -16,7 +16,7 @@
 
 ## Global Constraints
 
-- **Repository:** radice `/Users/existenz/Software developement/DT Hub` (percorsi tra virgolette); branch `design-kit` da `main`.
+- **Repository:** radice `<repo>` (percorsi tra virgolette); branch `design-kit` da `main`.
 - **Nessun cambio d'aspetto** dei componenti esistenti, salvo l'accessorio di `DSCollapsibleCard` (gli usi senza accessorio compilano e si vedono come prima). Nessun file di `App/` cambia.
 - **Il contratto resta 1**; nel modulo `DTHubDesign` non ci sono classi Objective-C del kit né `DTHubPluginKit`. L'app non collega `DTHubPluginKit`.
 - **Pacchetti:** `Packages/Package.swift` dipende da `.package(name: "PluginKit", path: "../PluginKit")` e `HubKit` dal prodotto `DTHubDesign`; `PluginKit/Package.swift` ha i prodotti `DTHubPluginKit` e `DTHubDesign` e due target di test.
@@ -52,7 +52,7 @@ Il kit **non** riesporta `DTHubDesign`: provato nel prototipo, `@_exported impor
 - [ ] **Step 1: Creare il branch e scrivere i test**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git switch main && git switch -c design-kit && mkdir -p PluginKit/Tests/DTHubDesignTests PluginKit/Tests/DTHubPluginKitTests
+cd "<repo>" && git switch main && git switch -c design-kit && mkdir -p PluginKit/Tests/DTHubDesignTests PluginKit/Tests/DTHubPluginKitTests
 ```
 
 **`Packages/Tests/HubKitTests/DesignReexportTests.swift`** (file nuovo o riscritto per intero):
@@ -122,13 +122,13 @@ struct DTHubDesignTests {
 }
 ```
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/PluginKit" && swift test 2>&1 | grep -E "error:|no tests" | head -2`
+Run: `cd "<repo>/PluginKit" && swift test 2>&1 | grep -E "error:|no tests" | head -2`
 Expected: un errore o nessun test: i target di test e il modulo `DTHubDesign` non esistono ancora (il test di `HubKit` invece passa già: è la guardia che continuerà a passare).
 
 - [ ] **Step 2: Spostare i file e scrivere i collegamenti**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && mkdir -p PluginKit/Sources/DTHubDesign && for f in DS DSBackground DSButtons DSCardRow DSCollapsibleCard DSGlass DSPanel DSTabFrame; do git mv Packages/Sources/HubKit/DesignSystem/$f.swift PluginKit/Sources/DTHubDesign/$f.swift; done
+cd "<repo>" && mkdir -p PluginKit/Sources/DTHubDesign && for f in DS DSBackground DSButtons DSCardRow DSCollapsibleCard DSGlass DSPanel DSTabFrame; do git mv Packages/Sources/HubKit/DesignSystem/$f.swift PluginKit/Sources/DTHubDesign/$f.swift; done
 ```
 
 **`Packages/Sources/HubKit/DesignSystem/DesignReexport.swift`** (file nuovo o riscritto per intero):
@@ -204,19 +204,19 @@ index 4b67d85..2f2f866 100644
 
 - [ ] **Step 3: Verificare**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/PluginKit" && swift test 2>&1 | grep -E "Test run with|error:"`
+Run: `cd "<repo>/PluginKit" && swift test 2>&1 | grep -E "Test run with|error:"`
 Expected: due righe `Test run with 2 tests in 1 suite passed` (il kit e il design).
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
 Expected: HubKit `102 tests … passed` (uno nuovo), gli altri invariati (HubCore 464, DTBridge 66, Catalog 6, LLMBridge 6, PluginHost 6).
 
-Run: `cd "/Users/existenz/Software developement/DT Hub" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath /tmp/d-dd CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"`
+Run: `cd "<repo>" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath /tmp/d-dd CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"`
 Expected: `** BUILD SUCCEEDED **` (Xcode risolve `PluginKit` tramite `Packages`).
 
 - [ ] **Step 4: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add -A PluginKit Packages && git commit -m "feat: DTHubDesign, il design system nel pacchetto del kit dei plug-in; HubKit lo riesporta
+cd "<repo>" && git add -A PluginKit Packages && git commit -m "feat: DTHubDesign, il design system nel pacchetto del kit dei plug-in; HubKit lo riesporta
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -251,7 +251,7 @@ index be2bd7c..8dd71f7 100644
  }
 ```
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/PluginKit" && swift test 2>&1 | grep -E "error:" | head -2`
+Run: `cd "<repo>/PluginKit" && swift test 2>&1 | grep -E "error:" | head -2`
 Expected: un errore di compilazione sulla card con `trailing:` (`extra argument 'trailing' in call`).
 
 - [ ] **Step 2: Implementare**
@@ -344,16 +344,16 @@ index 30517d7..8dfb96b 100644
 
 - [ ] **Step 3: Verificare**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/PluginKit" && swift test 2>&1 | grep -E "Test run with|error:"`
+Run: `cd "<repo>/PluginKit" && swift test 2>&1 | grep -E "Test run with|error:"`
 Expected: due righe passate (kit 2 test, design 3).
 
-Run: `cd "/Users/existenz/Software developement/DT Hub" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath /tmp/d-dd CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"`
+Run: `cd "<repo>" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath /tmp/d-dd CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"`
 Expected: `** BUILD SUCCEEDED **` (tutti gli usi esistenti della card compilano).
 
 - [ ] **Step 4: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add -A PluginKit && git commit -m "feat: DSCollapsibleCard accetta un accessorio a destra del titolo
+cd "<repo>" && git add -A PluginKit && git commit -m "feat: DSCollapsibleCard accetta un accessorio a destra del titolo
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -552,19 +552,19 @@ struct SphereLightView: View {
 
 - [ ] **Step 2: Compilare, provare e fare il bundle**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Plugins/SphereLight" && swift build 2>&1 | grep -E "error|Build comp" && swift test 2>&1 | grep -E "Test run with|error:|issue" && rm -rf /tmp/slr-d && Scripts/build.sh /tmp/slr-d | tail -1`
+Run: `cd "<repo>/Plugins/SphereLight" && swift build 2>&1 | grep -E "error|Build comp" && swift test 2>&1 | grep -E "Test run with|error:|issue" && rm -rf /tmp/slr-d && Scripts/build.sh /tmp/slr-d | tail -1`
 Expected: `Build complete!`, `Test run with 30 tests in 4 suites passed` e `/tmp/slr-d/SphereLight.dthubplugin`.
 
 Run: `B=/tmp/slr-d/SphereLight.dthubplugin/Contents/MacOS/SphereLight; echo "design con alias: $(nm -gU $B | grep -c SphereLightDesign) · design senza alias: $(nm -gU $B | grep -c DTHubDesign) · kit senza alias: $(nm -gU $B | grep -c 14DTHubPluginKit)"`
 Expected: un numero maggiore di 0, poi `0`, poi `0`.
 
-Run: `rm -rf /tmp/smp && "/Users/existenz/Software developement/DT Hub/PluginKit/Scripts/build-sample.sh" /tmp/smp | tail -1`
+Run: `rm -rf /tmp/smp && "<repo>/PluginKit/Scripts/build-sample.sh" /tmp/smp | tail -1`
 Expected: `/tmp/smp/Sample.dthubplugin` (l'esempio si costruisce ancora).
 
 - [ ] **Step 3: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add -A Plugins && git commit -m "feat: Sphere Light con le card, i pulsanti e le caselle dell'app
+cd "<repo>" && git add -A Plugins && git commit -m "feat: Sphere Light con le card, i pulsanti e le caselle dell'app
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -581,7 +581,7 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 **Se l'app dell'utente è aperta, non pilotare le finestre.** Annotare `workspace.selectedTab`. **Non toccare** lo stato di Sphere Light nelle preferenze: la prova guarda e basta.
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub"
+cd "<repo>"
 defaults read com.exiztenz.DTHub workspace.selectedTab    # annotare
 H=/tmp/dkhome; rm -rf $H; AS="$H/Library/Application Support/DT Hub"; mkdir -p "$AS/Plug-ins"
 cp -R /tmp/slr-d/SphereLight.dthubplugin "$AS/Plug-ins/com.exiztenz.dthub.spherelight.dthubplugin"
@@ -601,7 +601,7 @@ Checklist:
 - [ ] **Step 2: Aggiornare README, spec e backlog**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && python3 - <<'PY'
+cd "<repo>" && python3 - <<'PY'
 p = 'PluginKit/README.md'
 s = open(p).read()
 marker = "## Messages (contract 1)"
@@ -662,7 +662,7 @@ Expected: statistica su quattro file.
 - [ ] **Step 3: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add -A PluginKit Plugins docs && git commit -m "docs: il design system nel kit dei plug-in; README, spec realizzata e rimandi nel backlog
+cd "<repo>" && git add -A PluginKit Plugins docs && git commit -m "docs: il design system nel kit dei plug-in; README, spec realizzata e rimandi nel backlog
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```

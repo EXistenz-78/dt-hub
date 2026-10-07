@@ -17,7 +17,7 @@
 ## Global Constraints
 
 - **Repository e dipendenze:**
-  - radice `/Users/existenz/Software developement/DT Hub` (percorsi tra virgolette);
+  - radice `<repo>` (percorsi tra virgolette);
   - branch `m7c-maschera` da `main`;
   - macOS 26, Swift 6, Xcode 27;
   - solo DTBridge importa DrawThings-Swift.
@@ -75,7 +75,7 @@
 - [ ] **Step 1: Creare il ramo e scrivere i test**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git switch main && git switch -c m7c-maschera
+cd "<repo>" && git switch main && git switch -c m7c-maschera
 ```
 
 ```swift
@@ -143,7 +143,7 @@ struct MaskContractTests {
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter HubKitTests 2>&1 | grep -E "error:" | head -2`
+Run: `cd "<repo>/Packages" && swift test --filter HubKitTests 2>&1 | grep -E "error:" | head -2`
 Expected: `cannot find 'MaskSettings' in scope`.
 
 - [ ] **Step 3: Implementare**
@@ -350,13 +350,13 @@ index 0156d00..e14c42b 100644
 
 - [ ] **Step 4: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v started`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v started`
 Expected: HubKit `63 tests … passed` (7 nuovi), HubCore 238, DTBridge 57, Catalog 6, LLMBridge 6 (totale **370**).
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: tipi della maschera (impostazioni, riferimento, ingressi, job, controllo inpaint)
+cd "<repo>" && git add Packages && git commit -m "feat: tipi della maschera (impostazioni, riferimento, ingressi, job, controllo inpaint)
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -438,7 +438,7 @@ index dfea68a..76dd755 100644
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter DTBridgeTests 2>&1 | grep -E "error:|Expectation failed" | grep -v started | head -3`
+Run: `cd "<repo>/Packages" && swift test --filter DTBridgeTests 2>&1 | grep -E "error:|Expectation failed" | grep -v started | head -3`
 Expected: i test della maschera falliscono (aspettativa non soddisfatta: `request.mask` è nil).
 
 - [ ] **Step 3: Implementare**
@@ -483,13 +483,13 @@ index ab6489c..33311f3 100644
 
 - [ ] **Step 4: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v started`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v started`
 Expected: DTBridge `61 tests … passed`; totale 63 + 238 + 61 + 6 + 6 = **374**.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: la maschera e le sue impostazioni partono per Draw Things
+cd "<repo>" && git add Packages && git commit -m "feat: la maschera e le sue impostazioni partono per Draw Things
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -855,7 +855,7 @@ struct StrokeSmootherTests {
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter "MaskBitmapTests|PaintBitmapTests|StrokeSmootherTests" 2>&1 | grep -E "error:" | head -2`
+Run: `cd "<repo>/Packages" && swift test --filter "MaskBitmapTests|PaintBitmapTests|StrokeSmootherTests" 2>&1 | grep -E "error:" | head -2`
 Expected: `cannot find 'MaskBitmap' in scope`.
 
 - [ ] **Step 3: Implementare**
@@ -1328,13 +1328,13 @@ public struct StrokeSmoother: Equatable, Sendable {
 
 - [ ] **Step 4: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v started`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v started`
 Expected: HubCore `270 tests … passed` (32 nuovi: 17 + 9 + 6); totale 63 + 270 + 61 + 6 + 6 = **406**.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: maschera e disegno come buffer (pennello, gomma, inverti, PNG, anteprime aggiornate a rettangoli, tratto curvo)
+cd "<repo>" && git add Packages && git commit -m "feat: maschera e disegno come buffer (pennello, gomma, inverti, PNG, anteprime aggiornate a rettangoli, tratto curvo)
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -1445,7 +1445,7 @@ struct MaskComposerTests {
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter MaskComposerTests 2>&1 | grep -E "error:" | head -2`
+Run: `cd "<repo>/Packages" && swift test --filter MaskComposerTests 2>&1 | grep -E "error:" | head -2`
 Expected: `type 'InputComposer' has no member 'mask'`.
 
 - [ ] **Step 3: Implementare**
@@ -1522,13 +1522,13 @@ index 0c36a4c..c0d7bc8 100644
 
 - [ ] **Step 4: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v started`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v started`
 Expected: HubCore `275 tests … passed`; totale **411**.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: la maschera e il disegno nello stesso ritaglio dell'immagine
+cd "<repo>" && git add Packages && git commit -m "feat: la maschera e il disegno nello stesso ritaglio dell'immagine
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -1890,7 +1890,7 @@ index 962b796..fc80361 100644
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter "ControlStoreMaskTests|FamilyTraitsTests" 2>&1 | grep -E "error:" | head -2`
+Run: `cd "<repo>/Packages" && swift test --filter "ControlStoreMaskTests|FamilyTraitsTests" 2>&1 | grep -E "error:" | head -2`
 Expected: `value of type 'ControlStore' has no member 'commitMask'`.
 
 - [ ] **Step 3: Implementare**
@@ -2127,13 +2127,13 @@ index ee1fd51..d996075 100644
 
 - [ ] **Step 4: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
 Expected: HubCore `300 tests … passed` (25 nuovi); totale **436**.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: maschera e disegno nello store (un passo per tratto, copie, ripristino) e negli ingressi del RUN
+cd "<repo>" && git add Packages && git commit -m "feat: maschera e disegno nello store (un passo per tratto, copie, ripristino) e negli ingressi del RUN
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -2297,7 +2297,7 @@ struct CanvasDrawingTests {
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter CanvasDrawingTests 2>&1 | grep -E "error:" | head -2`
+Run: `cd "<repo>/Packages" && swift test --filter CanvasDrawingTests 2>&1 | grep -E "error:" | head -2`
 Expected: `cannot find 'CanvasDrawing' in scope`.
 
 - [ ] **Step 3: Implementare**
@@ -2457,13 +2457,13 @@ public final class CanvasDrawing {
 
 - [ ] **Step 4: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
 Expected: HubCore `308 tests … passed` (8 nuovi); totale **444**.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: CanvasDrawing — maschera e disegno mentre si disegna, aggiornati sul posto
+cd "<repo>" && git add Packages && git commit -m "feat: CanvasDrawing — maschera e disegno mentre si disegna, aggiornati sul posto
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -2521,18 +2521,18 @@ d['strings'] = dict(sorted(d['strings'].items()))
 open(p, 'w').write(json.dumps(d, ensure_ascii=False, indent=2))
 ```
 
-Run: `cd "/Users/existenz/Software developement/DT Hub" && git diff --stat App/Localizable.xcstrings | tail -1`
+Run: `cd "<repo>" && git diff --stat App/Localizable.xcstrings | tail -1`
 Expected: `1 file changed, 391 insertions(+)` e nessuna riga tolta.
 
 - [ ] **Step 2: Verificare il catalogo**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter CatalogTests 2>&1 | grep -E "Test run with|Missing|Not in"`
+Run: `cd "<repo>/Packages" && swift test --filter CatalogTests 2>&1 | grep -E "Test run with|Missing|Not in"`
 Expected: `6 tests … passed` (le chiavi non ancora usate non sono un errore).
 
 - [ ] **Step 3: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add App/Localizable.xcstrings && git commit -m "feat: testi della maschera (it, en)
+cd "<repo>" && git add App/Localizable.xcstrings && git commit -m "feat: testi della maschera (it, en)
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -3105,13 +3105,13 @@ index aa6ab27..21d02d5 100644
 
 - [ ] **Step 3: Compilare e provare**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath /tmp/m7c-dd CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"; cd Packages && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|Missing|Not in" | grep -v "started\|reportsFailures"`
+Run: `cd "<repo>" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath /tmp/m7c-dd CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"; cd Packages && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|Missing|Not in" | grep -v "started\|reportsFailures"`
 Expected: `** BUILD SUCCEEDED **` (in una cartella a parte, per non toccare un'app aperta); test HubKit 63, HubCore 308, DTBridge 61, Catalog 6, LLMBridge 6 = **444** passati.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add App && git commit -m "feat: card Canvas con due modalità — Disegno con Maschera +/−, Pennello a colori, strumenti a icone, strati, chip nella striscia, RUN con inpaint
+cd "<repo>" && git add App && git commit -m "feat: card Canvas con due modalità — Disegno con Maschera +/−, Pennello a colori, strumenti a icone, strati, chip nella striscia, RUN con inpaint
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -3206,7 +3206,7 @@ index 1d716dc..dd20e29 100644
      return DrawThingsBackend(host: String(parts[0]), port: Int(parts[1]) ?? 7859, useTLS: true, sharedSecret: nil)
 ```
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "Test run with|error:" | grep -v "started\|reportsFailures"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "Test run with|error:" | grep -v "started\|reportsFailures"`
 Expected: DTBridge `62 tests … passed` (la prova è inattiva), totale **445**.
 
 - [ ] **Step 2: Provarla con un server vero**
@@ -3215,7 +3215,7 @@ Serve il server di Draw Things con i modelli di `/Volumes/LLM-VLM/Models` (Jugge
 
 ```bash
 (nohup "$HOME/Applications/DrawThings-CLI/gRPCServerCLI-macOS" /Volumes/LLM-VLM/Models --address 127.0.0.1 --port 7861 --model-browser > /tmp/m7c-server.log 2>&1 &); sleep 6
-cd "/Users/existenz/Software developement/DT Hub/Packages" && DTHUB_LIVE_DT=localhost:7861 swift test --filter aMaskKeepsTheOutside 2>&1 | grep -E "LIVE|passed|failed|error:" | grep -v started
+cd "<repo>/Packages" && DTHUB_LIVE_DT=localhost:7861 swift test --filter aMaskKeepsTheOutside 2>&1 | grep -E "LIVE|passed|failed|error:" | grep -v started
 pkill -TERM -f gRPCServerCLI
 ```
 
@@ -3242,7 +3242,7 @@ Fermare app e server, ripristinare la cartella `DT Hub` e le preferenze salvate,
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "test: prova dal vivo dell'inpaint (SD 1.5 e FLUX.2 klein)
+cd "<repo>" && git add Packages && git commit -m "test: prova dal vivo dell'inpaint (SD 1.5 e FLUX.2 klein)
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
