@@ -16,7 +16,7 @@
 ## Global Constraints
 
 - **Repository e dipendenze:**
-  - radice `/Users/existenz/Software developement/DT Hub` (percorsi tra virgolette);
+  - radice `<repo>` (percorsi tra virgolette);
   - branch `m7e-tiled` da `main`;
   - macOS 26, Swift 6, Xcode 27;
   - solo DTBridge importa DrawThings-Swift.
@@ -59,7 +59,7 @@
 - [ ] **Step 1: Creare il ramo e scrivere i test**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git switch main && git switch -c m7e-tiled
+cd "<repo>" && git switch main && git switch -c m7e-tiled
 ```
 
 ```swift
@@ -153,7 +153,7 @@ struct TiledSizesTests {
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter HubKitTests 2>&1 | grep -E "error:" | head -2`
+Run: `cd "<repo>/Packages" && swift test --filter HubKitTests 2>&1 | grep -E "error:" | head -2`
 Expected: `value of type 'GenerationParameters' has no member 'sizeLimit'`.
 
 - [ ] **Step 3: Implementare**
@@ -258,13 +258,13 @@ index be33528..004a207 100644
 
 - [ ] **Step 4: Verificare che passino**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
 Expected: HubKit `76 tests … passed` (8 nuovi), HubCore 343, DTBridge 64, Catalog 6, LLMBridge 6 (totale **495**). Se `reportsProgressAndPreviewWhileRunning` (M3) fallisce una volta sotto carico, è la flakiness nota: rilanciare.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages && git commit -m "feat: il limite delle dimensioni segue il Tiled Diffusion (2048 / 8192), spegnerlo riporta la dimensione dentro 2048
+cd "<repo>" && git add Packages && git commit -m "feat: il limite delle dimensioni segue il Tiled Diffusion (2048 / 8192), spegnerlo riporta la dimensione dentro 2048
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -310,7 +310,7 @@ index 98f7703..a9c58e5 100644
 
 - [ ] **Step 2: Provarlo**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter AdaptedSizeLimit 2>&1 | grep -E "✘ Test|Test run with|error:" | grep -v started`
+Run: `cd "<repo>/Packages" && swift test --filter AdaptedSizeLimit 2>&1 | grep -E "✘ Test|Test run with|error:" | grep -v started`
 Expected: **passa già**: `adaptedSize` aveva il limite come parametro; il test fissa il comportamento che il controller usa da questo task (non c'è un passo rosso per questa parte).
 
 - [ ] **Step 3: Collegare l'app**
@@ -392,13 +392,13 @@ index 38f3f1e..25561a2 100644
 
 - [ ] **Step 4: Compilare e provare**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath /tmp/m7e-dd CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"; cd Packages && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
+Run: `cd "<repo>" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath /tmp/m7e-dd CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"; cd Packages && swift test 2>&1 | grep -E "✘ Test [a-zA-Z]+\(|Test run with|error:" | grep -v "started\|reportsFailures"`
 Expected: `** BUILD SUCCEEDED **`; test HubKit 76, HubCore 344, DTBridge 64, Catalog 6, LLMBridge 6 = **496** passati.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add App Packages && git commit -m "feat: campi delle dimensioni fino a 8192 con il Tiled Diffusion, interruttore che riporta la dimensione, Adatta le dimensioni con il limite del momento
+cd "<repo>" && git add App Packages && git commit -m "feat: campi delle dimensioni fino a 8192 con il Tiled Diffusion, interruttore che riporta la dimensione, Adatta le dimensioni con il limite del momento
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -445,7 +445,7 @@ index 4a139c4..ff7917d 100644
      let context = CGContext(
 ```
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "Test run with|error:" | grep -v "started\|reportsFailures"`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "Test run with|error:" | grep -v "started\|reportsFailures"`
 Expected: DTBridge `65 tests … passed` (la prova è inattiva), totale **497**.
 
 - [ ] **Step 2: Provarla con un server vero**
@@ -454,7 +454,7 @@ Serve il server di Draw Things con i modelli di `/Volumes/LLM-VLM/Models` (Jugge
 
 ```bash
 (nohup "$HOME/Applications/DrawThings-CLI/gRPCServerCLI-macOS" /Volumes/LLM-VLM/Models --address 127.0.0.1 --port 7881 --model-browser > /tmp/m7e-server.log 2>&1 &); sleep 8
-cd "/Users/existenz/Software developement/DT Hub/Packages" && DTHUB_LIVE_DT=127.0.0.1:7881 swift test --filter aSizeAbove2048 2>&1 | grep -E "LIVE|passed|failed|error:" | grep -v started
+cd "<repo>/Packages" && DTHUB_LIVE_DT=127.0.0.1:7881 swift test --filter aSizeAbove2048 2>&1 | grep -E "LIVE|passed|failed|error:" | grep -v started
 pkill -TERM -f "gRPCServerCLI-macOS /Volumes/LLM-VLM/Models --address 127.0.0.1 --port 7881"
 ```
 
@@ -463,7 +463,7 @@ Expected: `LIVE tiled: 3072×2048` e il test passa (circa due minuti).
 - [ ] **Step 3: Aggiornare la spec**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && python3 - <<'PY'
+cd "<repo>" && python3 - <<'PY'
 p = 'docs/superpowers/specs/2026-10-03-tiled-diffusion-sizes-design.md'
 s = open(p).read()
 s = s.replace("Stato: bozza da approvare", "Stato: realizzata (M7e)")
@@ -481,7 +481,7 @@ Expected: una riga di statistica sulla sola spec delle dimensioni (2 righe cambi
 - [ ] **Step 4: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add Packages docs && git commit -m "test: prova dal vivo delle dimensioni oltre 2048 con il Tiled Diffusion (SD 1.5, 3072×2048), spec realizzata
+cd "<repo>" && git add Packages docs && git commit -m "test: prova dal vivo delle dimensioni oltre 2048 con il Tiled Diffusion (SD 1.5, 3072×2048), spec realizzata
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```

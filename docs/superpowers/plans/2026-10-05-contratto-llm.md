@@ -16,7 +16,7 @@
 
 ## Global Constraints
 
-- **Repository:** radice `/Users/existenz/Software developement/DT Hub` (percorsi tra virgolette); branch `llm-contract` da `main`.
+- **Repository:** radice `<repo>` (percorsi tra virgolette); branch `llm-contract` da `main`.
 - **Il contratto resta 1.** Tutte le chiavi nuove sono facoltative; senza di esse il messaggio `llm` si comporta come prima (nessun system prompt, temperatura 0,6, 1024 token, il modello scelto nelle impostazioni).
 - **Limiti delle opzioni:** `temperature` 0–2, `topP` 0–1, `topK` 0–200, `presencePenalty` −2–2, `maxTokens` 1–32768; un numero fuori limite si porta nel limite, un valore del tipo sbagliato si ignora, una chiave sconosciuta si ignora; un `system` vuoto vale nessuno.
 - **`model`** è il `name` di un modello di `availableModels()`; vale per quella domanda e **non cambia** `settings.selectedModel`; un nome sconosciuto è `LanguageModelError.modelNotFound` e non mette il gestore in stato `failed`.
@@ -52,7 +52,7 @@
 - [ ] **Step 1: Creare il branch e scrivere i test**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git switch main && git switch -c llm-contract
+cd "<repo>" && git switch main && git switch -c llm-contract
 ```
 
 ```diff
@@ -275,7 +275,7 @@ index d68a8b6..21cff06 100644
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter "LanguageModelContractTests|LanguageModelManagerTests|MLXOptionsTests" 2>&1 | grep -E "error:" | head -3`
+Run: `cd "<repo>/Packages" && swift test --filter "LanguageModelContractTests|LanguageModelManagerTests|MLXOptionsTests" 2>&1 | grep -E "error:" | head -3`
 Expected: errori di compilazione (`cannot find 'LanguageModelOptions' in scope`, `extra arguments`).
 
 - [ ] **Step 3: Implementare**
@@ -522,16 +522,16 @@ index 8910006..856dcde 100644
 
 - [ ] **Step 4: Verificare**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "Test run with|error:|✘ Test [a-zA-Z]+\(" | grep -v started`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "Test run with|error:|✘ Test [a-zA-Z]+\(" | grep -v started`
 Expected: HubKit `106 tests`, HubCore `469 tests`, LLMBridge `10 tests` (uno è il test dal vivo, saltato senza modello), gli altri invariati (DTBridge 66, Catalog 6, PluginHost 6), nessuna riga `✘`.
 
-Run (se la cartella del modello c'è): `cd "/Users/existenz/Software developement/DT Hub/Packages" && TEST_RUNNER_DTHUB_LIVE_LLM=/Volumes/LLM-VLM/MLX/mlx-community/Qwen3-VL-2B-Instruct-4bit xcodebuild test -scheme DTHubPackages-Package -destination 'platform=macOS' -derivedDataPath ../build/pkg -only-testing:LLMBridgeTests 2>&1 | grep -E "LIVE (system|short)|Test run with|TEST (SUCCEEDED|FAILED)"`
+Run (se la cartella del modello c'è): `cd "<repo>/Packages" && TEST_RUNNER_DTHUB_LIVE_LLM=/Volumes/LLM-VLM/MLX/mlx-community/Qwen3-VL-2B-Instruct-4bit xcodebuild test -scheme DTHubPackages-Package -destination 'platform=macOS' -derivedDataPath ../build/pkg -only-testing:LLMBridgeTests 2>&1 | grep -E "LIVE (system|short)|Test run with|TEST (SUCCEEDED|FAILED)"`
 Expected: `LIVE system answer: BANANA`, `LIVE short answer: 1, 2, 3, 4,`, `Test run with 10 tests in 4 suites passed`.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add -A Packages App && git commit -m "feat: llm con system, modello per nome e opzioni (HubKit, HubCore, LLMBridge)
+cd "<repo>" && git add -A Packages App && git commit -m "feat: llm con system, modello per nome e opzioni (HubKit, HubCore, LLMBridge)
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -777,7 +777,7 @@ index b3743ab..c147610 100644
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter "PluginContractTests|PluginRoutingTests|PluginRegistryTests|ControlStoreTests" 2>&1 | grep -E "error:" | head -3`
+Run: `cd "<repo>/Packages" && swift test --filter "PluginContractTests|PluginRoutingTests|PluginRegistryTests|ControlStoreTests" 2>&1 | grep -E "error:" | head -3`
 Expected: errori di compilazione (`extra arguments 'startImage'`, `value of type 'PluginRegistry' has no member 'startImagePath'`, `has no member 'startImageURL'`).
 
 - [ ] **Step 3: Implementare**
@@ -1024,16 +1024,16 @@ index 53e8aab..1ba4b14 100644
 
 - [ ] **Step 4: Verificare**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "Test run with|error:|✘ Test [a-zA-Z]+\(" | grep -v started`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "Test run with|error:|✘ Test [a-zA-Z]+\(" | grep -v started`
 Expected: HubKit `110 tests`, HubCore `476 tests`, LLMBridge `10`, DTBridge 66, Catalog 6, PluginHost 6, nessuna riga `✘`.
 
-Run: `cd "/Users/existenz/Software developement/DT Hub" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath /tmp/p-dd CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"`
+Run: `cd "<repo>" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath /tmp/p-dd CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"`
 Expected: `** BUILD SUCCEEDED **`.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add -A Packages App && git commit -m "feat: il contesto dei plug-in porta l'immagine di partenza e i modelli linguistici; llm arriva al modello
+cd "<repo>" && git add -A Packages App && git commit -m "feat: il contesto dei plug-in porta l'immagine di partenza e i modelli linguistici; llm arriva al modello
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -1113,7 +1113,7 @@ index bcdd13d..9e3fb04 100644
 
 - [ ] **Step 2: Verificare che falliscano**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/PluginKit" && swift test 2>&1 | grep -E "error:" | head -2`
+Run: `cd "<repo>/PluginKit" && swift test 2>&1 | grep -E "error:" | head -2`
 Expected: un errore di compilazione (`type 'DTHubHost' has no member 'llmMessage'`).
 
 - [ ] **Step 3: Implementare**
@@ -1410,19 +1410,19 @@ index 739b7bf..a38422c 100644
 
 - [ ] **Step 5: Verificare**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/PluginKit" && swift test 2>&1 | grep -E "Test run with|error:" | grep -v started`
+Run: `cd "<repo>/PluginKit" && swift test 2>&1 | grep -E "Test run with|error:" | grep -v started`
 Expected: due righe: il kit `6 tests` e il design `3 tests`, passati.
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test --filter BundlePluginLoaderTests 2>&1 | grep -E "Test run with|error:" | grep -v started`
+Run: `cd "<repo>/Packages" && swift test --filter BundlePluginLoaderTests 2>&1 | grep -E "Test run with|error:" | grep -v started`
 Expected: `Test run with 6 tests … passed` (il Sample, costruito con il kit nuovo, si carica ancora).
 
-Run: `rm -rf /tmp/p-smp && "/Users/existenz/Software developement/DT Hub/PluginKit/Scripts/build-sample.sh" /tmp/p-smp | tail -1`
+Run: `rm -rf /tmp/p-smp && "<repo>/PluginKit/Scripts/build-sample.sh" /tmp/p-smp | tail -1`
 Expected: `/tmp/p-smp/Sample.dthubplugin`.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add -A PluginKit docs && git commit -m "feat: il kit dei plug-in impara system, modello e opzioni di llm e i nuovi campi del contesto; documenti
+cd "<repo>" && git add -A PluginKit docs && git commit -m "feat: il kit dei plug-in impara system, modello e opzioni di llm e i nuovi campi del contesto; documenti
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -1456,13 +1456,13 @@ index 5628838..9b47d13 100644
 
 - [ ] **Step 2: Verifiche finali**
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/Packages" && swift test 2>&1 | grep -E "Test run with|error:|✘ Test [a-zA-Z]+\(" | grep -v started`
+Run: `cd "<repo>/Packages" && swift test 2>&1 | grep -E "Test run with|error:|✘ Test [a-zA-Z]+\(" | grep -v started`
 Expected: gli stessi conteggi del Task 2 (HubKit 110, HubCore 476, LLMBridge 10, DTBridge 66, Catalog 6, PluginHost 6), nessuna riga `✘`.
 
-Run: `cd "/Users/existenz/Software developement/DT Hub/PluginKit" && swift test 2>&1 | grep -E "Test run with|error:" | grep -v started`
+Run: `cd "<repo>/PluginKit" && swift test 2>&1 | grep -E "Test run with|error:" | grep -v started`
 Expected: `6 tests` e `3 tests`, passati.
 
-Run: `cd "/Users/existenz/Software developement/DT Hub" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"`
+Run: `cd "<repo>" && xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)"`
 Expected: `** BUILD SUCCEEDED **` (è la build che l'utente avvia).
 
 - [ ] **Step 3: Provare il Sample dal vivo (a mano, con l'app dell'utente chiusa)**
@@ -1473,7 +1473,7 @@ Expected: la risposta è una sola frase; il motivo dell'errore compare invece di
 - [ ] **Step 4: Commit**
 
 ```bash
-cd "/Users/existenz/Software developement/DT Hub" && git add -A docs && git commit -m "docs: rimandi del contratto llm nel backlog
+cd "<repo>" && git add -A docs && git commit -m "docs: rimandi del contratto llm nel backlog
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
