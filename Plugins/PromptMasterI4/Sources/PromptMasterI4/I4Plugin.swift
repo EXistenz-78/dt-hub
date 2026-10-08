@@ -25,6 +25,12 @@ final class PromptMasterI4Plugin: DTHubPlugin {
     case "context":
       state.update(generationSize: GenerationSize.read(fromContext: message))
       return nil
+    case "project":
+      // The session of the tab belongs to the open project.
+      if let project = try? JSONDecoder().decode(DTHubProject.self, from: message) {
+        state.switchProject(folder: URL(fileURLWithPath: project.folder, isDirectory: true), adoptLegacy: project.adoptLegacy)
+      }
+      return nil
     case "activate":
       state.active = true
       return nil

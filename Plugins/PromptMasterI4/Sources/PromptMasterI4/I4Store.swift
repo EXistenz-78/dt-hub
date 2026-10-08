@@ -27,6 +27,22 @@ struct DefaultsStorage: I4Storage {
   func set(_ data: Data, forKey key: String) { defaults.set(data, forKey: key) }
 }
 
+/// `state.json` in the folder the app gives the plug-in for the open project (the key does not matter: one file holds the
+/// one session).
+struct FileStorage: I4Storage {
+  static let fileName = "state.json"
+  let folder: URL
+
+  private var fileURL: URL { folder.appendingPathComponent(Self.fileName) }
+
+  func data(forKey key: String) -> Data? { try? Data(contentsOf: fileURL) }
+
+  func set(_ data: Data, forKey key: String) {
+    try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    try? data.write(to: fileURL, options: .atomic)
+  }
+}
+
 /// The session in the storage, under a key of its own.
 struct I4Store {
   static let key = "com.exiztenz.dthub.promptmasteri4.state.v1"
@@ -44,5 +60,12 @@ struct I4Store {
       session.schema == I4Session.currentSchema
     else { return I4Session() }
     return session
+  }
+
+  /// The first project ever takes the session the tab had before projects (`legacy`, the `UserDefaults` one): copied into
+  /// this storage, only if it has none yet.
+  func adoptLegacy(from legacy: any I4Storage) {
+    guard storage.data(forKey: key) == nil, let data = legacy.data(forKey: key) else { return }
+    storage.set(data, forKey: key)
   }
 }
