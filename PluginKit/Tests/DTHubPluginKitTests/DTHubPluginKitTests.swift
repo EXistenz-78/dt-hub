@@ -56,3 +56,19 @@ struct DTHubPluginKitTests {
     #expect(old.startImage == nil && old.moodboard == nil && old.languageModels == nil)
   }
 }
+
+@Suite("DTHubProject")
+struct DTHubProjectTests {
+  @Test func decodesTheMessageOfTheApp() throws {
+    let json = #"{"type":"project","name":"Campagna","folder":"/x/.dthub/plugins/a","adoptLegacy":true}"#
+    let project = try JSONDecoder().decode(DTHubProject.self, from: Data(json.utf8))
+    #expect(project.name == "Campagna")
+    #expect(project.folder == "/x/.dthub/plugins/a")
+    #expect(project.adoptLegacy)
+  }
+
+  @Test func adoptLegacyIsFalseWhenAbsent() throws {
+    let json = #"{"type":"project","name":"A","folder":"/f"}"#
+    #expect(try JSONDecoder().decode(DTHubProject.self, from: Data(json.utf8)).adoptLegacy == false)
+  }
+}

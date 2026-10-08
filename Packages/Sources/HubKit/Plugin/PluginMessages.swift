@@ -6,6 +6,8 @@ public enum PluginMessageType {
   public static let context = "context"
   public static let activate = "activate"
   public static let deactivate = "deactivate"
+  /// App → plug-in: the project that is open and the folder for the plug-in's state in it (`PluginProject`).
+  public static let project = "project"
   public static let notice = "notice"
   /// Plug-in → app: values, LoRAs, pictures, a pipeline (`PluginContribution`).
   public static let contribute = "contribute"
@@ -31,6 +33,22 @@ public enum PluginMessageType {
   /// `{"type": type}` as data.
   public static func bare(_ type: String) -> Data {
     Data(#"{"type":"\#(type)"}"#.utf8)
+  }
+}
+
+/// App → plug-in: a project was opened. The plug-in keeps its state in `folder` (`state.json`) and loads what is there;
+/// `adoptLegacy` is true once, for the first project ever, so a plug-in can move the state it had before projects into it.
+public struct PluginProject: Codable, Equatable, Sendable {
+  public var type = PluginMessageType.project
+  public var name: String
+  /// The plug-in's own folder inside the project; the app has created it.
+  public var folder: String
+  public var adoptLegacy: Bool
+
+  public init(name: String, folder: String, adoptLegacy: Bool = false) {
+    self.name = name
+    self.folder = folder
+    self.adoptLegacy = adoptLegacy
   }
 }
 
