@@ -3860,6 +3860,125 @@
         }
       }
     },
+    "lora.manage": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manage LoRAs…"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gestisci LoRA…"
+          }
+        }
+      }
+    },
+    "lora.manager.empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No LoRAs: connect to Draw Things."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessun LoRA: collegati a Draw Things."
+          }
+        }
+      }
+    },
+    "lora.manager.noMatch": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No LoRA matches."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessun LoRA corrisponde."
+          }
+        }
+      }
+    },
+    "lora.manager.note": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your own values, kept in loras.json: Draw Things' files are not touched. They apply when you add a LoRA; those already in the list stay as they are. Weight from −1.5 to 2.5 (default 1); an emptied trigger word means none."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Valori tuoi, salvati in loras.json: i file di Draw Things non vengono toccati. Valgono quando aggiungi un LoRA; quelli già nella lista restano come sono. Peso da −1,5 a 2,5 (predefinito 1); una trigger word svuotata vuol dire nessuna."
+          }
+        }
+      }
+    },
+    "lora.manager.reset": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restore the server's values"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ripristina i valori del server"
+          }
+        }
+      }
+    },
+    "lora.manager.search": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search LoRAs"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cerca un LoRA"
+          }
+        }
+      }
+    },
+    "lora.manager.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manage LoRAs"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gestisci LoRA"
+          }
+        }
+      }
+    },
     "menu.results": {
       "extractionState": "manual",
       "localizations": {

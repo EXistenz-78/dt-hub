@@ -11,6 +11,7 @@ struct LoRACard: View {
   @Bindable var controller: GenerationController
   let connection: DrawThingsConnection
   @Environment(ContributionStore.self) private var contributions: ContributionStore?
+  @Environment(\.openWindow) private var openWindow
 
   private var catalog: ModelCatalog { connection.monitor.catalog }
   private var family: String? { controller.family(in: connection) }
@@ -33,7 +34,11 @@ struct LoRACard: View {
             isContributed: contributions?.loraPlugins[selection.file] != nil,
             remove: { controller.parameters.removeLoRA(selection.file) })
         }
-        addMenu
+        HStack(spacing: DS.controlGap) {
+          addMenu
+          manageButton
+          Spacer(minLength: 0)
+        }
       }
     }
   }
@@ -74,6 +79,19 @@ struct LoRACard: View {
       DSMenuLabel(String(localized: "card.lora.add"), systemImage: "plus")
     }
     .dsMenuPill()
+  }
+
+  /// The window where the user keeps the trigger word and the default weight of every LoRA of the server.
+  private var manageButton: some View {
+    Button {
+      openWindow(id: LoRAManagerWindow.id)
+    } label: {
+      HStack(spacing: DS.pillIconGap) {
+        Image(systemName: "slider.horizontal.3")
+        Text("lora.manage")
+      }
+    }
+    .buttonStyle(DSPillButtonStyle())
   }
 
   private func addButton(_ lora: CatalogLoRA, disabled: Bool) -> some View {

@@ -7,7 +7,19 @@ import Observation
 @Observable
 public final class ConnectionMonitor {
   public private(set) var status: ConnectionStatus = .disconnected
+  /// What the server reports, as it is.
+  public private(set) var serverCatalog: ModelCatalog = .empty
+  /// What the app uses: the server's catalog with the user's LoRA trigger words and weights (`loraOverrides`).
   public private(set) var catalog: ModelCatalog = .empty
+  /// The user's own LoRA trigger words and weights; changing them rebuilds `catalog` at once and calls
+  /// `saveLoRAOverrides`.
+  public var loraOverrides = LoRAOverrides() {
+    didSet {
+      rebuildCatalog()
+      saveLoRAOverrides?(loraOverrides)
+    }
+  }
+  @ObservationIgnored public var saveLoRAOverrides: ((LoRAOverrides) -> Void)?
   public private(set) var lastError: BackendError?
 
   /// What the status dot shows: yellow ("connecting") also when the server answers but has
@@ -36,10 +48,20 @@ public final class ConnectionMonitor {
     backend = newBackend
     generation += 1
     status = .disconnected
-    catalog = .empty
+    setServerCatalog(.empty)
     lastError = nil
     await old?.shutdown()
     await refresh()
+  }
+
+  private func setServerCatalog(_ newCatalog: ModelCatalog) {
+    serverCatalog = newCatalog
+    rebuildCatalog()
+  }
+
+  private func rebuildCatalog() {
+    let merged = loraOverrides.apply(to: serverCatalog)
+    if catalog != merged { catalog = merged }
   }
 
   /// Asks the server for its catalog once. Shows "connecting" only when not already
@@ -48,7 +70,7 @@ public final class ConnectionMonitor {
     guard !isPaused else { return }
     guard let backend else {
       status = .disconnected
-      catalog = .empty
+      setServerCatalog(.empty)
       return
     }
     let requestGeneration = generation
@@ -56,13 +78,13 @@ public final class ConnectionMonitor {
     do {
       let newCatalog = try await backend.fetchCatalog()
       guard requestGeneration == generation else { return }
-      if catalog != newCatalog { catalog = newCatalog }
+      if serverCatalog != newCatalog { setServerCatalog(newCatalog) }
       status = .connected
       lastError = nil
     } catch {
       guard requestGeneration == generation else { return }
       status = .disconnected
-      catalog = .empty
+      setServerCatalog(.empty)
       lastError = error as? BackendError ?? .unreachable(String(describing: error))
     }
   }
