@@ -26,6 +26,10 @@ struct DTHubApp: App {
 
   init() {
     let connection = DrawThingsConnection()
+    // The user's own LoRA trigger words and weights: read now, written at every change (`loras.json`).
+    let loraStore = LoRAOverridesStore(fileURL: LoRAOverridesStore.defaultFileURL)
+    connection.monitor.loraOverrides = loraStore.load()
+    connection.monitor.saveLoRAOverrides = { loraStore.save($0) }
     // The language model frees the managed server's memory when the settings ask for it.
     let languageModel = LanguageModelManager(
       service: MLXLanguageModelService(), releaseImageModel: { await connection.releaseImageModel() },
@@ -117,6 +121,11 @@ struct DTHubApp: App {
 
     Window(String(localized: "results.title"), id: ResultsWindow.id) {
       ResultsView(controller: generation, connection: connection)
+    }
+    .windowResizability(.contentMinSize)
+
+    Window(String(localized: "lora.manager.title"), id: LoRAManagerWindow.id) {
+      LoRAManagerView(connection: connection, controller: generation)
     }
     .windowResizability(.contentMinSize)
 
