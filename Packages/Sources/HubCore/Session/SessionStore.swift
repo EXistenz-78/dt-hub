@@ -7,12 +7,18 @@ public struct SessionSnapshot: Equatable, Codable, Sendable {
   public var negativePrompt: String
   public var parameters: GenerationParameters
   public var lockRatio: Bool
+  /// The project the session was saved in (nil for a file written before projects existed).
+  public var project: String?
 
-  public init(prompt: String = "", negativePrompt: String = "", parameters: GenerationParameters = .default, lockRatio: Bool = false) {
+  public init(
+    prompt: String = "", negativePrompt: String = "", parameters: GenerationParameters = .default, lockRatio: Bool = false,
+    project: String? = nil
+  ) {
     self.prompt = prompt
     self.negativePrompt = negativePrompt
     self.parameters = parameters
     self.lockRatio = lockRatio
+    self.project = project
   }
 
   /// Lenient: a missing field takes its default (parameters decode leniently too).
@@ -22,6 +28,7 @@ public struct SessionSnapshot: Equatable, Codable, Sendable {
     negativePrompt = (try? container.decodeIfPresent(String.self, forKey: .negativePrompt)) ?? ""
     parameters = (try? container.decodeIfPresent(GenerationParameters.self, forKey: .parameters)) ?? .default
     lockRatio = (try? container.decodeIfPresent(Bool.self, forKey: .lockRatio)) ?? false
+    project = (try? container.decodeIfPresent(String.self, forKey: .project)) ?? nil
   }
 }
 

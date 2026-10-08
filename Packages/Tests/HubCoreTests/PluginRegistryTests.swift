@@ -9,12 +9,14 @@ final class FakeLoadedPlugin: LoadedPlugin {
   let manifest: PluginManifest
   let viewController: AnyObject = NSObject()
   private(set) var sent: [Data] = []
+  /// What the plug-in answers (a plug-in that does not know a message answers `unsupported`).
+  var answer = PluginMessageType.bare(PluginMessageType.ok)
 
   init(manifest: PluginManifest) { self.manifest = manifest }
 
   func send(_ message: Data) async -> Data? {
     sent.append(message)
-    return PluginMessageType.bare(PluginMessageType.ok)
+    return answer
   }
 
   var sentTypes: [String] { sent.compactMap { PluginMessageType.of($0) } }

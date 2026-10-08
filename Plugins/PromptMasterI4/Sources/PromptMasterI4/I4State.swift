@@ -7,7 +7,9 @@ import SwiftUI
 final class I4State: ObservableObject {
   let data: I4Data
   let catalog: I4Catalog
-  private let store: I4Store
+  private var store: I4Store
+  /// Where the session was kept before projects: what the first project adopts.
+  private let legacyStorage: any I4Storage
   private let shuffler: (I4Catalog, StyleMode) -> Set<String>
   private let colorMaker: () -> String
   let italian: Bool
@@ -43,6 +45,7 @@ final class I4State: ObservableObject {
   ) {
     self.data = data
     self.store = store
+    legacyStorage = store.storage
     self.italian = italian
     self.shuffler = shuffler
     self.colorMaker = colorMaker
@@ -221,7 +224,29 @@ final class I4State: ObservableObject {
     status = lines.filter { !$0.isEmpty }.joined(separator: " ")
   }
 
+  /// True while a project's session is being read into the tab: the changes that causes are not written back.
+  private var isRestoring = false
+
+  /// The app opened a project: the tab shows that project's session (`adoptLegacy`: the first project ever takes the
+  /// session the tab had before). The folder is the plug-in's own folder in the project.
+  func switchProject(folder: URL, adoptLegacy: Bool) {
+    store.storage = FileStorage(folder: folder)
+    if adoptLegacy { store.adoptLegacy(from: legacyStorage) }
+    let session = store.load()
+    var document = session.document
+    document.setMode(document.mode, catalog: catalog)
+    isRestoring = true
+    self.document = document
+    editedJSON = session.editedJSON
+    openSections = Set(session.openSections)
+    openCategories = Set(session.openCategories)
+    expandedElements = Set(session.expandedElements)
+    selectedElement = nil
+    isRestoring = false
+  }
+
   private func persist() {
+    guard !isRestoring else { return }
     store.save(
       I4Session(
         document: document, editedJSON: editedJSON, openSections: openSections.sorted(),

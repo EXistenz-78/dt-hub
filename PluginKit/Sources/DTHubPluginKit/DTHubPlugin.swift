@@ -39,6 +39,25 @@ public enum DTHubMessage {
   public static func bare(_ type: String) -> Data { Data(#"{"type":"\#(type)"}"#.utf8) }
 }
 
+/// App → plug-in: a project was opened (message type `project`). Keep the state in `folder` (for example
+/// `state.json`) and load what is there: no file, or one that cannot be read, is the initial state. `adoptLegacy` is true
+/// once, for the first project ever: if `folder` has no state yet, move the state you had before projects into it.
+public struct DTHubProject: Decodable, Sendable {
+  public var name: String
+  /// The plug-in's own folder inside the project; it exists.
+  public var folder: String
+  public var adoptLegacy: Bool
+
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    name = try container.decode(String.self, forKey: .name)
+    folder = try container.decode(String.self, forKey: .folder)
+    adoptLegacy = try container.decodeIfPresent(Bool.self, forKey: .adoptLegacy) ?? false
+  }
+
+  private enum CodingKeys: String, CodingKey { case name, folder, adoptLegacy }
+}
+
 /// A language model of the app's models folder (an entry of `DTHubContext.languageModels`).
 public struct DTHubLanguageModel: Decodable, Equatable, Sendable {
   /// The name `askLanguageModel(model:)` asks for.
