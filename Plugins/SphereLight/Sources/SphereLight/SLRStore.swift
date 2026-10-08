@@ -19,12 +19,41 @@ struct SLRSession: Equatable {
   }
 }
 
-/// The session in `UserDefaults`. `Color` is not `Codable`, so it goes through plain RGB components.
+/// The session. Before DT Hub had projects it lived in `UserDefaults`; once the app says which project is open
+/// (`folder`), it is `state.json` in the folder the app gave the plug-in for it. `Color` is not `Codable`, so it goes
+/// through plain RGB components.
 struct SLRStore {
   static let key = "com.exiztenz.dthub.spherelight.state.v1"
+  static let fileName = "state.json"
 
   var defaults: UserDefaults = .standard
   var key: String = SLRStore.key
+  /// The plug-in's folder in the open project; nil until the app sends the first `project` message.
+  var folder: URL?
+
+  private var fileURL: URL? { folder?.appendingPathComponent(Self.fileName) }
+
+  private func write(_ data: Data) {
+    if let fileURL {
+      try? FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+      try? data.write(to: fileURL, options: .atomic)
+    } else {
+      defaults.set(data, forKey: key)
+    }
+  }
+
+  private func read() -> Data? {
+    if let fileURL { return try? Data(contentsOf: fileURL) }
+    return defaults.data(forKey: key)
+  }
+
+  /// The first project ever takes the state the tab had before projects: written to the file, only if there is none.
+  func adoptLegacy() {
+    guard let fileURL, !FileManager.default.fileExists(atPath: fileURL.path), let data = defaults.data(forKey: key) else {
+      return
+    }
+    write(data)
+  }
 
   private struct SavedLight: Codable {
     var id: UUID
@@ -54,12 +83,12 @@ struct SLRStore {
     }
     let saved = Saved(lights: lights, overcast: session.overcast, saveToDesktop: session.saveToDesktop)
     guard let data = try? JSONEncoder().encode(saved) else { return }
-    defaults.set(data, forKey: key)
+    write(data)
   }
 
   /// The saved session; nil when there is none, it cannot be read or it has no lights.
   func load() -> SLRSession? {
-    guard let data = defaults.data(forKey: key), let saved = try? JSONDecoder().decode(Saved.self, from: data),
+    guard let data = read(), let saved = try? JSONDecoder().decode(Saved.self, from: data),
       !saved.lights.isEmpty
     else { return nil }
     var lights: [LightParams] = []
