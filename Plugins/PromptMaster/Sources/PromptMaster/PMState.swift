@@ -6,7 +6,7 @@ import SwiftUI
 @MainActor
 final class PMState: ObservableObject {
   let data: PMData
-  private let store: PMStore
+  private var store: PMStore
   private let customStore: CustomTermsStore
   private let shuffler: (PromptDatabase, Set<String>, StyleMode) -> [String]
   let italian: Bool
@@ -174,7 +174,27 @@ final class PMState: ObservableObject {
       booru: booru && hasBooruSwitch, languageModels: languageModels)
   }
 
+  /// True while a project's state is being read into the tab: the changes that causes are not written back.
+  private var isRestoring = false
+
+  /// The app opened a project: the tab shows that project's state (`adoptLegacy`: the first project ever takes the state
+  /// the tab had before). The folder is the plug-in's own folder in the project.
+  func switchProject(folder: URL, adoptLegacy: Bool) {
+    store.folder = folder
+    if adoptLegacy { store.adoptLegacy() }
+    let session = store.load()
+    isRestoring = true
+    description = session.description
+    selection = Set(session.selection)
+    mode = session.mode
+    booru = session.booru
+    openGroups = Set(session.openGroups)
+    openCategories = Set(session.openCategories)
+    isRestoring = false
+  }
+
   private func persist() {
+    guard !isRestoring else { return }
     store.save(
       PMSession(
         description: description, selection: selection.sorted(), mode: mode, booru: booru,
