@@ -42,4 +42,26 @@ struct SessionStoreTests {
     #expect(snapshot.parameters.steps == 20)
     #expect(snapshot.parameters.width == GenerationParameters.default.width)
   }
+
+  @Test func theProjectNameSurvivesASaveAndLoad() throws {
+    let store = SessionStore(fileURL: tempFile())
+    try store.save(SessionSnapshot(prompt: "a fox", project: "Campagna"))
+    #expect(store.load()?.project == "Campagna")
+  }
+
+  @Test func aFileWrittenBeforeProjectsHasNoProject() throws {
+    let file = tempFile()
+    try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try Data(#"{"prompt": "a fox"}"#.utf8).write(to: file)
+    #expect(try #require(SessionStore(fileURL: file).load()).project == nil)
+  }
+
+  @Test func aProjectOfTheWrongTypeIsIgnored() throws {
+    let file = tempFile()
+    try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try Data(#"{"prompt": "a fox", "project": 3}"#.utf8).write(to: file)
+    let snapshot = try #require(SessionStore(fileURL: file).load())
+    #expect(snapshot.project == nil)
+    #expect(snapshot.prompt == "a fox")
+  }
 }
