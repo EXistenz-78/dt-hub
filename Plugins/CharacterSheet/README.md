@@ -37,9 +37,9 @@ Two ways to write the prompt:
     the request is `Entity name: <name>`.
   - **Qwen-Image-2.1-PE-I2I** (Qwen's prompt enhancer for image editing): it keeps its own `system_prompt.txt`, which must be in the
     model's folder next to the weights, and receives the master prompt as the instruction to rewrite. It writes cleaner sheets but tends to
-    reinvent the character, and some conversions of it (a `processor_config.json` with the image settings nested under
-    `image_processor` and no `preprocessor_config.json`) are loaded by the app as text-only, so the model never sees the picture: until
-    the app reads that format, add a flat `preprocessor_config.json` to the model's folder.
+    reinvent the character. Some conversions of it keep the image settings nested under `image_processor` in `processor_config.json`:
+    DT Hub then adds the flat `preprocessor_config.json` the library needs next to the weights the first time it loads the model (only
+    an addition; on a read-only folder the app says the model cannot read pictures instead of ignoring them).
 
 The sheet follows the reference's style, whatever the prompt says about the medium. The status line under the buttons shows how many words
 the prompt has and how long the model took, to compare models. The language model cannot be stopped once asked (as everywhere in DT
