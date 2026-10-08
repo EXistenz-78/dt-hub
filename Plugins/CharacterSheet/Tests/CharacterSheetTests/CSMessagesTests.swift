@@ -25,7 +25,7 @@ struct CSMessagesTests {
     #expect(Set(body.keys) == ["fields"])
     let fields = try #require(body["fields"] as? [String: Any])
     #expect(Set(fields.keys) == ["width", "height"])
-    #expect(fields["width"] as? Int == 2304)
+    #expect(fields["width"] as? Int == 2048)
     #expect(fields["height"] as? Int == 1536)
   }
 
@@ -38,8 +38,8 @@ struct CSMessagesTests {
     #expect(fields["prompt"] as? String == text)
   }
 
-  @Test func sizeIsThreeToTwoAndMultipleOf64() {
-    #expect(CSMessages.width * 2 == CSMessages.height * 3)
+  @Test func sizeIsFourToThreeAndMultipleOf64() {
+    #expect(CSMessages.width * 3 == CSMessages.height * 4)
     #expect(CSMessages.width % 64 == 0)
     #expect(CSMessages.height % 64 == 0)
   }

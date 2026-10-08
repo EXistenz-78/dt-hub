@@ -75,9 +75,10 @@ struct CSRunnerTests {
 
   private func job(
     image: String? = "/pics/my ref.PNG", name: String = "Ayaka", useStatic: Bool = false,
-    model: DTHubLanguageModel? = visionModel("Qwen3-VL-8B-Instruct-4bit"), folder: String? = "/tmp/dthub"
+    model: DTHubLanguageModel? = visionModel("Qwen3-VL-8B-Instruct-4bit"), folder: String? = "/tmp/dthub",
+    kind: CSSheetKind = .base
   ) -> CSJob {
-    CSJob(imagePath: image, name: name, useStatic: useStatic, model: model, tempFolder: folder)
+    CSJob(imagePath: image, name: name, useStatic: useStatic, model: model, tempFolder: folder, kind: kind)
   }
 
   private func run(_ job: CSJob) async -> CSOutcome {
@@ -101,6 +102,30 @@ struct CSRunnerTests {
     #expect(spy.requests.isEmpty)
     #expect(outcome.succeeded)
     #expect(outcome.line == L.text(.doneStatic, italian: false))
+  }
+
+  @Test(arguments: [CSSheetKind.base, .expressions, .poses])
+  func theStaticTextFollowsTheSheetKind(kind: CSSheetKind) async {
+    spy.templates[.of(useStatic: true, kind: kind)] = .success("Text of \(kind.rawValue) for {{name}}")
+    let outcome = await run(job(useStatic: true, kind: kind))
+    #expect(outcome.succeeded)
+    #expect(spy.writtenPrompt == "Text of \(kind.rawValue) for Ayaka")
+  }
+
+  @Test(arguments: [CSSheetKind.base, .expressions, .poses])
+  func theMasterFollowsTheSheetKind(kind: CSSheetKind) async {
+    spy.templates[.of(useStatic: false, kind: kind)] = .success("MASTER \(kind.rawValue)")
+    spy.llmAnswer = .text("Sheet")
+    let outcome = await run(job(kind: kind))
+    #expect(outcome.succeeded)
+    #expect(spy.requests.first?.system == "MASTER \(kind.rawValue)")
+  }
+
+  @Test func aMissingFileOfAnotherKindNamesThatFile() async {
+    let outcome = await run(job(useStatic: true, kind: .poses))
+    #expect(
+      outcome.line == L.format(.templateMissing, "static-prompt-poses.txt", "/data/CharacterSheet", italian: false))
+    #expect(spy.bodies.isEmpty)
   }
 
   @Test func theMoodboardGetsTheCopiedPicture() async {

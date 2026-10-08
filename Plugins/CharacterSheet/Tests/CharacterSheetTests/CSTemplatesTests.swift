@@ -57,6 +57,25 @@ struct CSTemplatesTests {
     #expect(CSTemplates.fill("No placeholder", name: "Ayaka") == "No placeholder")
   }
 
+  @Test func theFileFollowsTheSwitchAndTheSheetKind() {
+    #expect(CSTemplateFile.of(useStatic: false, kind: .base) == .master)
+    #expect(CSTemplateFile.of(useStatic: true, kind: .base) == .staticPrompt)
+    #expect(CSTemplateFile.of(useStatic: false, kind: .expressions).rawValue == "master-prompt-expressions.txt")
+    #expect(CSTemplateFile.of(useStatic: true, kind: .expressions).rawValue == "static-prompt-expressions.txt")
+    #expect(CSTemplateFile.of(useStatic: false, kind: .poses).rawValue == "master-prompt-poses.txt")
+    #expect(CSTemplateFile.of(useStatic: true, kind: .poses).rawValue == "static-prompt-poses.txt")
+    #expect(Set(CSTemplateFile.allCases.map(\.rawValue)).count == 6)
+  }
+
+  @Test func loadReadsTheFileOfAnotherKind() throws {
+    let folder = try makeFolder()
+    defer { try? FileManager.default.removeItem(at: folder) }
+    try "Faces.".write(
+      to: folder.appendingPathComponent("master-prompt-expressions.txt"), atomically: true, encoding: .utf8)
+    #expect(CSTemplates.load(.masterExpressions, from: folder) == .success("Faces."))
+    #expect(CSTemplates.load(.masterPoses, from: folder) == .failure(.missing(.masterPoses)))
+  }
+
   @Test func defaultFolderEndsWithTheDataPath() {
     #expect(CSTemplates.defaultFolder.path.hasSuffix("DT Hub/Data/CharacterSheet"))
   }

@@ -82,6 +82,25 @@ struct CSStateTests {
     let state = CSState(store: CSSettingsStore(folder: folder))
     #expect(!state.useStatic)
     #expect(state.selectedModel == nil)
+    #expect(state.kind == .base)
+  }
+
+  @Test func theSheetKindSurvivesARestart() throws {
+    let folder = try makeFolder()
+    defer { try? FileManager.default.removeItem(at: folder) }
+    CSState(store: CSSettingsStore(folder: folder)).kind = .poses
+    #expect(CSState(store: CSSettingsStore(folder: folder)).kind == .poses)
+  }
+
+  @Test func settingsWrittenBeforeTheKindExistedStillLoad() throws {
+    let folder = try makeFolder()
+    defer { try? FileManager.default.removeItem(at: folder) }
+    try "{\"useStatic\":true,\"model\":\"B-vision\"}".write(
+      to: folder.appendingPathComponent("settings.json"), atomically: true, encoding: .utf8)
+    let state = CSState(store: CSSettingsStore(folder: folder))
+    #expect(state.useStatic)
+    #expect(state.selectedModel == "B-vision")
+    #expect(state.kind == .base)
   }
 
   @Test func aCorruptSettingsFileFallsBackToDefaults() throws {
@@ -136,7 +155,9 @@ struct CSStateTests {
     state.name = "Ayaka"
     state.useStatic = true
     state.selectedModel = "C-vision"
+    state.kind = .expressions
     let job = state.job
+    #expect(job.kind == .expressions)
     #expect(job.imagePath == "/pics/a.png")
     #expect(job.name == "Ayaka")
     #expect(job.useStatic)
