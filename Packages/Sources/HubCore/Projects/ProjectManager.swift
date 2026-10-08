@@ -53,6 +53,8 @@ public final class ProjectManager {
   public private(set) var current: Project?
   public private(set) var projects: [Project] = []
   public var lastError: ProjectManagerError?
+  /// True once `start()` has finished: before that, "no current project" only means "not read yet".
+  public private(set) var didStart = false
 
   @ObservationIgnored private let outputFolder: @Sendable () -> URL
   @ObservationIgnored private let selection: any ProjectSelectionStore
@@ -76,6 +78,7 @@ public final class ProjectManager {
 
   /// At launch: opens the remembered project if it is still there, otherwise there is no current project.
   public func start() async {
+    defer { didStart = true }
     projects = catalog.projects()
     guard let name = selection.currentName(), let project = catalog.project(named: name) else {
       current = nil
@@ -85,12 +88,12 @@ public final class ProjectManager {
     await onOpen(project, .launch)
   }
 
-  /// Reads the list again (the menu opens, the output folder changed). A current project that is gone leaves none, and
-  /// is forgotten.
+  /// Reads the list again (the menu opens, the output folder changed). A current project that is gone, or that is not
+  /// the one of the output folder any more (another folder with a project of that name), leaves none, and is forgotten.
   public func refresh() {
     let catalog = catalog
     projects = catalog.projects()
-    if let current, catalog.project(named: current.name) == nil {
+    if let current, catalog.project(named: current.name) != current {
       self.current = nil
       selection.setCurrentName(nil)
     }

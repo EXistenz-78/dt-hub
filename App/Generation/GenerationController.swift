@@ -38,8 +38,8 @@ final class GenerationController {
   }
   /// Width ÷ height kept while `lockRatio` is on.
   private(set) var lockedRatio: Double?
-  let session = GenerationSession(
-    store: CurrentFolderImageStore(), history: ResultsHistoryStore(fileURL: ResultsHistoryStore.defaultFileURL))
+  /// The RUN. Its pictures go to the open project's folder and its strip is the project's (`ProjectManager`).
+  let session: GenerationSession
   let cards = CardExpansionStore(fileURL: CardExpansionStore.defaultFileURL)
   private(set) var outputFolder: URL
 
@@ -57,26 +57,38 @@ final class GenerationController {
   /// What the plug-ins contributed (teal fields, conflicts, the pipeline); set by `attach`.
   @ObservationIgnored private(set) var contributions: ContributionStore?
 
+  /// Where a RUN saves: the folder of the open project; nil while no project is open (the RUN is refused then).
+  @ObservationIgnored private let projectFolderBox = ProjectFolderBox()
+  var projectFolder: URL? {
+    didSet { projectFolderBox.folder = projectFolder }
+  }
+  /// The open project, saved with the session so the next launch knows whose session it was.
+  @ObservationIgnored var projectName: String?
+  /// True when the session was read back at launch (its project is the one that opens), so the prompt that was not
+  /// generated yet is still there and the last image's settings must not overwrite it.
+  @ObservationIgnored private(set) var sessionWasRestored = false
+
   @ObservationIgnored private let outputSettings = OutputSettingsStore()
   @ObservationIgnored private let sessionStore: SessionStore
   @ObservationIgnored private var pendingSave: Task<Void, Never>?
   @ObservationIgnored private var preparation: Task<Void, Never>?
 
-  /// Restores the last prompt and parameters (spec §11).
+  /// Restores the last prompt and parameters (spec §11) when the session was saved in `restoringProject`, the project
+  /// that opens at launch (nil: no project yet, as before projects existed).
   init(
-    languageModel: LanguageModelManager, control: ControlStore,
+    languageModel: LanguageModelManager, control: ControlStore, restoringProject: String? = nil,
     sessionStore: SessionStore = SessionStore(fileURL: SessionStore.defaultFileURL)
   ) {
     self.languageModel = languageModel
     self.control = control
+    session = GenerationSession(store: ProjectImageStore(box: projectFolderBox), history: nil)
     assistant = PromptAssistant(respond: { prompt, images, options throws(LanguageModelError) in
       try await languageModel.respond(to: prompt, images: images, options: options)
     })
-    // The strip of the Results window comes back from the last launches.
-    Task { [session] in await session.restoreHistory() }
     self.sessionStore = sessionStore
     outputFolder = outputSettings.folder()
-    if let snapshot = sessionStore.load() {
+    if let snapshot = sessionStore.load(), snapshot.project == restoringProject {
+      sessionWasRestored = true
       prompt = snapshot.prompt
       negativePrompt = snapshot.negativePrompt
       parameters = snapshot.parameters.clamped()
@@ -220,12 +232,39 @@ final class GenerationController {
     pendingSave?.cancel()
     pendingSave = nil
     try? sessionStore.save(
-      SessionSnapshot(prompt: prompt, negativePrompt: negativePrompt, parameters: parameters, lockRatio: lockRatio))
+      SessionSnapshot(
+        prompt: prompt, negativePrompt: negativePrompt, parameters: parameters, lockRatio: lockRatio,
+        project: projectName))
+  }
+
+  /// True while the project cannot change: a RUN, its preparation or a pipeline is under way.
+  func isBusyForProjectSwitch() -> Bool {
+    session.isRunning || isPreparing || pipelinePass != nil
+  }
+
+  /// Puts a project's last image on the tab: its prompt, negative prompt and parameters and, when the catalog has it, its
+  /// model (without the recommended values, which would overwrite the parameters). With nil (a new project, or one
+  /// without images) the tab starts from the defaults and the model stays as it is.
+  func apply(_ job: GenerationJob?, in connection: DrawThingsConnection) {
+    lockRatio = false
+    guard let job else {
+      prompt = ""
+      negativePrompt = ""
+      parameters = .default
+      return
+    }
+    prompt = job.prompt
+    negativePrompt = job.negativePrompt
+    parameters = job.parameters.clamped()
+    if connection.monitor.catalog.models.contains(where: { $0.file == job.model }) {
+      connection.selection.select(job.model)
+    }
   }
 
   /// True when the server, the model and the session allow a RUN.
   func canRun(with connection: DrawThingsConnection) -> Bool {
-    !session.isRunning && !isPreparing && connection.monitor.backend != nil && connection.runBlocker == nil
+    !session.isRunning && !isPreparing && projectFolder != nil && connection.monitor.backend != nil
+      && connection.runBlocker == nil
   }
 
   /// Starts a RUN, split into its batches (`batchesForRun`). With a random seed, the seed
@@ -434,11 +473,24 @@ final class GenerationController {
   }
 }
 
-/// Saves into the Output folder chosen at the moment of saving.
-struct CurrentFolderImageStore: ImageStore {
+/// The folder of the open project, shared with the image store (which saves away from the main actor).
+nonisolated final class ProjectFolderBox: @unchecked Sendable {
+  private let lock = NSLock()
+  private var value: URL?
+
+  var folder: URL? {
+    get { lock.withLock { value } }
+    set { lock.withLock { value = newValue } }
+  }
+}
+
+/// Saves into the open project's folder, as it is at the moment of saving; without a project nothing is saved.
+struct ProjectImageStore: ImageStore {
+  let box: ProjectFolderBox
+
   func save(_ image: CGImage, job: GenerationJob, index: Int, date: Date, elapsed: TimeInterval?) throws -> URL {
-    try PNGImageStore(folder: OutputSettingsStore().folder()).save(
-      image, job: job, index: index, date: date, elapsed: elapsed)
+    guard let folder = box.folder else { throw ImageStoreError.cannotWrite("no project") }
+    return try PNGImageStore(folder: folder).save(image, job: job, index: index, date: date, elapsed: elapsed)
   }
 }
 
