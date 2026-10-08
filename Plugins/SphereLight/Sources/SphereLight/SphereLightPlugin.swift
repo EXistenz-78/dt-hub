@@ -27,6 +27,12 @@ final class SphereLightPlugin: DTHubPlugin {
     case "context":
       if let context = try? JSONDecoder().decode(DTHubContext.self, from: message) { state.tempFolder = context.tempFolder }
       return nil
+    case "project":
+      // The state of the tab belongs to the open project.
+      if let project = try? JSONDecoder().decode(DTHubProject.self, from: message) {
+        state.switchProject(folder: URL(fileURLWithPath: project.folder, isDirectory: true), adoptLegacy: project.adoptLegacy)
+      }
+      return nil
     case "activate":
       state.active = true
       // The app only listens to a plug-in that is on: the presets are offered now. A name the menu has is never touched.
