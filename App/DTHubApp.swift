@@ -21,6 +21,7 @@ struct DTHubApp: App {
   @State private var generation: GenerationController
   @State private var download: LanguageModelDownloadController
   @State private var plugins: PluginRegistry
+  @State private var projects: ProjectManager
   @State private var canvasWindow = CanvasWindowState()
 
   init() {
@@ -29,9 +30,16 @@ struct DTHubApp: App {
     let languageModel = LanguageModelManager(
       service: MLXLanguageModelService(), releaseImageModel: { await connection.releaseImageModel() },
       isImageModelBusy: { connection.isImageWorkActive() })
+    // Control starts on an empty place of its own: the real state is read from the project that opens, and the state of
+    // before projects stays where it is until the first project adopts it.
+    let noProject = FileManager.default.temporaryDirectory.appendingPathComponent("DTHub-noproject", isDirectory: true)
+    try? FileManager.default.removeItem(at: noProject)
     let control = ControlStore(
-      storage: FileReferenceStorage(folder: FileReferenceStorage.defaultFolder), fileURL: ControlStore.defaultFileURL)
-    let generation = GenerationController(languageModel: languageModel, control: control)
+      storage: FileReferenceStorage(folder: noProject.appendingPathComponent("Control", isDirectory: true)),
+      fileURL: noProject.appendingPathComponent("control.json"))
+    let selection = DefaultsProjectSelection()
+    let generation = GenerationController(
+      languageModel: languageModel, control: control, restoringProject: selection.currentName())
     // The language model never takes the image model's memory while an image is being made.
     connection.isImageWorkActive = { generation.session.isRunning || generation.isPreparing }
     _connection = State(initialValue: connection)
@@ -56,6 +64,30 @@ struct DTHubApp: App {
         PluginLanguageModel(name: $0.name, path: $0.path, supportsImages: $0.supportsImages)
       }
     }
+    // The project: Control, the strip of results, the parameters and the plug-ins follow the one that is open.
+    let projects = ProjectManager(
+      outputFolder: { OutputSettingsStore().folder() }, selection: selection, legacy: .live,
+      canSwitch: { !generation.isBusyForProjectSwitch() },
+      onOpen: { project, reason in
+        control.switchTo(storage: FileReferenceStorage(folder: project.controlFolder), fileURL: project.controlFile)
+        await generation.session.switchHistory(to: ResultsHistoryStore(fileURL: project.resultsFile))
+        generation.projectFolder = project.folder
+        generation.projectName = project.name
+        switch reason {
+        case .created(let adoptsLegacy):
+          // The first project ever keeps the session of before, as it keeps Control; a later one starts from zero.
+          if !adoptsLegacy { generation.apply(nil, in: connection) }
+        case .reopened:
+          generation.apply(ProjectImages.latestJob(in: project), in: connection)
+        case .launch:
+          // A session read back at launch (this project's) is more recent than the last image: it stays.
+          if !generation.sessionWasRestored { generation.apply(ProjectImages.latestJob(in: project), in: connection) }
+        }
+        generation.saveSessionNow()
+        plugins.projectChanged(project, adoptLegacy: reason == .created(adoptsLegacy: true))
+      })
+    plugins.currentProject = { projects.current.map { ($0, adoptLegacy: false) } }
+    _projects = State(initialValue: projects)
     plugins.start(skipping: NSEvent.modifierFlags.contains(.option))
     _plugins = State(initialValue: plugins)
     // A download cut short by quitting leaves a hidden folder with part of a model: remove it.
@@ -66,7 +98,8 @@ struct DTHubApp: App {
 
   var body: some Scene {
     WindowGroup(String(localized: "app.title")) {
-      MainWindowView(workspace: workspace, connection: connection, generation: generation, plugins: plugins)
+      MainWindowView(
+        workspace: workspace, connection: connection, generation: generation, plugins: plugins, projects: projects)
         .environment(canvasWindow)
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
           generation.saveSessionNow()
@@ -96,7 +129,7 @@ struct DTHubApp: App {
     Settings {
       PreferencesView(
         connection: connection, generation: generation, languageModel: languageModel, download: download,
-        plugins: plugins)
+        plugins: plugins, projects: projects)
     }
   }
 }

@@ -8,6 +8,7 @@ struct PreferencesView: View {
   let languageModel: LanguageModelManager
   let download: LanguageModelDownloadController
   let plugins: PluginRegistry
+  let projects: ProjectManager
 
   var body: some View {
     TabView {
@@ -18,7 +19,7 @@ struct PreferencesView: View {
         LanguagePreferencesView(manager: languageModel, download: download, connection: connection)
       }
       Tab("prefs.tab.output", systemImage: "folder") {
-        OutputPreferencesView(controller: generation)
+        OutputPreferencesView(controller: generation, projects: projects)
       }
       Tab("prefs.tab.plugins", systemImage: "puzzlepiece.extension") {
         PluginsPreferencesView(plugins: plugins)

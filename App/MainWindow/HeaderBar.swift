@@ -1,12 +1,15 @@
+import AppKit
 import HubCore
 import HubKit
 import SwiftUI
 
-/// [Plug-ins ▾] [Model ▾ · family] … ● DT [⚙︎] [▶ Run] (spec §7).
+/// [Project ▾] [Plug-ins ▾] [Model ▾ · family] … ● DT [⚙︎] [▶ Run] (spec §7).
 struct HeaderBar: View {
   let connection: DrawThingsConnection
   let generation: GenerationController
   let plugins: PluginRegistry
+  let projects: ProjectManager
+  @State private var showNewProject = false
   @Environment(\.openWindow) private var openWindow
   @Environment(\.openSettings) private var openSettings
 
@@ -18,6 +21,7 @@ struct HeaderBar: View {
 
   var body: some View {
     HStack(spacing: DS.controlGap) {
+      projectMenu
       pluginsMenu
       modelMenu
       Spacer(minLength: DS.groupGap)
@@ -36,6 +40,37 @@ struct HeaderBar: View {
     .padding(.horizontal, DS.panelPadding)
     .padding(.vertical, 10)
     .dsPanel()
+  }
+
+  /// The open project's name; its menu lists the projects (the open one checked), makes a new one and shows the
+  /// project in the Finder. The projects cannot change during a RUN.
+  private var projectMenu: some View {
+    let busy = generation.isBusyForProjectSwitch()
+    return Menu {
+      ForEach(projects.projects) { project in
+        Toggle(
+          isOn: Binding(
+            get: { projects.current?.name == project.name },
+            set: { _ in Task { await projects.open(project) } })
+        ) {
+          Text(verbatim: project.name)
+        }
+        .disabled(busy)
+      }
+      if !projects.projects.isEmpty { Divider() }
+      Button("project.new") { showNewProject = true }
+        .disabled(busy)
+      Button("project.reveal") {
+        if let folder = projects.current?.folder { NSWorkspace.shared.activateFileViewerSelecting([folder]) }
+      }
+      .disabled(projects.current == nil)
+    } label: {
+      DSMenuLabel(projects.current?.name ?? "—", systemImage: "folder")
+    }
+    .dsMenuPill()
+    .help(String(localized: "project.menu"))
+    .onAppear { projects.refresh() }
+    .sheet(isPresented: $showNewProject) { NewProjectSheet(projects: projects) }
   }
 
   private var pluginsMenu: some View {
@@ -159,7 +194,7 @@ struct HeaderBar: View {
         }
       }
       .buttonStyle(DSPillButtonStyle(prominent: true))
-      .disabled(runBlocker != nil || generation.isPreparing)
+      .disabled(runBlocker != nil || generation.isPreparing || projects.current == nil)
       .help(runBlocker == nil ? (pipeline.map { ContributionText.pipelineHelp($0, plugins: plugins) } ?? runHelp) : runHelp)
       .contextMenu {
         if pipeline != nil {

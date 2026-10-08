@@ -58,6 +58,13 @@ struct ProjectManagerTests {
 
   final class Box: @unchecked Sendable { var value = false }
 
+  @Test func theManagerSaysWhenStartIsDone() async throws {
+    let (manager, _, _, _) = try make()
+    #expect(!manager.didStart)
+    await manager.start()
+    #expect(manager.didStart)
+  }
+
   @Test func startWithoutARememberedProjectHasNoCurrent() async throws {
     let (manager, world, _, _) = try make()
     await manager.start()
@@ -196,5 +203,25 @@ struct ProjectManagerTests {
     _ = await manager.create(named: "B")
     _ = await manager.create(named: "a")
     #expect(manager.projects.map(\.name) == ["a", "B"])
+  }
+
+  final class FolderBox: @unchecked Sendable { var url: URL; init(_ url: URL) { self.url = url } }
+
+  @Test func aChangedOutputFolderLeavesNoCurrentEvenIfTheNewOneHasThatName() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent("pm-\(UUID().uuidString)")
+    let (first, second) = (root.appendingPathComponent("one"), root.appendingPathComponent("two"))
+    _ = try ProjectCatalog(outputFolder: second).create(named: "A")
+    let box = FolderBox(first)
+    let selection = MemorySelection()
+    let manager = ProjectManager(
+      outputFolder: { box.url }, selection: selection,
+      legacy: LegacyState(controlFile: root.appendingPathComponent("c.json"), controlFolder: root.appendingPathComponent("C")),
+      canSwitch: { true }, onOpen: { _, _ in })
+    #expect(await manager.create(named: "A"))
+    box.url = second
+    manager.refresh()
+    #expect(manager.current == nil)
+    #expect(manager.projects.map(\.name) == ["A"])
+    #expect(selection.name == nil)
   }
 }

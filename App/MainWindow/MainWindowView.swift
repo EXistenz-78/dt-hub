@@ -9,6 +9,7 @@ struct MainWindowView: View {
   let connection: DrawThingsConnection
   let generation: GenerationController
   let plugins: PluginRegistry
+  let projects: ProjectManager
 
   /// What the plug-ins are told about: the model and its family, the start image, the Moodboard and the size.
   private var contextKey: PluginContextKey {
@@ -21,12 +22,16 @@ struct MainWindowView: View {
 
   var body: some View {
     VStack(spacing: DS.panelPadding) {
-      HeaderBar(connection: connection, generation: generation, plugins: plugins)
+      HeaderBar(connection: connection, generation: generation, plugins: plugins, projects: projects)
       ManagedServerBanner(connection: connection)
       DSTabFrame {
         WorkspaceTabBar(workspace: workspace)
       } content: {
         tabContent
+      }
+      // Without an open project there is nowhere to work: this sheet asks for one and cannot be dismissed.
+      .sheet(isPresented: Binding(get: { projects.didStart && projects.current == nil }, set: { _ in })) {
+        ProjectGateSheet(projects: projects)
       }
     }
     .padding(20)
@@ -37,6 +42,11 @@ struct MainWindowView: View {
     .overlay(alignment: .bottom) { PluginNoticeBanner(plugins: plugins) }
     .environment(plugins)
     .environment(plugins.contributions)
+    .task { await projects.start() }
+    // A project made or deleted in the Finder meanwhile.
+    .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+      projects.refresh()
+    }
     .sheet(
       isPresented: Binding(
         get: { !plugins.contributions.conflicts.isEmpty }, set: { if !$0 { plugins.contributions.dismissConflicts() } })

@@ -1,10 +1,12 @@
 import AppKit
+import HubCore
 import HubKit
 import SwiftUI
 
 /// Preferences › Output: where generated images are saved (spec §7).
 struct OutputPreferencesView: View {
   let controller: GenerationController
+  let projects: ProjectManager
 
   var body: some View {
     Form {
@@ -39,6 +41,8 @@ struct OutputPreferencesView: View {
     panel.directoryURL = controller.outputFolder
     if panel.runModal() == .OK, let url = panel.url {
       controller.setOutputFolder(url)
+      // The projects are the subfolders of this folder: read them again (the open one may not be here).
+      projects.refresh()
     }
   }
 
