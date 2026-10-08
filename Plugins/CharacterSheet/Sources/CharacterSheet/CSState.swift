@@ -5,6 +5,21 @@ import Foundation
 struct CSSettings: Codable, Equatable {
   var useStatic = false
   var model: String?
+  var kind: CSSheetKind = .base
+
+  init(useStatic: Bool = false, model: String? = nil, kind: CSSheetKind = .base) {
+    self.useStatic = useStatic
+    self.model = model
+    self.kind = kind
+  }
+
+  /// Lenient: a file written before a key existed still loads.
+  init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    useStatic = try container.decodeIfPresent(Bool.self, forKey: .useStatic) ?? false
+    model = try container.decodeIfPresent(String.self, forKey: .model)
+    kind = (try? container.decodeIfPresent(CSSheetKind.self, forKey: .kind)) ?? .base
+  }
 }
 
 /// `settings.json` in the plug-in's data folder (next to the two text files).
@@ -33,6 +48,7 @@ final class CSState: ObservableObject {
   @Published var imagePath: String?
   @Published var name = ""
   @Published var useStatic: Bool { didSet { saveSettings() } }
+  @Published var kind: CSSheetKind { didSet { saveSettings() } }
   /// The name of the model the user chose; may be one the app no longer lists (see `resolvedModel`).
   @Published var selectedModel: String? { didSet { saveSettings() } }
   @Published var status = ""
@@ -47,6 +63,7 @@ final class CSState: ObservableObject {
     let settings = store.load()
     useStatic = settings.useStatic
     selectedModel = settings.model
+    kind = settings.kind
   }
 
   /// A picture is mandatory, so only the models that read pictures are offered.
@@ -58,7 +75,7 @@ final class CSState: ObservableObject {
   }
 
   var job: CSJob {
-    CSJob(imagePath: imagePath, name: name, useStatic: useStatic, model: resolvedModel, tempFolder: tempFolder)
+    CSJob(imagePath: imagePath, name: name, useStatic: useStatic, model: resolvedModel, tempFolder: tempFolder, kind: kind)
   }
 
   func update(from context: DTHubContext) {
@@ -80,6 +97,6 @@ final class CSState: ObservableObject {
   }
 
   private func saveSettings() {
-    store.save(CSSettings(useStatic: useStatic, model: selectedModel))
+    store.save(CSSettings(useStatic: useStatic, model: selectedModel, kind: kind))
   }
 }

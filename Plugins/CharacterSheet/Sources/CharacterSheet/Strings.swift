@@ -6,7 +6,7 @@ enum L {
   enum Key: CaseIterable {
     // The tab.
     case chooseImage, dropImage, characterName, staticPrompt, llmModel, noModelsShown
-    case prepare, openFolder, active, inactive
+    case prepare, openFolder, active, inactive, sheetBase, sheetExpressions, sheetPoses
     // The status line.
     case needImage, noFolder, noVisionModel, templateMissing, templateEmpty, peSystemMissing
     case sendingImage, writingBrief, doneStatic, doneLLM
@@ -34,13 +34,14 @@ enum L {
     .chooseImage: "Choose…", .dropImage: "Drop an image here", .characterName: "Character name",
     .staticPrompt: "Static prompt", .llmModel: "Language model", .noModelsShown: "No model with vision",
     .prepare: "Prepare", .openFolder: "Open folder", .active: "active", .inactive: "not active",
+    .sheetBase: "Base sheet", .sheetExpressions: "Expressions sheet", .sheetPoses: "Poses sheet",
     .needImage: "Choose an image first.",
     .noFolder: "No picture folder yet: switch the plug-in on first.",
     .noVisionModel: "No language model with vision: use the static prompt, or add one to the models folder.",
     .templateMissing: "%@ is missing in %@.", .templateEmpty: "%@ is empty.",
     .peSystemMissing: "%@ needs its system_prompt.txt next to the weights.",
     .sendingImage: "Sending the image to the Moodboard…", .writingBrief: "The model is writing the brief…",
-    .doneStatic: "Static prompt written. Image in the Moodboard, canvas 2304×1536.",
+    .doneStatic: "Static prompt written. Image in the Moodboard, canvas 2048×1536.",
     .doneLLM: "Prompt written: %d words in %d s.",
     .emptyAnswer: "The model gave no usable answer.", .llmFailed: "The model did not answer: %@",
     .notAnswered: "No answer from the app.", .copyFailed: "Could not copy the image.",
@@ -50,13 +51,14 @@ enum L {
     .chooseImage: "Scegli…", .dropImage: "Trascina qui un'immagine", .characterName: "Nome del personaggio",
     .staticPrompt: "Prompt statico", .llmModel: "Modello LLM", .noModelsShown: "Nessun modello con visione",
     .prepare: "Prepara", .openFolder: "Apri cartella", .active: "attivo", .inactive: "non attivo",
+    .sheetBase: "Sheet base", .sheetExpressions: "Sheet espressioni", .sheetPoses: "Sheet pose",
     .needImage: "Prima scegli un'immagine.",
     .noFolder: "La cartella delle immagini non c'è ancora: prima accendi il plug-in.",
     .noVisionModel: "Nessun modello con visione: usa il prompt statico, oppure aggiungine uno alla cartella dei modelli.",
     .templateMissing: "Manca %@ in %@.", .templateEmpty: "%@ è vuoto.",
     .peSystemMissing: "%@ ha bisogno del suo system_prompt.txt accanto ai pesi.",
     .sendingImage: "Mando l'immagine al Moodboard…", .writingBrief: "Il modello scrive il brief…",
-    .doneStatic: "Prompt statico scritto. Immagine nel Moodboard, canvas 2304×1536.",
+    .doneStatic: "Prompt statico scritto. Immagine nel Moodboard, canvas 2048×1536.",
     .doneLLM: "Prompt scritto: %d parole in %d s.",
     .emptyAnswer: "Il modello non ha dato una risposta utilizzabile.", .llmFailed: "Il modello non ha risposto: %@",
     .notAnswered: "Nessuna risposta dall'app.", .copyFailed: "Non si è potuta copiare l'immagine.",

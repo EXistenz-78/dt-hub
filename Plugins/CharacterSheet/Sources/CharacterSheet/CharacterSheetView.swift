@@ -9,10 +9,35 @@ struct CharacterSheetView: View {
   let prepare: () -> Void
   let openFolder: () -> Void
 
+  /// The page of the workflow this plug-in is inspired by.
+  private static let creditURL = URL(
+    string: "https://civitai.com/models/2960750/qwen-image-21-character-design-sheet-maker-workflow?modelVersionId=3377047")!
+
   var body: some View {
+    VStack(alignment: .leading, spacing: DS.rowGap) {
+      panel
+        .frame(maxWidth: 420, maxHeight: .infinity, alignment: .top)
+      HStack {
+        Spacer(minLength: 0)
+        Link("Based on NeuroContent work", destination: Self.creditURL)
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
+    }
+    .padding(DS.groupGap)
+    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+  }
+
+  private var panel: some View {
     VStack(spacing: 0) {
       DSPanelHeader(icon: "person.text.rectangle", title: "Character Sheet")
       VStack(alignment: .leading, spacing: DS.rowGap) {
+        Picker("", selection: $state.kind) {
+          ForEach(CSSheetKind.allCases, id: \.self) { Text(L.text($0.label)).tag($0) }
+        }
+        .pickerStyle(.radioGroup)
+        .labelsHidden()
+        .disabled(state.busy)
         picture
         TextField(L.text(.characterName), text: $state.name)
           .textFieldStyle(.roundedBorder)
@@ -42,10 +67,7 @@ struct CharacterSheetView: View {
       }
       .padding(DS.panelPadding)
     }
-    .frame(maxWidth: 420, maxHeight: .infinity, alignment: .top)
     .dsPanel()
-    .padding(DS.groupGap)
-    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
   }
 
   private var picture: some View {
@@ -94,5 +116,16 @@ struct CharacterSheetView: View {
     panel.allowedContentTypes = [.image]
     panel.allowsMultipleSelection = false
     if panel.runModal() == .OK, let url = panel.url { state.imagePath = url.path }
+  }
+}
+
+extension CSSheetKind {
+  /// The word of the radio button.
+  var label: L.Key {
+    switch self {
+    case .base: return .sheetBase
+    case .expressions: return .sheetExpressions
+    case .poses: return .sheetPoses
+    }
   }
 }

@@ -11,11 +11,17 @@ of this repository**: you extract them from your own copy of the workflow (see b
 
 ## What it does
 
-Pick a picture, type the character's name, press **Prepare**. The plug-in then:
+Pick the kind of sheet, a picture and the character's name, then press **Prepare**. The plug-in then:
 
 1. sends the picture to the **Moodboard** (Qwen Image 2.1 reads it as the reference),
-2. sets the canvas to **2304×1536** (3:2),
+2. sets the canvas to **2048×1536** (4:3, the same for every kind of sheet),
 3. writes the **prompt** in the Generation tab, and leaves the Run button to you. The fields it filled turn teal and stay editable.
+
+Three kinds of sheet (radio buttons at the top), all on the same canvas:
+
+- **Base sheet:** the full design sheet: hero view, turnarounds, action poses, silhouettes, expressions and detail close-ups;
+- **Expressions sheet:** twelve expressions of the character's head on a 4×3 grid;
+- **Poses sheet:** ten dynamic full-body poses on a 5×2 grid.
 
 Two ways to write the prompt:
 
@@ -29,20 +35,26 @@ Two ways to write the prompt:
 The status line under the buttons shows how many words the prompt has and how long the model took, to compare models.
 The language model cannot be stopped once asked (as everywhere in DT Hub), so **Prepare** stays disabled while it works.
 
-## The two text files
+## The text files
 
-They live in `~/Library/Application Support/DT Hub/Data/CharacterSheet/` (the **Open folder** button opens it):
+They live in `~/Library/Application Support/DT Hub/Data/CharacterSheet/` (the **Open folder** button opens it). Each kind of
+sheet has two files, one for the language model and one for the static prompt:
 
-- `master-prompt.txt`: the instructions for the language model;
-- `static-prompt.txt`: the prompt used without a model. `{{name}}` is replaced by the character's name (`CHARACTER` if the
-  field is empty).
+| Kind | Language model | Static prompt |
+| --- | --- | --- |
+| Base sheet | `master-prompt.txt` | `static-prompt.txt` |
+| Expressions sheet | `master-prompt-expressions.txt` | `static-prompt-expressions.txt` |
+| Poses sheet | `master-prompt-poses.txt` | `static-prompt-poses.txt` |
 
-Get them from a copy of the ComfyUI workflow (`Character_Sheet_Production.json`):
+In a static prompt `{{name}}` is replaced by the character's name (`CHARACTER` if the field is empty). A missing file is
+named in the status line.
+
+The base pair comes from a copy of the ComfyUI workflow (`Character_Sheet_Production.json`):
 
     python3 Plugins/CharacterSheet/Scripts/extract-from-workflow.py --source /path/to/Character_Sheet_Production.json
 
-The script writes both files (it refuses to overwrite existing ones without `--force`). You can edit them at any time, no
-rebuild needed.
+The script writes both files (it refuses to overwrite existing ones without `--force`). The other four are your own to
+write, in the same spirit. You can edit all of them at any time, no rebuild needed.
 
 ## Install and build
 
@@ -52,4 +64,5 @@ the bundle yourself:
     Plugins/CharacterSheet/Scripts/build.sh OUT_FOLDER     # makes OUT_FOLDER/CharacterSheet.dthubplugin
     cd Plugins/CharacterSheet && swift test                # the plug-in's tests
 
+The tab links to the workflow the plug-in is based on ("Based on NeuroContent work").
 The tab uses the app's own components (`DTHubDesign`, from the `PluginKit` package).

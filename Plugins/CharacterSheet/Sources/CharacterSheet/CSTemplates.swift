@@ -1,10 +1,35 @@
 import Foundation
 
-/// The two text files the plug-in reads: the master prompt (for the language model) and the static prompt (no model).
-/// They live outside the repository, in the user's data folder, and can be edited at any time.
+/// The three kinds of sheet the plug-in prepares.
+enum CSSheetKind: String, CaseIterable, Codable {
+  /// The full character design sheet: views, poses, silhouettes, expressions, details.
+  case base
+  /// Twelve expressions on a 4×3 grid.
+  case expressions
+  /// Ten dynamic poses on a 5×2 grid.
+  case poses
+}
+
+/// The text files the plug-in reads: for each kind of sheet, the master prompt (for the language model) and the
+/// static prompt (no model). They live outside the repository, in the user's data folder, and can be edited at any time.
 enum CSTemplateFile: String, CaseIterable {
   case master = "master-prompt.txt"
   case staticPrompt = "static-prompt.txt"
+  case masterExpressions = "master-prompt-expressions.txt"
+  case staticExpressions = "static-prompt-expressions.txt"
+  case masterPoses = "master-prompt-poses.txt"
+  case staticPoses = "static-prompt-poses.txt"
+
+  static func of(useStatic: Bool, kind: CSSheetKind) -> CSTemplateFile {
+    switch (kind, useStatic) {
+    case (.base, false): return .master
+    case (.base, true): return .staticPrompt
+    case (.expressions, false): return .masterExpressions
+    case (.expressions, true): return .staticExpressions
+    case (.poses, false): return .masterPoses
+    case (.poses, true): return .staticPoses
+    }
+  }
 }
 
 enum CSTemplateError: Error, Equatable {

@@ -10,6 +10,7 @@ struct CSJob: Equatable {
   var model: DTHubLanguageModel?
   /// The app's folder to exchange picture files through.
   var tempFolder: String?
+  var kind: CSSheetKind = .base
 }
 
 struct CSOutcome: Equatable {
@@ -46,7 +47,7 @@ struct CSRunner {
       model = chosen
     }
 
-    let file: CSTemplateFile = job.useStatic ? .staticPrompt : .master
+    let file = CSTemplateFile.of(useStatic: job.useStatic, kind: job.kind)
     let template: String
     switch readTemplate(file) {
     case .success(let text): template = text
