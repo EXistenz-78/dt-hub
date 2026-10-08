@@ -26,6 +26,10 @@ sphere now fall on the face and the scene.
 
 The tab uses the app's own components (`DTHubDesign`, from the `PluginKit` package): cards, pill buttons, teal checkboxes.
 
+## Projects
+
+The tab keeps its state **per project**: when you open another project in DT Hub (the **Project** menu) the tab shows what that project had, and a new project starts from scratch. The state is `state.json` in the plug-in's own folder inside the project (`<output>/<project>/.dthub/plugins/`). The first project you make adopts the state the tab had before projects existed.
+
 ## Install and build
 
 Add the `.dthubplugin` bundle in DT Hub › Preferences › Plug-ins (**Add…**, or drag the file in), then restart the app. To build

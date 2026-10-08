@@ -9,7 +9,7 @@ final class SphereLightPlugin: DTHubPlugin {
   /// is hidden.
   static let families = ["flux2_9b", "flux2_4b"]
   let manifest = DTHubManifest(
-    id: "com.exiztenz.dthub.spherelight", name: "Sphere Light", version: "1.0", symbol: "lightbulb.max",
+    id: "com.exiztenz.dthub.spherelight", name: "Sphere Light", version: "1.1", symbol: "lightbulb.max",
     families: SphereLightPlugin.families)
   private let state = SLRState()
   private var host: DTHubHost?

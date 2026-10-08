@@ -7,7 +7,7 @@ final class CharacterSheetPlugin: DTHubPlugin {
   /// Qwen Image 2.1 only. On the other families the plug-in is switched off and its tab is hidden.
   static let families = ["qwen_image_2.1"]
   let manifest = DTHubManifest(
-    id: "com.exiztenz.dthub.charactersheet", name: "Character Sheet", version: "1.0", symbol: "person.text.rectangle",
+    id: "com.exiztenz.dthub.charactersheet", name: "Character Sheet", version: "1.1", symbol: "person.text.rectangle",
     families: CharacterSheetPlugin.families)
   private let state = CSState(store: CSSettingsStore(folder: CSTemplates.defaultFolder))
   private var host: DTHubHost?
@@ -26,6 +26,9 @@ final class CharacterSheetPlugin: DTHubPlugin {
     switch DTHubMessage.type(of: message) {
     case "context":
       if let context = try? JSONDecoder().decode(DTHubContext.self, from: message) { state.update(from: context) }
+      return nil
+    case "project":
+      // The settings of the tab are preferences for every project: nothing to switch.
       return nil
     case "activate":
       state.active = true

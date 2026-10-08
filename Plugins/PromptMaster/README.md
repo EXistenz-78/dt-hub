@@ -37,6 +37,10 @@ copy is used (and if the file cannot be read or has an unknown layout, the statu
 first two. The embedded copies and the files in `Data/` are regenerated with `Scripts/make-prompt-data.py` from Prompt Master 2.0
 (which is never modified): pass its folder with `--source` or the `PM2_SOURCE` variable.
 
+## Projects
+
+The tab keeps its state **per project**: when you open another project in DT Hub (the **Project** menu) the tab shows what that project had, and a new project starts from scratch. The state is `state.json` in the plug-in's own folder inside the project (`<output>/<project>/.dthub/plugins/`). The first project you make adopts the state the tab had before projects existed.
+
 ## Install and build
 
 Add the `.dthubplugin` bundle in DT Hub › Preferences › Plug-ins (**Add…**), then restart the app. To build the bundle yourself:
