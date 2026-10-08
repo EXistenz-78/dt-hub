@@ -19,9 +19,12 @@ struct CharacterSheetView: View {
         .frame(maxWidth: 420, maxHeight: .infinity, alignment: .top)
       HStack {
         Spacer(minLength: 0)
-        Link("Based on NeuroContent work", destination: Self.creditURL)
-          .font(.caption)
-          .foregroundStyle(.secondary)
+        HStack(spacing: 3) {
+          Text("Based on").foregroundStyle(.secondary)
+          Link("NeuroContent", destination: Self.creditURL).foregroundStyle(DS.accent)
+          Text("work").foregroundStyle(.secondary)
+        }
+        .font(.caption)
       }
     }
     .padding(DS.groupGap)

@@ -49,7 +49,7 @@ final class CharacterSheetPlugin: DTHubPlugin {
           options: request.options)
       },
       copyImage: CSRunner.copyIntoFolder,
-      readTemplate: { CSTemplates.load($0, from: folder) },
+      readTemplate: { .success(CSTemplates.resolved($0, from: folder)) },
       readPESystem: { model in
         CSBrief.peSystem(
           inFolder: URL(fileURLWithPath: model.path, isDirectory: true),
@@ -63,10 +63,11 @@ final class CharacterSheetPlugin: DTHubPlugin {
     }
   }
 
-  /// Opens the folder of the two text files, creating it when it is not there yet.
+  /// Opens the folder of the text files. The files that are not there yet are written first (the built-in texts), so
+  /// there is something to edit; delete a file to go back to the built-in text.
   private static func openTemplatesFolder() {
     let folder = CSTemplates.defaultFolder
-    try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    CSTemplates.seedMissing(in: folder)
     NSWorkspace.shared.open(folder)
   }
 }

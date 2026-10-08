@@ -10,8 +10,9 @@ enum CSSheetKind: String, CaseIterable, Codable {
   case poses
 }
 
-/// The text files the plug-in reads: for each kind of sheet, the master prompt (for the language model) and the
-/// static prompt (no model). They live outside the repository, in the user's data folder, and can be edited at any time.
+/// The text files of the plug-in: for each kind of sheet, the master prompt (for the language model) and the static
+/// prompt (no model). The plug-in carries its own copy (`CSBuiltIn`); a file of the same name in the user's data folder
+/// wins, so the texts can be edited at any time.
 enum CSTemplateFile: String, CaseIterable {
   case master = "master-prompt.txt"
   case staticPrompt = "static-prompt.txt"
@@ -57,6 +58,24 @@ enum CSTemplates {
     }
     let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
     return trimmed.isEmpty ? .failure(.empty(file)) : .success(trimmed)
+  }
+
+  /// The text to use: the file of the folder when it has text, otherwise the one built into the plug-in. A user who
+  /// wants other words puts a file of the same name in the folder (see `seedMissing`).
+  static func resolved(_ file: CSTemplateFile, from folder: URL) -> String {
+    if case .success(let text) = load(file, from: folder) { return text }
+    return CSBuiltIn.text(for: file)
+  }
+
+  /// Writes the built-in text of every file the folder does not have yet (creating the folder), so there is
+  /// something to edit; a file that is already there is never touched.
+  static func seedMissing(in folder: URL) {
+    try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    for file in CSTemplateFile.allCases {
+      let url = folder.appendingPathComponent(file.rawValue)
+      guard !FileManager.default.fileExists(atPath: url.path) else { continue }
+      try? (CSBuiltIn.text(for: file) + "\n").write(to: url, atomically: true, encoding: .utf8)
+    }
   }
 
   /// Every `{{name}}` becomes the name, in one pass (a name that looks like the placeholder stays as written).
