@@ -45,6 +45,10 @@ line says so; an older file is ignored without a word). The plug-in never writes
 in `Data/` are regenerated with `Scripts/make-i4-data.py` (the database is copied from `Plugins/PromptMaster/Data/`, which is not
 modified; a test checks that they are equal).
 
+## Projects
+
+The tab keeps its state **per project**: when you open another project in DT Hub (the **Project** menu) the tab shows what that project had, and a new project starts from scratch. The state is `state.json` in the plug-in's own folder inside the project (`<output>/<project>/.dthub/plugins/`). The first project you make adopts the state the tab had before projects existed.
+
 ## Install and build
 
 Add the `.dthubplugin` bundle in DT Hub › Preferences › Plug-ins (**Add…**), then restart the app. To build the bundle yourself:

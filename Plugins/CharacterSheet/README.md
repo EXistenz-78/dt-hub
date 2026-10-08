@@ -62,6 +62,10 @@ static prompt `{{name}}` is replaced by the character's name (`CHARACTER` if the
 `Scripts/extract-from-workflow.py` reads the base pair out of a copy of the ComfyUI workflow, and `Scripts/make-builtin-texts.py` regenerates
 `CSBuiltIn.swift` from the six files when the built-in texts change.
 
+## Projects
+
+The settings of the tab (the kind of sheet, the static-prompt switch and the model) are preferences: they are the same in every project.
+
 ## Install and build
 
 Add the `.dthubplugin` bundle in DT Hub › Preferences › Plug-ins (**Add…**, or drag the file in), then restart the app. To build

@@ -1,6 +1,6 @@
 # DT Hub plug-ins
 
-Four plug-ins ship in this repository. Each is a Swift package of its own, with its own tests and its own README.
+Four plug-ins ship in this repository. Each is a Swift package of its own, with its own tests and its own README. Prompt Master, Prompt Master I4 and Sphere Light keep their state per project.
 A plug-in only works with the model families it was made for: on any other family it is **switched off and its tab is hidden**,
 so the tab bar only ever shows what can be used with the model you picked.
 
