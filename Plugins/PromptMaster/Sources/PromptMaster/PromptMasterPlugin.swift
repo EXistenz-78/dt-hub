@@ -6,7 +6,7 @@ import SwiftUI
 final class PromptMasterPlugin: DTHubPlugin {
   /// On the other families the plug-in is switched off and its tab is hidden: those are the ones Prompt Master has a master prompt for.
   let manifest = DTHubManifest(
-    id: "com.exiztenz.dthub.promptmaster", name: "Prompt Master", version: "1.0", symbol: "wand.and.stars",
+    id: "com.exiztenz.dthub.promptmaster", name: "Prompt Master", version: "1.1", symbol: "wand.and.stars",
     families: PMFamilies.all)
   private let state = PMState()
   private var host: DTHubHost?
@@ -29,6 +29,12 @@ final class PromptMasterPlugin: DTHubPlugin {
         let size = RatioSize.currentSize(inContext: message)
         state.update(
           family: context.family, languageModels: context.languageModels ?? [], width: size?.width, height: size?.height)
+      }
+      return nil
+    case "project":
+      // The state of the tab belongs to the open project.
+      if let project = try? JSONDecoder().decode(DTHubProject.self, from: message) {
+        state.switchProject(folder: URL(fileURLWithPath: project.folder, isDirectory: true), adoptLegacy: project.adoptLegacy)
       }
       return nil
     case "activate":

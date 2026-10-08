@@ -6,7 +6,7 @@ import SwiftUI
 final class SLRState: ObservableObject {
   static let previewSize = 220
 
-  private let store: SLRStore
+  private var store: SLRStore
   private var renderTask: Task<Void, Never>?
 
   @Published var lights: [LightParams] { didSet { persist() } }
@@ -65,7 +65,27 @@ final class SLRState: ObservableObject {
     }
   }
 
+  /// True while a project's state is being read into the tab: the changes that causes are not written back.
+  private var isRestoring = false
+
+  /// The app opened a project: the tab shows that project's lights and boxes (a project without a state starts with the
+  /// default lights; `adoptLegacy`: the first project ever takes the state the tab had before). The folder is the
+  /// plug-in's own folder in the project. What is being sent and the status line are not part of it.
+  func switchProject(folder: URL, adoptLegacy: Bool) {
+    store.folder = folder
+    if adoptLegacy { store.adoptLegacy() }
+    let session = store.load() ?? .initial()
+    isRestoring = true
+    lights = session.lights
+    expanded = session.expanded
+    overcast = session.overcast
+    saveToDesktop = session.saveToDesktop
+    isRestoring = false
+    scheduleRender()
+  }
+
   private func persist() {
+    guard !isRestoring else { return }
     store.save(SLRSession(lights: lights, expanded: expanded, overcast: overcast, saveToDesktop: saveToDesktop))
   }
 }

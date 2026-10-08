@@ -9,7 +9,7 @@ final class SphereLightPlugin: DTHubPlugin {
   /// is hidden.
   static let families = ["flux2_9b", "flux2_4b"]
   let manifest = DTHubManifest(
-    id: "com.exiztenz.dthub.spherelight", name: "Sphere Light", version: "1.0", symbol: "lightbulb.max",
+    id: "com.exiztenz.dthub.spherelight", name: "Sphere Light", version: "1.1", symbol: "lightbulb.max",
     families: SphereLightPlugin.families)
   private let state = SLRState()
   private var host: DTHubHost?
@@ -26,6 +26,12 @@ final class SphereLightPlugin: DTHubPlugin {
     switch DTHubMessage.type(of: message) {
     case "context":
       if let context = try? JSONDecoder().decode(DTHubContext.self, from: message) { state.tempFolder = context.tempFolder }
+      return nil
+    case "project":
+      // The state of the tab belongs to the open project.
+      if let project = try? JSONDecoder().decode(DTHubProject.self, from: message) {
+        state.switchProject(folder: URL(fileURLWithPath: project.folder, isDirectory: true), adoptLegacy: project.adoptLegacy)
+      }
       return nil
     case "activate":
       state.active = true

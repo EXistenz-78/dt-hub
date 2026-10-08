@@ -46,8 +46,8 @@ public final class ControlStore {
   /// stacks themselves are not).
   private var historyVersion = 0
 
-  @ObservationIgnored private let storage: any ReferenceStorage
-  @ObservationIgnored private let fileURL: URL
+  @ObservationIgnored private var storage: any ReferenceStorage
+  @ObservationIgnored private var fileURL: URL
   @ObservationIgnored private let undoLimit: Int
   @ObservationIgnored private var undoStack: [ControlInputs] = []
   @ObservationIgnored private var redoStack: [ControlInputs] = []
@@ -58,6 +58,25 @@ public final class ControlStore {
     self.storage = storage
     self.fileURL = fileURL
     self.undoLimit = undoLimit
+    inputs = ControlInputs()
+    loadFromDisk()
+  }
+
+  /// Follows another project: the history is cleared, the state is read from that project's file with the rules of
+  /// `init` (a copy that is gone is dropped, with a notice), and only the copies of the new storage are swept: the
+  /// old project's are never touched. The caller makes sure no RUN is under way.
+  public func switchTo(storage: any ReferenceStorage, fileURL: URL) {
+    self.storage = storage
+    self.fileURL = fileURL
+    undoStack = []
+    redoStack = []
+    historyVersion += 1
+    notice = nil
+    loadFromDisk()
+  }
+
+  /// Reads `fileURL` into `inputs`, saves it back and sweeps the copies nothing refers to.
+  private func loadFromDisk() {
     var loaded = (try? Data(contentsOf: fileURL)).flatMap { try? JSONDecoder().decode(ControlInputs.self, from: $0) }
       ?? ControlInputs()
     if let image = loaded.image, !storage.exists(image.fileName) {

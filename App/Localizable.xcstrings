@@ -4920,13 +4920,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Every image is saved here as PNG, in a folder per day, with the prompt and the parameters inside."
+            "value": "Projects are the subfolders of this folder. Every image is saved in the open project as PNG, in a folder per day, with the prompt and the parameters inside."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ogni immagine viene salvata qui come PNG, in una cartella per giorno, con prompt e parametri incorporati."
+            "value": "I progetti sono le sottocartelle di questa cartella. Ogni immagine è salvata nel progetto aperto come PNG, in una cartella per giorno, con prompt e parametri incorporati."
           }
         }
       }
@@ -5760,6 +5760,278 @@
           "stringUnit": {
             "state": "translated",
             "value": "Salva come preset…"
+          }
+        }
+      }
+    },
+    "project.cancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annulla"
+          }
+        }
+      }
+    },
+    "project.create": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crea"
+          }
+        }
+      }
+    },
+    "project.error.busy": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The project cannot be changed during a generation."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non si può cambiare progetto durante una generazione."
+          }
+        }
+      }
+    },
+    "project.error.date": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A name like 2026-10-07 would be mistaken for the picture folders."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un nome come 2026-10-07 si confonde con le cartelle delle immagini."
+          }
+        }
+      }
+    },
+    "project.error.dot": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The name cannot start with a dot."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il nome non può iniziare con un punto."
+          }
+        }
+      }
+    },
+    "project.error.empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Write a name for the project."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scrivi un nome per il progetto."
+          }
+        }
+      }
+    },
+    "project.error.exists": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A project or a folder with this name already exists."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esiste già un progetto o una cartella con questo nome."
+          }
+        }
+      }
+    },
+    "project.error.forbidden": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The name cannot contain “/” or “:”."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il nome non può contenere «/» né «:»."
+          }
+        }
+      }
+    },
+    "project.error.long": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The name is too long (120 characters at most)."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il nome è troppo lungo (al massimo 120 caratteri)."
+          }
+        }
+      }
+    },
+    "project.error.write": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The project could not be created: %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non si è potuto creare il progetto: %@"
+          }
+        }
+      }
+    },
+    "project.menu": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Project"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Progetto"
+          }
+        }
+      }
+    },
+    "project.name.placeholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Project name"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nome del progetto"
+          }
+        }
+      }
+    },
+    "project.new": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New Project…"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nuovo progetto…"
+          }
+        }
+      }
+    },
+    "project.reveal": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show in Finder"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostra nel Finder"
+          }
+        }
+      }
+    },
+    "project.sheet.choose.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a project"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scegli un progetto"
+          }
+        }
+      }
+    },
+    "project.sheet.create.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create your first project"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crea il primo progetto"
           }
         }
       }

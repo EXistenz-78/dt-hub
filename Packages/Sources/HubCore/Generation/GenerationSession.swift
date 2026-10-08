@@ -48,7 +48,7 @@ public final class GenerationSession {
   public private(set) var results: [GeneratedImage] = []
 
   @ObservationIgnored private let store: any ImageStore
-  @ObservationIgnored private let history: ResultsHistoryStore?
+  @ObservationIgnored private var history: ResultsHistoryStore?
   @ObservationIgnored private var task: Task<Void, Never>?
 
   /// Longest side of the pictures read back at launch.
@@ -147,8 +147,19 @@ public final class GenerationSession {
     let restored = await Task.detached(priority: .utility) {
       entries.compactMap { Self.restoredImage($0) }
     }.value
+    // The project may have changed while the pictures were read: they belong to the old strip then.
+    guard self.history?.fileURL == history.fileURL else { return }
     let present = Set(results.compactMap(\.fileURL))
     results.append(contentsOf: restored.filter { $0.fileURL.map { !present.contains($0) } ?? false })
+  }
+
+  /// The strip of another project: empties the strip, takes that project's list and reads its pictures back. Refused
+  /// while a RUN is under way (the RUN would be listed in the wrong project).
+  public func switchHistory(to history: ResultsHistoryStore?) async {
+    guard !isRunning else { return }
+    results = []
+    self.history = history
+    await restoreHistory()
   }
 
   private nonisolated static func restoredImage(_ entry: ResultsHistoryEntry) -> GeneratedImage? {
