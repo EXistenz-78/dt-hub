@@ -31,6 +31,12 @@ final class PromptMasterPlugin: DTHubPlugin {
           family: context.family, languageModels: context.languageModels ?? [], width: size?.width, height: size?.height)
       }
       return nil
+    case "project":
+      // The state of the tab belongs to the open project.
+      if let project = try? JSONDecoder().decode(DTHubProject.self, from: message) {
+        state.switchProject(folder: URL(fileURLWithPath: project.folder, isDirectory: true), adoptLegacy: project.adoptLegacy)
+      }
+      return nil
     case "activate":
       state.active = true
       return nil
