@@ -75,6 +75,9 @@ public final class PluginRegistry: PluginHosting {
   /// The language models of the models folder; read whenever a context is sent.
   @ObservationIgnored public var languageModels: (@MainActor () -> [PluginLanguageModel])?
 
+  /// The open project and whether the first one's adoption of the old state is due; read when the plug-ins have loaded.
+  @ObservationIgnored public var currentProject: (@MainActor () -> (Project, adoptLegacy: Bool)?)?
+
   @ObservationIgnored private let folder: PluginFolder
   @ObservationIgnored private let settings: PluginSettingsStore
   @ObservationIgnored private let loader: any PluginLoading
@@ -82,6 +85,8 @@ public final class PluginRegistry: PluginHosting {
   @ObservationIgnored private var loaded: [String: any LoadedPlugin] = [:]
   @ObservationIgnored private var skipPlugins = false
   @ObservationIgnored private var removedWhileLoaded = false
+  /// The plug-ins that answered `unsupported` to `project`: told to the user once each, until the next launch.
+  @ObservationIgnored private var notedWithoutProjectState: Set<String> = []
 
   public init(folder: PluginFolder, settings: PluginSettingsStore, loader: any PluginLoading, tempFolder: URL) {
     self.folder = folder
@@ -123,6 +128,7 @@ public final class PluginRegistry: PluginHosting {
     }
     for entry in entries where entry.isActive { send(PluginMessageType.bare(PluginMessageType.activate), to: entry.id) }
     updateRestartFlag()
+    if let (project, adoptLegacy) = currentProject?() { projectChanged(project, adoptLegacy: adoptLegacy) }
   }
 
   /// The id of a row whose bundle could not be read: it cannot clash with a plug-in's identifier.
@@ -289,6 +295,38 @@ public final class PluginRegistry: PluginHosting {
   private func send(_ message: Data, to identifier: String) {
     guard let plugin = loaded[identifier] else { return }
     Task { _ = await plugin.send(message) }
+  }
+
+  /// A project was opened: every loaded plug-in, switched on for the job or not, is told, and given its folder in it.
+  /// A plug-in that does not know the message keeps one state for all projects, and the user is told so once.
+  public func projectChanged(_ project: Project, adoptLegacy: Bool) {
+    for entry in entries where entry.state == .loaded {
+      guard let plugin = loaded[entry.id] else { continue }
+      let folder = project.pluginFolder(entry.id)
+      try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+      let message = PluginProject(name: project.name, folder: folder.path, adoptLegacy: adoptLegacy)
+      guard let data = try? JSONEncoder().encode(message) else { continue }
+      let (identifier, name) = (entry.id, entry.name)
+      Task { [weak self] in
+        guard let answer = await plugin.send(data), PluginMessageType.of(answer) == PluginMessageType.unsupported else { return }
+        self?.noteWithoutProjectState(identifier, name: name)
+      }
+    }
+  }
+
+  private func noteWithoutProjectState(_ identifier: String, name: String) {
+    guard notedWithoutProjectState.insert(identifier).inserted else { return }
+    let italian = Locale.preferredLanguages.first?.hasPrefix("it") ?? false
+    let item = PluginNoticeItem(
+      pluginID: identifier, pluginName: name, text: Self.noProjectStateText(for: name, italian: italian), isError: false)
+    latestNotice = item
+    notices.insert(item, at: 0)
+    if notices.count > 20 { notices.removeLast(notices.count - 20) }
+  }
+
+  /// The line shown for a plug-in that does not separate its state per project.
+  nonisolated static func noProjectStateText(for name: String, italian: Bool) -> String {
+    italian ? "Il plug-in \(name) non separa lo stato per progetto." : "The plug-in \(name) does not keep its state per project."
   }
 
   public func dismissNotice() { latestNotice = nil }
