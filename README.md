@@ -15,7 +15,7 @@ This is an independent community project, not affiliated with or endorsed by Dra
 - **Presets and preset pipelines.** Save a configuration as a preset and chain several presets into one Run. Recommended settings per model family are suggested for you.
 - **A local LLM (MLX)** that runs inside the app and can see images, with controls to free memory so the image model and the LLM can share a Mac. Nothing is downloaded unless you ask for it.
 - **Prompt tools.** *Enhance Prompt* rewrites your prompt for the selected model's family and *Generate Prompt* writes one from the start image, both with the local language model.
-- **Plug-ins**, each with its own tab and active only on the model families it was made for: Prompt Master, Prompt Master I4 (Ideogram 4) and Sphere Light Reference. See [`Plugins/`](Plugins/README.md).
+- **Plug-ins**, each with its own tab and active only on the model families it was made for: Prompt Master, Prompt Master I4 (Ideogram 4), Sphere Light Reference and Character Sheet (Qwen Image 2.1). See [`Plugins/`](Plugins/README.md).
 - **Keyboard.** ⌘↩ Run, ⌘. Stop, ⌘R Results, ⌃Page Up / ⌃Page Down to step through the tabs.
 - **Managed server.** DT Hub can start Draw Things' `gRPCServerCLI` by itself, or connect to the server of the Draw Things app.
 
@@ -94,7 +94,7 @@ DT Hub looks for MLX models (Hugging Face format: a folder with `config.json` an
 
 ## Plug-ins
 
-A plug-in is a bundle (`.dthubplugin`) with a dynamic library, loaded into the app and shown as a tab. You add one in **Preferences › Plug-ins**. A plug-in only works with the model families it was made for: on any other family it is switched off and its tab is hidden. The three plug-ins in this repository, which families each one works with, and how to build and install them are described in [`Plugins/README.md`](Plugins/README.md). To write your own, start from [`PluginKit/README.md`](PluginKit/README.md): the app and a plug-in talk only through Objective-C selectors and JSON messages, and the kit includes the design system so a plug-in tab looks like the rest of the app.
+A plug-in is a bundle (`.dthubplugin`) with a dynamic library, loaded into the app and shown as a tab. You add one in **Preferences › Plug-ins**. A plug-in only works with the model families it was made for: on any other family it is switched off and its tab is hidden. The four plug-ins in this repository, which families each one works with, and how to build and install them are described in [`Plugins/README.md`](Plugins/README.md). To write your own, start from [`PluginKit/README.md`](PluginKit/README.md): the app and a plug-in talk only through Objective-C selectors and JSON messages, and the kit includes the design system so a plug-in tab looks like the rest of the app.
 
 ## Languages
 
@@ -107,7 +107,7 @@ The interface of the app and of the plug-ins is available in **English and Itali
 | `App/` | The app: connection, controls, generation, main window, plug-in host, preferences, results. |
 | `Packages/` | The logic (`HubCore`, `HubKit`, `DTBridge`, `LLMBridge`, `PluginHost`) and its tests. |
 | `PluginKit/` | The kit and the design system a plug-in is written with; contract 1 of the plug-ins. |
-| `Plugins/` | Prompt Master, Prompt Master I4 and Sphere Light Reference. |
+| `Plugins/` | Prompt Master, Prompt Master I4, Sphere Light Reference and Character Sheet. |
 | `docs/superpowers/` | Specs and plans (in Italian). |
 
 ## Status

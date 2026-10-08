@@ -162,3 +162,11 @@ Opzione C (due passaggi); modo A (una frase breve al PE); preset; più personagg
 - Qwen PE I2I con il master prompt come richiesta: lo applica, lo riassume o lo riscrive?
 - Tempi e memoria con thinking acceso (PE I2I fino a 24.000 token).
 - Artefatti a griglia a 2304×1536 (il workflow li toglie con `VAEDeGrid`, che in DT non c'è).
+
+## 9. Aggiunte dell'8 ottobre 2026 (dopo le prove dell'utente)
+
+- **Tre tipi di sheet** (radio: base / espressioni / pose), ciascuno con il suo master prompt e il suo prompt statico: sei file in tutto. Espressioni: 12 teste su griglia 4×3; pose: 10 figure intere su griglia 5×2. **Canvas 2048×1536 (4:3) per tutti**: 2048 è il limite di larghezza dell'app senza tiled diffusion (i 2304 del primo prototipo venivano tagliati).
+- **I sei testi sono ora inclusi nel bundle** (`CSBuiltIn.swift`, generato da `Scripts/make-builtin-texts.py`), per decisione dell'utente, con il credito a NeuroContent (testo base del suo workflow, link nel tab e nei README). Un file con lo stesso nome nella cartella dati vince sul testo incluso; «Apri cartella» scrive i file mancanti (copie da modificare); cancellare un file riporta al testo incluso. Questo sostituisce la decisione 4 del §2 («file fuori dal repo»). La pagina del workflow indica la «Qwen Research License» (dei pesi del modello) e non dichiara condizioni per i testi.
+- **Etichette:** la posizione («centrate sotto la testa/figura, in fondo alla cella») è obbligatoria e ripetuta in ogni sezione dei master, perché Qwen3-VL la perdeva e Qwen Image metteva le etichette in alto a sinistra.
+- **Qwen PE I2I** non vede l'immagine se la sua cartella ha il solo `processor_config.json` nel formato nuovo: causa nell'app (`LLMBridge` ripiega in silenzio sul solo testo); lavoro separato annotato in `dthub-next`.
+- Prove dell'utente: Qwen3-VL 8B fedele al personaggio; il PE I2I pulito ma infedele (non vedeva l'immagine); il prompt statico buono sulla struttura, con testi piccoli spesso storpiati.

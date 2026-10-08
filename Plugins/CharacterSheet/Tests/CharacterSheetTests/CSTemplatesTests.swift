@@ -76,6 +76,44 @@ struct CSTemplatesTests {
     #expect(CSTemplates.load(.masterPoses, from: folder) == .failure(.missing(.masterPoses)))
   }
 
+  @Test func resolvedPrefersTheFileOfTheFolder() throws {
+    let folder = try makeFolder()
+    defer { try? FileManager.default.removeItem(at: folder) }
+    try "  My own master.  \n".write(
+      to: folder.appendingPathComponent("master-prompt.txt"), atomically: true, encoding: .utf8)
+    #expect(CSTemplates.resolved(.master, from: folder) == "My own master.")
+  }
+
+  @Test func resolvedFallsBackToTheBuiltInTextWhenTheFileIsMissingOrBlank() throws {
+    let folder = try makeFolder()
+    defer { try? FileManager.default.removeItem(at: folder) }
+    #expect(CSTemplates.resolved(.masterPoses, from: folder) == CSBuiltIn.text(for: .masterPoses))
+    try " \n".write(to: folder.appendingPathComponent("static-prompt.txt"), atomically: true, encoding: .utf8)
+    #expect(CSTemplates.resolved(.staticPrompt, from: folder) == CSBuiltIn.text(for: .staticPrompt))
+  }
+
+  @Test func seedingWritesOnlyTheMissingFiles() throws {
+    let root = try makeFolder()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let folder = root.appendingPathComponent("not/yet")
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    try "Mine.".write(to: folder.appendingPathComponent("master-prompt.txt"), atomically: true, encoding: .utf8)
+    CSTemplates.seedMissing(in: folder)
+    #expect(try String(contentsOf: folder.appendingPathComponent("master-prompt.txt"), encoding: .utf8) == "Mine.")
+    for file in CSTemplateFile.allCases where file != .master {
+      let written = try String(contentsOf: folder.appendingPathComponent(file.rawValue), encoding: .utf8)
+      #expect(written.trimmingCharacters(in: .whitespacesAndNewlines) == CSBuiltIn.text(for: file), "\(file)")
+    }
+  }
+
+  @Test func seedingCreatesTheFolder() throws {
+    let root = try makeFolder()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let folder = root.appendingPathComponent("a/b")
+    CSTemplates.seedMissing(in: folder)
+    #expect(FileManager.default.fileExists(atPath: folder.appendingPathComponent("static-prompt.txt").path))
+  }
+
   @Test func defaultFolderEndsWithTheDataPath() {
     #expect(CSTemplates.defaultFolder.path.hasSuffix("DT Hub/Data/CharacterSheet"))
   }
