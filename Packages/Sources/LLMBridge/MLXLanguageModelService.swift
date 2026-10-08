@@ -10,6 +10,8 @@ import MLXVLM
 /// memory back on `unload`. The only module that knows MLX (spec §4).
 public actor MLXLanguageModelService: LanguageModelService {
   private var container: ModelContainer?
+  /// Why a vision-language model was loaded without its vision part (nil when it has it, or is a text model).
+  private var visionLoadError: String?
 
   public init() {
     // The two model families register themselves when their modules are linked: touch both so
@@ -20,9 +22,21 @@ public actor MLXLanguageModelService: LanguageModelService {
 
   public func load(_ model: LanguageModelDescriptor) async throws {
     await unload()
+    let folder = URL(fileURLWithPath: model.path, isDirectory: true)
     do {
-      container = try await loadModelContainer(
-        from: URL(fileURLWithPath: model.path, isDirectory: true), using: TransformersTokenizerLoader())
+      if model.supportsImages {
+        // `loadModelContainer` would fall back to the text-only model without a word, and drop every picture: try the
+        // vision model on its own, and remember why it failed.
+        ProcessorConfigFix.addFlatFileIfNeeded(in: folder)
+        do {
+          container = try await VLMModelFactory.shared.loadContainer(from: folder, using: TransformersTokenizerLoader())
+        } catch {
+          visionLoadError = String(String(describing: error).prefix(300))
+          container = try await LLMModelFactory.shared.loadContainer(from: folder, using: TransformersTokenizerLoader())
+        }
+      } else {
+        container = try await loadModelContainer(from: folder, using: TransformersTokenizerLoader())
+      }
     } catch {
       throw LanguageModelError.loadFailed(error.localizedDescription)
     }
@@ -30,11 +44,13 @@ public actor MLXLanguageModelService: LanguageModelService {
 
   public func unload() async {
     container = nil
+    visionLoadError = nil
     MLX.Memory.clearCache()
   }
 
   public func respond(to prompt: String, images: [URL], options: LanguageModelOptions) async throws -> String {
     guard let container else { throw LanguageModelError.loadFailed("No model is loaded.") }
+    if let error = Self.visionRequestError(images: images, visionLoadError: visionLoadError) { throw error }
     // A new session per question: DT Hub asks single questions, with no conversation to keep.
     let session = ChatSession(
       container, instructions: options.system, generateParameters: Self.generateParameters(for: options),
@@ -45,6 +61,12 @@ public actor MLXLanguageModelService: LanguageModelService {
     } catch {
       throw LanguageModelError.generationFailed(error.localizedDescription)
     }
+  }
+
+  /// A picture for a model that is loaded without its vision part is an error, not a picture quietly dropped.
+  static func visionRequestError(images: [URL], visionLoadError: String?) -> LanguageModelError? {
+    guard !images.isEmpty, let visionLoadError else { return nil }
+    return .loadFailed("The model was loaded without its vision part, so it cannot read pictures: \(visionLoadError)")
   }
 
   /// The defaults are the ones DT Hub always had: temperature 0.6, 1024 tokens.
