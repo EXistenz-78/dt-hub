@@ -5,7 +5,7 @@ A plug-in for DT Hub that prepares a **series of consecutive RUNs** and sends it
 Two modes, one at a time:
 
 - **Parameters.** The parameters of the Generation tab are shown read-only, each number that can vary with an **Increment** box. The number of passes is 2–50; pass *k* uses *value + (k − 1) × increment*, and several increments vary **together**. Pass 1 uses the current values. Steps 10 (+10) and guidance 3 (+2) over 3 passes give (10, 3), (20, 5), (30, 7).
-  Varying parameters: **steps, guidance, shift, CFG-Zero\* initial steps, seed and the weight of each LoRA**. The others (model, size, sampler, switches, batch, advanced values, extras) are shown without an increment.
+  Varying parameters: **steps, guidance, shift, CFG-Zero\* initial steps, seed and the weight of each LoRA**. The **sampler** varies too, with a menu of the 20 samplers: tick them in the order you want, at most one per pass (pass 1 uses the first, and so on; later passes keep the tab's sampler). The others (model, size, switches, batch, advanced values, extras) are shown without an increment.
 - **Prompts.** A bulleted list (`-`, `•` or `*`): one pass per bullet, parameters unchanged. Lines without a bullet continue the previous prompt.
 
 Details:

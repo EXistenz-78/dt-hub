@@ -14,6 +14,32 @@ struct BatchPlusSession: Equatable, Codable {
   var count = 3
   var fixedSeed = true
   var promptText = ""
+  /// The samplers chosen to vary, in the order chosen: pass *k* uses the *k*-th one; the passes after the last one keep
+  /// the tab's sampler. At most one per pass.
+  var samplers: [Int] = []
+
+  init() {}
+
+  /// Lenient: a state saved before a field existed still loads.
+  init(from decoder: any Decoder) throws {
+    let c = try decoder.container(keyedBy: CodingKeys.self)
+    mode = (try? c.decodeIfPresent(Mode.self, forKey: .mode)) ?? .parameters
+    increments = (try? c.decodeIfPresent([String: String].self, forKey: .increments)) ?? [:]
+    count = (try? c.decodeIfPresent(Int.self, forKey: .count)) ?? 3
+    fixedSeed = (try? c.decodeIfPresent(Bool.self, forKey: .fixedSeed)) ?? true
+    promptText = (try? c.decodeIfPresent(String.self, forKey: .promptText)) ?? ""
+    samplers = (try? c.decodeIfPresent([Int].self, forKey: .samplers)) ?? []
+  }
+
+  private enum CodingKeys: String, CodingKey { case mode, increments, count, fixedSeed, promptText, samplers }
+
+  /// How many samplers there can be: one per pass.
+  var samplerLimit: Int { min(max(count, Self.passRange.lowerBound), Self.passRange.upperBound) }
+
+  /// Never more samplers than passes.
+  mutating func trimSamplers() {
+    if samplers.count > samplerLimit { samplers = Array(samplers.prefix(samplerLimit)) }
+  }
 
   /// A first run, or a project without a state.
   static func initial() -> BatchPlusSession { BatchPlusSession() }
@@ -23,6 +49,7 @@ struct BatchPlusSession: Equatable, Codable {
   func batch(shiftIsAuto: Bool) -> (batch: ParameterBatch, invalid: Set<String>) {
     var result = ParameterBatch(count: min(max(count, Self.passRange.lowerBound), Self.passRange.upperBound), fixedSeed: fixedSeed)
     var invalid: Set<String> = []
+    result.samplers = Array(samplers.prefix(result.count))
     for (id, text) in increments {
       let key = BatchPlusKey(rawValue: id)
       if id.hasPrefix("lora:") || key != nil {

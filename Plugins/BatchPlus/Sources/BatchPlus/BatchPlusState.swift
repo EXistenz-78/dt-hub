@@ -9,7 +9,13 @@ final class BatchPlusState: ObservableObject {
   /// True while a project's state is being read into the tab: the changes that causes are not written back.
   private var isRestoring = false
 
-  @Published var session: BatchPlusSession { didSet { persist() } }
+  @Published var session: BatchPlusSession {
+    didSet {
+      // Only when something is in excess: writing `session` here runs this observer again.
+      if session.samplers.count > session.samplerLimit { session.trimSamplers() }
+      persist()
+    }
+  }
   /// The Generation tab's parameters from the last `context`; nil before the first one, or from an app that does
   /// not send them.
   @Published var parameters: DTHubParameters?
@@ -53,7 +59,7 @@ final class BatchPlusState: ObservableObject {
   var base: BatchBase? {
     guard let p = parameters else { return nil }
     return BatchBase(
-      steps: p.steps, guidanceScale: p.guidanceScale, shift: p.shift, cfgZeroInitSteps: p.cfgZeroInitSteps, seed: p.seed,
+      steps: p.steps, guidanceScale: p.guidanceScale, shift: p.shift, cfgZeroInitSteps: p.cfgZeroInitSteps, seed: p.seed, sampler: p.sampler,
       loras: (p.loras ?? []).map { BatchBase.LoRA(file: $0.file, weight: $0.weight) })
   }
 
@@ -68,7 +74,7 @@ final class BatchPlusState: ObservableObject {
       guard base != nil else { return L.text(contextArrived ? .needsNewApp : .noParameters, italian: italian) }
       let (batch, invalid) = resolved
       if !invalid.isEmpty { return L.text(.invalidIncrement, italian: italian) }
-      if batch.increments.isEmpty && batch.loraIncrements.isEmpty { return L.text(.noIncrements, italian: italian) }
+      if batch.increments.isEmpty && batch.loraIncrements.isEmpty && batch.samplers.isEmpty { return L.text(.noIncrements, italian: italian) }
       return nil
     case .prompts:
       return promptItems.count < 2 ? L.text(.promptsFew, italian: italian) : nil

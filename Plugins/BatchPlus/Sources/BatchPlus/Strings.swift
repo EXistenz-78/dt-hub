@@ -7,6 +7,7 @@ enum L {
     case modeParameters, modePrompts
     case model, size, steps, guidance, guidanceRow, sampler, shift, cfgZero, cfgZeroSteps, seed, batch, lora, advanced
     case yes, no, auto, random
+    case samplerVary, samplerNone, samplerHint
     case increment, passes, fixedSeed, preview, pass
     case shiftAutoNote, passesWarning, previewNote
     case needsNewApp, noParameters, noIncrements, invalidIncrement
@@ -39,6 +40,7 @@ enum L {
     .cfgZero: "CFG-Zero*", .cfgZeroSteps: "CFG-Zero* initial steps", .seed: "Seed", .batch: "Batch", .lora: "LoRA weight",
     .advanced: "Advanced",
     .yes: "yes", .no: "no", .auto: "auto", .random: "random",
+    .samplerVary: "Vary…", .samplerNone: "as the tab", .samplerHint: "Pass 1 uses the first one chosen, and so on, at most one per pass; later passes keep the tab's sampler.",
     .increment: "Increment", .passes: "Passes", .fixedSeed: "Fixed seed", .preview: "Preview", .pass: "Pass %d",
     .shiftAutoNote: "Draw Things ignores the shift", .passesWarning: "That is a long series: %d RUNs.",
     .previewNote: "Values outside the allowed range are brought back into it by the app.",
@@ -57,6 +59,7 @@ enum L {
     .cfgZero: "CFG-Zero*", .cfgZeroSteps: "Passi iniziali CFG-Zero*", .seed: "Seed", .batch: "Batch", .lora: "Peso LoRA",
     .advanced: "Avanzate",
     .yes: "sì", .no: "no", .auto: "auto", .random: "casuale",
+    .samplerVary: "Varia…", .samplerNone: "come la scheda", .samplerHint: "Il passaggio 1 usa il primo scelto, e così via, al massimo uno per passaggio; i passaggi successivi tengono il sampler della scheda.",
     .increment: "Incremento", .passes: "Passaggi", .fixedSeed: "Seed fisso", .preview: "Anteprima", .pass: "Passaggio %d",
     .shiftAutoNote: "Draw Things ignora lo shift", .passesWarning: "È una serie lunga: %d RUN.",
     .previewNote: "I valori fuori limite vengono riportati nei limiti dall'app.",

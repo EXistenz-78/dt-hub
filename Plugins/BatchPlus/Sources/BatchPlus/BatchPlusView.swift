@@ -43,7 +43,7 @@ struct BatchPlusView: View {
           incrementRow(.guidanceScale, L.text(.guidanceRow), p.guidanceScale.map(format))
           readOnly(L.text(.cfgZero), p.cfgZeroStar.map { $0 ? L.text(.yes) : L.text(.no) } ?? "—")
           incrementRow(.cfgZeroInitSteps, L.text(.cfgZeroSteps), p.cfgZeroInitSteps.map(String.init))
-          readOnly(L.text(.sampler), p.sampler.map(SamplerNames.name) ?? "—")
+          samplerRow(p)
           shiftRow(p)
           incrementRow(.seed, L.text(.seed), p.seed.map { String($0) }, suffix: p.randomSeed == true ? L.text(.random) : nil)
           readOnly(L.text(.batch), "\(p.batchSize ?? 1) × \(p.batchCount ?? 1)")
@@ -85,6 +85,47 @@ struct BatchPlusView: View {
 
   private func incrementRow(_ key: BatchPlusKey, _ label: String, _ current: String?, suffix: String? = nil) -> some View {
     incrementField(id: key.rawValue, label: label, current: current ?? "—", integer: key.isInteger, suffix: suffix)
+  }
+
+  /// One menu with the 20 samplers, ticked in the order they are to be used, as many as there are passes.
+  private func samplerRow(_ p: DTHubParameters) -> some View {
+    let chosen = Array(state.session.samplers.prefix(state.session.count))
+    let full = chosen.count >= state.session.count
+    return VStack(alignment: .leading, spacing: 2) {
+      HStack(spacing: DS.controlGap) {
+        Text(L.text(.sampler)).foregroundStyle(.secondary)
+        Spacer(minLength: DS.controlGap)
+        Text(verbatim: p.sampler.map(SamplerNames.name) ?? "—").font(.system(.body, design: .monospaced))
+        Menu {
+          ForEach(SamplerNames.names.indices, id: \.self) { number in
+            let isChosen = chosen.contains(number)
+            Button {
+              if isChosen {
+                state.session.samplers.removeAll { $0 == number }
+              } else {
+                state.session.samplers.append(number)
+              }
+            } label: {
+              if isChosen {
+                Label(SamplerNames.name(number), systemImage: "checkmark")
+              } else {
+                Text(verbatim: SamplerNames.name(number))
+              }
+            }
+            .disabled(!isChosen && full)
+          }
+        } label: {
+          Text(chosen.isEmpty ? L.text(.samplerVary) : "\(chosen.count)/\(state.session.count)")
+        }
+        .menuStyle(.button)
+        .frame(width: 88)
+      }
+      if !chosen.isEmpty {
+        Text(verbatim: chosen.enumerated().map { "\($0.offset + 1) \(SamplerNames.name($0.element))" }.joined(separator: " · "))
+          .font(.caption).foregroundStyle(.secondary)
+        Text(L.text(.samplerHint)).font(.caption2).foregroundStyle(.secondary)
+      }
+    }
   }
 
   private func shiftRow(_ p: DTHubParameters) -> some View {
@@ -215,7 +256,7 @@ struct BatchPlusView: View {
           ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
             Text(
               verbatim: "\(index + 1)  "
-                + columns.map { "\(BatchPlusBuilder.columnLabel($0, italian: italian)) \(row[$0].map(shortNumber) ?? "—")" }
+                + columns.map { "\(BatchPlusBuilder.columnLabel($0, italian: italian)) \(display($0, row[$0]))" }
                 .joined(separator: " · ")
             )
             .font(.system(.caption, design: .monospaced))
@@ -234,4 +275,9 @@ struct BatchPlusView: View {
   }
 
   private func shortNumber(_ value: Double) -> String { String(format: "%g", value) }
+
+  private func display(_ id: String, _ value: Double?) -> String {
+    guard let value else { return "—" }
+    return id == BatchPlusBuilder.samplerID ? SamplerNames.name(Int(value)) : shortNumber(value)
+  }
 }
