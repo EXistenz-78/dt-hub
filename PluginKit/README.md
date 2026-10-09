@@ -42,8 +42,8 @@ JSON objects with a `type`. An unknown type gets `{"type":"unsupported"}`.
 
 **App → plug-in:** `context` (model, family, parameters, `tempFolder`: a folder to exchange picture files through;
 `startImage`: the path of the Control tab's start image when there is one; `moodboard`: the paths of the Moodboard
-pictures that are on, in the order of the thumbnails; `languageModels`: `[{"name", "path", "supportsImages"}]`, the
-language models of the app's models folder — each key is left out when there is nothing to say; the app sends the context again when a plug-in's tab is shown),
+pictures that are on, in the order of the thumbnails; `languageModels`: `[{"name", "path", "supportsImages", "family", "use"}]`, the
+language models of the app's models folder (`family`: the family the user assigned the model to in Settings › LLM — `"*"` for "all others", otherwise the family key such as `"qwen_image_2.1"`, absent for none; `use`: `"enhance"`, `"describe"`, `"both"` or `"plugins"`; both are optional additions) — each key is left out when there is nothing to say; the app sends the context again when a plug-in's tab is shown),
 `activate`, `deactivate`, and `project`: `{"type":"project","name","folder","adoptLegacy"}`, sent to every loaded plug-in (on for the job or not) when a project is opened and right after launch. `folder` is a folder of the plug-in's own inside the project (the app has created it): keep the state there (for example `<folder>/state.json`, written at every change), load what is there, and take no file or an unreadable one as the initial state. `adoptLegacy` is true once, for the first project ever: if `folder` has no state yet, move the state you had before projects into it. A plug-in that does not handle `project` (it answers `unsupported`) keeps one global state; the app tells the user once. `DTHubProject` decodes it.
 
 **Plug-in → app:**

@@ -50,6 +50,25 @@ public struct LanguageModelAssignment: Equatable, Codable, Sendable {
     self.family = family
     self.use = use
   }
+
+  /// The two strings plug-ins receive (`family`: "*" / the key / nil for none; `use`: "enhance", "describe",
+  /// "both", "plugins").
+  public var pluginFields: (family: String?, use: String?) {
+    let familyText: String? =
+      switch family {
+      case .none: nil
+      case .allOthers: "*"
+      case .family(let key): key
+      }
+    let useText =
+      switch use {
+      case .enhance: "enhance"
+      case .describe: "describe"
+      case .both: "both"
+      case .pluginsOnly: "plugins"
+      }
+    return (familyText, useText)
+  }
 }
 
 /// Keeps the assignments of Settings › LLM coherent when the list of installed LLMs changes (pure logic).
