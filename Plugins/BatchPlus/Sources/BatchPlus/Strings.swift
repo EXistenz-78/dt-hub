@@ -5,7 +5,7 @@ import Foundation
 enum L {
   enum Key: CaseIterable {
     case modeParameters, modePrompts
-    case model, size, steps, guidance, sampler, shift, cfgZero, cfgZeroSteps, seed, batch, lora, advanced
+    case model, size, steps, guidance, guidanceRow, sampler, shift, cfgZero, cfgZeroSteps, seed, batch, lora, advanced
     case yes, no, auto, random
     case increment, passes, fixedSeed, preview, pass
     case shiftAutoNote, passesWarning, previewNote
@@ -35,7 +35,7 @@ enum L {
 
   private static let en: [Key: String] = [
     .modeParameters: "Parameters", .modePrompts: "Prompts",
-    .model: "Model", .size: "Size", .steps: "Steps", .guidance: "Guidance", .sampler: "Sampler", .shift: "Shift",
+    .model: "Model", .size: "Size", .steps: "Steps", .guidance: "Guidance", .guidanceRow: "Guidance (CFG)", .sampler: "Sampler", .shift: "Shift",
     .cfgZero: "CFG-Zero*", .cfgZeroSteps: "CFG-Zero* initial steps", .seed: "Seed", .batch: "Batch", .lora: "LoRA weight",
     .advanced: "Advanced",
     .yes: "yes", .no: "no", .auto: "auto", .random: "random",
@@ -53,7 +53,7 @@ enum L {
 
   private static let it: [Key: String] = [
     .modeParameters: "Parametri", .modePrompts: "Prompt",
-    .model: "Modello", .size: "Dimensioni", .steps: "Passi", .guidance: "Guidance", .sampler: "Sampler", .shift: "Shift",
+    .model: "Modello", .size: "Dimensioni", .steps: "Passi", .guidance: "Guidance", .guidanceRow: "Guidance (CFG)", .sampler: "Sampler", .shift: "Shift",
     .cfgZero: "CFG-Zero*", .cfgZeroSteps: "Passi iniziali CFG-Zero*", .seed: "Seed", .batch: "Batch", .lora: "Peso LoRA",
     .advanced: "Avanzate",
     .yes: "sì", .no: "no", .auto: "auto", .random: "casuale",
