@@ -64,3 +64,23 @@ struct PromptBriefTests {
     #expect(request.options.thinking == false)
   }
 }
+
+struct PromptBriefOwnSystemTests {
+  @Test func enhanceSendsTheTextAsItIsWithTheModelsOwnOptions() {
+    let g = LanguageModelProfile.Generation(temperature: 0.7, topP: 0.8, topK: 20)
+    let r = PromptBrief.enhance(PromptPair(prompt: "gatto", negative: "n"), ownSystem: "S", generation: g)
+    #expect(r.prompt == "gatto" && r.images.isEmpty)
+    #expect(
+      r.options == LanguageModelOptions(system: "S", temperature: 0.7, topP: 0.8, topK: 20, maxTokens: 16384, thinking: true))
+    let bare = PromptBrief.enhance(PromptPair(prompt: "a", negative: ""), ownSystem: "S", generation: nil)
+    #expect(bare.options == LanguageModelOptions(system: "S", maxTokens: 16384, thinking: true))
+  }
+
+  @Test func describeSendsTheImageAndAFixedSentence() {
+    let url = URL(fileURLWithPath: "/tmp/i.png")
+    let r = PromptBrief.describe(imageAt: url, ownSystem: "S", generation: nil)
+    #expect(r.prompt == "Describe this image as a prompt for an image-generation model.")
+    #expect(r.images == [url])
+    #expect(r.options.system == "S" && r.options.thinking == true)
+  }
+}

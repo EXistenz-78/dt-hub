@@ -66,6 +66,19 @@ public struct DTHubLanguageModel: Decodable, Equatable, Sendable {
   public var path: String
   /// True for a vision-language model: it can be given images.
   public var supportsImages: Bool
+  /// The family the user assigned it to in Settings › LLM: "*" = all others, else the family key (Draw Things
+  /// `version`, e.g. "qwen_image_2.1"); nil = none (or an app that does not say).
+  public var family: String?
+  /// What it is for: "enhance", "describe", "both" or "plugins"; nil when the app does not say.
+  public var use: String?
+
+  public init(name: String, path: String, supportsImages: Bool, family: String? = nil, use: String? = nil) {
+    self.name = name
+    self.path = path
+    self.supportsImages = supportsImages
+    self.family = family
+    self.use = use
+  }
 }
 
 /// App → plug-in: where the app stands (message type `context`).

@@ -69,6 +69,15 @@ struct PluginContractTests {
     #expect((object["languageModels"] as? [[String: Any]])?.first?["name"] as? String == "a/b")
   }
 
+  @Test func aLanguageModelLeavesFamilyAndUseOutWhenNil() throws {
+    let bare = try JSONEncoder().encode(PluginLanguageModel(name: "a", path: "/a", supportsImages: false))
+    let bareObject = try #require(try JSONSerialization.jsonObject(with: bare) as? [String: Any])
+    #expect(bareObject["family"] == nil && bareObject["use"] == nil)
+    let full = PluginLanguageModel(name: "a", path: "/a", supportsImages: false, family: "*", use: "both")
+    let object = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(full)) as? [String: Any])
+    #expect(object["family"] as? String == "*" && object["use"] as? String == "both")
+  }
+
   @Test func withoutAStartImageAMoodboardOrModelsTheContextLeavesTheKeysOut() throws {
     let context = PluginContext(model: nil, family: nil, parameters: GenerationParameters(), tempFolder: "/tmp/x")
     let object = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(context)) as? [String: Any])

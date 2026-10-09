@@ -82,9 +82,16 @@ final class GenerationController {
     self.languageModel = languageModel
     self.control = control
     session = GenerationSession(store: ProjectImageStore(box: projectFolderBox), history: nil)
-    assistant = PromptAssistant(respond: { prompt, images, options throws(LanguageModelError) in
-      try await languageModel.respond(to: prompt, images: images, options: options)
-    })
+    assistant = PromptAssistant(
+      resolve: { task, family in
+        languageModel.model(for: task, family: family).map {
+          PromptAssistant.Choice(
+            model: $0, profile: LanguageModelProfile.load(folder: URL(fileURLWithPath: $0.path, isDirectory: true)))
+        }
+      },
+      respond: { prompt, images, options, model throws(LanguageModelError) in
+        try await languageModel.respond(to: prompt, images: images, options: options, model: model)
+      })
     self.sessionStore = sessionStore
     outputFolder = outputSettings.folder()
     if let snapshot = sessionStore.load(), snapshot.project == restoringProject {

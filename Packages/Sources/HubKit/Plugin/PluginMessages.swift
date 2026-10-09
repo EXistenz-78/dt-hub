@@ -60,11 +60,18 @@ public struct PluginLanguageModel: Codable, Equatable, Sendable {
   public var path: String
   /// True for a vision-language model: it can be given images.
   public var supportsImages: Bool
+  /// The family the user assigned it to in Settings › LLM: "*" = all others, else the family key (Draw Things
+  /// `version`); absent = none. Optional, an addition to contract 1.
+  public var family: String?
+  /// What it is for: "enhance", "describe", "both" or "plugins". Absent when the app does not say.
+  public var use: String?
 
-  public init(name: String, path: String, supportsImages: Bool) {
+  public init(name: String, path: String, supportsImages: Bool, family: String? = nil, use: String? = nil) {
     self.name = name
     self.path = path
     self.supportsImages = supportsImages
+    self.family = family
+    self.use = use
   }
 }
 
