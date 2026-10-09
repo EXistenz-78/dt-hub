@@ -28,14 +28,38 @@ public enum PipelinePresets {
     return problem.missing.isEmpty && problem.unreadable.isEmpty ? .success(loaded) : .failure(problem)
   }
 
-  /// What a pass runs with: the tab's fields with the pass's preset on them (its parameters, and its prompt
-  /// and negative prompt when it has them), but not its model nor a size. A pass without a preset runs the
-  /// tab's fields as they are.
+  /// What a pass runs with: the tab's fields; then the pass's preset on them (its parameters, and its prompt and
+  /// negative prompt when it has them, but not its model nor a size); then the pass's own `fields` (a size in them
+  /// is ignored: a pass never changes the size); then its `loras`. The advanced values and the extras stay those of the
+  /// tab, whatever `fields` says. A pass with nothing runs the tab's fields as they are.
   public static func fields(
     for step: PipelineStep, over tab: GenerationFields, presets: [String: Preset], catalog: ModelCatalog
   ) -> GenerationFields {
-    guard !step.preset.isEmpty, let preset = presets[step.preset] else { return tab }
-    let load = PresetLoad.of(preset, current: tab, catalog: catalog)
-    return GenerationFields(prompt: load.prompt, negativePrompt: load.negativePrompt, parameters: load.parameters)
+    var base = tab
+    if !step.preset.isEmpty, let preset = presets[step.preset] {
+      let load = PresetLoad.of(preset, current: tab, catalog: catalog)
+      base = GenerationFields(prompt: load.prompt, negativePrompt: load.negativePrompt, parameters: load.parameters)
+    }
+    var result = step.fields.isEmpty ? base : step.fields.applied(to: base)
+    result.parameters.width = base.parameters.width
+    result.parameters.height = base.parameters.height
+    result.parameters.loras = merged(base.parameters.loras, with: step.loras)
+    return result
+  }
+
+  /// A LoRA of the step already on the card gets the step's weight (and its mode or trigger word when it gives a
+  /// non-default one); a new one goes at the end.
+  static func merged(_ current: [LoRASelection], with step: [LoRASelection]) -> [LoRASelection] {
+    var result = current
+    for lora in step {
+      if let index = result.firstIndex(where: { $0.file == lora.file }) {
+        result[index].weight = lora.weight
+        if lora.mode != .all { result[index].mode = lora.mode }
+        if !lora.trigger.isEmpty { result[index].trigger = lora.trigger }
+      } else {
+        result.append(lora)
+      }
+    }
+    return result
   }
 }
