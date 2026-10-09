@@ -22,6 +22,9 @@ public struct LanguageModelDescriptor: Identifiable, Equatable, Sendable {
   }
 }
 
+/// What a question to the language model is for: the two prompt buttons (Enhance, Generate).
+public enum LanguageModelTask: Equatable, Sendable { case enhance, describe }
+
 /// Why the language model could not do what was asked.
 public enum LanguageModelError: Error, Equatable, Sendable {
   case noModelSelected

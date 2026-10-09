@@ -7,6 +7,9 @@ public struct LanguageModelSettings: Equatable, Codable, Sendable {
   public var folder: String
   /// The folder of the model in use; empty until one is chosen.
   public var selectedModel: String
+  /// Which family and use each installed LLM was given in Settings › LLM, by `LanguageModelDescriptor.name`.
+  /// Entries of models not found now (an unmounted disk) are kept.
+  public var assignments: [String: LanguageModelAssignment]
   /// Frees the language model from memory when RUN is pressed, so Draw Things has the room.
   public var freeAtRun: Bool
   /// Stops the managed Draw Things server before the language model loads, so it has the room
@@ -22,8 +25,10 @@ public struct LanguageModelSettings: Equatable, Codable, Sendable {
 
   public init(
     folder: String = defaultFolder, selectedModel: String = "", freeAtRun: Bool = true,
-    freeImageModelForLanguageModel: Bool = true, idleMinutes: Int = 10
+    freeImageModelForLanguageModel: Bool = true, idleMinutes: Int = 10,
+    assignments: [String: LanguageModelAssignment] = [:]
   ) {
+    self.assignments = assignments
     self.folder = folder
     self.selectedModel = selectedModel
     self.freeAtRun = freeAtRun
@@ -59,6 +64,7 @@ public struct LanguageModelSettings: Equatable, Codable, Sendable {
     freeAtRun = value(.freeAtRun, fallback.freeAtRun)
     freeImageModelForLanguageModel = value(.freeImageModelForLanguageModel, fallback.freeImageModelForLanguageModel)
     idleMinutes = value(.idleMinutes, fallback.idleMinutes)
+    assignments = value(.assignments, [:])
   }
 }
 
