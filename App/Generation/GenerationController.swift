@@ -88,8 +88,8 @@ final class GenerationController {
     self.control = control
     session = GenerationSession(store: ProjectImageStore(box: projectFolderBox), history: nil)
     assistant = PromptAssistant(
-      resolve: { task, family in
-        languageModel.model(for: task, family: family).map {
+      resolve: { task, family, needsImages in
+        languageModel.model(for: task, family: family, needsImages: needsImages).map {
           PromptAssistant.Choice(
             model: $0, profile: LanguageModelProfile.load(folder: URL(fileURLWithPath: $0.path, isDirectory: true)))
         }
@@ -212,7 +212,12 @@ final class GenerationController {
   /// Enhance Prompt: the language model rewrites the prompt (and the negative prompt, where the family uses one).
   func enhancePrompt(in connection: DrawThingsConnection) async {
     let current = PromptPair(prompt: prompt, negative: negativePrompt)
-    if let result = await assistant.enhance(current, family: family(in: connection)) {
+    // The start image and the Moodboard pictures that are on (only for a family that reads the Moodboard) go along,
+    // so the LLM can see what "image 1", "image 2"… are.
+    let images = EnhanceImages(
+      start: control.startImageURL,
+      references: traits(in: connection).usesMoodboard ? control.moodboardURLs : [])
+    if let result = await assistant.enhance(current, family: family(in: connection), images: images) {
       prompt = result.prompt
       negativePrompt = result.negative
     }

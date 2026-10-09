@@ -18,17 +18,28 @@ public struct LanguageModelProfile: Equatable, Sendable {
 
   public var generation: Generation?
   private var enhancePrompt: String?
+  private var enhanceWithImagesPrompt: String?
   private var describePrompt: String?
 
-  public init(generation: Generation? = nil, enhancePrompt: String? = nil, describePrompt: String? = nil) {
+  public init(
+    generation: Generation? = nil, enhancePrompt: String? = nil, describePrompt: String? = nil,
+    enhanceWithImagesPrompt: String? = nil
+  ) {
     self.generation = generation
     self.enhancePrompt = enhancePrompt
     self.describePrompt = describePrompt
+    self.enhanceWithImagesPrompt = enhanceWithImagesPrompt
   }
 
   /// The model's own system prompt for the task, if its folder has one.
   public func systemPrompt(for task: LanguageModelTask) -> String? {
-    task == .enhance ? enhancePrompt : describePrompt
+    systemPrompt(for: task, withImages: false)
+  }
+
+  /// Enhance with pictures attached prefers `system_prompt_i2i.txt` (then `system_prompt.txt`), never the t2i one.
+  public func systemPrompt(for task: LanguageModelTask, withImages: Bool) -> String? {
+    if task == .enhance { return withImages ? enhanceWithImagesPrompt : enhancePrompt }
+    return describePrompt
   }
 
   /// `system_prompt_t2i.txt` (Enhance), `system_prompt_i2i.txt` (Generate), else `system_prompt.txt`;
@@ -54,6 +65,7 @@ public struct LanguageModelProfile: Equatable, Sendable {
     let generic = text("system_prompt.txt")
     return LanguageModelProfile(
       generation: generation, enhancePrompt: text("system_prompt_t2i.txt") ?? generic,
-      describePrompt: text("system_prompt_i2i.txt") ?? generic)
+      describePrompt: text("system_prompt_i2i.txt") ?? generic,
+      enhanceWithImagesPrompt: text("system_prompt_i2i.txt") ?? generic)
   }
 }
