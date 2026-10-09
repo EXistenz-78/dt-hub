@@ -65,7 +65,9 @@ struct DTHubApp: App {
     plugins.moodboardPaths = { control.moodboardURLs.map(\.path) }
     plugins.languageModels = {
       languageModel.availableModels().map {
-        PluginLanguageModel(name: $0.name, path: $0.path, supportsImages: $0.supportsImages)
+        let fields = languageModel.settings.assignments[$0.name]?.pluginFields
+        return PluginLanguageModel(
+          name: $0.name, path: $0.path, supportsImages: $0.supportsImages, family: fields?.family, use: fields?.use)
       }
     }
     // The project: Control, the strip of results, the parameters and the plug-ins follow the one that is open.

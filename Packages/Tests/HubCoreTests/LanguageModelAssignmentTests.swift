@@ -39,4 +39,15 @@ struct LanguageModelAssignmentTests {
     let back = try JSONDecoder().decode(LanguageModelSettings.self, from: JSONEncoder().encode(settings))
     #expect(back.assignments == settings.assignments)
   }
+
+  @Test func pluginFieldsMapEveryCombination() {
+    func fields(_ f: LanguageModelFamily, _ u: LanguageModelUse) -> [String?] {
+      let r = LanguageModelAssignment(family: f, use: u).pluginFields
+      return [r.family, r.use]
+    }
+    #expect(fields(.none, .both) == [nil, "both"])
+    #expect(fields(.allOthers, .enhance) == ["*", "enhance"])
+    #expect(fields(.family("qwen_image_2.1"), .describe) == ["qwen_image_2.1", "describe"])
+    #expect(fields(.family("x"), .pluginsOnly) == ["x", "plugins"])
+  }
 }
