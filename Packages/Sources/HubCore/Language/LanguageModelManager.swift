@@ -88,13 +88,50 @@ public final class LanguageModelManager {
       }
       model = named
     } else {
-      guard let chosen = selectedModel() else {
-        state = .failed(.noModelSelected)
+      // No name: the assignments of Settings › LLM decide (no family known here).
+      reconcileAssignments()
+      switch self.model(for: images.isEmpty ? .enhance : .describe, family: nil) {
+      case .success(let chosen): model = chosen
+      case .failure(let error):
+        if error == .noModelSelected { state = .failed(error) }
         scheduleIdleUnload()  // a model a plug-in asked for by name may still be loaded
-        throw .noModelSelected
+        throw error
       }
-      model = chosen
     }
+    return try await ask(model, prompt, images, options)
+  }
+
+  /// Asks a model already chosen (by `model(for:family:)`): the prompt buttons' way in.
+  public func respond(
+    to prompt: String, images: [URL] = [], options: LanguageModelOptions = LanguageModelOptions(),
+    model: LanguageModelDescriptor
+  ) async throws(LanguageModelError) -> String {
+    activity += 1
+    idleTask?.cancel()
+    return try await ask(model, prompt, images, options)
+  }
+
+  /// Settings that change `assignments` when the list of installed LLMs does (see `LanguageModelAssignments`);
+  /// saved only if something changed. `downloaded` is the name of a model just downloaded.
+  public func reconcileAssignments(downloaded: String? = nil) {
+    let models = availableModels()
+    var updated = settings
+    updated.assignments = LanguageModelAssignments.reconciled(settings, models: models, downloaded: downloaded)
+    // The old single choice is consumed once it has become an assignment (not while its disk is away).
+    if models.contains(where: { $0.path == settings.selectedModel }) { updated.selectedModel = "" }
+    if updated != settings { settings = updated }
+  }
+
+  /// The LLM for a prompt button on `family` (nil = unknown), from the assignments.
+  public func model(for task: LanguageModelTask, family: String?) -> Result<LanguageModelDescriptor, LanguageModelError> {
+    reconcileAssignments()
+    return LanguageModelRouter.model(
+      for: task, family: family, models: availableModels(), assignments: settings.assignments)
+  }
+
+  private func ask(
+    _ model: LanguageModelDescriptor, _ prompt: String, _ images: [URL], _ options: LanguageModelOptions
+  ) async throws(LanguageModelError) -> String {
     if !images.isEmpty, !model.supportsImages {
       scheduleIdleUnload()
       throw .imagesNotSupported
