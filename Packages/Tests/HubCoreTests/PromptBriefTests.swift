@@ -84,3 +84,58 @@ struct PromptBriefOwnSystemTests {
     #expect(r.options.system == "S" && r.options.thinking == true)
   }
 }
+
+struct PromptBriefImagesTests {
+  let a = URL(fileURLWithPath: "/tmp/a.png")
+  let b = URL(fileURLWithPath: "/tmp/b.png")
+  let current = PromptPair(prompt: "put the cat from image 2 on image 1", negative: "blurry")
+  let block =
+    "Attached images:\n- Image 1: the start image (the picture being edited).\n- Image 2: reference image 1.\n\nThe prompt refers to these images. Look at them to make the description concrete and accurate, and keep every reference to an image (image 1, image 2…) exactly as written.\n\n"
+
+  @Test func labelsFollowDrawThingsNumbering() {
+    #expect(
+      PromptBrief.imageLabels(hasStart: true, references: 2) == [
+        "Image 1: the start image (the picture being edited).", "Image 2: reference image 1.", "Image 3: reference image 2.",
+      ])
+    #expect(
+      PromptBrief.imageLabels(hasStart: false, references: 2) == [
+        "Image 1: reference image 1.", "Image 2: reference image 2.",
+      ])
+    #expect(PromptBrief.imageLabels(hasStart: true, references: 0) == ["Image 1: the start image (the picture being edited)."])
+    #expect(PromptBrief.imageLabels(hasStart: false, references: 0).isEmpty)
+  }
+
+  @Test func theImagesGoInOrderWithTheBlockBeforeTheUsualRequest() {
+    let images = EnhanceImages(start: a, references: [b])
+    #expect(images.all == [a, b] && !images.isEmpty)
+    let request = PromptBrief.enhance(current, family: "flux2", images: images)
+    #expect(request.images == [a, b])
+    #expect(request.prompt == block + PromptBrief.enhance(current, family: "flux2").prompt)
+    #expect(request.options == PromptBrief.enhance(current, family: "flux2").options)
+  }
+
+  @Test func noImagesIsTheRequestOfToday() {
+    #expect(EnhanceImages().isEmpty)
+    #expect(PromptBrief.enhance(current, family: "flux2", images: EnhanceImages()) == PromptBrief.enhance(current, family: "flux2"))
+    let g = LanguageModelProfile.Generation(temperature: 0.5)
+    #expect(
+      PromptBrief.enhance(current, ownSystem: "S", generation: g, images: EnhanceImages())
+        == PromptBrief.enhance(current, ownSystem: "S", generation: g))
+  }
+
+  @Test func aStartImageAloneAndReferencesAlone() {
+    let onlyStart = PromptBrief.enhance(current, family: nil, images: EnhanceImages(start: a))
+    #expect(onlyStart.images == [a] && onlyStart.prompt.hasPrefix("Attached images:\n- Image 1: the start image"))
+    let onlyRefs = PromptBrief.enhance(current, family: nil, images: EnhanceImages(references: [a, b]))
+    #expect(onlyRefs.images == [a, b])
+    #expect(onlyRefs.prompt.hasPrefix("Attached images:\n- Image 1: reference image 1.\n- Image 2: reference image 2.\n\n"))
+  }
+
+  @Test func anOwnSystemPromptGetsTheBlockAndTheUsersText() {
+    let g = LanguageModelProfile.Generation(temperature: 0.7)
+    let request = PromptBrief.enhance(current, ownSystem: "S", generation: g, images: EnhanceImages(start: a, references: [b]))
+    #expect(request.prompt == block + current.prompt)
+    #expect(request.images == [a, b])
+    #expect(request.options == PromptBrief.enhance(current, ownSystem: "S", generation: g).options)
+  }
+}

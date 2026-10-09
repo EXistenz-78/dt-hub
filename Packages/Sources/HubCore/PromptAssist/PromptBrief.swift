@@ -19,6 +19,23 @@ public struct PromptRequest: Equatable, Sendable {
   public let options: LanguageModelOptions
 }
 
+/// The pictures that go with Enhance Prompt: the start image of the Control tab and the Moodboard pictures that are on,
+/// in the order of the thumbnails. Draw Things numbers them in that order (start first), so the prompt's "image 2" means
+/// the same picture to the LLM.
+public struct EnhanceImages: Equatable, Sendable {
+  public var start: URL?
+  public var references: [URL]
+
+  public init(start: URL? = nil, references: [URL] = []) {
+    self.start = start
+    self.references = references
+  }
+
+  public var isEmpty: Bool { start == nil && references.isEmpty }
+  /// The start image (when there is one), then the references.
+  public var all: [URL] { (start.map { [$0] } ?? []) + references }
+}
+
 /// The messages the Enhance/Generate Prompt tools send to the language model (pure functions).
 public enum PromptBrief {
   private static let proseRule =
@@ -58,6 +75,40 @@ public enum PromptBrief {
     _ current: PromptPair, ownSystem: String, generation: LanguageModelProfile.Generation?
   ) -> PromptRequest {
     PromptRequest(prompt: current.prompt, images: [], options: ownOptions(ownSystem, generation))
+  }
+
+  /// One line per picture, in sending order, numbered as Draw Things numbers them: the start image is 1 when there
+  /// is one, and the Moodboard pictures follow; without a start image the first Moodboard picture is 1.
+  public static func imageLabels(hasStart: Bool, references: Int) -> [String] {
+    var labels: [String] = []
+    if hasStart { labels.append("Image 1: the start image (the picture being edited).") }
+    for index in 0..<max(references, 0) {
+      labels.append("Image \(labels.count + 1): reference image \(index + 1).")
+    }
+    return labels
+  }
+
+  private static func imagesBlock(_ images: EnhanceImages) -> String? {
+    guard !images.isEmpty else { return nil }
+    let lines = imageLabels(hasStart: images.start != nil, references: images.references.count).map { "- " + $0 }
+    return "Attached images:\n" + lines.joined(separator: "\n")
+      + "\n\nThe prompt refers to these images. Look at them to make the description concrete and accurate, and keep every reference to an image (image 1, image 2…) exactly as written.\n\n"
+  }
+
+  /// Enhance with the pictures attached: the numbered list first, then the usual request.
+  public static func enhance(_ current: PromptPair, family: String?, images: EnhanceImages) -> PromptRequest {
+    let usual = enhance(current, family: family)
+    guard let block = imagesBlock(images) else { return usual }
+    return PromptRequest(prompt: block + usual.prompt, images: images.all, options: usual.options)
+  }
+
+  /// Enhance with the pictures attached, for an LLM with its own system prompt.
+  public static func enhance(
+    _ current: PromptPair, ownSystem: String, generation: LanguageModelProfile.Generation?, images: EnhanceImages
+  ) -> PromptRequest {
+    let usual = enhance(current, ownSystem: ownSystem, generation: generation)
+    guard let block = imagesBlock(images) else { return usual }
+    return PromptRequest(prompt: block + usual.prompt, images: images.all, options: usual.options)
   }
 
   /// Generate with an LLM that has its own system prompt.
