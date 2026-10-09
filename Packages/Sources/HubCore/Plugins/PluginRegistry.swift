@@ -276,6 +276,9 @@ public final class PluginRegistry: PluginHosting {
   }
 
   @ObservationIgnored private var latestParameters = GenerationParameters()
+  /// The parameters as they are now. The context carries these when set, so a plug-in whose tab is opened after only
+  /// a number changed does not get an old copy; without it, the last `updateContext` counts.
+  @ObservationIgnored public var currentParameters: (@MainActor () -> GenerationParameters)?
 
   /// Tells the active plug-ins where the app stands again, for what changed without the model or its parameters
   /// changing (a model added to the models folder, a start image): the app calls it when a plug-in's tab is shown.
@@ -285,7 +288,7 @@ public final class PluginRegistry: PluginHosting {
 
   private func sendContext(to identifier: String) {
     let context = PluginContext(
-      model: model, family: family, parameters: latestParameters, tempFolder: tempFolder.path,
+      model: model, family: family, parameters: currentParameters?() ?? latestParameters, tempFolder: tempFolder.path,
       startImage: startImagePath?(), moodboard: moodboardPaths.flatMap { $0().nilIfEmpty },
       languageModels: languageModels?())
     guard let data = try? JSONEncoder().encode(context) else { return }
