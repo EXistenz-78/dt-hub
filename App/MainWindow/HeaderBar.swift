@@ -35,11 +35,26 @@ struct HeaderBar: View {
       .buttonStyle(DSGlassCircleButtonStyle())
       .help(String(localized: "header.preferences"))
       .accessibilityLabel(String(localized: "header.preferences"))
+      incrementalButton
       runButton
     }
     .padding(.horizontal, DS.panelPadding)
     .padding(.vertical, 10)
     .dsPanel()
+  }
+
+  /// Incremental mode: each result becomes the start image of the next RUN. Teal and filled while on.
+  private var incrementalButton: some View {
+    Button {
+      generation.incremental.toggle()
+    } label: {
+      Image(systemName: generation.incremental ? "arrowshape.bounce.right.fill" : "arrowshape.bounce.right")
+        .foregroundStyle(generation.incremental ? DS.accent : Color.primary)
+    }
+    .buttonStyle(DSGlassCircleButtonStyle())
+    .help(String(localized: "header.incremental.help"))
+    .accessibilityLabel(String(localized: "header.incremental.help"))
+    .accessibilityValue(String(localized: generation.incremental ? "header.incremental.on" : "header.incremental.off"))
   }
 
   /// The open project's name; its menu lists the projects (the open one checked), makes a new one and shows the
