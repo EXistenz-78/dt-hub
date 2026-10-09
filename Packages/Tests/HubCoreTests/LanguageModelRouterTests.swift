@@ -69,4 +69,20 @@ struct LanguageModelRouterTests {
     let table = ["gone": a(.allOthers, .both)]
     #expect(LanguageModelRouter.model(for: .enhance, family: "x", models: all, assignments: table) == .failure(.noModelSelected))
   }
+
+  @Test func needsImagesSkipsATextOnlyModelEvenForEnhance() {
+    let table = ["txt": a(.family("qwen_image_2.1"), .enhance), "vl": a(.allOthers, .both)]
+    func pick(_ images: Bool) -> String? {
+      name(LanguageModelRouter.model(for: .enhance, family: "qwen_image_2.1", models: all, assignments: table, needsImages: images))
+    }
+    #expect(pick(false) == "txt")
+    #expect(pick(true) == "vl")
+    let onlyText = ["txt": a(.allOthers, .both)]
+    #expect(
+      LanguageModelRouter.model(for: .enhance, family: "x", models: all, assignments: onlyText, needsImages: true)
+        == .failure(.imagesNotSupported))
+    #expect(
+      LanguageModelRouter.model(for: .enhance, family: "x", models: all, assignments: [:], needsImages: true)
+        == .failure(.noModelSelected))
+  }
 }

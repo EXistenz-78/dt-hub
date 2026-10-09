@@ -54,4 +54,15 @@ struct LanguageModelProfileTests {
     let p = LanguageModelProfile.load(folder: try folder(["generation_config.json": #"{"use_cache":true}"#]))
     #expect(p.generation == nil)
   }
+
+  @Test func withImagesEnhanceUsesTheImageToImagePrompt() throws {
+    let both = LanguageModelProfile.load(folder: try folder(["system_prompt_t2i.txt": "T", "system_prompt_i2i.txt": "I"]))
+    #expect(both.systemPrompt(for: .enhance, withImages: true) == "I")
+    #expect(both.systemPrompt(for: .enhance, withImages: false) == "T")
+    #expect(both.systemPrompt(for: .enhance) == "T")
+    let generic = LanguageModelProfile.load(folder: try folder(["system_prompt.txt": "G"]))
+    #expect(generic.systemPrompt(for: .enhance, withImages: true) == "G")
+    let onlyT = LanguageModelProfile.load(folder: try folder(["system_prompt_t2i.txt": "T"]))
+    #expect(onlyT.systemPrompt(for: .enhance, withImages: true) == nil)
+  }
 }

@@ -5,17 +5,17 @@ import HubKit
 public enum LanguageModelRouter {
   /// The model for `task` on `family`: the first by name assigned to that family with a use that
   /// covers the task; else the first on "all others". A Generate task needs a model that reads
-  /// images. `family == nil` (catalog not loaded) skips the family step.
+  /// images, and so does any task with `needsImages` (Enhance with pictures attached). `family == nil` (catalog not loaded) skips the family step.
   public static func model(
     for task: LanguageModelTask, family: String?, models: [LanguageModelDescriptor],
-    assignments: [String: LanguageModelAssignment]
+    assignments: [String: LanguageModelAssignment], needsImages: Bool = false
   ) -> Result<LanguageModelDescriptor, LanguageModelError> {
     var rejectedForImages = false
     func first(_ wanted: LanguageModelFamily) -> LanguageModelDescriptor? {
       for model in sorted(models) {
         guard let assignment = assignments[model.name], assignment.family == wanted, assignment.use.covers(task)
         else { continue }
-        if task == .describe, !model.supportsImages {
+        if task == .describe || needsImages, !model.supportsImages {
           rejectedForImages = true
           continue
         }
