@@ -120,6 +120,8 @@ struct LanguagePreferencesView: View {
             Text("prefs.llm.use.enhance").tag(LanguageModelUse.enhance)
             Text("prefs.llm.use.describe").tag(LanguageModelUse.describe)
             Text("prefs.llm.use.both").tag(LanguageModelUse.both)
+            Text("prefs.llm.use.i2i").tag(LanguageModelUse.i2i)
+            Text("prefs.llm.use.t2i").tag(LanguageModelUse.t2i)
             Text("prefs.llm.use.plugins").tag(LanguageModelUse.pluginsOnly)
           }
           .labelsHidden()

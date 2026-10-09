@@ -16,11 +16,29 @@ struct LanguageModelAssignmentTests {
     #expect(try JSONDecoder().decode(LanguageModelFamily.self, from: Data("\"whatever\"".utf8)) == .family("whatever"))
   }
 
-  @Test func useCoversTheRightTasks() {
-    #expect(LanguageModelUse.enhance.covers(.enhance) && !LanguageModelUse.enhance.covers(.describe))
-    #expect(LanguageModelUse.describe.covers(.describe) && !LanguageModelUse.describe.covers(.enhance))
-    #expect(LanguageModelUse.both.covers(.enhance) && LanguageModelUse.both.covers(.describe))
-    #expect(!LanguageModelUse.pluginsOnly.covers(.enhance) && !LanguageModelUse.pluginsOnly.covers(.describe))
+  @Test func useCoversTheRightSituations() {
+    // (use, Enhance with an empty Control, Enhance with pictures, Generate)
+    let table: [(LanguageModelUse, Bool, Bool, Bool)] = [
+      (.enhance, true, true, false), (.describe, false, false, true), (.both, true, true, true),
+      (.pluginsOnly, false, false, false), (.i2i, false, true, true), (.t2i, true, false, false),
+    ]
+    for (use, empty, withImages, generate) in table {
+      #expect(use.covers(.enhance, controlHasImages: false) == empty, "\(use) enhance empty")
+      #expect(use.covers(.enhance, controlHasImages: true) == withImages, "\(use) enhance images")
+      #expect(use.covers(.describe, controlHasImages: true) == generate, "\(use) generate")
+    }
+  }
+
+  @Test func i2iAndT2iAreSavedByName() throws {
+    for use in [LanguageModelUse.i2i, .t2i] {
+      let data = try JSONEncoder().encode(LanguageModelAssignment(family: .allOthers, use: use))
+      #expect(String(data: data, encoding: .utf8)?.contains("\"\(use.rawValue)\"") == true)
+      #expect(try JSONDecoder().decode(LanguageModelAssignment.self, from: data).use == use)
+    }
+    #expect(LanguageModelUse.i2i.rawValue == "i2i" && LanguageModelUse.t2i.rawValue == "t2i")
+    for old in ["enhance", "describe", "both", "pluginsOnly"] {
+      #expect(LanguageModelUse(rawValue: old) != nil)
+    }
   }
 
   @Test func oldSettingsDecodeWithNoAssignments() throws {
@@ -49,5 +67,7 @@ struct LanguageModelAssignmentTests {
     #expect(fields(.allOthers, .enhance) == ["*", "enhance"])
     #expect(fields(.family("qwen_image_2.1"), .describe) == ["qwen_image_2.1", "describe"])
     #expect(fields(.family("x"), .pluginsOnly) == ["x", "plugins"])
+    #expect(fields(.family("x"), .i2i) == ["x", "i2i"])
+    #expect(fields(.family("x"), .t2i) == ["x", "t2i"])
   }
 }

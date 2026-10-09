@@ -124,11 +124,11 @@ public final class LanguageModelManager {
 
   /// The LLM for a prompt button on `family` (nil = unknown), from the assignments.
   public func model(
-    for task: LanguageModelTask, family: String?, needsImages: Bool = false
+    for task: LanguageModelTask, family: String?, needs: LanguageModelNeeds = LanguageModelNeeds()
   ) -> Result<LanguageModelDescriptor, LanguageModelError> {
     reconcileAssignments()
     return LanguageModelRouter.model(
-      for: task, family: family, models: availableModels(), assignments: settings.assignments, needsImages: needsImages)
+      for: task, family: family, models: availableModels(), assignments: settings.assignments, needs: needs)
   }
 
   private func ask(
