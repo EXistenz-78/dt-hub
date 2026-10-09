@@ -6195,13 +6195,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Rewrites the prompt with the LLM, following the rules of the selected model"
+            "value": "Rewrites the prompt with the LLM, following the rules of the selected model; also uses the start image and the Moodboard, when present"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Riscrive il prompt con l'LLM, secondo le regole del modello scelto"
+            "value": "Riscrive il prompt con l'LLM, secondo le regole del modello scelto; usa anche l'immagine di partenza e la Moodboard, se ci sono"
           }
         }
       }
@@ -7715,6 +7715,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Spento"
+          }
+        }
+      }
+    },
+    "prompt.assist.note.imagesNotSent": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Images not sent: no LLM for Enhance reads images."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Immagini non inviate: nessun LLM per Migliora legge immagini."
           }
         }
       }

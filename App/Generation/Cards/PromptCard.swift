@@ -32,6 +32,12 @@ struct PromptCard: View {
         }
         enhanceRow
         PromptAssistError(assistant: controller.assistant, hiding: .noImage)
+        if controller.assistant.note == .imagesNotSent {
+          Text("prompt.assist.note.imagesNotSent")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+        }
       }
     }
   }
