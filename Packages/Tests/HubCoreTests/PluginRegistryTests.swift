@@ -162,6 +162,39 @@ struct PluginRegistryTests {
     #expect(try lastContext().languageModels?.count == 2)
   }
 
+  @Test func theContextCarriesTheCurrentParametersNotTheLastOnesTheAppSent() async throws {
+    try PluginFixture.bundle(in: root, id: "a", name: "A")
+    let loader = FakeLoader()
+    let registry = registry(loader: loader, enabled: ["a"])
+    registry.start()
+    registry.updateContext(model: "m.ckpt", family: "flux2_9b", parameters: GenerationParameters(steps: 8))
+    await settle()
+    let plugin = try #require(loader.plugins["a"])
+    func steps() throws -> Int {
+      let data = try #require(plugin.sent.last { PluginMessageType.of($0) == PluginMessageType.context })
+      return try JSONDecoder().decode(PluginContext.self, from: data).parameters.steps
+    }
+    #expect(try steps() == 8)
+    // Only the steps changed: the app did not send a context, but the tab being shown asks for one.
+    registry.currentParameters = { GenerationParameters(steps: 20) }
+    registry.refreshContext()
+    await settle()
+    #expect(try steps() == 20)
+  }
+
+  @Test func withoutACurrentParametersSourceTheLastUpdateCounts() async throws {
+    try PluginFixture.bundle(in: root, id: "a", name: "A")
+    let loader = FakeLoader()
+    let registry = registry(loader: loader, enabled: ["a"])
+    registry.start()
+    registry.updateContext(model: nil, family: nil, parameters: GenerationParameters(steps: 8))
+    registry.refreshContext()
+    await settle()
+    let plugin = try #require(loader.plugins["a"])
+    let data = try #require(plugin.sent.last { PluginMessageType.of($0) == PluginMessageType.context })
+    #expect(try JSONDecoder().decode(PluginContext.self, from: data).parameters.steps == 8)
+  }
+
   @Test func refreshingTheContextTellsOnlyThePluginsThatAreOn() async throws {
     try PluginFixture.bundle(in: root, id: "a", name: "A")
     let loader = FakeLoader()

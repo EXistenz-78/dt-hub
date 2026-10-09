@@ -40,7 +40,7 @@ and `import DTHubDesign` in the views (see `Plugins/SphereLight`).
 
 JSON objects with a `type`. An unknown type gets `{"type":"unsupported"}`.
 
-**App → plug-in:** `context` (model, family, parameters, `tempFolder`: a folder to exchange picture files through;
+**App → plug-in:** `context` (model, family, `parameters`: the Generation tab's parameters as they are when the message is sent — `width`, `height`, `steps`, `guidanceScale`, `sampler`, `shift`, `resolutionDependentShift`, `cfgZeroStar`, `cfgZeroInitSteps`, `seed`, `randomSeed`, `batchSize`, `batchCount`, `loras` (`[{"file","weight","mode","trigger"}]`), and `advanced` and `extra` (name → value, to show and not to change); `DTHubContext.parameters` reads them with tolerance, a missing or mistyped value is nil and never costs the rest of the context; `tempFolder`: a folder to exchange picture files through;
 `startImage`: the path of the Control tab's start image when there is one; `moodboard`: the paths of the Moodboard
 pictures that are on, in the order of the thumbnails; `languageModels`: `[{"name", "path", "supportsImages", "family", "use"}]`, the
 language models of the app's models folder (`family`: the family the user assigned the model to in Settings › LLM — `"*"` for "all others", otherwise the family key such as `"qwen_image_2.1"`, absent for none; `use`: `"enhance"`, `"describe"`, `"both"`, `"plugins"`, `"i2i"` (like both, but only when the Control tab has images) or `"t2i"` (like both, but only when it is empty); both are optional additions) — each key is left out when there is nothing to say; the app sends the context again when a plug-in's tab is shown),
@@ -60,11 +60,15 @@ language models of the app's models folder (`family`: the family the user assign
   - `moodboard`: `[{"path", "name"}]`, files in the `tempFolder`, added to the Moodboard. Sending them again replaces
     the ones this plug-in sent before.
   - `startImage`: `{"path", "name"}`, the start image of the Control tab.
-  - `pipeline`: `{"name", "steps": [...]}`; each step is `{"title", "preset", "moodboard", "startImage",
-    "useOutputAsStart"}`: the name of a preset in the app's Preset menu (its parameters, prompt and negative
-    prompt are applied on the tab's fields, but not its model nor a size), the Moodboard for the pass (replaces the
-    tab's), a start image, and whether the picture the previous pass made becomes the start image. RUN then runs
-    the passes one after the other; if a preset is not in the menu it says so and runs nothing.
+  - `pipeline`: `{"name", "steps": [...]}`; each step is `{"title", "preset", "fields", "loras", "moodboard",
+    "startImage", "useOutputAsStart"}`: the name of a preset in the app's Preset menu (its parameters, prompt and negative
+    prompt are applied on the tab's fields, but not its model nor a size); then `fields`, the values this pass changes
+    (the keys of `contribute.fields`, applied after the preset; a size in it is ignored, a pass never changes the size;
+    the advanced values and the extras stay those of the tab); then `loras`, `[{"file","weight","mode","trigger"}]`: a
+    LoRA already on the tab gets the weight (and the mode or trigger word when they are not the defaults), a new one is
+    added at the end. A step with neither preset, `fields` nor `loras` runs the tab as it is. Then the Moodboard for the
+    pass (replaces the tab's), a start image, and whether the picture the previous pass made becomes the start image. RUN
+    then runs the passes one after the other; if a preset is not in the menu it says so and runs nothing.
   The fields a plug-in filled turn teal; the user can always change them. If two plug-ins fill the same field, or
   both propose a start image or a pipeline, the user chooses in a pop-up.
 - `presets` — `{"presets": [{"name", "fields", "loras"}]}`: presets for the Preset menu. Each is a

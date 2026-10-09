@@ -61,6 +61,7 @@ struct DTHubApp: App {
     plugins.askLanguageModel = { prompt, images, options, name in
       try await languageModel.respond(to: prompt, images: images, options: options, modelNamed: name)
     }
+    plugins.currentParameters = { generation.parameters }
     plugins.startImagePath = { control.startImageURL?.path }
     plugins.moodboardPaths = { control.moodboardURLs.map(\.path) }
     plugins.languageModels = {
