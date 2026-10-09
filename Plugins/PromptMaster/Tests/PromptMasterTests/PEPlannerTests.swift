@@ -109,9 +109,14 @@ struct PEPlannerTests {
   }
 
   @Test func assignmentsForOtherUsesOrFamiliesDoNotCount() {
-    for (family, use) in [("qwen_image_2.1", "plugins"), ("qwen_image_2.1", "describe"), ("flux2", "enhance"), ("*", "both")] {
+    for (family, use) in [("qwen_image_2.1", "plugins"), ("qwen_image_2.1", "describe"), ("qwen_image_2.1", "i2i"), ("flux2", "enhance"), ("*", "both")] {
       let result = plan(models: [assigned("my-enhancer", family: family, use: use)])
       #expect(result == .generic(reason: .modelMissing))
     }
+  }
+
+  @Test func aT2iAssignmentIsAnEnhancerAnI2iOneIsNot() throws {
+    let t2iModel = assigned("my-t2i", family: "qwen_image_2.1", use: "t2i")
+    #expect(enhancer(plan(models: [t2iModel]))?.model == "my-t2i")
   }
 }

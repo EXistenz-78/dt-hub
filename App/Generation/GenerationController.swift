@@ -88,8 +88,8 @@ final class GenerationController {
     self.control = control
     session = GenerationSession(store: ProjectImageStore(box: projectFolderBox), history: nil)
     assistant = PromptAssistant(
-      resolve: { task, family, needsImages in
-        languageModel.model(for: task, family: family, needsImages: needsImages).map {
+      resolve: { task, family, needs in
+        languageModel.model(for: task, family: family, needs: needs).map {
           PromptAssistant.Choice(
             model: $0, profile: LanguageModelProfile.load(folder: URL(fileURLWithPath: $0.path, isDirectory: true)))
         }

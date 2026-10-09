@@ -7657,13 +7657,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "LLMs on “All others” serve every family that has no LLM of its own. “Plug-ins only” leaves them to the plug-ins."
+            "value": "LLMs on “All others” serve every family that has no LLM of its own. “Plug-ins only” leaves them to the plug-ins. I2I and T2I act as Both only when the Control tab has images (start image or a Moodboard picture that is on), or only when it is empty."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Gli LLM su «Tutti gli altri» servono tutte le famiglie senza un LLM proprio. «Solo plug-in» li lascia ai plug-in."
+            "value": "Gli LLM su «Tutti gli altri» servono tutte le famiglie senza un LLM proprio. «Solo plug-in» li lascia ai plug-in. I2I e T2I valgono come Entrambi solo con immagini in Control (immagine di partenza o Moodboard accesa) o solo con Control vuoto."
           }
         }
       }
@@ -7732,6 +7732,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Immagini non inviate: nessun LLM per Migliora legge immagini."
+          }
+        }
+      }
+    },
+    "prefs.llm.use.i2i": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I2I (images in Control)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I2I (immagini in Control)"
+          }
+        }
+      }
+    },
+    "prefs.llm.use.t2i": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "T2I (empty Control)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "T2I (Control vuoto)"
           }
         }
       }

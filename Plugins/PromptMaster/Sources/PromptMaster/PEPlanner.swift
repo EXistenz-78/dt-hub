@@ -46,7 +46,7 @@ enum PEPlanner {
     guard family == Self.family else { return .generic(reason: nil) }
     // First the LLM the user assigned to this family for Enhance (Settings › LLM), whatever its folder is called,
     // provided its folder carries a system prompt.
-    let assigned = languageModels.filter { $0.family == Self.family && ["enhance", "both"].contains($0.use ?? "") }
+    let assigned = languageModels.filter { $0.family == Self.family && ["enhance", "both", "t2i"].contains($0.use ?? "") }
     let assignedWithSystem = assigned.compactMap { model -> (DTHubLanguageModel, String)? in
       systemPrompt(in: model.path, readFile: readFile).map { (model, $0) }
     }
