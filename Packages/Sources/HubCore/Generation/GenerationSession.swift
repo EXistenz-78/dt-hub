@@ -46,6 +46,9 @@ public final class GenerationSession {
   public private(set) var preview: CGImage?
   /// Newest first.
   public private(set) var results: [GeneratedImage] = []
+  /// True when the last RUN ended because Stop was pressed (the phase is `.idle` then, as after a normal end);
+  /// false while a RUN is under way and after one that finished or failed.
+  public private(set) var lastRunWasStopped = false
 
   @ObservationIgnored private let store: any ImageStore
   @ObservationIgnored private var history: ResultsHistoryStore?
@@ -83,6 +86,7 @@ public final class GenerationSession {
   ) {
     guard !isRunning, let first = batches.first else { return }
     phase = .running(step: nil, totalSteps: first.parameters.steps)
+    lastRunWasStopped = false
     batch = Batch(index: 1, count: batches.count)
     preview = nil
     monitor.pause()
@@ -111,8 +115,11 @@ public final class GenerationSession {
             }
           }
         }
+        // A stream cut short by Stop ends quietly: the cancellation is only visible on the task.
+        lastRunWasStopped = Task.isCancelled
         phase = .idle
       } catch is CancellationError {
+        lastRunWasStopped = true
         phase = .idle
       } catch {
         phase = .failed(error as? BackendError ?? .generationFailed(String(describing: error)))

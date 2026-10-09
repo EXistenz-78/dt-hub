@@ -283,4 +283,35 @@ struct GenerationSessionTests {
     await session.waitUntilFinished()
     #expect(session.results.map(\.job.prompt) == ["q", "p"])
   }
+
+  @Test func aStoppedRunIsToldApartFromAFinishedOne() async throws {
+    let backend = FakeBackend(.success(catalog))
+    await backend.setGeneration([.progress(step: 1, totalSteps: 4), .finished([testImage()])], stepDelay: .seconds(2))
+    let monitor = await connected(backend)
+    let session = GenerationSession(store: MemoryImageStore())
+    #expect(!session.lastRunWasStopped)
+    session.start(job, backend: backend, monitor: monitor)
+    try await Task.sleep(for: .milliseconds(100))
+    session.cancel()
+    await session.waitUntilFinished()
+    #expect(session.lastRunWasStopped)
+
+    await backend.setGeneration([.finished([testImage()])])
+    session.start(job, backend: backend, monitor: monitor)
+    #expect(!session.lastRunWasStopped)  // cleared as the next RUN starts
+    await session.waitUntilFinished()
+    #expect(!session.lastRunWasStopped)
+  }
+
+  @Test func aFailedRunIsNotAStoppedOne() async {
+    let backend = FakeBackend(.success(catalog))
+    await backend.setGeneration([.finished([testImage()])])
+    await backend.failFromJob(1, with: .generationFailed("boom"))
+    let monitor = await connected(backend)
+    let session = GenerationSession(store: MemoryImageStore())
+    session.start(job, backend: backend, monitor: monitor)
+    await session.waitUntilFinished()
+    #expect(!session.lastRunWasStopped)
+    #expect(session.phase == .failed(.generationFailed("boom")))
+  }
 }
