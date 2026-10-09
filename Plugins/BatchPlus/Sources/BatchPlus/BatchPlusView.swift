@@ -87,44 +87,14 @@ struct BatchPlusView: View {
     incrementField(id: key.rawValue, label: label, current: current ?? "—", integer: key.isInteger, suffix: suffix)
   }
 
-  /// One menu with the 20 samplers, ticked in the order they are to be used, as many as there are passes.
+  /// The sampler of the tab and a button that opens the list of the 20: ticked in the order they are to be used, as many as
+  /// there are passes. The list stays open until the user clicks outside it.
   private func samplerRow(_ p: DTHubParameters) -> some View {
-    let chosen = Array(state.session.samplers.prefix(state.session.count))
-    let full = chosen.count >= state.session.count
-    return VStack(alignment: .leading, spacing: 2) {
-      HStack(spacing: DS.controlGap) {
-        Text(L.text(.sampler)).foregroundStyle(.secondary)
-        Spacer(minLength: DS.controlGap)
-        Text(verbatim: p.sampler.map(SamplerNames.name) ?? "—").font(.system(.body, design: .monospaced))
-        Menu {
-          ForEach(SamplerNames.names.indices, id: \.self) { number in
-            let isChosen = chosen.contains(number)
-            Button {
-              if isChosen {
-                state.session.samplers.removeAll { $0 == number }
-              } else {
-                state.session.samplers.append(number)
-              }
-            } label: {
-              if isChosen {
-                Label(SamplerNames.name(number), systemImage: "checkmark")
-              } else {
-                Text(verbatim: SamplerNames.name(number))
-              }
-            }
-            .disabled(!isChosen && full)
-          }
-        } label: {
-          Text(chosen.isEmpty ? L.text(.samplerVary) : "\(chosen.count)/\(state.session.count)")
-        }
-        .menuStyle(.button)
-        .frame(width: 88)
-      }
-      if !chosen.isEmpty {
-        Text(verbatim: chosen.enumerated().map { "\($0.offset + 1) \(SamplerNames.name($0.element))" }.joined(separator: " · "))
-          .font(.caption).foregroundStyle(.secondary)
-        Text(L.text(.samplerHint)).font(.caption2).foregroundStyle(.secondary)
-      }
+    HStack(spacing: DS.controlGap) {
+      Text(L.text(.sampler)).foregroundStyle(.secondary)
+      Spacer(minLength: DS.controlGap)
+      Text(verbatim: p.sampler.map(SamplerNames.name) ?? "—").font(.system(.body, design: .monospaced))
+      SamplerPicker(session: $state.session)
     }
   }
 
@@ -279,5 +249,59 @@ struct BatchPlusView: View {
   private func display(_ id: String, _ value: Double?) -> String {
     guard let value else { return "—" }
     return id == BatchPlusBuilder.samplerID ? SamplerNames.name(Int(value)) : shortNumber(value)
+  }
+}
+
+/// The button of the sampler row and the list it opens (a popover, so it does not close after each tick).
+private struct SamplerPicker: View {
+  @Binding var session: BatchPlusSession
+  @State private var isOpen = false
+
+  private var chosen: [Int] { Array(session.samplers.prefix(session.count)) }
+
+  var body: some View {
+    Button {
+      isOpen.toggle()
+    } label: {
+      HStack(spacing: 4) {
+        Text(chosen.isEmpty ? L.text(.samplerVary) : "\(chosen.count)/\(session.count)")
+        Image(systemName: "chevron.down").font(.caption2)
+      }
+      .frame(width: 72)
+    }
+    .buttonStyle(DSPillButtonStyle())
+    .popover(isPresented: $isOpen, arrowEdge: .bottom) {
+      ScrollView {
+        VStack(alignment: .leading, spacing: 2) {
+          ForEach(SamplerNames.names.indices, id: \.self) { number in row(number) }
+        }
+        .padding(8)
+      }
+      .frame(width: 250, height: 380)
+    }
+  }
+
+  private func row(_ number: Int) -> some View {
+    let position = chosen.firstIndex(of: number)
+    let full = chosen.count >= session.count
+    return Button {
+      if position != nil {
+        session.samplers.removeAll { $0 == number }
+      } else {
+        session.samplers.append(number)
+      }
+    } label: {
+      HStack(spacing: 8) {
+        Image(systemName: position != nil ? "checkmark.square.fill" : "square")
+          .foregroundStyle(position != nil ? DS.accent : Color.secondary)
+        Text(verbatim: SamplerNames.name(number))
+        Spacer()
+        if let position { Text("\(position + 1)").font(.caption).foregroundStyle(.secondary) }
+      }
+      .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+    .disabled(position == nil && full)
+    .opacity(position == nil && full ? 0.4 : 1)
   }
 }
