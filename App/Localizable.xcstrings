@@ -3849,13 +3849,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Choose a model first."
+            "value": "No LLM is assigned to this family: choose one in Settings › LLM."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Scegli prima un modello."
+            "value": "Nessun LLM assegnato per questa famiglia: sceglilo in Preferenze › LLM."
           }
         }
       }
@@ -4774,40 +4774,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Memoria"
-          }
-        }
-      }
-    },
-    "prefs.llm.model": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Model"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Modello"
-          }
-        }
-      }
-    },
-    "prefs.llm.model.none": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "None"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nessuno"
           }
         }
       }
@@ -7528,6 +7494,176 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mostra o nascondi le informazioni"
+          }
+        }
+      }
+    },
+    "prefs.llm.family": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Family"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Famiglia"
+          }
+        }
+      }
+    },
+    "prefs.llm.family.none": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "None"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessuna"
+          }
+        }
+      }
+    },
+    "prefs.llm.family.all": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All others"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tutti gli altri"
+          }
+        }
+      }
+    },
+    "prefs.llm.use": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uso"
+          }
+        }
+      }
+    },
+    "prefs.llm.use.enhance": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enhance prompt"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Migliora prompt"
+          }
+        }
+      }
+    },
+    "prefs.llm.use.describe": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Generate prompt"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Genera prompt"
+          }
+        }
+      }
+    },
+    "prefs.llm.use.both": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Both"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entrambi"
+          }
+        }
+      }
+    },
+    "prefs.llm.use.plugins": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plug-ins only"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo plug-in"
+          }
+        }
+      }
+    },
+    "prefs.llm.shadowed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Another LLM takes precedence for this family and use."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un altro LLM ha la precedenza per questa famiglia e questo uso."
+          }
+        }
+      }
+    },
+    "prefs.llm.assign.note": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LLMs on “All others” serve every family that has no LLM of its own. “Plug-ins only” leaves them to the plug-ins."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gli LLM su «Tutti gli altri» servono tutte le famiglie senza un LLM proprio. «Solo plug-in» li lascia ai plug-in."
           }
         }
       }

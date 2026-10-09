@@ -5,7 +5,7 @@ import LLMBridge
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Preferences › LLM (spec §9): the models folder, the model in use, downloading the
+/// Preferences › LLM (spec §9): the models folder, the family and use of each installed model, downloading the
 /// recommended one (only when asked), the memory behavior, and a test question with or
 /// without an image.
 struct LanguagePreferencesView: View {
@@ -35,7 +35,10 @@ struct LanguagePreferencesView: View {
     }
     .formStyle(.grouped)
     .onAppear(perform: refresh)
-    .onChange(of: download.completed) { refresh() }
+    .onChange(of: download.completed) {
+      manager.reconcileAssignments(downloaded: RecommendedLanguageModel.folderName)
+      models = manager.availableModels()
+    }
     .confirmationDialog(
       String(localized: "prefs.llm.download.confirm.title"), isPresented: $confirmingDownload, titleVisibility: .visible
     ) {
@@ -62,18 +65,59 @@ struct LanguagePreferencesView: View {
         Text(String(format: String(localized: "prefs.llm.noModels"), manager.settings.folder))
           .foregroundStyle(.secondary)
       } else {
-        Picker("prefs.llm.model", selection: $manager.settings.selectedModel) {
-          Text("prefs.llm.model.none").tag("")
-          ForEach(models) { model in
-            Text(verbatim: label(of: model)).tag(model.path)
-          }
+        ForEach(models) { model in
+          modelRow(model)
         }
+        Text("prefs.llm.assign.note")
+          .font(.caption).foregroundStyle(.secondary)
       }
       downloadRow
     } footer: {
       Text("prefs.llm.folder.note")
         .foregroundStyle(.secondary)
     }
+  }
+
+  /// One installed LLM: its family and use. A family key not in the menu (a server not connected now) stays selectable.
+  private func modelRow(_ model: LanguageModelDescriptor) -> some View {
+    let binding = Binding<LanguageModelAssignment>(
+      get: {
+        manager.settings.assignments[model.name] ?? LanguageModelAssignment(family: .none, use: .both)
+      },
+      set: { manager.settings.assignments[model.name] = $0 })
+    var families = LanguageModelFamilyOptions.list(catalogFamilies: connection.monitor.catalog.models.compactMap(\.family))
+    if case .family(let key) = binding.wrappedValue.family, !families.contains(where: { $0.key == key }) {
+      families.append((key: key, label: key))
+    }
+    let shadowed = LanguageModelRouter.shadowed(models: models, assignments: manager.settings.assignments)
+    return VStack(alignment: .leading, spacing: 4) {
+      HStack(spacing: DS.controlGap) {
+        Text(verbatim: label(of: model))
+        if shadowed.contains(model.name) {
+          Image(systemName: "exclamationmark.triangle")
+            .foregroundStyle(DS.remove)
+            .help(String(localized: "prefs.llm.shadowed"))
+            .accessibilityLabel(String(localized: "prefs.llm.shadowed"))
+        }
+      }
+      HStack(spacing: DS.controlGap) {
+        Picker("prefs.llm.family", selection: binding.family) {
+          Text("prefs.llm.family.none").tag(LanguageModelFamily.none)
+          Divider()
+          ForEach(families, id: \.key) { Text(verbatim: $0.label).tag(LanguageModelFamily.family($0.key)) }
+          Divider()
+          Text("prefs.llm.family.all").tag(LanguageModelFamily.allOthers)
+        }
+        Picker("prefs.llm.use", selection: binding.use) {
+          Text("prefs.llm.use.enhance").tag(LanguageModelUse.enhance)
+          Text("prefs.llm.use.describe").tag(LanguageModelUse.describe)
+          Text("prefs.llm.use.both").tag(LanguageModelUse.both)
+          Text("prefs.llm.use.plugins").tag(LanguageModelUse.pluginsOnly)
+        }
+        .disabled(binding.wrappedValue.family == .none)
+      }
+    }
+    .padding(.vertical, 2)
   }
 
   @ViewBuilder private var downloadRow: some View {
@@ -106,11 +150,8 @@ struct LanguagePreferencesView: View {
   }
 
   private func refresh() {
+    manager.reconcileAssignments()
     models = manager.availableModels()
-    if !manager.settings.selectedModel.isEmpty, !models.contains(where: { $0.path == manager.settings.selectedModel }) {
-      manager.settings.selectedModel = ""
-    }
-    if manager.settings.selectedModel.isEmpty, let first = models.first { manager.settings.selectedModel = first.path }
   }
 
   private func chooseFolder() {
