@@ -246,14 +246,45 @@ struct PromptAssistantImagesTests {
   }
 
   /// `noVisionFor`: the `needsImages` value for which the resolver answers "no LLM reads images".
+  func needsSeen(_ task: LanguageModelTask, images: EnhanceImages, describe: Bool = false) async -> [LanguageModelNeeds] {
+    var seen: [LanguageModelNeeds] = []
+    let model = model
+    let a1 = PromptAssistant(
+      resolve: { _, _, needs in
+        seen.append(needs)
+        if needs.needsImages, !describe { return .failure(.imagesNotSupported) }
+        return .success(.init(model: model, profile: LanguageModelProfile()))
+      },
+      respond: { _, _, _, _ throws(LanguageModelError) in "ok" })
+    if describe {
+      _ = await a1.describe(imageAt: a, current: current, family: "flux2")
+    } else {
+      _ = await a1.enhance(current, family: "flux2", images: images)
+    }
+    return seen
+  }
+
+  @Test func theControlContextTravelsWithTheRequest() async {
+    #expect(await needsSeen(.enhance, images: EnhanceImages()) == [LanguageModelNeeds(controlHasImages: false, needsImages: false)])
+    #expect(
+      await needsSeen(.enhance, images: EnhanceImages(start: a)) == [
+        LanguageModelNeeds(controlHasImages: true, needsImages: true),
+        LanguageModelNeeds(controlHasImages: true, needsImages: false),
+      ])
+    #expect(
+      await needsSeen(.describe, images: EnhanceImages(), describe: true) == [
+        LanguageModelNeeds(controlHasImages: true, needsImages: true)
+      ])
+  }
+
   func assistant(
     _ log: Log, profile: LanguageModelProfile = LanguageModelProfile(), failWithImages: LanguageModelError? = nil
   ) -> PromptAssistant {
     let model = model
     return PromptAssistant(
-      resolve: { task, _, needsImages in
-        log.resolves.append((task, needsImages))
-        if needsImages, let failWithImages { return .failure(failWithImages) }
+      resolve: { task, _, needs in
+        log.resolves.append((task, needs.needsImages))
+        if needs.needsImages, let failWithImages { return .failure(failWithImages) }
         return .success(.init(model: model, profile: profile))
       },
       respond: { prompt, images, _, _ throws(LanguageModelError) in

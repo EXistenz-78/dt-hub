@@ -30,9 +30,9 @@ public final class PromptAssistant {
     case imagesNotSent
   }
 
-  /// Picks the LLM for a task on a family (nil = unknown); the `Bool` is true when the request carries pictures,
-  /// so the LLM must read them.
-  public typealias Resolve = @MainActor (LanguageModelTask, String?, Bool) -> Result<Choice, LanguageModelError>
+  /// Picks the LLM for a task on a family (nil = unknown); `LanguageModelNeeds` says whether the Control tab has
+  /// pictures (which uses apply) and whether the request carries them (the LLM must read them).
+  public typealias Resolve = @MainActor (LanguageModelTask, String?, LanguageModelNeeds) -> Result<Choice, LanguageModelError>
   public typealias Respond = @MainActor (String, [URL], LanguageModelOptions, LanguageModelDescriptor) async throws(
     LanguageModelError
   ) -> String
@@ -101,14 +101,15 @@ public final class PromptAssistant {
     note = nil
     defer { working = nil }
     let task: LanguageModelTask = kind == .enhance ? .enhance : .describe
+    let controlHasImages = withImages
     var withImages = withImages
-    var found = resolve(task, family, withImages)
+    var found = resolve(task, family, LanguageModelNeeds(controlHasImages: controlHasImages, needsImages: withImages))
     // Enhance can do without the pictures; Generate cannot.
     var droppedImages = false
     if kind == .enhance, withImages, case .failure(.imagesNotSupported) = found {
       withImages = false
       droppedImages = true
-      found = resolve(task, family, false)
+      found = resolve(task, family, LanguageModelNeeds(controlHasImages: controlHasImages, needsImages: false))
     }
     let choice: Choice
     switch found {
