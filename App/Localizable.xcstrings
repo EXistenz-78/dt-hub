@@ -7667,6 +7667,57 @@
           }
         }
       }
+    },
+    "header.incremental.help": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Incremental: each result becomes the start image for the next RUN"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Incrementale: ogni risultato diventa l’immagine di partenza per la RUN successiva"
+          }
+        }
+      }
+    },
+    "header.incremental.on": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Attivo"
+          }
+        }
+      }
+    },
+    "header.incremental.off": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Off"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spento"
+          }
+        }
+      }
     }
   },
   "version": "1.0"
