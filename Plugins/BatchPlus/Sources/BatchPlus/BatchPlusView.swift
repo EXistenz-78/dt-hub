@@ -7,6 +7,8 @@ struct BatchPlusView: View {
   @ObservedObject var state: BatchPlusState
   let send: () -> Void
   private var italian: Bool { L.systemIsItalian }
+  /// The width of the preview card: fixed, so it neither starts narrow nor grows with its content.
+  private static let sideWidth: CGFloat = 320
 
   var body: some View {
     VStack(alignment: .leading, spacing: DS.groupGap) {
@@ -22,7 +24,7 @@ struct BatchPlusView: View {
           if state.session.mode == .parameters { parametersPanel } else { promptsPanel }
         }
         .frame(maxWidth: .infinity)
-        sendPanel.frame(width: 300)
+        sendPanel
       }
     }
     .padding(DS.groupGap)
@@ -38,11 +40,11 @@ struct BatchPlusView: View {
           readOnly(L.text(.model), state.modelName ?? "—")
           readOnly(L.text(.size), size(p))
           incrementRow(.steps, L.text(.steps), p.steps.map(String.init))
-          incrementRow(.guidanceScale, L.text(.guidance), p.guidanceScale.map(format))
-          readOnly(L.text(.sampler), p.sampler.map(SamplerNames.name) ?? "—")
-          shiftRow(p)
+          incrementRow(.guidanceScale, L.text(.guidanceRow), p.guidanceScale.map(format))
           readOnly(L.text(.cfgZero), p.cfgZeroStar.map { $0 ? L.text(.yes) : L.text(.no) } ?? "—")
           incrementRow(.cfgZeroInitSteps, L.text(.cfgZeroSteps), p.cfgZeroInitSteps.map(String.init))
+          readOnly(L.text(.sampler), p.sampler.map(SamplerNames.name) ?? "—")
+          shiftRow(p)
           incrementRow(.seed, L.text(.seed), p.seed.map { String($0) }, suffix: p.randomSeed == true ? L.text(.random) : nil)
           readOnly(L.text(.batch), "\(p.batchSize ?? 1) × \(p.batchCount ?? 1)")
           ForEach(p.loras ?? [], id: \.file) { lora in
@@ -53,7 +55,9 @@ struct BatchPlusView: View {
           advanced(p)
         }
         .padding(DS.panelPadding)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
       }
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
       .dsPanel()
     } else {
       Text(L.text(state.contextArrived ? .needsNewApp : .noParameters))
@@ -150,6 +154,7 @@ struct BatchPlusView: View {
       Text(L.format(.promptsCount, state.promptItems.count)).font(.caption).foregroundStyle(.secondary)
     }
     .padding(DS.panelPadding)
+    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     .dsPanel()
   }
 
@@ -193,6 +198,9 @@ struct BatchPlusView: View {
       Spacer(minLength: 0)
     }
     .padding(DS.panelPadding)
+    // The card is always as wide as its column, whatever the preview holds.
+    .frame(width: Self.sideWidth, alignment: .topLeading)
+    .frame(maxHeight: .infinity, alignment: .top)
     .dsPanel()
   }
 
