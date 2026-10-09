@@ -93,6 +93,111 @@ public struct DTHubContext: Decodable, Sendable {
   public var moodboard: [String]?
   /// The language models of the app's models folder; nil when the app does not say.
   public var languageModels: [DTHubLanguageModel]?
+  /// The Generation tab's parameters as they are now; nil when the app does not say.
+  public var parameters: DTHubParameters?
+
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    model = try container.decodeIfPresent(String.self, forKey: .model)
+    family = try container.decodeIfPresent(String.self, forKey: .family)
+    tempFolder = try container.decode(String.self, forKey: .tempFolder)
+    startImage = try container.decodeIfPresent(String.self, forKey: .startImage)
+    moodboard = try container.decodeIfPresent([String].self, forKey: .moodboard)
+    languageModels = try container.decodeIfPresent([DTHubLanguageModel].self, forKey: .languageModels)
+    // Whatever is wrong in `parameters` must not cost the plug-in the rest of its context.
+    parameters = (try? container.decodeIfPresent(DTHubParameters.self, forKey: .parameters)) ?? nil
+  }
+
+  private enum CodingKeys: String, CodingKey {
+    case model, family, tempFolder, startImage, moodboard, languageModels, parameters
+  }
+}
+
+/// A LoRA of the Generation tab (an entry of `DTHubParameters.loras`).
+public struct DTHubLoRA: Decodable, Equatable, Sendable {
+  public var file: String
+  public var weight: Double
+  /// 0 = all, 1 = base, 2 = refiner.
+  public var mode: Int
+  public var trigger: String
+
+  public init(file: String, weight: Double = 1, mode: Int = 0, trigger: String = "") {
+    self.file = file
+    self.weight = weight
+    self.mode = mode
+    self.trigger = trigger
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    file = try container.decode(String.self, forKey: .file)
+    weight = (try? container.decodeIfPresent(Double.self, forKey: .weight)) ?? 1
+    mode = (try? container.decodeIfPresent(Int.self, forKey: .mode)) ?? 0
+    trigger = (try? container.decodeIfPresent(String.self, forKey: .trigger)) ?? ""
+  }
+
+  private enum CodingKeys: String, CodingKey { case file, weight, mode, trigger }
+}
+
+/// A value of `advanced` or `extra`: shown, not changed.
+public enum DTHubValue: Decodable, Equatable, Sendable {
+  case bool(Bool)
+  case number(Double)
+  case string(String)
+  /// An array, an object or null.
+  case other
+
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.singleValueContainer()
+    if let flag = try? container.decode(Bool.self) {
+      self = .bool(flag)
+    } else if let number = try? container.decode(Double.self) {
+      self = .number(number)
+    } else if let text = try? container.decode(String.self) {
+      self = .string(text)
+    } else {
+      self = .other
+    }
+  }
+}
+
+/// The Generation tab's parameters as the app sends them in `context`. Every field is optional and read with
+/// tolerance: a missing field, or one of another type, is nil; nothing here ever throws away the rest of the context.
+public struct DTHubParameters: Decodable, Equatable, Sendable {
+  public var width, height, steps, cfgZeroInitSteps, sampler, batchSize, batchCount: Int?
+  public var guidanceScale, shift: Double?
+  public var cfgZeroStar, resolutionDependentShift, randomSeed: Bool?
+  public var seed: UInt32?
+  public var loras: [DTHubLoRA]?
+  /// The advanced values, by name: to show, not to change.
+  public var advanced: [String: DTHubValue]?
+  public var extra: [String: DTHubValue]?
+
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    func value<T: Decodable>(_ key: CodingKeys) -> T? { (try? container.decodeIfPresent(T.self, forKey: key)) ?? nil }
+    width = value(.width)
+    height = value(.height)
+    steps = value(.steps)
+    cfgZeroInitSteps = value(.cfgZeroInitSteps)
+    sampler = value(.sampler)
+    batchSize = value(.batchSize)
+    batchCount = value(.batchCount)
+    guidanceScale = value(.guidanceScale)
+    shift = value(.shift)
+    cfgZeroStar = value(.cfgZeroStar)
+    resolutionDependentShift = value(.resolutionDependentShift)
+    randomSeed = value(.randomSeed)
+    seed = value(.seed)
+    loras = value(.loras)
+    advanced = value(.advanced)
+    extra = value(.extra)
+  }
+
+  private enum CodingKeys: String, CodingKey {
+    case width, height, steps, cfgZeroInitSteps, sampler, batchSize, batchCount, guidanceScale, shift, cfgZeroStar
+    case resolutionDependentShift, randomSeed, seed, loras, advanced, extra
+  }
 }
 
 /// How a question to the language model is asked. Every field is optional: nil keeps the app's default.
