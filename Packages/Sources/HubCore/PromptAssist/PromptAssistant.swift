@@ -13,9 +13,24 @@ public final class PromptAssistant {
     case model(LanguageModelError)
   }
 
-  public typealias Respond = @MainActor (String, [URL], LanguageModelOptions) async throws(LanguageModelError) ->
-    String
+  /// The LLM chosen for an operation and what its folder says about it.
+  public struct Choice: Sendable {
+    public let model: LanguageModelDescriptor
+    public let profile: LanguageModelProfile
 
+    public init(model: LanguageModelDescriptor, profile: LanguageModelProfile) {
+      self.model = model
+      self.profile = profile
+    }
+  }
+
+  /// Picks the LLM for a task on a family (nil = unknown).
+  public typealias Resolve = @MainActor (LanguageModelTask, String?) -> Result<Choice, LanguageModelError>
+  public typealias Respond = @MainActor (String, [URL], LanguageModelOptions, LanguageModelDescriptor) async throws(
+    LanguageModelError
+  ) -> String
+
+  @ObservationIgnored private let resolve: Resolve
   @ObservationIgnored private let respond: Respond
   /// What the fields held before the last successful operation, and what that operation wrote.
   private var undo: (before: PromptPair, written: PromptPair)?
@@ -25,7 +40,8 @@ public final class PromptAssistant {
   /// Of the last operation; every new operation clears it.
   public private(set) var failure: Failure?
 
-  public init(respond: @escaping Respond) {
+  public init(resolve: @escaping Resolve, respond: @escaping Respond) {
+    self.resolve = resolve
     self.respond = respond
   }
 
@@ -35,7 +51,11 @@ public final class PromptAssistant {
       failure = .emptyPrompt
       return nil
     }
-    return await run(.enhance, PromptBrief.enhance(current, family: family), current: current, family: family)
+    return await run(.enhance, current: current, family: family) { choice in
+      choice.profile.systemPrompt(for: .enhance).map {
+        PromptBrief.enhance(current, ownSystem: $0, generation: choice.profile.generation)
+      } ?? PromptBrief.enhance(current, family: family)
+    }
   }
 
   public func describe(imageAt url: URL?, current: PromptPair, family: String?) async -> PromptPair? {
@@ -44,7 +64,11 @@ public final class PromptAssistant {
       failure = .noImage
       return nil
     }
-    return await run(.describe, PromptBrief.describe(imageAt: url, family: family), current: current, family: family)
+    return await run(.describe, current: current, family: family) { choice in
+      choice.profile.systemPrompt(for: .describe).map {
+        PromptBrief.describe(imageAt: url, ownSystem: $0, generation: choice.profile.generation)
+      } ?? PromptBrief.describe(imageAt: url, family: family)
+    }
   }
 
   /// The text from before the last operation, only while the fields still hold what it wrote.
@@ -57,13 +81,23 @@ public final class PromptAssistant {
     undo = nil
   }
 
-  private func run(_ kind: Kind, _ request: PromptRequest, current: PromptPair, family: String?) async -> PromptPair? {
+  private func run(
+    _ kind: Kind, current: PromptPair, family: String?, request: (Choice) -> PromptRequest
+  ) async -> PromptPair? {
     working = kind
     failure = nil
     defer { working = nil }
+    let choice: Choice
+    switch resolve(kind == .enhance ? .enhance : .describe, family) {
+    case .success(let chosen): choice = chosen
+    case .failure(let error):
+      failure = .model(error)
+      return nil
+    }
+    let request = request(choice)
     let raw: String
     do {
-      raw = try await respond(request.prompt, request.images, request.options)
+      raw = try await respond(request.prompt, request.images, request.options, choice.model)
     } catch {
       failure = .model(error)
       return nil

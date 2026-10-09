@@ -39,12 +39,15 @@ final class PromptRecorder {
 struct PromptAssistantTests {
   let recorder = PromptRecorder()
   let assistant: PromptAssistant
+  static let fakeModel = LanguageModelDescriptor(path: "/m/fake", name: "fake", sizeBytes: 1, supportsImages: true)
 
   init() {
     let recorder = recorder
-    assistant = PromptAssistant(respond: { prompt, images, options throws(LanguageModelError) in
-      try await recorder.respond(prompt, images, options)
-    })
+    assistant = PromptAssistant(
+      resolve: { _, _ in .success(.init(model: Self.fakeModel, profile: LanguageModelProfile())) },
+      respond: { prompt, images, options, _ throws(LanguageModelError) in
+        try await recorder.respond(prompt, images, options)
+      })
   }
 
   @Test func enhanceWritesTheAnswerAndKeepsTheNegativeWhenTheFamilyHasNone() async {
@@ -171,5 +174,61 @@ struct PromptAssistantTests {
     recorder.result = .failure(.generationFailed("boom"))
     _ = await assistant.enhance(PromptPair(prompt: "A cat", negative: ""), family: "flux2")
     #expect(assistant.undoOffer(current: PromptPair(prompt: "A cat", negative: "")) == PromptPair(prompt: "gatto", negative: ""))
+  }
+}
+
+@MainActor
+struct PromptAssistantChoiceTests {
+  let model = LanguageModelDescriptor(path: "/m/pe", name: "pe", sizeBytes: 1, supportsImages: true)
+
+  final class Log {
+    var asked: [(LanguageModelTask, String?)] = []
+    var calls: [(String, LanguageModelOptions, String)] = []
+  }
+
+  func assistant(_ profile: LanguageModelProfile, resolveFails: LanguageModelError? = nil, log: Log) -> PromptAssistant {
+    let model = model
+    return PromptAssistant(
+      resolve: { task, family in
+        log.asked.append((task, family))
+        if let resolveFails { return .failure(resolveFails) }
+        return .success(.init(model: model, profile: profile))
+      },
+      respond: { prompt, _, options, chosen throws(LanguageModelError) in
+        log.calls.append((prompt, options, chosen.name))
+        return "A cat."
+      })
+  }
+
+  @Test func noOwnSystemPromptMeansTheUsualRequest() async {
+    let log = Log()
+    let a = assistant(LanguageModelProfile(), log: log)
+    let current = PromptPair(prompt: "gatto", negative: "")
+    _ = await a.enhance(current, family: "flux2")
+    #expect(log.calls.first?.0 == PromptBrief.enhance(current, family: "flux2").prompt)
+    #expect(log.calls.first?.1 == PromptBrief.enhance(current, family: "flux2").options)
+    #expect(log.calls.first?.2 == "pe")
+    #expect(log.asked.first?.0 == .enhance && log.asked.first?.1 == "flux2")
+  }
+
+  @Test func anOwnSystemPromptSendsTheTextAsItIs() async {
+    let log = Log()
+    let profile = LanguageModelProfile(
+      generation: .init(temperature: 0.7), enhancePrompt: "PE rules", describePrompt: "PE rules")
+    let a = assistant(profile, log: log)
+    let current = PromptPair(prompt: "gatto", negative: "")
+    _ = await a.enhance(current, family: "qwen_image_2.1")
+    #expect(log.calls.first?.0 == "gatto")
+    #expect(log.calls.first?.1 == PromptBrief.enhance(current, ownSystem: "PE rules", generation: profile.generation).options)
+    #expect(log.calls.first?.1.thinking == true)
+  }
+
+  @Test func aFailedChoiceNeverCallsTheModel() async {
+    let log = Log()
+    let a = assistant(LanguageModelProfile(), resolveFails: .noModelSelected, log: log)
+    let result = await a.enhance(PromptPair(prompt: "x", negative: ""), family: "flux2")
+    #expect(result == nil)
+    #expect(a.failure == .model(.noModelSelected))
+    #expect(log.calls.isEmpty)
   }
 }
