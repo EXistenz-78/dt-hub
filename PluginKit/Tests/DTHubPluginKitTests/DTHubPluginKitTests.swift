@@ -71,4 +71,11 @@ struct DTHubProjectTests {
     let json = #"{"type":"project","name":"A","folder":"/f"}"#
     #expect(try JSONDecoder().decode(DTHubProject.self, from: Data(json.utf8)).adoptLegacy == false)
   }
+
+  @Test func aLanguageModelCarriesItsFamilyAndUseWhenTheAppSaysSo() throws {
+    let json = #"{"type":"context","tempFolder":"/t","languageModels":[{"name":"pe","path":"/m/pe","supportsImages":false,"family":"qwen_image_2.1","use":"enhance"},{"name":"old","path":"/m/old","supportsImages":true}]}"#
+    let context = try JSONDecoder().decode(DTHubContext.self, from: Data(json.utf8))
+    #expect(context.languageModels?[0].family == "qwen_image_2.1" && context.languageModels?[0].use == "enhance")
+    #expect(context.languageModels?[1].family == nil && context.languageModels?[1].use == nil)
+  }
 }
