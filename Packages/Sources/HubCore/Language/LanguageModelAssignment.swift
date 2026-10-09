@@ -30,13 +30,17 @@ public enum LanguageModelFamily: Hashable, Codable, Sendable {
   }
 }
 
-/// What an assigned LLM is used for.
+/// What an assigned LLM is used for. `i2i` and `t2i` act like `both`, but only when the Control tab has pictures
+/// (I2I) or is empty (T2I); Generate always starts from a picture, so it counts as I2I.
 public enum LanguageModelUse: String, Codable, Sendable, CaseIterable {
-  case enhance, describe, both, pluginsOnly
+  case enhance, describe, both, pluginsOnly, i2i, t2i
 
-  public func covers(_ task: LanguageModelTask) -> Bool {
+  public func covers(_ task: LanguageModelTask, controlHasImages: Bool) -> Bool {
     switch (self, task) {
     case (.both, _), (.enhance, .enhance), (.describe, .describe): true
+    case (.i2i, .describe): true
+    case (.i2i, .enhance): controlHasImages
+    case (.t2i, .enhance): !controlHasImages
     default: false
     }
   }
@@ -66,6 +70,8 @@ public struct LanguageModelAssignment: Equatable, Codable, Sendable {
       case .describe: "describe"
       case .both: "both"
       case .pluginsOnly: "plugins"
+      case .i2i: "i2i"
+      case .t2i: "t2i"
       }
     return (familyText, useText)
   }
