@@ -100,21 +100,32 @@ struct LanguagePreferencesView: View {
             .accessibilityLabel(String(localized: "prefs.llm.shadowed"))
         }
       }
-      HStack(spacing: DS.controlGap) {
-        Picker("prefs.llm.family", selection: binding.family) {
-          Text("prefs.llm.family.none").tag(LanguageModelFamily.none)
-          Divider()
-          ForEach(families, id: \.key) { Text(verbatim: $0.label).tag(LanguageModelFamily.family($0.key)) }
-          Divider()
-          Text("prefs.llm.family.all").tag(LanguageModelFamily.allOthers)
+      HStack(alignment: .top, spacing: 0) {
+        VStack(alignment: .leading, spacing: 2) {
+          Text("prefs.llm.family").textCase(.uppercase).font(.caption2).foregroundStyle(.secondary)
+          Picker("prefs.llm.family", selection: binding.family) {
+            Text("prefs.llm.family.none").tag(LanguageModelFamily.none)
+            Divider()
+            ForEach(families, id: \.key) { Text(verbatim: $0.label).tag(LanguageModelFamily.family($0.key)) }
+            Divider()
+            Text("prefs.llm.family.all").tag(LanguageModelFamily.allOthers)
+          }
+          .labelsHidden()
+          .fixedSize()
         }
-        Picker("prefs.llm.use", selection: binding.use) {
-          Text("prefs.llm.use.enhance").tag(LanguageModelUse.enhance)
-          Text("prefs.llm.use.describe").tag(LanguageModelUse.describe)
-          Text("prefs.llm.use.both").tag(LanguageModelUse.both)
-          Text("prefs.llm.use.plugins").tag(LanguageModelUse.pluginsOnly)
+        Spacer(minLength: 32)
+        VStack(alignment: .trailing, spacing: 2) {
+          Text("prefs.llm.use").textCase(.uppercase).font(.caption2).foregroundStyle(.secondary)
+          Picker("prefs.llm.use", selection: binding.use) {
+            Text("prefs.llm.use.enhance").tag(LanguageModelUse.enhance)
+            Text("prefs.llm.use.describe").tag(LanguageModelUse.describe)
+            Text("prefs.llm.use.both").tag(LanguageModelUse.both)
+            Text("prefs.llm.use.plugins").tag(LanguageModelUse.pluginsOnly)
+          }
+          .labelsHidden()
+          .fixedSize()
+          .disabled(binding.wrappedValue.family == .none)
         }
-        .disabled(binding.wrappedValue.family == .none)
       }
     }
     .padding(.vertical, 2)
