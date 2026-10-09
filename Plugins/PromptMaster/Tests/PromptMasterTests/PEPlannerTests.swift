@@ -12,6 +12,13 @@ struct PEPlannerTests {
     return try! JSONDecoder().decode(DTHubLanguageModel.self, from: Data(json.utf8))
   }
 
+  private func assigned(_ name: String, family: String?, use: String?) -> DTHubLanguageModel {
+    var json = #"{"name": "\#(name)", "path": "/models/\#(name)", "supportsImages": false"#
+    if let family { json += #", "family": "\#(family)""# }
+    if let use { json += #", "use": "\#(use)""# }
+    return try! JSONDecoder().decode(DTHubLanguageModel.self, from: Data((json + "}").utf8))
+  }
+
   private let t2i = "mlx/Qwen-Image-2.1-PE-T2I-MLX-4bit"
   private let i2i = "mlx/Qwen-Image-2.1-PE-I2I-MLX-4bit"
 
@@ -84,5 +91,27 @@ struct PEPlannerTests {
     try Data(count: 50).write(to: folder.appendingPathComponent("config.json"))
     #expect(PEPlanner.folderSize(folder.path) == 150)
     #expect(PEPlanner.folderSize("/nowhere/\(UUID().uuidString)") == 0)
+  }
+
+  @Test func anAssignedEnhancerIsUsedWhateverItsFolderIsCalled() throws {
+    let mine = assigned("my-enhancer", family: "qwen_image_2.1", use: "enhance")
+    let chosen = try #require(enhancer(plan(models: [mine])))
+    #expect(chosen.model == "my-enhancer" && chosen.system == "T2I SYSTEM")
+  }
+
+  @Test func anAssignedModelWithoutASystemPromptFallsBackToTheNameMatch() throws {
+    let mine = assigned("my-enhancer", family: "qwen_image_2.1", use: "both")
+    let files = ["/models/\(t2i)/system_prompt.txt": "BY NAME"]
+    let result = PEPlanner.plan(
+      family: "qwen_image_2.1", languageModels: [mine, model(t2i)], folderSize: { _ in 0 },
+      readFile: { files[$0.path] })
+    #expect(enhancer(result)?.model == t2i)
+  }
+
+  @Test func assignmentsForOtherUsesOrFamiliesDoNotCount() {
+    for (family, use) in [("qwen_image_2.1", "plugins"), ("qwen_image_2.1", "describe"), ("flux2", "enhance"), ("*", "both")] {
+      let result = plan(models: [assigned("my-enhancer", family: family, use: use)])
+      #expect(result == .generic(reason: .modelMissing))
+    }
   }
 }

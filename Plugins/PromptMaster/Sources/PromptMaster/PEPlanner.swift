@@ -44,17 +44,30 @@ enum PEPlanner {
     family: String?, languageModels: [DTHubLanguageModel], folderSize: (String) -> Int64, readFile: (URL) -> String?
   ) -> PEPlan {
     guard family == Self.family else { return .generic(reason: nil) }
+    // First the LLM the user assigned to this family for Enhance (Settings › LLM), whatever its folder is called,
+    // provided its folder carries a system prompt.
+    let assigned = languageModels.filter { $0.family == Self.family && ["enhance", "both"].contains($0.use ?? "") }
+    let assignedWithSystem = assigned.compactMap { model -> (DTHubLanguageModel, String)? in
+      systemPrompt(in: model.path, readFile: readFile).map { (model, $0) }
+    }
+    if let best = assignedWithSystem.max(by: { folderSize($0.0.path) < folderSize($1.0.path) }) {
+      return .enhancer(Enhancer(model: best.0.name, system: best.1, options: options))
+    }
     let candidates = languageModels.filter { normalized($0.name).contains(marker) }
     guard let model = candidates.max(by: { folderSize($0.path) < folderSize($1.path) }) else {
       return .generic(reason: .modelMissing)
     }
-    let folder = URL(fileURLWithPath: model.path, isDirectory: true)
-    let system = systemFileNames
+    let system = systemPrompt(in: model.path, readFile: readFile)
+    guard let system else { return .generic(reason: .systemPromptMissing(model: model.name)) }
+    return .enhancer(Enhancer(model: model.name, system: system, options: options))
+  }
+
+  private static func systemPrompt(in path: String, readFile: (URL) -> String?) -> String? {
+    let folder = URL(fileURLWithPath: path, isDirectory: true)
+    return systemFileNames
       .compactMap { readFile(folder.appendingPathComponent($0)) }
       .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
       .first { !$0.isEmpty }
-    guard let system else { return .generic(reason: .systemPromptMissing(model: model.name)) }
-    return .enhancer(Enhancer(model: model.name, system: system, options: options))
   }
 
   /// The size of the files in a folder, for choosing between two enhancers.

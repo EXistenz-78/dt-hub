@@ -16,7 +16,7 @@ Generation tab (and in the negative prompt, for the families that read one).
 - **What the LLM receives:** the description, then the terms in English **with their category**, one line per category
   (`Light Source: Starlight`, `Color Palette: Jewel tones`). The category tells the model how to use the term (a light, a palette,
   a genre) and keeps "butterfly lighting" from turning into butterflies.
-- **Qwen Image 2.1:** if the models folder holds the official T2I prompt enhancer (`…PE-T2I…`, with its `system_prompt.txt` next
+- **Qwen Image 2.1:** the enhancer is the LLM assigned to that family (use *Enhance prompt* or *Both*) in Settings › LLM, as long as its folder has a `system_prompt.txt`; its folder name is only a fallback. If the models folder holds the official T2I prompt enhancer (`…PE-T2I…`, with its `system_prompt.txt` next
   to the weights) the plug-in uses it instead of the general LLM, with a prose request (the description and a `Look: …` line).
   Under the prompt appears the format it suggests, with an **Apply** button that sets the width and height of the Generation tab
   to that ratio, keeping the same area in pixels. Without the enhancer, the chosen model is used with the fallback master prompt
