@@ -6,7 +6,7 @@ import Testing
 @Suite("Batch plus builder")
 struct BatchPlusBuilderTests {
   let base = BatchBase(
-    steps: 10, guidanceScale: 3, shift: 3, cfgZeroInitSteps: 0, seed: 1234,
+    steps: 10, guidanceScale: 3, shift: 3, cfgZeroInitSteps: 0, seed: 1234, sampler: 17,
     loras: [BatchBase.LoRA(file: "x.ckpt", weight: 0.4), BatchBase.LoRA(file: "y.ckpt", weight: 1)])
 
   func steps(_ pipeline: [String: Any]) -> [[String: Any]] { pipeline["steps"] as? [[String: Any]] ?? [] }
@@ -93,6 +93,27 @@ struct BatchPlusBuilderTests {
     let batch = ParameterBatch(increments: [.steps: 10], loraIncrements: ["x.ckpt": 0.2], count: 2)
     let rows = BatchPlusBuilder.preview(batch, from: base)
     #expect(rows == [["steps": 10, "lora:x.ckpt": 0.4], ["steps": 20, "lora:x.ckpt": 0.6]])
+  }
+
+  @Test func eachPassTakesItsSamplerAndTheLaterOnesKeepTheTabs() {
+    let batch = ParameterBatch(samplers: [5, 2], count: 3, fixedSeed: false)
+    let pipeline = BatchPlusBuilder.pipeline(batch, from: base, italian: false)
+    let list = steps(pipeline)
+    #expect(list.map { fields($0)["sampler"] as? Int } == [5, 2, 17])
+    #expect(list.map { $0["title"] as? String } == ["Sampler UniPC", "Sampler DDIM", "Sampler UniPC Trailing"])
+    #expect(pipeline["name"] as? String == "Batch plus · Sampler")
+  }
+
+  @Test func theSamplerVariesAlongsideTheIncrements() {
+    let batch = ParameterBatch(increments: [.steps: 10], samplers: [5, 2], count: 2, fixedSeed: false)
+    let list = steps(BatchPlusBuilder.pipeline(batch, from: base, italian: false))
+    #expect(fields(list[1])["steps"] as? Int == 20 && fields(list[1])["sampler"] as? Int == 2)
+    #expect(list[1]["title"] as? String == "Steps 20 · Sampler DDIM")
+  }
+
+  @Test func withoutASamplerChosenNoPassCarriesOne() {
+    let batch = ParameterBatch(increments: [.steps: 10], count: 2, fixedSeed: false)
+    #expect(steps(BatchPlusBuilder.pipeline(batch, from: base, italian: false)).allSatisfy { fields($0)["sampler"] == nil })
   }
 
   @Test func bothLanguagesHaveEveryWord() {

@@ -78,4 +78,20 @@ struct BatchPlusStateTests {
     #expect(BatchPlusState.describe(["conflicts": 2], italian: false) == "Sent. 2 conflict(s) waiting in the app.")
     #expect(BatchPlusState.describe(["type": "error", "text": "boom"], italian: false) == "boom")
   }
+
+  @Test func aSamplerAloneIsAReasonToSend() {
+    let s = state()
+    s.apply(context: withParameters)
+    #expect(s.blocker(italian: false) == L.text(.noIncrements, italian: false))
+    s.session.samplers = [5]
+    #expect(s.blocker(italian: false) == nil)
+  }
+
+  @Test func reducingThePassesTrimsTheSamplers() {
+    let s = state()
+    s.session.count = 5
+    s.session.samplers = [1, 2, 3, 4, 5]
+    s.session.count = 3
+    #expect(s.session.samplers == [1, 2, 3])
+  }
 }

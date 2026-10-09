@@ -88,4 +88,25 @@ struct BatchPlusStoreTests {
     #expect(manual.invalid == ["seed"])
     #expect(s.batch(shiftIsAuto: true).batch.increments == [.steps: 10])
   }
+
+  @Test func chosenSamplersAreSavedAndAnOldStateWithoutThemStillLoads() throws {
+    let s = store(folder())
+    var session = BatchPlusSession.initial()
+    session.samplers = [5, 2]
+    s.save(session)
+    #expect(s.load()?.samplers == [5, 2])
+    let old = Data(#"{"mode":"parameters","increments":{},"count":4,"fixedSeed":true,"promptText":""}"#.utf8)
+    let loaded = try JSONDecoder().decode(BatchPlusSession.self, from: old)
+    #expect(loaded.samplers.isEmpty && loaded.count == 4)
+  }
+
+  @Test func neverMoreSamplersThanPasses() {
+    var session = BatchPlusSession.initial()
+    session.count = 4
+    session.samplers = [1, 2, 3, 4]
+    session.count = 2
+    session.trimSamplers()
+    #expect(session.samplers == [1, 2])
+    #expect(session.batch(shiftIsAuto: false).batch.samplers == [1, 2])
+  }
 }

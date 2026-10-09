@@ -12,6 +12,7 @@ struct BatchBase: Equatable {
   var shift: Double?
   var cfgZeroInitSteps: Int?
   var seed: UInt32?
+  var sampler: Int?
   var loras: [LoRA] = []
 
   func value(of key: BatchPlusKey) -> Double? {
@@ -30,6 +31,8 @@ struct ParameterBatch: Equatable {
   var increments: [BatchPlusKey: Double] = [:]
   /// By LoRA file.
   var loraIncrements: [String: Double] = [:]
+  /// The sampler of each pass from the first (the numbers Draw Things uses); passes beyond the list keep the tab's.
+  var samplers: [Int] = []
   var count = 3
   var fixedSeed = true
 }
@@ -37,6 +40,8 @@ struct ParameterBatch: Equatable {
 /// The `pipeline` the plug-in sends to DT Hub (`contribute`). Pure, so it can be tested. Never a preset, never a size.
 enum BatchPlusBuilder {
   static let prefix = "Batch plus"
+  /// The column of the samplers in `varying` and in the preview rows (the value is the sampler's number).
+  static let samplerID = "sampler"
 
   /// The label of each varying value, for the pipeline's name and the passes' titles.
   static func label(_ key: BatchPlusKey, italian: Bool) -> String {
@@ -53,6 +58,7 @@ enum BatchPlusBuilder {
   /// Identifiers: the key's raw value, or `lora:<file>`.
   static func varying(_ batch: ParameterBatch, base: BatchBase) -> [String] {
     var result = BatchPlusKey.allCases.filter { batch.increments[$0] != nil }.map(\.rawValue)
+    if !batch.samplers.isEmpty { result.append(samplerID) }
     result += base.loras.filter { batch.loraIncrements[$0.file] != nil }.map { "lora:\($0.file)" }
     return result
   }
@@ -60,6 +66,7 @@ enum BatchPlusBuilder {
   private static func stem(_ file: String) -> String { (file as NSString).deletingPathExtension }
 
   static func columnLabel(_ id: String, italian: Bool) -> String {
+    if id == samplerID { return L.text(.sampler, italian: italian) }
     if id.hasPrefix("lora:") { return stem(String(id.dropFirst(5))) }
     return BatchPlusKey(rawValue: id).map { label($0, italian: italian) } ?? id
   }
@@ -70,7 +77,14 @@ enum BatchPlusBuilder {
     return (0..<max(batch.count, 0)).map { k in
       var row: [String: Double] = [:]
       for id in columns {
-        if id.hasPrefix("lora:") {
+        if id == samplerID {
+          // Pass k takes the k-th chosen sampler; later passes keep the tab's.
+          if k < batch.samplers.count {
+            row[id] = Double(batch.samplers[k])
+          } else if let current = base.sampler {
+            row[id] = Double(current)
+          }
+        } else if id.hasPrefix("lora:") {
           let file = String(id.dropFirst(5))
           let start = base.loras.first { $0.file == file }?.weight ?? 0
           row[id] = BatchPlusMath.values(base: start, increment: batch.loraIncrements[file] ?? 0, count: k + 1)[k]
@@ -99,8 +113,10 @@ enum BatchPlusBuilder {
       var parts: [String] = []
       for id in columns {
         guard let value = row[id] else { continue }
-        parts.append("\(columnLabel(id, italian: italian)) \(number(value))")
-        if id.hasPrefix("lora:") {
+        parts.append("\(columnLabel(id, italian: italian)) \(id == samplerID ? SamplerNames.name(Int(value)) : number(value))")
+        if id == samplerID {
+          fields["sampler"] = Int(value)
+        } else if id.hasPrefix("lora:") {
           loras.append(["file": String(id.dropFirst(5)), "weight": value])
         } else if let key = BatchPlusKey(rawValue: id) {
           switch key {
