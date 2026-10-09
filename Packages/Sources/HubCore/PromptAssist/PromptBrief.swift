@@ -52,6 +52,29 @@ public enum PromptBrief {
       images: [url], options: options(system: system(family: family)))
   }
 
+  /// Enhance with an LLM that has its own system prompt: the user's text goes as it is (the model was made for
+  /// exactly that), with the model's own sampling values and room to think.
+  public static func enhance(
+    _ current: PromptPair, ownSystem: String, generation: LanguageModelProfile.Generation?
+  ) -> PromptRequest {
+    PromptRequest(prompt: current.prompt, images: [], options: ownOptions(ownSystem, generation))
+  }
+
+  /// Generate with an LLM that has its own system prompt.
+  public static func describe(
+    imageAt url: URL, ownSystem: String, generation: LanguageModelProfile.Generation?
+  ) -> PromptRequest {
+    PromptRequest(
+      prompt: "Describe this image as a prompt for an image-generation model.", images: [url],
+      options: ownOptions(ownSystem, generation))
+  }
+
+  private static func ownOptions(_ system: String, _ generation: LanguageModelProfile.Generation?) -> LanguageModelOptions {
+    LanguageModelOptions(
+      system: system, temperature: generation?.temperature, topP: generation?.topP, topK: generation?.topK,
+      maxTokens: 16384, thinking: true)
+  }
+
   /// The prompt (and negative prompt) in an answer. Same logic as Prompt Master's `AnswerParser`, copied because the
   /// plug-in is a separate package. Reasoning blocks (`<think>…</think>`) and code fences go; a JSON object gives its
   /// `prompt` (or `rewritten_prompt`, `positive_prompt`) and `negative` (or `negative_prompt`); anything else, a
