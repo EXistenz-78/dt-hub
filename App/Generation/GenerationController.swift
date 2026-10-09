@@ -36,6 +36,11 @@ final class GenerationController {
       scheduleSessionSave()
     }
   }
+  /// Incremental mode: the result of a RUN becomes the start image of the next one. Global, remembered.
+  var incremental = UserDefaults.standard.bool(forKey: GenerationController.incrementalKey) {
+    didSet { UserDefaults.standard.set(incremental, forKey: Self.incrementalKey) }
+  }
+  static let incrementalKey = "generation.incremental"
   /// Width ÷ height kept while `lockRatio` is on.
   private(set) var lockedRatio: Double?
   /// The RUN. Its pictures go to the open project's folder and its strip is the project's (`ProjectManager`).
@@ -306,39 +311,51 @@ final class GenerationController {
       await languageModel.prepareForRun()
       await connection.ensureServerForRun()
       if let passes {
-        await runPipeline(passes, presets: loadedPresets, with: connection)
+        let made = await runPipeline(passes, presets: loadedPresets, with: connection)
+        if incremental, let made, !Task.isCancelled { await useAsStart(made) }
         return
       }
       let inputs = await renderInputs(in: connection, parameters: parameters)
       isPreparing = false
       preparation = nil
       guard !Task.isCancelled, let inputs else { return }
+      let before = session.results.first?.id
       start(with: connection, inputs: inputs)
+      guard incremental else { return }
+      await session.waitUntilFinished()
+      if let made = IncrementalRun.output(
+        enabled: incremental, phase: session.phase, stopped: session.lastRunWasStopped, before: before,
+        results: session.results)
+      {
+        await useAsStart(made)
+      }
     }
     return true
   }
 
   /// The passes of a pipeline, one after the other (plug-in design §7, preset design §4). Each pass runs the
   /// tab's fields with its preset on them; the picture a pass makes can be the next one's start image. A failed or stopped
-  /// pass ends the pipeline; the pictures already made stay in the strip.
+  /// pass ends the pipeline; the pictures already made stay in the strip. Returns the picture of the last pass when
+  /// every pass finished (nil when the pipeline ended early or was stopped).
   private func runPipeline(
     _ passes: [PipelineStep], presets loaded: [String: Preset], with connection: DrawThingsConnection
-  ) async {
+  ) async -> GeneratedImage? {
     defer {
       isPreparing = false
       pipelinePass = nil
       preparation = nil
     }
     var previous: CGImage?
+    var lastMade: GeneratedImage?
     for (index, pass) in passes.enumerated() {
-      guard !Task.isCancelled else { return }
+      guard !Task.isCancelled else { return nil }
       pipelinePass = (index + 1, passes.count)
       let used = PipelinePresets.fields(for: pass, over: fields, presets: loaded, catalog: connection.monitor.catalog)
-      guard let base = await renderInputs(in: connection, parameters: used.parameters) else { return }
+      guard let base = await renderInputs(in: connection, parameters: used.parameters) else { return nil }
       guard !Task.isCancelled, let backend = connection.monitor.backend, let model = connection.selection.selectedFile,
         RunAvailability.blocker(
           connection: connection.monitor.status, selectedModel: model, catalog: connection.monitor.catalog) == nil
-      else { return }
+      else { return nil }
       let inputs = PipelineInputs.inputs(
         for: pass, base: base, previousOutput: previous, canvasWidth: used.parameters.width,
         canvasHeight: used.parameters.height, usesMoodboard: FamilyTraits.of(family(in: connection)).usesMoodboard)
@@ -353,10 +370,25 @@ final class GenerationController {
       let before = session.results.first?.id
       session.start(batches, inputs: inputs, backend: backend, monitor: connection.monitor)
       await session.waitUntilFinished()
-      if case .failed = session.phase { return }
+      if case .failed = session.phase { return nil }
       // Stopped from anywhere (the Results window too), or no picture: the pipeline ends here.
-      guard !Task.isCancelled, let made = PipelineInputs.output(after: before, in: session.results) else { return }
+      guard !Task.isCancelled, let made = PipelineInputs.output(after: before, in: session.results) else { return nil }
+      lastMade = session.lastRunWasStopped ? nil : made
       previous = made.fileURL.flatMap { PNGImageStore.image(at: $0, maxPixel: 4096) } ?? made.image
+    }
+    return lastMade
+  }
+
+  /// Makes a result the start image of the Control tab, as "Use as image" in the Results window does.
+  private func useAsStart(_ result: GeneratedImage) async {
+    do throws(ControlError) {
+      if let url = result.fileURL {
+        try await control.setImage(fileURL: url, source: .result)
+      } else {
+        try control.setImage(result.image, name: String(localized: "results.unsaved.name"), source: .result)
+      }
+    } catch {
+      session.fail(with: .generationFailed(ControlText.error(error)))
     }
   }
 
