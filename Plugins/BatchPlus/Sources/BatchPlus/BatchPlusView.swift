@@ -1,0 +1,229 @@
+import DTHubDesign
+import DTHubPluginKit
+import SwiftUI
+
+/// The tab, in the look of the app: the parameters (or the prompts) on the left, the preview and the button on the right.
+struct BatchPlusView: View {
+  @ObservedObject var state: BatchPlusState
+  let send: () -> Void
+  private var italian: Bool { L.systemIsItalian }
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: DS.groupGap) {
+      Picker("", selection: $state.session.mode) {
+        Text(L.text(.modeParameters)).tag(BatchPlusSession.Mode.parameters)
+        Text(L.text(.modePrompts)).tag(BatchPlusSession.Mode.prompts)
+      }
+      .pickerStyle(.segmented)
+      .labelsHidden()
+      .frame(maxWidth: 320)
+      HStack(alignment: .top, spacing: DS.groupGap) {
+        Group {
+          if state.session.mode == .parameters { parametersPanel } else { promptsPanel }
+        }
+        .frame(maxWidth: .infinity)
+        sendPanel.frame(width: 300)
+      }
+    }
+    .padding(DS.groupGap)
+    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+  }
+
+  // MARK: Parameters
+
+  @ViewBuilder private var parametersPanel: some View {
+    if let p = state.parameters {
+      ScrollView {
+        VStack(alignment: .leading, spacing: DS.rowGap) {
+          readOnly(L.text(.model), state.modelName ?? "—")
+          readOnly(L.text(.size), size(p))
+          incrementRow(.steps, L.text(.steps), p.steps.map(String.init))
+          incrementRow(.guidanceScale, L.text(.guidance), p.guidanceScale.map(format))
+          readOnly(L.text(.sampler), p.sampler.map(SamplerNames.name) ?? "—")
+          shiftRow(p)
+          readOnly(L.text(.cfgZero), p.cfgZeroStar.map { $0 ? L.text(.yes) : L.text(.no) } ?? "—")
+          incrementRow(.cfgZeroInitSteps, L.text(.cfgZeroSteps), p.cfgZeroInitSteps.map(String.init))
+          incrementRow(.seed, L.text(.seed), p.seed.map { String($0) }, suffix: p.randomSeed == true ? L.text(.random) : nil)
+          readOnly(L.text(.batch), "\(p.batchSize ?? 1) × \(p.batchCount ?? 1)")
+          ForEach(p.loras ?? [], id: \.file) { lora in
+            incrementField(
+              id: "lora:\(lora.file)", label: "\(L.text(.lora)) · \((lora.file as NSString).deletingPathExtension)",
+              current: format(lora.weight), integer: false)
+          }
+          advanced(p)
+        }
+        .padding(DS.panelPadding)
+      }
+      .dsPanel()
+    } else {
+      Text(L.text(state.contextArrived ? .needsNewApp : .noParameters))
+        .foregroundStyle(.secondary)
+        .padding(DS.panelPadding)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .dsPanel()
+    }
+  }
+
+  private func size(_ p: DTHubParameters) -> String {
+    guard let w = p.width, let h = p.height else { return "—" }
+    return "\(w) × \(h)"
+  }
+
+  private func format(_ value: Double) -> String { String(format: "%g", value) }
+
+  private func readOnly(_ label: String, _ value: String) -> some View {
+    HStack {
+      Text(label).foregroundStyle(.secondary)
+      Spacer()
+      Text(verbatim: value).font(.system(.body, design: .monospaced))
+    }
+  }
+
+  private func incrementRow(_ key: BatchPlusKey, _ label: String, _ current: String?, suffix: String? = nil) -> some View {
+    incrementField(id: key.rawValue, label: label, current: current ?? "—", integer: key.isInteger, suffix: suffix)
+  }
+
+  private func shiftRow(_ p: DTHubParameters) -> some View {
+    VStack(alignment: .leading, spacing: 2) {
+      incrementField(
+        id: BatchPlusKey.shift.rawValue, label: L.text(.shift), current: p.shift.map(format) ?? "—", integer: false,
+        suffix: state.shiftIsAuto ? L.text(.auto) : nil, disabled: state.shiftIsAuto)
+      if state.shiftIsAuto {
+        Text(L.text(.shiftAutoNote)).font(.caption).foregroundStyle(.secondary)
+      }
+    }
+  }
+
+  private func incrementField(
+    id: String, label: String, current: String, integer: Bool, suffix: String? = nil, disabled: Bool = false
+  ) -> some View {
+    let text = Binding(
+      get: { state.session.increments[id] ?? "" }, set: { state.session.increments[id] = $0 })
+    let invalid = state.resolved.invalid.contains(id)
+    return HStack(spacing: DS.controlGap) {
+      Text(label).foregroundStyle(.secondary).lineLimit(1)
+      Spacer(minLength: DS.controlGap)
+      Text(verbatim: current + (suffix.map { " (\($0))" } ?? "")).font(.system(.body, design: .monospaced))
+      TextField(L.text(.increment), text: text)
+        .textFieldStyle(.roundedBorder)
+        .multilineTextAlignment(.trailing)
+        .frame(width: 88)
+        .disabled(disabled)
+        .overlay(RoundedRectangle(cornerRadius: 5).stroke(invalid ? Color.red : Color.clear, lineWidth: 1.5))
+    }
+  }
+
+  @ViewBuilder private func advanced(_ p: DTHubParameters) -> some View {
+    let values = (p.advanced ?? [:]).keys.sorted()
+    if !values.isEmpty {
+      DisclosureGroup(L.text(.advanced)) {
+        VStack(alignment: .leading, spacing: 4) {
+          ForEach(values, id: \.self) { key in
+            readOnly(key, describe(p.advanced?[key]))
+          }
+        }
+        .padding(.top, 4)
+      }
+    }
+  }
+
+  private func describe(_ value: DTHubValue?) -> String {
+    switch value {
+    case .bool(let flag)?: flag ? L.text(.yes) : L.text(.no)
+    case .number(let number)?: format(number)
+    case .string(let text)?: text.isEmpty ? "—" : text
+    default: "…"
+    }
+  }
+
+  // MARK: Prompts
+
+  private var promptsPanel: some View {
+    VStack(alignment: .leading, spacing: DS.rowGap) {
+      TextEditor(text: $state.session.promptText)
+        .font(.body)
+        .scrollContentBackground(.hidden)
+        .padding(6)
+        .background(RoundedRectangle(cornerRadius: DS.boxRadius, style: .continuous).fill(Color.primary.opacity(0.06)))
+        .frame(minHeight: 200)
+      Text(L.text(.promptsHint)).font(.caption).foregroundStyle(.secondary)
+      Text(L.format(.promptsCount, state.promptItems.count)).font(.caption).foregroundStyle(.secondary)
+    }
+    .padding(DS.panelPadding)
+    .dsPanel()
+  }
+
+  // MARK: Preview and send
+
+  private var sendPanel: some View {
+    VStack(alignment: .leading, spacing: DS.rowGap) {
+      DSGroupHeader(title: L.text(.preview), prominent: true)
+      if state.session.mode == .parameters {
+        Stepper(
+          value: $state.session.count, in: BatchPlusSession.passRange
+        ) {
+          Text("\(L.text(.passes)): \(state.session.count)")
+        }
+        if state.session.count >= BatchPlusSession.warnFrom {
+          Text(L.format(.passesWarning, state.session.count)).font(.caption).foregroundStyle(DS.remove)
+        }
+      }
+      Toggle(L.text(.fixedSeed), isOn: $state.session.fixedSeed).toggleStyle(DSCheckboxToggleStyle())
+      previewList
+      HStack(spacing: DS.controlGap) {
+        Button(action: send) {
+          if state.isSending {
+            ProgressView().controlSize(.small)
+          } else {
+            HStack(spacing: DS.pillIconGap) {
+              Image(systemName: "square.stack.3d.up")
+              Text(L.text(.send))
+            }
+          }
+        }
+        .buttonStyle(DSPillButtonStyle(prominent: true))
+        .disabled(state.isSending || !state.active || state.blocker() != nil)
+      }
+      if let blocker = state.blocker() {
+        Text(blocker).font(.caption).foregroundStyle(.secondary)
+      }
+      if !state.status.isEmpty {
+        Text(state.status).font(.caption).foregroundStyle(.secondary)
+      }
+      Spacer(minLength: 0)
+    }
+    .padding(DS.panelPadding)
+    .dsPanel()
+  }
+
+  @ViewBuilder private var previewList: some View {
+    switch state.session.mode {
+    case .parameters:
+      if let base = state.base, state.blocker() == nil {
+        let batch = state.resolved.batch
+        let columns = BatchPlusBuilder.varying(batch, base: base)
+        let rows = BatchPlusBuilder.preview(batch, from: base)
+        VStack(alignment: .leading, spacing: 2) {
+          ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
+            Text(
+              verbatim: "\(index + 1)  "
+                + columns.map { "\(BatchPlusBuilder.columnLabel($0, italian: italian)) \(row[$0].map(shortNumber) ?? "—")" }
+                .joined(separator: " · ")
+            )
+            .font(.system(.caption, design: .monospaced))
+            .lineLimit(1)
+          }
+          Text(L.text(.previewNote)).font(.caption2).foregroundStyle(.secondary).padding(.top, 4)
+        }
+      }
+    case .prompts:
+      VStack(alignment: .leading, spacing: 2) {
+        ForEach(Array(state.promptItems.enumerated()), id: \.offset) { index, item in
+          Text(verbatim: "\(index + 1)  \(item.prefix(80))").font(.caption).lineLimit(1)
+        }
+      }
+    }
+  }
+
+  private func shortNumber(_ value: Double) -> String { String(format: "%g", value) }
+}
