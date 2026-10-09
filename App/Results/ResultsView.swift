@@ -19,6 +19,8 @@ struct ResultsView: View {
   @State private var useError: String?
   /// The chosen picture of a previous launch, read from its file at a larger size than the strip's.
   @State private var restoredFull: (id: GeneratedImage.ID, image: CGImage)?
+  /// The information sidebar (prompt, settings, file); open the first time, then as the user left it.
+  @AppStorage("results.sidebar.open") private var sidebarOpen = true
 
   private var session: GenerationSession { controller.session }
   private var selected: GeneratedImage? {
@@ -26,16 +28,23 @@ struct ResultsView: View {
   }
 
   var body: some View {
-    VStack(spacing: DS.panelPadding) {
-      imageArea
-      statusLine
-      if !session.results.isEmpty {
-        strip
-        if let selected { actions(for: selected) }
+    HStack(spacing: DS.panelPadding) {
+      VStack(spacing: DS.panelPadding) {
+        imageArea
+        statusLine
+        if !session.results.isEmpty {
+          strip
+          if let selected { actions(for: selected) }
+        }
+      }
+      if sidebarOpen {
+        Divider()
+        ResultInfoSidebar(image: selected, selectionCount: picks.ids.count)
       }
     }
     .padding(20)
-    .frame(minWidth: 520, idealWidth: 720, minHeight: 560, idealHeight: 820)
+    .frame(
+      minWidth: sidebarOpen ? 820 : 520, idealWidth: sidebarOpen ? 1020 : 720, minHeight: 560, idealHeight: 820)
     .background(DSBackground())
     .background(DSWindowConfigurator())
     .tint(DS.accent)
@@ -79,6 +88,17 @@ struct ResultsView: View {
       }
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .overlay(alignment: .topTrailing) {
+      Button {
+        sidebarOpen.toggle()
+      } label: {
+        Image(systemName: "sidebar.trailing")
+      }
+      .buttonStyle(DSGlassCircleButtonStyle())
+      .help(String(localized: "results.info.toggle"))
+      .accessibilityLabel(String(localized: "results.info.toggle"))
+      .padding(10)
+    }
   }
 
   @ViewBuilder private var statusLine: some View {
