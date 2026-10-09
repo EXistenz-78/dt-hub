@@ -27,6 +27,12 @@ public struct PipelineStep: Equatable, Sendable {
   public var title: String
   /// The preset to run; empty runs the tab's fields as they are.
   public var preset: String
+  /// The values this pass changes on the tab's fields (after the preset, when there is one); the keys of
+  /// `contribute.fields`. Empty changes nothing. A size in it is ignored when the pass runs.
+  public var fields: FieldOverlay
+  /// LoRAs this pass sets: one already on the tab gets the weight (and the mode or trigger word, when given); a new
+  /// one is added at the end.
+  public var loras: [LoRASelection]
   /// The Moodboard of this pass; nil keeps the one on the tab.
   public var moodboard: [PluginImageRef]?
   public var startImage: PluginImageRef?
@@ -34,11 +40,13 @@ public struct PipelineStep: Equatable, Sendable {
   public var useOutputAsStart: Bool
 
   public init(
-    title: String = "", preset: String = "", moodboard: [PluginImageRef]? = nil, startImage: PluginImageRef? = nil,
-    useOutputAsStart: Bool = false
+    title: String = "", preset: String = "", fields: FieldOverlay = FieldOverlay(), loras: [LoRASelection] = [],
+    moodboard: [PluginImageRef]? = nil, startImage: PluginImageRef? = nil, useOutputAsStart: Bool = false
   ) {
     self.title = title
     self.preset = preset
+    self.fields = fields
+    self.loras = loras
     self.moodboard = moodboard
     self.startImage = startImage
     self.useOutputAsStart = useOutputAsStart
@@ -51,8 +59,11 @@ public struct PipelineStep: Equatable, Sendable {
     if case .string(let text)? = object["preset"] { preset = text.trimmingCharacters(in: .whitespacesAndNewlines) }
     var useOutput = false
     if case .bool(let flag)? = object["useOutputAsStart"] { useOutput = flag }
+    var fields = FieldOverlay()
+    if case .object(let json)? = object["fields"] { fields = FieldOverlay(json: json) }
     self.init(
-      title: title, preset: preset, moodboard: PluginContribution.images(object["moodboard"]),
+      title: title, preset: preset, fields: fields, loras: PluginContribution.loras(object["loras"]) ?? [],
+      moodboard: PluginContribution.images(object["moodboard"]),
       startImage: PluginImageRef(object["startImage"]), useOutputAsStart: useOutput)
   }
 }
