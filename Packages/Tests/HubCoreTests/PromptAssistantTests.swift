@@ -44,7 +44,7 @@ struct PromptAssistantTests {
   init() {
     let recorder = recorder
     assistant = PromptAssistant(
-      resolve: { _, _ in .success(.init(model: Self.fakeModel, profile: LanguageModelProfile())) },
+      resolve: { _, _, _ in .success(.init(model: Self.fakeModel, profile: LanguageModelProfile())) },
       respond: { prompt, images, options, _ throws(LanguageModelError) in
         try await recorder.respond(prompt, images, options)
       })
@@ -189,7 +189,7 @@ struct PromptAssistantChoiceTests {
   func assistant(_ profile: LanguageModelProfile, resolveFails: LanguageModelError? = nil, log: Log) -> PromptAssistant {
     let model = model
     return PromptAssistant(
-      resolve: { task, family in
+      resolve: { task, family, _ in
         log.asked.append((task, family))
         if let resolveFails { return .failure(resolveFails) }
         return .success(.init(model: model, profile: profile))
@@ -230,5 +230,90 @@ struct PromptAssistantChoiceTests {
     #expect(result == nil)
     #expect(a.failure == .model(.noModelSelected))
     #expect(log.calls.isEmpty)
+  }
+}
+
+@MainActor
+struct PromptAssistantImagesTests {
+  let model = LanguageModelDescriptor(path: "/m/vl", name: "vl", sizeBytes: 1, supportsImages: true)
+  let a = URL(fileURLWithPath: "/tmp/a.png")
+  let b = URL(fileURLWithPath: "/tmp/b.png")
+  let current = PromptPair(prompt: "cat from image 2 on image 1", negative: "")
+
+  final class Log {
+    var resolves: [(LanguageModelTask, Bool)] = []
+    var calls: [(String, [URL])] = []
+  }
+
+  /// `noVisionFor`: the `needsImages` value for which the resolver answers "no LLM reads images".
+  func assistant(
+    _ log: Log, profile: LanguageModelProfile = LanguageModelProfile(), failWithImages: LanguageModelError? = nil
+  ) -> PromptAssistant {
+    let model = model
+    return PromptAssistant(
+      resolve: { task, _, needsImages in
+        log.resolves.append((task, needsImages))
+        if needsImages, let failWithImages { return .failure(failWithImages) }
+        return .success(.init(model: model, profile: profile))
+      },
+      respond: { prompt, images, _, _ throws(LanguageModelError) in
+        log.calls.append((prompt, images))
+        return "A better prompt."
+      })
+  }
+
+  @Test func pictureSendsThemInOrderAndAsksForAnLLMThatReadsThem() async {
+    let log = Log()
+    let images = EnhanceImages(start: a, references: [b])
+    let result = await assistant(log).enhance(current, family: "flux2", images: images)
+    #expect(result?.prompt == "A better prompt.")
+    #expect(log.resolves.first?.1 == true)
+    #expect(log.calls.first?.1 == [a, b])
+    #expect(log.calls.first?.0 == PromptBrief.enhance(current, family: "flux2", images: images).prompt)
+  }
+
+  @Test func noLLMThatReadsImagesFallsBackToTheTextWithANote() async {
+    let log = Log()
+    let a1 = assistant(log, failWithImages: .imagesNotSupported)
+    let result = await a1.enhance(current, family: "flux2", images: EnhanceImages(start: a))
+    #expect(result?.prompt == "A better prompt.")
+    #expect(a1.failure == nil && a1.note == .imagesNotSent)
+    #expect(log.resolves.map(\.1) == [true, false])
+    #expect(log.calls.first?.1.isEmpty == true)
+    #expect(log.calls.first?.0 == PromptBrief.enhance(current, family: "flux2").prompt)
+  }
+
+  @Test func theNoteClearsOnTheNextOperation() async {
+    let log = Log()
+    let a1 = assistant(log, failWithImages: .imagesNotSupported)
+    _ = await a1.enhance(current, family: "flux2", images: EnhanceImages(start: a))
+    #expect(a1.note == .imagesNotSent)
+    _ = await a1.enhance(current, family: "flux2")
+    #expect(a1.note == nil)
+  }
+
+  @Test func noModelSelectedStaysAFailureWithoutFallback() async {
+    let log = Log()
+    let a1 = assistant(log, failWithImages: .noModelSelected)
+    let result = await a1.enhance(current, family: "flux2", images: EnhanceImages(start: a))
+    #expect(result == nil && a1.failure == .model(.noModelSelected) && a1.note == nil)
+    #expect(log.resolves.map(\.1) == [true])
+    #expect(log.calls.isEmpty)
+  }
+
+  @Test func withoutPicturesNothingChanges() async {
+    let log = Log()
+    _ = await assistant(log).enhance(current, family: "flux2")
+    #expect(log.resolves.map(\.1) == [false])
+    #expect(log.calls.first?.0 == PromptBrief.enhance(current, family: "flux2").prompt)
+    #expect(log.calls.first?.1.isEmpty == true)
+  }
+
+  @Test func anOwnImageToImagePromptIsUsedWithPictures() async {
+    let log = Log()
+    let profile = LanguageModelProfile(enhancePrompt: "T2I RULES", describePrompt: "I2I RULES", enhanceWithImagesPrompt: "I2I RULES")
+    let images = EnhanceImages(start: a)
+    _ = await assistant(log, profile: profile).enhance(current, family: "qwen_image_2.1", images: images)
+    #expect(log.calls.first?.0 == PromptBrief.enhance(current, ownSystem: "I2I RULES", generation: nil, images: images).prompt)
   }
 }
