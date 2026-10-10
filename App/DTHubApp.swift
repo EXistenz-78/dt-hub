@@ -58,8 +58,9 @@ struct DTHubApp: App {
     // Contributions land on the Generation tab; a plug-in's question goes to the language model.
     generation.attach(plugins.contributions)
     plugins.presetStore = generation.presets
-    plugins.askLanguageModel = { prompt, images, options, name in
-      try await languageModel.respond(to: prompt, images: images, options: options, modelNamed: name)
+    plugins.askLanguageModel = { prompt, images, options, name, history in
+      try await languageModel.respond(
+        to: prompt, images: images, options: options, modelNamed: name, history: history)
     }
     plugins.currentParameters = { generation.parameters }
     plugins.currentPrompts = { (generation.prompt, generation.negativePrompt) }

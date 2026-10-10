@@ -72,7 +72,7 @@ struct PluginRoutingTests {
   @Test func aQuestionForTheLanguageModelIsAnswered() async throws {
     let (registry, loader) = try started()
     var asked: (String, [URL])?
-    registry.askLanguageModel = { prompt, images, _, _ in
+    registry.askLanguageModel = { prompt, images, _, _, _ in
       asked = (prompt, images)
       return "Sunny."
     }
@@ -83,10 +83,35 @@ struct PluginRoutingTests {
     #expect(asked?.1 == [URL(fileURLWithPath: "/tmp/a.png")])
   }
 
+  @Test func theEarlierTurnsOfAChatReachTheLanguageModelInOrder() async throws {
+    let (registry, loader) = try started()
+    var history: [LanguageModelTurn]?
+    registry.askLanguageModel = { _, _, _, _, turns in
+      history = turns
+      return "ok"
+    }
+    _ = try await send(
+      #"{"type":"llm","prompt":"now","messages":[{"role":"user","text":"a"},{"role":"assistant","text":"b"}]}"#,
+      through: loader)
+    #expect(history == [LanguageModelTurn(role: .user, text: "a"), LanguageModelTurn(role: .assistant, text: "b")])
+    // Without `messages` the question is as it always was.
+    _ = try await send(#"{"type":"llm","prompt":"now"}"#, through: loader)
+    #expect(history == [])
+  }
+
+  @Test func wrongEntriesOfMessagesAreSkipped() {
+    let list: [Any] = [
+      ["role": "system", "text": "x"], ["role": "user"], "text", ["role": "user", "text": 5],
+      ["role": "user", "text": "kept"],
+    ]
+    #expect(PluginRegistry.turns(list) == [LanguageModelTurn(role: .user, text: "kept")])
+    #expect(PluginRegistry.turns(nil).isEmpty && PluginRegistry.turns("nope").isEmpty)
+  }
+
   @Test func theSystemPromptTheModelAndTheOptionsReachTheLanguageModel() async throws {
     let (registry, loader) = try started()
     var asked: (LanguageModelOptions, String?)?
-    registry.askLanguageModel = { _, _, options, name in
+    registry.askLanguageModel = { _, _, options, name, _ in
       asked = (options, name)
       return "ok"
     }
@@ -103,14 +128,14 @@ struct PluginRoutingTests {
 
   @Test func theReasonIsToldInPlainWords() async throws {
     let (registry, loader) = try started()
-    registry.askLanguageModel = { _, _, _, _ in throw LanguageModelError.noModelSelected }
+    registry.askLanguageModel = { _, _, _, _, _ in throw LanguageModelError.noModelSelected }
     let reply = try await send(#"{"type":"llm","prompt":"p"}"#, through: loader)
     #expect(reply["text"] as? String == "No language model is chosen.")
   }
 
   @Test func aModelThatIsNotThereIsAnError() async throws {
     let (registry, loader) = try started()
-    registry.askLanguageModel = { _, _, _, name in throw LanguageModelError.modelNotFound(name ?? "") }
+    registry.askLanguageModel = { _, _, _, name, _ in throw LanguageModelError.modelNotFound(name ?? "") }
     let reply = try await send(#"{"type":"llm","prompt":"p","model":"nowhere"}"#, through: loader)
     #expect(reply["type"] as? String == "error")
     #expect((reply["text"] as? String)?.contains("nowhere") == true)
@@ -119,11 +144,11 @@ struct PluginRoutingTests {
   @Test func aQuestionThatCannotBeAnsweredGetsAnError() async throws {
     let (registry, loader) = try started()
     #expect(try await send(#"{"type":"llm","prompt":"hi"}"#, through: loader)["type"] as? String == "error")
-    registry.askLanguageModel = { _, _, _, _ in throw LanguageModelError.noModelSelected }
+    registry.askLanguageModel = { _, _, _, _, _ in throw LanguageModelError.noModelSelected }
     #expect(try await send(#"{"type":"llm","prompt":"hi"}"#, through: loader)["type"] as? String == "error")
     #expect(try await send(#"{"type":"llm"}"#, through: loader)["type"] as? String == "error")
     registry.setActive("a", false)
-    registry.askLanguageModel = { _, _, _, _ in "never" }
+    registry.askLanguageModel = { _, _, _, _, _ in "never" }
     #expect(try await send(#"{"type":"llm","prompt":"hi"}"#, through: loader)["type"] as? String == "error")
   }
 }
