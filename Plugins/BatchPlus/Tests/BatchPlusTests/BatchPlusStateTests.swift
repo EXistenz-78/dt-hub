@@ -34,7 +34,7 @@ struct BatchPlusStateTests {
     #expect(s.blocker(italian: false) == L.text(.needsNewApp, italian: false))
     #expect(s.pipeline(italian: false) == nil)
     s.session.mode = .prompts
-    s.session.promptText = "- a\n- b"
+    s.session.promptText = "<a>\n<b>"
     #expect(s.blocker(italian: false) == nil)
     #expect(s.pipeline(italian: false)?["name"] as? String == "Batch plus · Prompts")
   }
@@ -54,7 +54,7 @@ struct BatchPlusStateTests {
   @Test func promptsNeedAtLeastTwoItems() {
     let s = state()
     s.session.mode = .prompts
-    s.session.promptText = "- only one"
+    s.session.promptText = "just one prompt, no list"
     #expect(s.blocker(italian: false) == L.text(.promptsFew, italian: false))
   }
 
@@ -93,5 +93,33 @@ struct BatchPlusStateTests {
     s.session.samplers = [1, 2, 3, 4, 5]
     s.session.count = 3
     #expect(s.session.samplers == [1, 2, 3])
+  }
+
+  @Test func aListOfOneTermOrNoListIsNotEnoughButTwoTermsAre() {
+    let s = state()
+    s.session.mode = .prompts
+    s.session.promptText = "a <dog>"
+    #expect(s.promptPasses == 1 && s.blocker(italian: false) == L.text(.promptsFew, italian: false))
+    s.session.promptText = "no list"
+    #expect(s.promptPasses == 0 && s.blocker(italian: false) != nil)
+    s.session.promptText = "a <dog|cat>"
+    #expect(s.promptPasses == 2 && s.blocker(italian: false) == nil)
+  }
+
+  @Test func thePreviewIsWhatWillBeSentAndAFreshShuffleChangesIt() {
+    let s = state()
+    s.session.mode = .prompts
+    s.session.shuffle = true
+    s.session.promptText = "<a|b|c|d|e|f|g|h> x <1|2|3|4|5|6|7|8>"
+    let shown = s.promptItems
+    let steps = s.pipeline(italian: false)?["steps"] as? [[String: Any]]
+    #expect(steps?.map { ($0["fields"] as? [String: Any])?["prompt"] as? String } == shown.map { Optional($0) })
+    s.reshuffle()
+    #expect(s.promptItems != shown)
+  }
+
+  @Test func shuffleIsSavedAndAnOldStateLoadsWithoutIt() throws {
+    let old = Data(#"{"mode":"prompts","increments":{},"count":3,"fixedSeed":true,"promptText":"<a|b>","samplers":[]}"#.utf8)
+    #expect(try JSONDecoder().decode(BatchPlusSession.self, from: old).shuffle == false)
   }
 }

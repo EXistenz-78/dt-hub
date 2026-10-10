@@ -14,6 +14,8 @@ struct BatchPlusSession: Equatable, Codable {
   var count = 3
   var fixedSeed = true
   var promptText = ""
+  /// Prompt mode: each list of terms is used in a random order.
+  var shuffle = false
   /// The samplers chosen to vary, in the order chosen: pass *k* uses the *k*-th one; the passes after the last one keep
   /// the tab's sampler. At most one per pass.
   var samplers: [Int] = []
@@ -28,10 +30,11 @@ struct BatchPlusSession: Equatable, Codable {
     count = (try? c.decodeIfPresent(Int.self, forKey: .count)) ?? 3
     fixedSeed = (try? c.decodeIfPresent(Bool.self, forKey: .fixedSeed)) ?? true
     promptText = (try? c.decodeIfPresent(String.self, forKey: .promptText)) ?? ""
+    shuffle = (try? c.decodeIfPresent(Bool.self, forKey: .shuffle)) ?? false
     samplers = (try? c.decodeIfPresent([Int].self, forKey: .samplers)) ?? []
   }
 
-  private enum CodingKeys: String, CodingKey { case mode, increments, count, fixedSeed, promptText, samplers }
+  private enum CodingKeys: String, CodingKey { case mode, increments, count, fixedSeed, promptText, samplers, shuffle }
 
   /// How many samplers there can be: one per pass.
   var samplerLimit: Int { min(max(count, Self.passRange.lowerBound), Self.passRange.upperBound) }
