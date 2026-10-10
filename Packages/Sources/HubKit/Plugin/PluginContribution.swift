@@ -89,12 +89,16 @@ public struct PluginContribution: Equatable, Sendable {
   public var pipeline: PluginPipeline?
   /// How much the start image is changed (0…1), as the Control tab's slider; applied only with a start image.
   public var strength: Double?
+  /// A drawing (a PNG with transparency) that becomes the Brush layer of the Control tab, over the start image.
+  public var paint: PluginImageRef?
 
   public init(
     fields: FieldOverlay = FieldOverlay(), loras: [LoRASelection] = [], moodboard: [PluginImageRef] = [],
-    startImage: PluginImageRef? = nil, pipeline: PluginPipeline? = nil, strength: Double? = nil
+    startImage: PluginImageRef? = nil, pipeline: PluginPipeline? = nil, strength: Double? = nil,
+    paint: PluginImageRef? = nil
   ) {
     self.strength = strength
+    self.paint = paint
     self.fields = fields
     self.loras = loras
     self.moodboard = moodboard
@@ -121,7 +125,8 @@ public struct PluginContribution: Equatable, Sendable {
     }
     self.init(
       fields: fields, loras: Self.loras(object["loras"]) ?? [], moodboard: Self.images(object["moodboard"]) ?? [],
-      startImage: PluginImageRef(object["startImage"]), pipeline: pipeline, strength: Self.strength(object["strength"]))
+      startImage: PluginImageRef(object["startImage"]), pipeline: pipeline, strength: Self.strength(object["strength"]),
+      paint: PluginImageRef(object["paint"]))
   }
 
   /// A number, brought into 0…1; anything else is nothing.
@@ -136,6 +141,7 @@ public struct PluginContribution: Equatable, Sendable {
   /// True when the message carries nothing the app can use.
   public var isEmpty: Bool {
     fields.isEmpty && loras.isEmpty && moodboard.isEmpty && startImage == nil && pipeline == nil && strength == nil
+      && paint == nil
   }
 
   static func loras(_ value: JSONValue?) -> [LoRASelection]? {

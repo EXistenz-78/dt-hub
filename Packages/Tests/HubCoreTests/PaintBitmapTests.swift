@@ -100,4 +100,30 @@ struct PaintBitmapTests {
     #expect(dirty.minX <= 25 && dirty.maxX >= 65 && dirty.width < 60 && dirty.height < 20)
     #expect(paint.stroke(from: CGPoint(x: 500, y: 500), to: CGPoint(x: 600, y: 600), radius: 5, red: 1, green: 2, blue: 3) == nil)
   }
+
+  /// A transparent image with an opaque red square in its top left corner.
+  private func redCorner(width: Int, height: Int, square: Int) -> CGImage {
+    let context = CGContext(
+      data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+      space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+    context.setFillColor(red: 1, green: 0, blue: 0, alpha: 1)
+    // CoreGraphics' y goes up: the top of the image is at y = height.
+    context.fill(CGRect(x: 0, y: height - square, width: square, height: square))
+    return context.makeImage()!
+  }
+
+  @Test func aDrawingIsFittedToTheLayerSizeWithTheTopLeftWhereItWas() throws {
+    let fitted = try #require(PaintBitmap.fitted(from: redCorner(width: 2048, height: 1024, square: 64), width: 1024, height: 512))
+    #expect(fitted.width == 1024 && fitted.height == 512)
+    #expect(fitted.alpha(x: 4, y: 4) == 255)
+    let c = fitted.color(x: 4, y: 4)
+    #expect(c.red == 255 && c.green == 0 && c.blue == 0, "\(c)")
+    #expect(fitted.alpha(x: 600, y: 300) == 0)
+  }
+
+  @Test func aZeroSizeGivesNothing() {
+    let image = redCorner(width: 8, height: 8, square: 2)
+    #expect(PaintBitmap.fitted(from: image, width: 0, height: 4) == nil)
+    #expect(PaintBitmap.fitted(from: image, width: 4, height: 0) == nil)
+  }
 }

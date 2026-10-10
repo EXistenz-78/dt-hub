@@ -2,6 +2,7 @@ import DTBridge
 import CoreGraphics
 import Foundation
 import HubCore
+import ImageIO
 import HubKit
 import Observation
 
@@ -576,6 +577,18 @@ extension GenerationController: ContributionTarget {
   func removeMoodboardImage(_ id: UUID) { control.removeMoodboardImage(id: id) }
 
   func setStrength(_ value: Double) { control.setStrength(value) }
+
+  /// The plug-in's drawing becomes the Brush layer: read, stretched to the size of the layer, one step of Control's history.
+  func setPaint(_ image: PluginImageRef) throws {
+    let data = try Self.read(image)
+    guard let source = CGImageSourceCreateWithData(data as CFData, nil), let picture = CGImageSourceCreateImageAtIndex(source, 0, nil)
+    else { throw ControlError.unreadable(image.name) }
+    guard let size = control.maskSize else { return }
+    guard let bitmap = PaintBitmap.fitted(from: picture, width: size.width, height: size.height) else {
+      throw ControlError.unreadable(image.name)
+    }
+    try control.commitPaint(bitmap)
+  }
 
   func setStartImage(_ image: PluginImageRef, from pluginID: String) throws -> UUID {
     let data = try Self.read(image)
