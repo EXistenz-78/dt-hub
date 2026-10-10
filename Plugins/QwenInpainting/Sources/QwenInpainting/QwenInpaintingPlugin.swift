@@ -46,7 +46,7 @@ final class QwenInpaintingPlugin: DTHubPlugin {
       await state.send(
         using: { text, images, system, model in
           await host.askLanguageModelAnswer(
-            text, images: images, system: system, model: model, options: DTHubLLMOptions(maxTokens: 2048, timeout: 600))
+            text, images: images, system: system, model: model, options: DTHubLLMOptions(maxTokens: 2048, thinking: false, timeout: 600))
         },
         contribute: { await host.contribute($0) })
     }
