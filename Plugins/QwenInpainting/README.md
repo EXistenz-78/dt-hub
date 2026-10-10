@@ -32,6 +32,6 @@ The marks, the texts, the tool, the color, the width and the box are kept **per 
 
 ## Requirements
 
-DT Hub 0.1.6 or later (the app has to accept `contribute.paint`), and Qwen Image 2.1 selected.
+DT Hub 0.1.7 or later (the app has to accept `contribute.paint`), and Qwen Image 2.1 selected.
 
 Build: `Plugins/QwenInpainting/Scripts/build.sh <folder>` → `QwenInpainting.dthubplugin`. Tests: `swift test` in this folder. Design: `docs/superpowers/specs/2026-10-10-plugin-qwen-inpainting-design.md`.

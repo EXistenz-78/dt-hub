@@ -2,7 +2,7 @@ import DTHubPluginKit
 import Foundation
 import Testing
 
-@testable import LLMChat
+@testable import AIAssistant
 
 @Suite("History, images and system prompt")
 struct HistoryAndPromptTests {

@@ -1,14 +1,14 @@
-# Plug-in «LLM Chat» e aggiunte al contratto — Piano di implementazione
+# Plug-in «AI Assistant» e aggiunte al contratto — Piano di implementazione
 
 > **Per chi esegue:** SOTTO-SKILL OBBLIGATORIA: `superpowers:subagent-driven-development` (consigliata) oppure `superpowers:executing-plans`. I passi usano la sintassi a caselle (`- [ ]`).
 
 **Obiettivo:**
 - l'app manda prompt, negativo e forza nel contesto, accetta lo storico in `llm` e la forza in `contribute`;
-- un plug-in nuovo, «LLM Chat», usa queste aggiunte per chattare con un LLM locale e, solo con `<INVIA>`/`<SEND>`, applicare prompt, parametri, forza o una pipeline.
+- un plug-in nuovo, «AI Assistant», usa queste aggiunte per chattare con un LLM locale e, solo con `<INVIA>`/`<SEND>`, applicare prompt, parametri, forza o una pipeline.
 
 **Architettura:**
 - **Parte A** (Task 1–5): HubKit, HubCore, LLMBridge, App e kit; aggiunte compatibili al contratto 1.
-- **Parte B** (Task 6–10): pacchetto `Plugins/LLMChat`.
+- **Parte B** (Task 6–10): pacchetto `Plugins/AIAssistant`.
   - Logica pura: comando, blocco di azioni, finestra dello storico, system prompt, archivio.
   - Poi stato, vista e collegamento.
 
@@ -25,7 +25,7 @@
 - **Test:**
   - app: `cd Packages && swift test --filter <Suite> 2>&1 | grep -E "Test run with|error:"`;
   - kit: `cd PluginKit && swift test`;
-  - plug-in: `cd Plugins/LLMChat && swift test`.
+  - plug-in: `cd Plugins/AIAssistant && swift test`.
 - **Compilare l'app:** `xcodebuild -project DTHub.xcodeproj -scheme DTHub -destination 'platform=macOS' -derivedDataPath build build`.
 - **Regressioni:**
   - i test esistenti restano verdi;
@@ -140,13 +140,13 @@
 
 ---
 
-## Parte B — Plug-in `Plugins/LLMChat`
+## Parte B — Plug-in `Plugins/AIAssistant`
 
-Struttura dei sorgenti in `Sources/LLMChat/`:
+Struttura dei sorgenti in `Sources/AIAssistant/`:
 
 | File | Contenuto |
 | --- | --- |
-| `LLMChatPlugin.swift` | manifest, `handle`, entry |
+| `AIAssistantPlugin.swift` | manifest, `handle`, entry |
 | `ChatModel.swift` | `ChatMessage`, `Chat`, `ChatSettings` (Codable tolleranti) |
 | `ChatStore.swift` | `state.json`, `chats/` |
 | `CommandGate.swift` | rilevamento di `<INVIA>`/`<SEND>` |
@@ -156,13 +156,13 @@ Struttura dei sorgenti in `Sources/LLMChat/`:
 | `SystemPrompt.swift` | testo della spec §6.3 |
 | `SamplerNames.swift` | copia di Batch plus |
 | `ChatTitle.swift` | titolo automatico della chat |
-| `LLMChatState.swift` | `ObservableObject` della tab |
-| `LLMChatView.swift` | la vista |
+| `AIAssistantState.swift` | `ObservableObject` della tab |
+| `AIAssistantView.swift` | la vista |
 | `Strings.swift` | tabella `L` it/en |
 
 ### Task 6: Pacchetto, modello dei dati, archivio
 
-**Files:** Create `Plugins/LLMChat/Package.swift`, `Scripts/build.sh`, `Sources/LLMChat/ChatModel.swift`, `ChatStore.swift`, `ChatTitle.swift`, `Strings.swift` (prime voci), test `Tests/LLMChatTests/ChatStoreTests.swift`, `ChatTitleTests.swift`.
+**Files:** Create `Plugins/AIAssistant/Package.swift`, `Scripts/build.sh`, `Sources/AIAssistant/ChatModel.swift`, `ChatStore.swift`, `ChatTitle.swift`, `Strings.swift` (prime voci), test `Tests/AIAssistantTests/ChatStoreTests.swift`, `ChatTitleTests.swift`.
 
 **Interfaces — Produces:**
 - `ChatMessage{id: UUID, role: .user|.assistant|.note, text, date, images: [String], note: .action|.error|.ignored|.info?}`;
@@ -175,7 +175,7 @@ Struttura dei sorgenti in `Sources/LLMChat/`:
   - con `folder == nil` lavora in memoria;
 - `ChatTitle.make(from:date:italian:)`.
 
-- [ ] **Step 1:** `Package.swift` come Batch plus (alias `LLMChatKit`, `LLMChatDesign`); `build.sh` come Batch plus (id `com.exiztenz.dthub.llmchat`, nome `LLMChat`, entry `LLMChatEntry`).
+- [ ] **Step 1:** `Package.swift` come Batch plus (alias `AIAssistantKit`, `AIAssistantDesign`); `build.sh` come Batch plus (id `com.exiztenz.dthub.llmchat`, nome `AIAssistant`, entry `AIAssistantEntry`).
 - [ ] **Step 2: Test che falliscono.**
   - Archivio in una cartella temporanea: salva e ricarica una chat uguale; `list` in ordine di `updated`; `delete` toglie il file; un file `chats/x.json` illeggibile non compare e non fa fallire `list`; `state.json` illeggibile → `ChatSettings()` con `includeImages == true`; due cartelle (due progetti) non si vedono a vicenda.
   - Titolo:
@@ -187,7 +187,7 @@ Struttura dei sorgenti in `Sources/LLMChat/`:
 
 ### Task 7: Comando e blocco di azioni
 
-**Files:** Create `Sources/LLMChat/CommandGate.swift`, `ActionBlock.swift`, `SamplerNames.swift`. Test: `CommandGateTests.swift`, `ActionBlockTests.swift`.
+**Files:** Create `Sources/AIAssistant/CommandGate.swift`, `ActionBlock.swift`, `SamplerNames.swift`. Test: `CommandGateTests.swift`, `ActionBlockTests.swift`.
 
 **Interfaces — Produces:**
 - `CommandGate.isOpen(_ userText: String) -> Bool`;
@@ -210,7 +210,7 @@ Struttura dei sorgenti in `Sources/LLMChat/`:
     - `fields` con `prompt`, `steps`, `foo` → `foo` scartato;
     - `loras` senza `file` scartato;
     - `strength` numero tenuto;
-    - pipeline di 3 passi con `width` nei `fields` → `width` tolto, titoli vuoti → `"Passaggio 2"`/`"Pass 2"`, nome `"LLM Chat"`;
+    - pipeline di 3 passi con `width` nei `fields` → `width` tolto, titoli vuoti → `"Passaggio 2"`/`"Pass 2"`, nome `"AI Assistant"`;
     - 21 passi → `.tooManySteps(21)` anche se ci sono `fields` (**Review Focus 3**);
     - `{}` o solo chiavi sconosciute → `.empty`;
     - testo non JSON → `.invalidJSON`.
@@ -224,7 +224,7 @@ Struttura dei sorgenti in `Sources/LLMChat/`:
 
 ### Task 8: Storico, immagini, system prompt
 
-**Files:** Create `Sources/LLMChat/HistoryWindow.swift`, `ImageLabels.swift`, `SystemPrompt.swift`. Test: `HistoryWindowTests.swift`, `ImageLabelsTests.swift`, `SystemPromptTests.swift`.
+**Files:** Create `Sources/AIAssistant/HistoryWindow.swift`, `ImageLabels.swift`, `SystemPrompt.swift`. Test: `HistoryWindowTests.swift`, `ImageLabelsTests.swift`, `SystemPromptTests.swift`.
 
 **Interfaces — Produces:**
 - `HistoryWindow.turns(of messages: [ChatMessage], budget: Int = 24_000) -> (turns: [DTHubLLMTurn], trimmed: Bool)`;
@@ -252,9 +252,9 @@ Struttura dei sorgenti in `Sources/LLMChat/`:
 
 ### Task 9: Stato della tab e plug-in
 
-**Files:** Create `Sources/LLMChat/LLMChatState.swift`, `LLMChatPlugin.swift`; completare `Strings.swift`. Test: `LLMChatStateTests.swift`, `StringsTests.swift`.
+**Files:** Create `Sources/AIAssistant/AIAssistantState.swift`, `AIAssistantPlugin.swift`; completare `Strings.swift`. Test: `AIAssistantStateTests.swift`, `StringsTests.swift`.
 
-**Interfaces — Produces:** `LLMChatState: ObservableObject`.
+**Interfaces — Produces:** `AIAssistantState: ObservableObject`.
 - **Stato pubblicato:**
   - `context: DTHubContext?`;
   - `chat: Chat`;
@@ -303,7 +303,7 @@ Struttura dei sorgenti in `Sources/LLMChat/`:
     - `settings` salvate al cambio di modello e dello switch;
   - **testi:** `L` completa in it e en.
 - [ ] **Step 2–4:** implementare, test verdi.
-  - `LLMChatPlugin.handle`:
+  - `AIAssistantPlugin.handle`:
     - `context` → `apply`;
     - `project` → `switchProject`;
     - `activate`/`deactivate` → `active`;
@@ -313,7 +313,7 @@ Struttura dei sorgenti in `Sources/LLMChat/`:
 
 ### Task 10: Vista, README, elenco dei plug-in
 
-**Files:** Create `Sources/LLMChat/LLMChatView.swift`, `Plugins/LLMChat/README.md`. Modify `Plugins/README.md` (sei plug-in: tabella, link di download `LLMChat.dthubplugin.zip`, frase «keep their state per project»), `README.md` alla radice se elenca i plug-in.
+**Files:** Create `Sources/AIAssistant/AIAssistantView.swift`, `Plugins/AIAssistant/README.md`. Modify `Plugins/README.md` (sei plug-in: tabella, link di download `AIAssistant.dthubplugin.zip`, frase «keep their state per project»), `README.md` alla radice se elenca i plug-in.
 
 - [ ] **Step 1: Vista** secondo la spec §6.1:
   - barra con Modello, Immagini (nota quando è disattivato), Nuova chat e menu Chat (Rinomina con un `alert` con `TextField`, Elimina con `confirmationDialog`);
@@ -323,7 +323,7 @@ Struttura dei sorgenti in `Sources/LLMChat/`:
   - riga «Sta scrivendo…» con Annulla;
   - avvisi di `blocker` al posto del campo.
   - Componenti di `DTHubDesign` come Batch plus.
-- [ ] **Step 2: Build** — `swift build` del plug-in; `Scripts/build.sh /tmp/out` produce `LLMChat.dthubplugin`.
+- [ ] **Step 2: Build** — `swift build` del plug-in; `Scripts/build.sh /tmp/out` produce `AIAssistant.dthubplugin`.
 - [ ] **Step 3: README** del plug-in (inglese, come quello di Batch plus):
   - cosa fa;
   - il comando `<SEND>`/`<INVIA>` e il pulsante;
@@ -336,7 +336,7 @@ Struttura dei sorgenti in `Sources/LLMChat/`:
 - [ ] **Step 5: Suite completa.**
   - `cd Packages && swift test`;
   - `cd PluginKit && swift test`;
-  - `swift test` in `Plugins/LLMChat` e in Batch plus;
+  - `swift test` in `Plugins/AIAssistant` e in Batch plus;
   - `xcodebuild … build`.
 - [ ] **Step 6: Prove a mano** (lista all'utente): spec §9.
 - [ ] **Step 7: Commit** — `feat(llm-chat): vista, README e elenco dei plug-in`.
@@ -351,7 +351,7 @@ Struttura dei sorgenti in `Sources/LLMChat/`:
     - `maxTokens` 4096;
     - tolleranza ```` ```json ````;
   - **«Rinviati»** (spec §10);
-  - via libera prima di unire, push o release. La release deve includere `LLMChat.dthubplugin.zip` e alzare la versione dell'app, perché il plug-in richiede «0.1.6 o successiva»: se la versione scelta è un'altra, aggiornare il testo.
+  - via libera prima di unire, push o release. La release deve includere `AIAssistant.dthubplugin.zip` e alzare la versione dell'app, perché il plug-in richiede «0.1.6 o successiva»: se la versione scelta è un'altra, aggiornare il testo.
 
 ---
 

@@ -1,6 +1,6 @@
 import Testing
 
-@testable import LLMChat
+@testable import AIAssistant
 
 @Suite("Command gate")
 struct CommandGateTests {

@@ -24,4 +24,4 @@ The **Images** switch sends, with your message, the start image and the Moodboar
 
 DT Hub 0.1.6 or later (the app has to send the prompts and the strength in its context, accept the chat history in the `llm` message and the `strength` key in `contribute`), and an LLM in the models folder (Settings › LLM). For the images, a model with vision.
 
-Build: `Plugins/LLMChat/Scripts/build.sh <folder>` → `LLMChat.dthubplugin`. Tests: `swift test` in this folder. Design: `docs/superpowers/specs/2026-10-10-plugin-llm-chat-design.md`.
+Build: `Plugins/AIAssistant/Scripts/build.sh <folder>` → `AIAssistant.dthubplugin`. Tests: `swift test` in this folder. Design: `docs/superpowers/specs/2026-10-10-plugin-llm-chat-design.md`.

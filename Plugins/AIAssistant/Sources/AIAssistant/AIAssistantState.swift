@@ -3,7 +3,7 @@ import Foundation
 
 /// What the tab shows and does: the open chat, the project's chats, the settings, the draft, and the sending of a message.
 @MainActor
-final class LLMChatState: ObservableObject {
+final class AIAssistantState: ObservableObject {
   /// The question to the LLM: prompt, picture paths, system prompt, model name, earlier turns.
   typealias Ask = @MainActor (String, [String], String, String, [DTHubLLMTurn]) async -> DTHubLLMAnswer
   /// `host.contribute`.

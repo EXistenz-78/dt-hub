@@ -3,8 +3,8 @@ import DTHubPluginKit
 import SwiftUI
 
 /// The tab: a bar (model, images, new chat, chats), the messages, and the field to write in.
-struct LLMChatView: View {
-  @ObservedObject var state: LLMChatState
+struct AIAssistantView: View {
+  @ObservedObject var state: AIAssistantState
   let send: () -> Void
   @State private var renaming = false
   @State private var newName = ""
