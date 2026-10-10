@@ -90,11 +90,20 @@ public struct PluginContext: Codable, Equatable, Sendable {
   public var moodboard: [String]?
   /// The language models of the models folder. Absent when the app has none to list.
   public var languageModels: [PluginLanguageModel]?
+  /// The Generation tab's prompt ("" when empty). Absent from an app that does not send it.
+  public var prompt: String?
+  public var negativePrompt: String?
+  /// The strength the start image is used with (0…1), as the Control tab shows it. Absent without a start image.
+  public var strength: Double?
 
   public init(
     model: String?, family: String?, parameters: GenerationParameters, tempFolder: String, startImage: String? = nil,
-    moodboard: [String]? = nil, languageModels: [PluginLanguageModel]? = nil
+    moodboard: [String]? = nil, languageModels: [PluginLanguageModel]? = nil, prompt: String? = nil,
+    negativePrompt: String? = nil, strength: Double? = nil
   ) {
+    self.prompt = prompt
+    self.negativePrompt = negativePrompt
+    self.strength = strength
     self.model = model
     self.family = family
     self.parameters = parameters
