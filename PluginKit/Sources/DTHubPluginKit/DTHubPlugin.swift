@@ -100,6 +100,8 @@ public struct DTHubContext: Decodable, Sendable {
   public var negativePrompt: String?
   /// How much the start image is changed (0…1), as the Control tab shows it; nil without a start image.
   public var strength: Double?
+  /// How to write prompts for the chosen model's family; nil when the app has no guide for it (or does not send it).
+  public var promptGuide: DTHubPromptGuide?
 
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -114,10 +116,29 @@ public struct DTHubContext: Decodable, Sendable {
     prompt = (try? container.decodeIfPresent(String.self, forKey: .prompt)) ?? nil
     negativePrompt = (try? container.decodeIfPresent(String.self, forKey: .negativePrompt)) ?? nil
     strength = (try? container.decodeIfPresent(Double.self, forKey: .strength)) ?? nil
+    promptGuide = (try? container.decodeIfPresent(DTHubPromptGuide.self, forKey: .promptGuide)) ?? nil
   }
 
   private enum CodingKeys: String, CodingKey {
     case model, family, tempFolder, startImage, moodboard, languageModels, parameters, prompt, negativePrompt, strength
+    case promptGuide
+  }
+}
+
+/// How to write prompts for the family of the chosen model (`DTHubContext.promptGuide`): the same guide the app's Enhance
+/// Prompt follows.
+public struct DTHubPromptGuide: Decodable, Equatable, Sendable {
+  /// The family as the app names it ("Qwen Image 2.1").
+  public var label: String
+  /// The family reads a negative prompt.
+  public var usesNegative: Bool
+  /// The notes, a bullet list in English.
+  public var notes: String
+
+  public init(label: String, usesNegative: Bool, notes: String) {
+    self.label = label
+    self.usesNegative = usesNegative
+    self.notes = notes
   }
 }
 

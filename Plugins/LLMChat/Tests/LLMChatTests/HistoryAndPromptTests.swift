@@ -62,4 +62,14 @@ struct HistoryAndPromptTests {
     #expect(text.contains("Model: unknown (family: unknown)") && text.contains("Size: unknown") && text.contains("LoRAs: unknown"))
     #expect(text.contains("Start image: none"))
   }
+
+  @Test func theFamilyGuideOfTheAppIsInThePromptWhenThereIsOne() throws {
+    let json = #"{"type":"context","tempFolder":"/t","model":"m","family":"flux2_9b","promptGuide":{"label":"FLUX.2 [klein] 9B","usesNegative":false,"notes":"- Write in plain prose."}}"#
+    let with = SystemPrompt.make(context: try context(json))
+    #expect(with.contains("PROMPT GUIDE FOR FLUX.2 [klein] 9B"))
+    #expect(with.contains("does not use a negative prompt") && with.contains("- Write in plain prose."))
+    #expect(with.range(of: "PROMPT GUIDE")!.lowerBound < with.range(of: "ACTIONS")!.lowerBound)
+    let without = SystemPrompt.make(context: try context(#"{"type":"context","tempFolder":"/t"}"#))
+    #expect(!without.contains("PROMPT GUIDE"))
+  }
 }

@@ -137,4 +137,15 @@ struct DTHubProjectTests {
     let without = DTHubHost.llmMessage(prompt: "now", images: [], system: nil, model: nil, options: DTHubLLMOptions())
     #expect(without["messages"] == nil)
   }
+
+  @Test func thePromptGuideIsReadWithToleranceAndMissingMeansNil() throws {
+    let json = #"{"type":"context","tempFolder":"/t","promptGuide":{"label":"Flux","usesNegative":true,"notes":"- a"}}"#
+    let context = try JSONDecoder().decode(DTHubContext.self, from: Data(json.utf8))
+    #expect(context.promptGuide == DTHubPromptGuide(label: "Flux", usesNegative: true, notes: "- a"))
+    let none = try JSONDecoder().decode(DTHubContext.self, from: Data(#"{"type":"context","tempFolder":"/t"}"#.utf8))
+    #expect(none.promptGuide == nil)
+    let wrong = try JSONDecoder().decode(
+      DTHubContext.self, from: Data(#"{"type":"context","tempFolder":"/t","model":"m","promptGuide":"x"}"#.utf8))
+    #expect(wrong.promptGuide == nil && wrong.model == "m")
+  }
 }

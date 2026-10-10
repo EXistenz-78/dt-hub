@@ -18,7 +18,7 @@ The **Images** switch sends, with your message, the start image and the Moodboar
 
 - You choose the **model** in the plug-in (any LLM of the models folder); it does not depend on the assignments in Settings › LLM.
 - **Chats are kept per project.** *New chat* archives the open one; the *Chats* menu opens an earlier chat, renames or deletes it.
-- The LLM receives the earlier messages of the chat, the most recent ones that fit in 24 000 characters (a note says when the oldest are left out), and the current state of the Generation tab.
+- The LLM receives the earlier messages of the chat, the most recent ones that fit in 24 000 characters (a note says when the oldest are left out), the current state of the Generation tab, and the app's **guide for writing prompts** for the family of the chosen model (the same one Enhance Prompt follows), when the app has one.
 
 ## Requirements
 

@@ -25,6 +25,13 @@ enum SystemPrompt {
     let cfgZero = p?.cfgZeroStar.map { $0 ? "yes" : "no" }
     let batch: String
     if let size = p?.batchSize, let count = p?.batchCount { batch = "\(size) × \(count)" } else { batch = "unknown" }
+    // The app's guide for the family of the chosen model: how prompts for it are written.
+    var guide = ""
+    if let g = context.promptGuide {
+      guide = "\nPROMPT GUIDE FOR \(g.label)\n"
+        + (g.usesNegative ? "This model reads a negative prompt.\n" : "This model does not use a negative prompt.\n")
+        + g.notes.trimmingCharacters(in: .whitespacesAndNewlines) + "\n"
+    }
     return """
       You are the assistant of DT Hub, a Mac app that prepares images for Draw Things. You help the user write and
       improve prompts and choose generation settings. Answer in the language the user writes in. Be concise.
@@ -38,7 +45,7 @@ enum SystemPrompt {
       CFG-Zero*: \(v(cfgZero)), initial steps \(v(p?.cfgZeroInitSteps.map(String.init))). Batch: \(batch).
       LoRAs: \(loras)
       Start image: \(start). Moodboard pictures on: \(context.moodboard?.count ?? 0).
-
+      \(guide)
       ACTIONS
       You can change the Generation tab, but only when the user's latest message contains the exact command <SEND> or
       <INVIA>. Only then end your answer with exactly one block:
