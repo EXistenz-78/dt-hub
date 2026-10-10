@@ -50,20 +50,22 @@ struct DimensionsCard: View {
           .buttonStyle(DSGlassCircleButtonStyle())
           .help(String(localized: "card.dimensions.swap"))
           .accessibilityLabel(String(localized: "card.dimensions.swap"))
-          Toggle(isOn: $controller.lockRatio) {
-            Text("card.dimensions.lockRatio")
+          VStack(alignment: .leading, spacing: 6) {
+            Toggle(isOn: $controller.lockRatio) {
+              Text("card.dimensions.lockRatio")
+            }
+            .toggleStyle(DSCheckboxToggleStyle())
+            Toggle(
+              isOn: Binding(
+                get: { controller.parameters.isHighRes }, set: { controller.setHighRes($0) })
+            ) { Text("card.dimensions.highRes") }
+              .toggleStyle(DSCheckboxToggleStyle())
+              .disabled(controller.parameters.advanced.tiledDiffusion)
+              .help(String(localized: "card.dimensions.highRes.help"))
           }
-          .toggleStyle(DSCheckboxToggleStyle())
           .padding(.leading, 4)
           Spacer(minLength: 0)
         }
-        Toggle(
-          isOn: Binding(
-            get: { controller.parameters.isHighRes }, set: { controller.setHighRes($0) })
-        ) { Text("card.dimensions.highRes") }
-          .toggleStyle(DSCheckboxToggleStyle())
-          .disabled(controller.parameters.advanced.tiledDiffusion)
-          .help(String(localized: "card.dimensions.highRes.help"))
       }
     }
   }
