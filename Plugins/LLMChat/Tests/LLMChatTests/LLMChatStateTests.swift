@@ -79,6 +79,26 @@ struct LLMChatStateTests {
     #expect(log.sent.isEmpty && s.chat.messages.last?.note == .ignored)
   }
 
+  @Test func aBlockWithNothingUsableSaysSoInsteadOfNoAction() async {
+    let s = state()
+    let log = Log()
+    s.draft = "go <SEND>"
+    await s.send(using: ask(log, reply: .text("```dthub\n{\"foo\":1}\n```")), contribute: contribute(log))
+    #expect(log.sent.isEmpty)
+    #expect(s.chat.messages.last?.text == L.text(.nothingUsable, italian: false))
+  }
+
+  @Test func aBareListPipelineFromASmallModelIsSent() async {
+    let s = state()
+    let log = Log()
+    s.draft = "five variants <SEND>"
+    await s.send(
+      using: ask(log, reply: .text("```dthub\n{\"pipeline\":[{\"fields\":{\"prompt\":\"a\"}},{\"fields\":{\"prompt\":\"b\"}}]}\n```")),
+      contribute: contribute(log))
+    #expect(log.sent.count == 1 && s.chat.messages.last?.note == .action)
+    #expect(s.chat.messages.last?.text == "Sent: pipeline (2 passes).")
+  }
+
   @Test func anInvalidBlockOrTooLongAPipelineIsAnErrorAndSendsNothing() async {
     let s = state()
     let log = Log()

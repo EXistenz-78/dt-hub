@@ -211,7 +211,7 @@ final class LLMChatState: ObservableObject {
     case .failure(.tooManySteps(let count)):
       note(.error, L.format(.tooManySteps, count, italian: italian))
     case .failure(.empty):
-      note(.ignored, L.text(.noAction, italian: italian))
+      note(.ignored, L.text(.nothingUsable, italian: italian))
     case .success(let body):
       let answer = await contribute(body)
       guard generation == mine else { return }

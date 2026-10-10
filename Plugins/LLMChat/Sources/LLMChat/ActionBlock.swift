@@ -71,8 +71,11 @@ enum ActionBlock {
     guard let root = parsed as? [String: Any] else { return .failure(.invalidJSON("not an object")) }
 
     // A pipeline that is too long stops everything, the fields of the same block included.
+    // The steps are `{"pipeline":{"steps":[…]}}`; a small model often writes the bare list, `{"pipeline":[…]}`, which is read the same.
     var pipelineSteps: [[String: Any]] = []
-    if let pipeline = root["pipeline"] as? [String: Any], let steps = pipeline["steps"] as? [Any] {
+    let rawSteps: [Any]? =
+      (root["pipeline"] as? [String: Any])?["steps"] as? [Any] ?? root["pipeline"] as? [Any]
+    if let steps = rawSteps {
       if steps.count > maxSteps { return .failure(.tooManySteps(steps.count)) }
       pipelineSteps = steps.compactMap { $0 as? [String: Any] }
     }
