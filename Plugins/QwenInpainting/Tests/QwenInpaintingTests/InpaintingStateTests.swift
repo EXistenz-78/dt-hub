@@ -180,6 +180,7 @@ struct InpaintingStateTests {
 
   @Test func theEnhancerRewritesThePromptFromTheFusedPicture() async throws {
     let s = state(start: try startImage(), pe: true)
+    s.session.usePE = true
     s.add(box())
     s.setText("make it blue", for: CardKey(color: .red, tool: .box))
     let log = Log()
@@ -193,6 +194,7 @@ struct InpaintingStateTests {
 
   @Test func ifTheEnhancerFailsTheDirectPromptGoesAndTheStatusSaysWhy() async throws {
     let s = state(start: try startImage(), pe: true)
+    s.session.usePE = true
     s.add(box())
     s.setText("make it blue", for: CardKey(color: .red, tool: .box))
     let log = Log()
