@@ -479,6 +479,12 @@ final class GenerationController {
     if lockRatio { lockedRatio = currentRatio }
   }
 
+  /// The HiRes (beta) checkbox of the Dimensions card: turning it off brings the dimensions back within 2048.
+  func setHighRes(_ on: Bool) {
+    parameters.setHighRes(on)
+    if lockRatio { lockedRatio = currentRatio }
+  }
+
   func restoreDimensions(_ size: Size) {
     parameters.width = size.width
     parameters.height = size.height
