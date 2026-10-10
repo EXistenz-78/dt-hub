@@ -41,7 +41,7 @@ and `import DTHubDesign` in the views (see `Plugins/SphereLight`).
 JSON objects with a `type`. An unknown type gets `{"type":"unsupported"}`.
 
 **App → plug-in:** `context` (model, family, `parameters`: the Generation tab's parameters as they are when the message is sent — `width`, `height`, `steps`, `guidanceScale`, `sampler`, `shift`, `resolutionDependentShift`, `cfgZeroStar`, `cfgZeroInitSteps`, `seed`, `randomSeed`, `batchSize`, `batchCount`, `loras` (`[{"file","weight","mode","trigger"}]`), and `advanced` and `extra` (name → value, to show and not to change); `DTHubContext.parameters` reads them with tolerance, a missing or mistyped value is nil and never costs the rest of the context; `tempFolder`: a folder to exchange picture files through;
-`startImage`: the path of the Control tab's start image when there is one; `moodboard`: the paths of the Moodboard
+`prompt`, `negativePrompt`: the Generation tab's prompts as they are now (an empty one is still sent; absent from older apps); `strength`: how much the start image is changed, 0–1, as the Control tab's slider shows it (absent without a start image); `startImage`: the path of the Control tab's start image when there is one; `moodboard`: the paths of the Moodboard
 pictures that are on, in the order of the thumbnails; `languageModels`: `[{"name", "path", "supportsImages", "family", "use"}]`, the
 language models of the app's models folder (`family`: the family the user assigned the model to in Settings › LLM — `"*"` for "all others", otherwise the family key such as `"qwen_image_2.1"`, absent for none; `use`: `"enhance"`, `"describe"`, `"both"`, `"plugins"`, `"i2i"` (like both, but only when the Control tab has images) or `"t2i"` (like both, but only when it is empty); both are optional additions) — each key is left out when there is nothing to say; the app sends the context again when a plug-in's tab is shown),
 `activate`, `deactivate`, and `project`: `{"type":"project","name","folder","adoptLegacy"}`, sent to every loaded plug-in (on for the job or not) when a project is opened and right after launch. `folder` is a folder of the plug-in's own inside the project (the app has created it): keep the state there (for example `<folder>/state.json`, written at every change), load what is there, and take no file or an unreadable one as the initial state. `adoptLegacy` is true once, for the first project ever: if `folder` has no state yet, move the state you had before projects into it. A plug-in that does not handle `project` (it answers `unsupported`) keeps one global state; the app tells the user once. `DTHubProject` decodes it.
@@ -60,6 +60,7 @@ language models of the app's models folder (`family`: the family the user assign
   - `moodboard`: `[{"path", "name"}]`, files in the `tempFolder`, added to the Moodboard. Sending them again replaces
     the ones this plug-in sent before.
   - `startImage`: `{"path", "name"}`, the start image of the Control tab.
+  - `strength`: a number, 0–1 (values outside are brought into it): how much the start image is changed, the Control tab's slider. It applies only when the tab has a start image (otherwise `problems` says so), after a `startImage` of the same message; it is not a field of the tab, so it is not coloured teal and raises no conflict: the last one to write wins.
   - `pipeline`: `{"name", "steps": [...]}`; each step is `{"title", "preset", "fields", "loras", "moodboard",
     "startImage", "useOutputAsStart"}`: the name of a preset in the app's Preset menu (its parameters, prompt and negative
     prompt are applied on the tab's fields, but not its model nor a size); then `fields`, the values this pass changes
@@ -78,7 +79,7 @@ language models of the app's models folder (`family`: the family the user assign
   names apart. `fields` has the keys of `contribute` above, the prompt and the negative prompt included; no size,
   no model. A name the menu has already is never touched (the user may have changed it), so register them
   whenever you like. The answer is `{"type":"ok","added":n,"existing":m,"rejected":k}`.
-- `llm` — `{"prompt", "images": [paths], "system", "model", "options"}`: a question for the language model. The answer
+- `llm` — `{"prompt", "images": [paths], "system", "model", "options", "messages"}`: a question for the language model. `messages` (optional) holds the earlier turns of a conversation, oldest first: `[{"role":"user"|"assistant","text"}]`; `prompt` is the new message and `images` go with it (an entry with another role or without a text is skipped). `DTHubHost.askLanguageModel(…, history:)` sends them. The answer
   is `{"type":"llm","text":…}` (it can take a while: the model may have to load) or an `error`. Only `prompt` is
   needed. `system` is the system prompt. `model` is the `name` of one of `languageModels` and asks for that model
   instead of the one the user chose (the user's choice stays; an unknown name is an `error`). `options` is an object
