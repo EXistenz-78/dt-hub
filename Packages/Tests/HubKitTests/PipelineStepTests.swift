@@ -42,4 +42,12 @@ struct PipelineStepTests {
     #expect(contribution(#"{"strength":0.3}"#)?.isEmpty == false)
     #expect(contribution(#"{}"#)?.isEmpty == true)
   }
+
+  @Test func theDrawingIsReadWithAndWithoutAName() {
+    let plain = contribution(#"{"paint":{"path":"/tmp/x/paint.png"}}"#)?.paint
+    #expect(plain?.path == "/tmp/x/paint.png" && plain?.name == "paint.png")
+    #expect(contribution(#"{"paint":{"path":"/tmp/x/paint.png","name":"Qwen 2.1 Inpainting"}}"#)?.paint?.name == "Qwen 2.1 Inpainting")
+    #expect(contribution(#"{"paint":"x"}"#)?.paint == nil)
+    #expect(contribution(#"{"paint":{"path":"/tmp/p.png"}}"#)?.isEmpty == false)
+  }
 }

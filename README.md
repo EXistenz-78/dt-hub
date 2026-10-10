@@ -19,7 +19,7 @@ This is an independent community project, not affiliated with or endorsed by Dra
 - **Presets and preset pipelines.** Save a configuration as a preset and chain several presets into one Run. Recommended settings per model family are suggested for you.
 - **A local LLM (MLX)** that runs inside the app and can see images, with controls to free memory so the image model and the LLM can share a Mac. Nothing is downloaded unless you ask for it.
 - **Prompt tools.** *Enhance Prompt* rewrites your prompt for the selected model's family (and sees the start image and the Moodboard pictures, so "image 1", "image 2"… keep their meaning) and *Generate Prompt* writes one from the start image, both with the local language model.
-- **Plug-ins**, each with its own tab and active only on the model families it was made for: Prompt Master, Prompt Master I4 (Ideogram 4), Sphere Light Reference, Character Sheet (Qwen Image 2.1), Batch plus (a series of RUNs with growing parameters, or one per prompt; all families) and AI Assistant (chat with a local LLM that can write the prompt and the settings on command). See [`Plugins/`](Plugins/README.md).
+- **Plug-ins**, each with its own tab and active only on the model families it was made for: Prompt Master, Prompt Master I4 (Ideogram 4), Sphere Light Reference, Character Sheet (Qwen Image 2.1), Batch plus (a series of RUNs with growing parameters, or one per prompt; all families), AI Assistant (chat with a local LLM that can write the prompt and the settings on command) and Qwen 2.1 Inpainting (colored marks and instructions on the start image, for Qwen Image 2.1). See [`Plugins/`](Plugins/README.md).
 - **Keyboard.** ⌘↩ Run, ⌘. Stop, ⌘R Results, ⌃Page Up / ⌃Page Down to step through the tabs.
 - **Managed server.** DT Hub can start Draw Things' `gRPCServerCLI` by itself, or connect to the server of the Draw Things app.
 
@@ -113,7 +113,7 @@ The interface of the app and of the plug-ins is available in **English and Itali
 | `App/` | The app: connection, controls, generation, main window, plug-in host, preferences, results. |
 | `Packages/` | The logic (`HubCore`, `HubKit`, `DTBridge`, `LLMBridge`, `PluginHost`) and its tests. |
 | `PluginKit/` | The kit and the design system a plug-in is written with; contract 1 of the plug-ins. |
-| `Plugins/` | Prompt Master, Prompt Master I4, Sphere Light Reference, Character Sheet, Batch plus and AI Assistant. |
+| `Plugins/` | Prompt Master, Prompt Master I4, Sphere Light Reference, Character Sheet, Batch plus, AI Assistant and Qwen 2.1 Inpainting. |
 | `docs/superpowers/` | Specs and plans (in Italian). |
 
 ## Status

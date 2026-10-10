@@ -12,6 +12,10 @@ final class FakeContributionTarget: ContributionTarget {
   private(set) var startImageName: String?
   private(set) var startID: UUID?
   private(set) var strengths: [Double] = []
+  private(set) var paintCalls: [PluginImageRef] = []
+  /// Set to make `setPaint` throw.
+  var paintError: ControlError?
+  private(set) var order: [String] = []
   var failImages = false
 
   var loraFiles: Set<String> { Set(loras.map(\.file)) }
@@ -36,10 +40,17 @@ final class FakeContributionTarget: ContributionTarget {
     let id = UUID()
     startID = id
     startImageName = image.name
+    order.append("start")
     return id
   }
 
   func setStrength(_ value: Double) { strengths.append(value) }
+
+  func setPaint(_ image: PluginImageRef) throws {
+    order.append("paint")
+    if let paintError { throw paintError }
+    paintCalls.append(image)
+  }
 
   func userRemovesStartImage() { startID = nil }
   func userRemovesLoRA(_ file: String) { loras.removeAll { $0.file == file } }
@@ -299,5 +310,40 @@ struct ContributionStoreTests {
     let problems = store.receive(PluginContribution(startImage: image, strength: 0.3), from: "chat")
     #expect(problems.isEmpty)
     #expect(target.strengths == [0.3] && target.startImageName == "a")
+  }
+
+  @Test func aDrawingIsAppliedWithAStartImage() throws {
+    let store = ContributionStore()
+    store.target = target
+    _ = try target.setStartImage(PluginImageRef(name: "a", path: "/tmp/a.png"), from: "x")
+    let problems = store.receive(PluginContribution(paint: PluginImageRef(name: "d", path: "/tmp/d.png")), from: "qwen")
+    #expect(problems.isEmpty && target.paintCalls.map(\.name) == ["d"])
+  }
+
+  @Test func withoutAStartImageADrawingIsAProblem() {
+    let store = ContributionStore()
+    store.target = target
+    let problems = store.receive(PluginContribution(paint: PluginImageRef(name: "d", path: "/tmp/d.png")), from: "qwen")
+    #expect(problems == ["paint: there is no start image."] && target.paintCalls.isEmpty)
+  }
+
+  @Test func aDrawingThatCannotBeReadIsAProblemWithItsName() throws {
+    let store = ContributionStore()
+    store.target = target
+    _ = try target.setStartImage(PluginImageRef(name: "a", path: "/tmp/a.png"), from: "x")
+    target.paintError = .unreadable("paint.png")
+    let problems = store.receive(PluginContribution(paint: PluginImageRef(name: "paint.png", path: "/tmp/p.png")), from: "qwen")
+    #expect(problems.count == 1 && problems[0].hasPrefix("paint.png:"))
+  }
+
+  @Test func theStartImageComesBeforeTheDrawingOfTheSameMessage() {
+    let store = ContributionStore()
+    store.target = target
+    let problems = store.receive(
+      PluginContribution(
+        startImage: PluginImageRef(name: "a", path: "/tmp/a.png"), paint: PluginImageRef(name: "d", path: "/tmp/d.png")),
+      from: "qwen")
+    #expect(problems.isEmpty)
+    #expect(Array(target.order.suffix(2)) == ["start", "paint"])
   }
 }
