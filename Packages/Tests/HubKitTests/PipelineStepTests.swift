@@ -30,4 +30,16 @@ struct PipelineStepTests {
     #expect(applied.parameters.steps < 9999)
     #expect(step.loras.first?.weight == LoRASelection.weightRange.upperBound)
   }
+
+  func contribution(_ json: String) -> PluginContribution? { PluginContribution(message: Data(json.utf8)) }
+
+  @Test func theStrengthIsReadAndBroughtInto01() {
+    #expect(contribution(#"{"strength":0.45}"#)?.strength == 0.45)
+    #expect(contribution(#"{"strength":1.7}"#)?.strength == 1)
+    #expect(contribution(#"{"strength":-1}"#)?.strength == 0)
+    #expect(contribution(#"{"strength":1}"#)?.strength == 1)
+    #expect(contribution(#"{"strength":"0.5"}"#)?.strength == nil)
+    #expect(contribution(#"{"strength":0.3}"#)?.isEmpty == false)
+    #expect(contribution(#"{}"#)?.isEmpty == true)
+  }
 }

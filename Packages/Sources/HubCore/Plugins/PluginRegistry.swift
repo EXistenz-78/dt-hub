@@ -67,13 +67,20 @@ public final class PluginRegistry: PluginHosting {
   /// Answers a plug-in's question to the language model (`llm` message); nil = no language model. `modelName` is the
   /// model of the models folder the plug-in asks for; nil = the one chosen in the settings.
   @ObservationIgnored public var askLanguageModel:
-    (@MainActor (_ prompt: String, _ images: [URL], _ options: LanguageModelOptions, _ modelName: String?) async throws -> String)?
+    (@MainActor (_ prompt: String, _ images: [URL], _ options: LanguageModelOptions, _ modelName: String?, _ history: [LanguageModelTurn]) async throws
+      -> String)?
   /// The path of the Control tab's start image, when there is one; read whenever a context is sent.
   @ObservationIgnored public var startImagePath: (@MainActor () -> String?)?
   /// The paths of the Moodboard pictures that are on; read whenever a context is sent.
   @ObservationIgnored public var moodboardPaths: (@MainActor () -> [String])?
   /// The language models of the models folder; read whenever a context is sent.
   @ObservationIgnored public var languageModels: (@MainActor () -> [PluginLanguageModel])?
+  /// The Generation tab's prompt and negative prompt, as they are now; sent in the context when set.
+  @ObservationIgnored public var currentPrompts: (@MainActor () -> (prompt: String, negativePrompt: String))?
+  /// The guide for writing prompts for the family of the chosen model; nil when there is none.
+  @ObservationIgnored public var promptGuide: (@MainActor () -> PluginPromptGuide?)?
+  /// The strength of the start image as the Control tab shows it; nil without a start image.
+  @ObservationIgnored public var startImageStrength: (@MainActor () -> Double?)?
 
   /// The open project and whether the first one's adoption of the old state is due; read when the plug-ins have loaded.
   @ObservationIgnored public var currentProject: (@MainActor () -> (Project, adoptLegacy: Bool)?)?
@@ -290,7 +297,8 @@ public final class PluginRegistry: PluginHosting {
     let context = PluginContext(
       model: model, family: family, parameters: currentParameters?() ?? latestParameters, tempFolder: tempFolder.path,
       startImage: startImagePath?(), moodboard: moodboardPaths.flatMap { $0().nilIfEmpty },
-      languageModels: languageModels?())
+      languageModels: languageModels?(), prompt: currentPrompts?().prompt, negativePrompt: currentPrompts?().negativePrompt,
+      strength: startImageStrength?(), promptGuide: promptGuide?())
     guard let data = try? JSONEncoder().encode(context) else { return }
     send(data, to: identifier)
   }
@@ -394,7 +402,20 @@ public final class PluginRegistry: PluginHosting {
     return (try? JSONSerialization.data(withJSONObject: answer)) ?? PluginMessageType.bare(PluginMessageType.ok)
   }
 
-  /// `{"type":"llm","prompt":…,"images":[paths],"system":…,"model":name,"options":{…}}` → `{"type":"llm","text":…}`.
+  /// The earlier turns of a conversation in an `llm` message (`messages`: `[{"role":"user"|"assistant","text"}]`), oldest
+  /// first. An entry with another role or without a text is skipped; without `messages` there are none.
+  nonisolated static func turns(_ value: Any?) -> [LanguageModelTurn] {
+    guard let list = value as? [Any] else { return [] }
+    return list.compactMap { item in
+      guard let entry = item as? [String: Any], let text = entry["text"] as? String,
+        let role = (entry["role"] as? String).flatMap(LanguageModelTurn.Role.init(rawValue:))
+      else { return nil }
+      return LanguageModelTurn(role: role, text: text)
+    }
+  }
+
+  /// `{"type":"llm","prompt":…,"images":[paths],"system":…,"model":name,"options":{…},"messages":[…]}` →
+  /// `{"type":"llm","text":…}`.
   private func askModel(_ message: Data, from pluginID: String) async -> Data {
     guard isActive(pluginID) else { return PluginMessageType.failure("The plug-in is not active.") }
     guard let object = try? JSONSerialization.jsonObject(with: message) as? [String: Any],
@@ -405,7 +426,7 @@ public final class PluginRegistry: PluginHosting {
     let options = LanguageModelOptions(message: object)
     let modelName = (object["model"] as? String).flatMap { $0.isEmpty ? nil : $0 }
     do {
-      let text = try await ask(prompt, images, options, modelName)
+      let text = try await ask(prompt, images, options, modelName, Self.turns(object["messages"]))
       return (try? JSONSerialization.data(withJSONObject: ["type": PluginMessageType.llm, "text": text]))
         ?? PluginMessageType.failure("The answer could not be sent.")
     } catch let error as LanguageModelError {
