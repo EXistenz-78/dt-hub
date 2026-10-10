@@ -23,7 +23,8 @@ struct BatchPlusStoreTests {
     s.increments = ["steps": "10", "lora:x.ckpt": "0,2"]
     s.count = 7
     s.fixedSeed = false
-    s.promptText = "- a\n- b"
+    s.promptText = "<a|b>"
+    s.shuffle = true
     return s
   }
 

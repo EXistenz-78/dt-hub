@@ -65,7 +65,19 @@ final class BatchPlusState: ObservableObject {
 
   var shiftIsAuto: Bool { parameters?.resolutionDependentShift == true }
   var resolved: (batch: ParameterBatch, invalid: Set<String>) { session.batch(shiftIsAuto: shiftIsAuto) }
-  var promptItems: [String] { PromptList.items(session.promptText) }
+  /// The seed of the shuffle: the preview shows what will be sent, and a new one is drawn after each send, when the switch
+  /// changes and on "shuffle again".
+  @Published private(set) var shuffleSeed = UInt64.random(in: 0...UInt64.max)
+
+  func reshuffle() { shuffleSeed = UInt64.random(in: 0...UInt64.max) }
+
+  /// The prompts the text makes, one per pass (one only when the text has no list, and then it cannot be sent).
+  var promptItems: [String] {
+    PromptTemplate.prompts(from: session.promptText, shuffle: session.shuffle, seed: shuffleSeed)
+  }
+
+  /// How many passes the prompt text makes (0 without a list).
+  var promptPasses: Int { PromptTemplate.lists(session.promptText).isEmpty ? 0 : PromptTemplate.passCount(session.promptText) }
 
   /// Why the button is off, in words; nil when the series can go.
   func blocker(italian: Bool = L.systemIsItalian) -> String? {
@@ -77,7 +89,7 @@ final class BatchPlusState: ObservableObject {
       if batch.increments.isEmpty && batch.loraIncrements.isEmpty && batch.samplers.isEmpty { return L.text(.noIncrements, italian: italian) }
       return nil
     case .prompts:
-      return promptItems.count < 2 ? L.text(.promptsFew, italian: italian) : nil
+      return promptPasses < 2 ? L.text(.promptsFew, italian: italian) : nil
     }
   }
 
