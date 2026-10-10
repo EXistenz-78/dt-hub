@@ -48,19 +48,32 @@ public actor MLXLanguageModelService: LanguageModelService {
     MLX.Memory.clearCache()
   }
 
-  public func respond(to prompt: String, images: [URL], options: LanguageModelOptions) async throws -> String {
+  public func respond(
+    to prompt: String, images: [URL], options: LanguageModelOptions, history: [LanguageModelTurn]
+  ) async throws -> String {
     guard let container else { throw LanguageModelError.loadFailed("No model is loaded.") }
     if let error = Self.visionRequestError(images: images, visionLoadError: visionLoadError) { throw error }
-    // A new session per question: DT Hub asks single questions, with no conversation to keep.
-    let session = ChatSession(
-      container, instructions: options.system, generateParameters: Self.generateParameters(for: options),
-      additionalContext: Self.templateContext(for: options))
+    // A new session per question. A plug-in's chat sends its earlier turns each time, and the session starts from them;
+    // a single question has none.
+    let session =
+      history.isEmpty
+      ? ChatSession(
+        container, instructions: options.system, generateParameters: Self.generateParameters(for: options),
+        additionalContext: Self.templateContext(for: options))
+      : ChatSession(
+        container, instructions: options.system, history: history.map(Self.message),
+        generateParameters: Self.generateParameters(for: options), additionalContext: Self.templateContext(for: options))
     do {
       return try await session.respond(
         to: prompt, role: .user, images: images.map { UserInput.Image.url($0) }, videos: [], audios: [])
     } catch {
       throw LanguageModelError.generationFailed(error.localizedDescription)
     }
+  }
+
+  /// A turn of the conversation as the chat session wants it.
+  static func message(_ turn: LanguageModelTurn) -> Chat.Message {
+    turn.role == .user ? .user(turn.text) : .assistant(turn.text)
   }
 
   /// A picture for a model that is loaded without its vision part is an error, not a picture quietly dropped.
