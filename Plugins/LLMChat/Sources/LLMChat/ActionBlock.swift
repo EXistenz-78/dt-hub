@@ -129,6 +129,37 @@ enum ActionBlock {
     }
   }
 
+  // MARK: What to show of the block
+
+  /// The texts the block carries that a person wants to read: the prompt, the negative prompt, and the prompt of each
+  /// pass of a pipeline, one line each. A text the answer already has in its own words is left out. Settings (steps,
+  /// sampler…) are not shown: those are deterministic. Nothing when there is no block or it cannot be read.
+  static func readableLines(in reply: String, italian: Bool = L.systemIsItalian) -> [String] {
+    guard let json = find(in: reply), let root = object(json) else { return [] }
+    let prose = strip(reply)
+    var lines: [String] = []
+    func add(_ line: String, text: String) {
+      if !prose.contains(text) { lines.append(line) }
+    }
+    if let fields = root["fields"] as? [String: Any] {
+      if let text = fields["prompt"] as? String, !text.isEmpty {
+        add("\(L.text(.fPrompt, italian: italian).capitalized): \(text)", text: text)
+      }
+      if let text = fields["negativePrompt"] as? String, !text.isEmpty {
+        add("\(L.text(.fNegative, italian: italian).capitalized): \(text)", text: text)
+      }
+    }
+    let steps: [Any]? = (root["pipeline"] as? [String: Any])?["steps"] as? [Any] ?? root["pipeline"] as? [Any]
+    for (index, raw) in (steps ?? []).enumerated() {
+      guard let step = raw as? [String: Any], let fields = step["fields"] as? [String: Any],
+        let text = fields["prompt"] as? String, !text.isEmpty
+      else { continue }
+      let title = (step["title"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+      add(title.isEmpty ? "\(index + 1). \(text)" : "\(index + 1). \(title): \(text)", text: text)
+    }
+    return lines
+  }
+
   // MARK: What was sent
 
   /// The line for the chat after a send: what went, the conflicts, the problems; an error of the app as an error.

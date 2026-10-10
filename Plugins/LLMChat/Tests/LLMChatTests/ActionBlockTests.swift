@@ -108,6 +108,32 @@ struct ActionBlockTests {
     if case .invalidJSON? = ActionBlock.body(from: "[1,2]", italian: false).failureValue {} else { Issue.record("expected invalidJSON") }
   }
 
+  // MARK: What to show
+
+  @Test func thePromptsOfABlockAreReadableLines() {
+    let single = block(#"{"fields":{"prompt":"a cat","negativePrompt":"blur","steps":4}}"#)
+    #expect(ActionBlock.readableLines(in: single, italian: false) == ["Prompt: a cat", "Negative: blur"])
+    #expect(ActionBlock.readableLines(in: single, italian: true) == ["Prompt: a cat", "Negativo: blur"])
+  }
+
+  @Test func eachPassOfAPipelineShowsItsPromptAndSettingsAreNotShown() {
+    let json = #"{"pipeline":{"steps":[{"title":"Noir","fields":{"prompt":"a noir cat"}},{"fields":{"prompt":"a bright cat"}},{"fields":{"steps":20}}]}}"#
+    #expect(ActionBlock.readableLines(in: block(json), italian: false) == ["1. Noir: a noir cat", "2. a bright cat"])
+    let bare = #"{"pipeline":[{"fields":{"prompt":"x"}}]}"#
+    #expect(ActionBlock.readableLines(in: block(bare), italian: false) == ["1. x"])
+  }
+
+  @Test func aTextTheAnswerAlreadySaysIsNotRepeated() {
+    let reply = "Here: a noir cat, and more.\n" + block(#"{"pipeline":{"steps":[{"fields":{"prompt":"a noir cat"}},{"fields":{"prompt":"a bright cat"}}]}}"#)
+    #expect(ActionBlock.readableLines(in: reply, italian: false) == ["2. a bright cat"])
+  }
+
+  @Test func deterministicActionsOrNoBlockGiveNothingToRead() {
+    #expect(ActionBlock.readableLines(in: block(#"{"fields":{"steps":10},"strength":0.5}"#)).isEmpty)
+    #expect(ActionBlock.readableLines(in: "just words").isEmpty)
+    #expect(ActionBlock.readableLines(in: block("not json")).isEmpty)
+  }
+
   // MARK: The summary
 
   @Test func theSummaryListsWhatWasSent() throws {
