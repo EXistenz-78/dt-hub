@@ -140,6 +140,8 @@ struct DrawThingsPreferencesView: View {
       }
     }
 
+    versionSection
+
     if !server.logTail.isEmpty || server.isRunning {
       Section {
         if server.isRunning {
@@ -154,6 +156,50 @@ struct DrawThingsPreferencesView: View {
           }
         }
       }
+    }
+  }
+
+  // MARK: Version of the server
+
+  /// The version of the gRPCServerCLI, recognized by its sha256 among the Draw Things releases, and whether a newer
+  /// one is out: checked at launch and here on demand.
+  private var versionSection: some View {
+    let info = connection.serverVersion
+    return Section {
+      HStack(spacing: DS.controlGap) {
+        VStack(alignment: .leading, spacing: 2) {
+          Text("prefs.server.version")
+          Text(verbatim: versionLine(info))
+            .font(.caption)
+            .foregroundStyle(info.state == .updateAvailable ? DS.accent : .secondary)
+        }
+        Spacer(minLength: DS.controlGap)
+        if info.state == .updateAvailable || info.state == .unidentified {
+          Link("prefs.server.version.download", destination: Self.releasesURL)
+        }
+        Button("prefs.server.version.check") { Task { await connection.refreshServerVersion() } }
+          .buttonStyle(DSPillButtonStyle())
+          .disabled(info.state == .checking)
+      }
+    } footer: {
+      Text("prefs.server.version.note")
+        .foregroundStyle(.secondary)
+    }
+  }
+
+  private func versionLine(_ info: ServerVersionInfo) -> String {
+    switch info.state {
+    case .idle, .noProgram: return "—"
+    case .checking: return String(localized: "prefs.server.version.checking")
+    case .upToDate: return String(format: String(localized: "prefs.server.version.upToDate"), info.installed ?? "")
+    case .updateAvailable:
+      return String(
+        format: String(localized: "prefs.server.version.update"), info.installed ?? "", info.latest ?? "")
+    case .unidentified:
+      return String(format: String(localized: "prefs.server.version.unknown"), info.latest ?? "")
+    case .couldNotCheck:
+      return info.installed.map { String(format: String(localized: "prefs.server.version.offline"), $0) }
+        ?? String(localized: "prefs.server.version.offlineUnknown")
     }
   }
 
