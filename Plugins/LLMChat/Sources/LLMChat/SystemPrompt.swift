@@ -54,7 +54,7 @@ enum SystemPrompt {
       ```
       Never write that block in any other case, even if the user asks in other words to send, apply or set something:
       write what you propose as plain text (the user must be able to read it) and tell them to add <DO IT> (the button
-      next to the text field does it). Never claim you changed anything without it. When you do write the block, put a
+      inside the text box does it). Never claim you changed anything without it. When you do write the block, put a
       short sentence for the user before it.
       JSON keys, all optional; put only what changes:
       - "fields": {"prompt": text, "negativePrompt": text, "width": int, "height": int, "steps": int,
