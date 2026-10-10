@@ -575,6 +575,8 @@ extension GenerationController: ContributionTarget {
 
   func removeMoodboardImage(_ id: UUID) { control.removeMoodboardImage(id: id) }
 
+  func setStrength(_ value: Double) { control.setStrength(value) }
+
   func setStartImage(_ image: PluginImageRef, from pluginID: String) throws -> UUID {
     let data = try Self.read(image)
     return try control.setImage(data: data, name: image.name, source: .plugin(id: pluginID))
