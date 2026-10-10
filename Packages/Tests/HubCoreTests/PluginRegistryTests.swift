@@ -182,6 +182,31 @@ struct PluginRegistryTests {
     #expect(try steps() == 20)
   }
 
+  @Test func theContextCarriesThePromptsAndTheStrengthOfTheClosures() async throws {
+    try PluginFixture.bundle(in: root, id: "a", name: "A")
+    let loader = FakeLoader()
+    let registry = registry(loader: loader, enabled: ["a"])
+    registry.start()
+    await settle()
+    let plugin = try #require(loader.plugins["a"])
+    func last() throws -> PluginContext {
+      let data = try #require(plugin.sent.last { PluginMessageType.of($0) == PluginMessageType.context })
+      return try JSONDecoder().decode(PluginContext.self, from: data)
+    }
+    registry.refreshContext()
+    await settle()
+    #expect(try last().prompt == nil && last().negativePrompt == nil && last().strength == nil)
+    registry.currentPrompts = { ("a cat", "blur") }
+    registry.startImageStrength = { 0.5 }
+    registry.refreshContext()
+    await settle()
+    #expect(try last().prompt == "a cat" && last().negativePrompt == "blur" && last().strength == 0.5)
+    registry.startImageStrength = { nil }
+    registry.refreshContext()
+    await settle()
+    #expect(try last().strength == nil)
+  }
+
   @Test func withoutACurrentParametersSourceTheLastUpdateCounts() async throws {
     try PluginFixture.bundle(in: root, id: "a", name: "A")
     let loader = FakeLoader()

@@ -62,6 +62,14 @@ struct DTHubApp: App {
       try await languageModel.respond(to: prompt, images: images, options: options, modelNamed: name)
     }
     plugins.currentParameters = { generation.parameters }
+    plugins.currentPrompts = { (generation.prompt, generation.negativePrompt) }
+    plugins.startImageStrength = {
+      guard control.inputs.image != nil else { return nil }
+      return control.inputs.effectiveStrength(
+        editModel: generation.isEditModel(in: connection),
+        hasMargins: control.hasMargins(
+          canvasWidth: generation.parameters.width, canvasHeight: generation.parameters.height))
+    }
     plugins.startImagePath = { control.startImageURL?.path }
     plugins.moodboardPaths = { control.moodboardURLs.map(\.path) }
     plugins.languageModels = {

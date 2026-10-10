@@ -74,6 +74,10 @@ public final class PluginRegistry: PluginHosting {
   @ObservationIgnored public var moodboardPaths: (@MainActor () -> [String])?
   /// The language models of the models folder; read whenever a context is sent.
   @ObservationIgnored public var languageModels: (@MainActor () -> [PluginLanguageModel])?
+  /// The Generation tab's prompt and negative prompt, as they are now; sent in the context when set.
+  @ObservationIgnored public var currentPrompts: (@MainActor () -> (prompt: String, negativePrompt: String))?
+  /// The strength of the start image as the Control tab shows it; nil without a start image.
+  @ObservationIgnored public var startImageStrength: (@MainActor () -> Double?)?
 
   /// The open project and whether the first one's adoption of the old state is due; read when the plug-ins have loaded.
   @ObservationIgnored public var currentProject: (@MainActor () -> (Project, adoptLegacy: Bool)?)?
@@ -290,7 +294,8 @@ public final class PluginRegistry: PluginHosting {
     let context = PluginContext(
       model: model, family: family, parameters: currentParameters?() ?? latestParameters, tempFolder: tempFolder.path,
       startImage: startImagePath?(), moodboard: moodboardPaths.flatMap { $0().nilIfEmpty },
-      languageModels: languageModels?())
+      languageModels: languageModels?(), prompt: currentPrompts?().prompt, negativePrompt: currentPrompts?().negativePrompt,
+      strength: startImageStrength?())
     guard let data = try? JSONEncoder().encode(context) else { return }
     send(data, to: identifier)
   }
