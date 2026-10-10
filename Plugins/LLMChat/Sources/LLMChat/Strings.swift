@@ -8,7 +8,7 @@ enum L {
     case placeholder, commandButton, sendButton, thinking, stopWaiting
     case notActive, needsNewApp, waitingContext, noModels
     case attached, trimmed
-    case ignoredNoCommand, noAction, invalidBlock, tooManySteps, noAnswer
+    case ignoredNoCommand, noAction, nothingUsable, invalidBlock, tooManySteps, noAnswer
     case sent, sentConflicts, sentProblems
     case fPrompt, fNegative, fWidth, fHeight, fSteps, fGuidance, fShift, fAutoShift, fCfgZero, fCfgZeroSteps, fSeed
     case fRandomSeed, fSampler, fBatchSize, fBatchCount, fLoras, fStrength, fPipeline
@@ -44,7 +44,7 @@ enum L {
     .notActive: "Switch LLM Chat on from the plug-ins menu.", .needsNewApp: "Update DT Hub (0.1.6 or later).",
     .waitingContext: "Waiting for the app…", .noModels: "No LLM in the models folder (Settings › LLM).",
     .attached: "%d image(s) attached", .trimmed: "The oldest messages are no longer sent to the LLM.",
-    .ignoredNoCommand: "Action ignored: the message did not contain %@", .noAction: "No action in the answer.",
+    .ignoredNoCommand: "Action ignored: the message did not contain %@", .noAction: "No action in the answer.", .nothingUsable: "The action block has nothing that can be sent.",
     .invalidBlock: "The action block is not valid: %@", .tooManySteps: "The pipeline has %d passes: at most 20.",
     .noAnswer: "No answer.",
     .sent: "Sent: %@.", .sentConflicts: " %d conflict(s) waiting in the app.", .sentProblems: " Problems: %@",
@@ -64,7 +64,7 @@ enum L {
     .notActive: "Accendi LLM Chat dal menu dei plug-in.", .needsNewApp: "Aggiorna DT Hub (0.1.6 o successiva).",
     .waitingContext: "In attesa dell'app…", .noModels: "Nessun LLM nella cartella dei modelli (Preferenze › LLM).",
     .attached: "%d immagini allegate", .trimmed: "I messaggi più vecchi non sono più mandati all'LLM.",
-    .ignoredNoCommand: "Azione ignorata: il messaggio non conteneva %@", .noAction: "Nessuna azione nella risposta.",
+    .ignoredNoCommand: "Azione ignorata: il messaggio non conteneva %@", .noAction: "Nessuna azione nella risposta.", .nothingUsable: "Il blocco di azioni non contiene nulla che si possa inviare.",
     .invalidBlock: "Il blocco di azioni non è valido: %@", .tooManySteps: "La pipeline ha %d passaggi: al massimo 20.",
     .noAnswer: "Nessuna risposta.",
     .sent: "Inviati: %@.", .sentConflicts: " %d conflitti in attesa nell'app.", .sentProblems: " Problemi: %@",

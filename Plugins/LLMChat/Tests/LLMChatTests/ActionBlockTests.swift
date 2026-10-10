@@ -74,6 +74,16 @@ struct ActionBlockTests {
     #expect(steps.allSatisfy { $0["preset"] == nil })
   }
 
+  @Test func aBareListOfStepsIsReadAsThePipeline() throws {
+    let result = try #require(body(#"{"pipeline":[{"title":"A","fields":{"prompt":"a"}},{"fields":{"prompt":"b"}}]}"#, italian: false))
+    let pipeline = try #require(result["pipeline"] as? [String: Any])
+    let steps = try #require(pipeline["steps"] as? [[String: Any]])
+    #expect(steps.count == 2 && steps[1]["title"] as? String == "Pass 2")
+    #expect(pipeline["name"] as? String == "LLM Chat")
+    let many = Array(repeating: #"{"fields":{"steps":4}}"#, count: 21).joined(separator: ",")
+    #expect(ActionBlock.body(from: #"{"pipeline":[\#(many)]}"#, italian: false).failureValue == .tooManySteps(21))
+  }
+
   @Test func englishTitlesForEmptyOnes() throws {
     let result = try #require(body(#"{"pipeline":{"steps":[{"fields":{"steps":4}}]}}"#, italian: false))
     let steps = try #require((result["pipeline"] as? [String: Any])?["steps"] as? [[String: Any]])

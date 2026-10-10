@@ -130,11 +130,15 @@ struct LLMChatView: View {
       }
       .frame(maxWidth: .infinity, alignment: .trailing)
     case .assistant:
-      Text(verbatim: ActionBlock.strip(message.text))
-        .textSelection(.enabled)
-        .padding(10)
-        .background(RoundedRectangle(cornerRadius: DS.boxRadius, style: .continuous).fill(Color.primary.opacity(0.07)))
-        .frame(maxWidth: .infinity, alignment: .leading)
+      // An answer that is only an action block has no words to show: the note after it tells what happened.
+      let words = ActionBlock.strip(message.text)
+      if !words.isEmpty {
+        Text(verbatim: words)
+          .textSelection(.enabled)
+          .padding(10)
+          .background(RoundedRectangle(cornerRadius: DS.boxRadius, style: .continuous).fill(Color.primary.opacity(0.07)))
+          .frame(maxWidth: .infinity, alignment: .leading)
+      }
     case .note:
       Text(verbatim: message.text)
         .font(.caption)
