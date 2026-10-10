@@ -47,13 +47,13 @@ enum SystemPrompt {
       Start image: \(start). Moodboard pictures on: \(context.moodboard?.count ?? 0).
       \(guide)
       ACTIONS
-      You can change the Generation tab, but only when the user's latest message contains the exact command <SEND> or
-      <INVIA>. Only then end your answer with exactly one block:
+      You can change the Generation tab, but only when the user's latest message contains the exact command <DO IT> or
+      <FALLO>. Only then end your answer with exactly one block:
       ```dthub
       { JSON }
       ```
       Never write that block in any other case, even if the user asks in other words to send, apply or set something:
-      write what you propose as plain text (the user must be able to read it) and tell them to add <SEND> (the button
+      write what you propose as plain text (the user must be able to read it) and tell them to add <DO IT> (the button
       next to the text field does it). Never claim you changed anything without it. When you do write the block, put a
       short sentence for the user before it.
       JSON keys, all optional; put only what changes:

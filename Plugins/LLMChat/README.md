@@ -1,4 +1,4 @@
-# LLM Chat
+# AI Assistant
 
 A plug-in for DT Hub to **chat with a local LLM** about what you are preparing: improve a prompt, discuss the settings, get the start image and the Moodboard pictures described, prepare variants. **Works with: all model families.**
 
@@ -6,7 +6,7 @@ With a command you give, the LLM can also **change the Generation tab for you**:
 
 ## The command
 
-The LLM acts only when your message contains **`<SEND>`** (or **`<INVIA>`**, with the app in Italian), spelled exactly so. The button next to the text field adds it at the end of what you are writing; then press Return. Without it nothing is ever changed, even if the answer contains an action block: the plug-in ignores it and says so. After a send, a line in the chat tells what went (`Sent: prompt, steps, LoRAs (2), strength.`), with any conflict or problem the app reports.
+The LLM acts only when your message contains **`<DO IT>`** (or **`<FALLO>`**, with the app in Italian), spelled exactly so. The small button inside the text box, at its bottom right, adds it at the end of what you are writing; then press Return (Shift-Return makes a new line). Without it nothing is ever changed, even if the answer contains an action block: the plug-in ignores it and says so. After a send, a line in the chat tells what went (`Sent: prompt, steps, LoRAs (2), strength.`), with any conflict or problem the app reports.
 
 What it can change: prompt and negative prompt, size, steps, guidance, shift, CFG-Zero*, seed, sampler, batch, the weight of the LoRAs already on the card, the strength, and pipelines (each pass only lists what it changes; no size). What it cannot do: press Run, change the model, touch the advanced settings, remove the start image or the Moodboard pictures, load presets.
 

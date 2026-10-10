@@ -5,7 +5,7 @@ import SwiftUI
 @MainActor
 final class LLMChatPlugin: DTHubPlugin {
   let manifest = DTHubManifest(
-    id: "com.exiztenz.dthub.llmchat", name: "LLM Chat", version: "1.0", symbol: "bubble.left.and.text.bubble.right",
+    id: "com.exiztenz.dthub.llmchat", name: "AI Assistant", version: "1.0", symbol: "bubble.left.and.text.bubble.right",
     families: nil)
   private let state = LLMChatState()
   private var host: DTHubHost?

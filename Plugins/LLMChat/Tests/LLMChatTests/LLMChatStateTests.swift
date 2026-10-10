@@ -5,7 +5,7 @@ import Testing
 @testable import LLMChat
 
 @MainActor
-@Suite("LLM Chat state")
+@Suite("AI Assistant state")
 struct LLMChatStateTests {
   let withVision = #"{"name":"vl","path":"/m/vl","supportsImages":true}"#
   let textOnly = #"{"name":"txt","path":"/m/txt","supportsImages":false}"#
@@ -61,7 +61,7 @@ struct LLMChatStateTests {
   @Test func withTheCommandTheBlockIsSentAndTheLocalCopyFollows() async {
     let s = state()
     let log = Log()
-    s.draft = "make it darker <SEND>"
+    s.draft = "make it darker <DO IT>"
     await s.send(using: ask(log, reply: .text(action)), contribute: contribute(log))
     #expect(log.sent.count == 1)
     let fields = log.sent.first?["fields"] as? [String: Any]
@@ -74,7 +74,7 @@ struct LLMChatStateTests {
   @Test func theCommandWithoutABlockSaysThereWasNoAction() async {
     let s = state()
     let log = Log()
-    s.draft = "hello <SEND>"
+    s.draft = "hello <DO IT>"
     await s.send(using: ask(log, reply: .text("Just text.")), contribute: contribute(log))
     #expect(log.sent.isEmpty && s.chat.messages.last?.note == .ignored)
   }
@@ -82,7 +82,7 @@ struct LLMChatStateTests {
   @Test func aBlockWithNothingUsableSaysSoInsteadOfNoAction() async {
     let s = state()
     let log = Log()
-    s.draft = "go <SEND>"
+    s.draft = "go <DO IT>"
     await s.send(using: ask(log, reply: .text("```dthub\n{\"foo\":1}\n```")), contribute: contribute(log))
     #expect(log.sent.isEmpty)
     #expect(s.chat.messages.last?.text == L.text(.nothingUsable, italian: false))
@@ -91,7 +91,7 @@ struct LLMChatStateTests {
   @Test func aBareListPipelineFromASmallModelIsSent() async {
     let s = state()
     let log = Log()
-    s.draft = "five variants <SEND>"
+    s.draft = "five variants <DO IT>"
     await s.send(
       using: ask(log, reply: .text("```dthub\n{\"pipeline\":[{\"fields\":{\"prompt\":\"a\"}},{\"fields\":{\"prompt\":\"b\"}}]}\n```")),
       contribute: contribute(log))
@@ -102,11 +102,11 @@ struct LLMChatStateTests {
   @Test func anInvalidBlockOrTooLongAPipelineIsAnErrorAndSendsNothing() async {
     let s = state()
     let log = Log()
-    s.draft = "go <SEND>"
+    s.draft = "go <DO IT>"
     await s.send(using: ask(log, reply: .text("```dthub\nnot json\n```")), contribute: contribute(log))
     #expect(s.chat.messages.last?.note == .error && log.sent.isEmpty)
     let steps = Array(repeating: #"{"fields":{"steps":4}}"#, count: 21).joined(separator: ",")
-    s.draft = "go <SEND>"
+    s.draft = "go <DO IT>"
     await s.send(
       using: ask(log, reply: .text("```dthub\n{\"fields\":{\"prompt\":\"x\"},\"pipeline\":{\"steps\":[\(steps)]}}\n```")),
       contribute: contribute(log))
@@ -253,10 +253,10 @@ struct LLMChatStateTests {
     let s = state()
     s.draft = "make it darker"
     s.insertCommand()
-    #expect(s.draft == "make it darker <SEND>")
+    #expect(s.draft == "make it darker <DO IT>")
     s.draft = ""
     s.insertCommand()
-    #expect(s.draft == "<SEND>")
+    #expect(s.draft == "<DO IT>")
   }
 
   @Test func bothLanguagesHaveEveryWord() {

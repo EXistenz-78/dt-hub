@@ -1,7 +1,7 @@
 // swift-tools-version: 6.2
 import PackageDescription
 
-// The LLM Chat plug-in of DT Hub (docs/superpowers/specs/2026-10-10-plugin-llm-chat-design.md).
+// The AI Assistant plug-in of DT Hub (docs/superpowers/specs/2026-10-10-plugin-llm-chat-design.md).
 let package = Package(
   name: "LLMChat",
   platforms: [.macOS(.v26)],

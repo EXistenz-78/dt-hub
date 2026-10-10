@@ -53,7 +53,7 @@ struct HistoryAndPromptTests {
     #expect(text.contains("Start image: yes, strength 0.70") && text.contains("Moodboard pictures on: 1"))
     #expect(text.contains("x.ckpt (weight 0.6)") && text.contains("832 × 1216") && text.contains("(automatic, ignored)"))
     #expect(text.contains("Seed: 99 (random)") && text.contains("Batch: 1 × 2"))
-    #expect(text.contains("<SEND>") && text.contains("<INVIA>") && text.contains("At most 20 steps"))
+    #expect(text.contains("<DO IT>") && text.contains("<FALLO>") && text.contains("At most 20 steps"))
     #expect(text.contains("DDIM") && text.contains("UniPC Trailing"))
   }
 
