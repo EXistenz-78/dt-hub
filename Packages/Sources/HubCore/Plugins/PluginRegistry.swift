@@ -77,6 +77,8 @@ public final class PluginRegistry: PluginHosting {
   @ObservationIgnored public var languageModels: (@MainActor () -> [PluginLanguageModel])?
   /// The Generation tab's prompt and negative prompt, as they are now; sent in the context when set.
   @ObservationIgnored public var currentPrompts: (@MainActor () -> (prompt: String, negativePrompt: String))?
+  /// The guide for writing prompts for the family of the chosen model; nil when there is none.
+  @ObservationIgnored public var promptGuide: (@MainActor () -> PluginPromptGuide?)?
   /// The strength of the start image as the Control tab shows it; nil without a start image.
   @ObservationIgnored public var startImageStrength: (@MainActor () -> Double?)?
 
@@ -296,7 +298,7 @@ public final class PluginRegistry: PluginHosting {
       model: model, family: family, parameters: currentParameters?() ?? latestParameters, tempFolder: tempFolder.path,
       startImage: startImagePath?(), moodboard: moodboardPaths.flatMap { $0().nilIfEmpty },
       languageModels: languageModels?(), prompt: currentPrompts?().prompt, negativePrompt: currentPrompts?().negativePrompt,
-      strength: startImageStrength?())
+      strength: startImageStrength?(), promptGuide: promptGuide?())
     guard let data = try? JSONEncoder().encode(context) else { return }
     send(data, to: identifier)
   }

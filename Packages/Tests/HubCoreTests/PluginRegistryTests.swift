@@ -207,6 +207,27 @@ struct PluginRegistryTests {
     #expect(try last().strength == nil)
   }
 
+  @Test func theContextCarriesThePromptGuideOfTheClosure() async throws {
+    try PluginFixture.bundle(in: root, id: "a", name: "A")
+    let loader = FakeLoader()
+    let registry = registry(loader: loader, enabled: ["a"])
+    registry.start()
+    await settle()
+    let plugin = try #require(loader.plugins["a"])
+    func last() throws -> PluginContext {
+      let data = try #require(plugin.sent.last { PluginMessageType.of($0) == PluginMessageType.context })
+      return try JSONDecoder().decode(PluginContext.self, from: data)
+    }
+    registry.promptGuide = { PluginPromptGuide(label: "Flux", usesNegative: false, notes: "- Prose.") }
+    registry.refreshContext()
+    await settle()
+    #expect(try last().promptGuide?.label == "Flux" && last().promptGuide?.notes == "- Prose.")
+    registry.promptGuide = { nil }
+    registry.refreshContext()
+    await settle()
+    #expect(try last().promptGuide == nil)
+  }
+
   @Test func withoutACurrentParametersSourceTheLastUpdateCounts() async throws {
     try PluginFixture.bundle(in: root, id: "a", name: "A")
     let loader = FakeLoader()

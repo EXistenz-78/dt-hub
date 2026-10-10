@@ -106,4 +106,14 @@ struct PluginContractTests {
     let bareObject = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(bare)) as? [String: Any])
     #expect(bareObject["prompt"] == nil && bareObject["negativePrompt"] == nil && bareObject["strength"] == nil)
   }
+
+  @Test func theContextCarriesThePromptGuideWhenThereIsOne() throws {
+    let guide = PluginPromptGuide(label: "Qwen Image 2.1", usesNegative: false, notes: "- Plain English.")
+    let context = PluginContext(
+      model: "m", family: "qwen_image_2.1", parameters: GenerationParameters(), tempFolder: "/t", promptGuide: guide)
+    #expect(try JSONDecoder().decode(PluginContext.self, from: JSONEncoder().encode(context)).promptGuide == guide)
+    let bare = PluginContext(model: nil, family: nil, parameters: GenerationParameters(), tempFolder: "/t")
+    let object = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(bare)) as? [String: Any])
+    #expect(object["promptGuide"] == nil)
+  }
 }

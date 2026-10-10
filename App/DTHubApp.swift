@@ -64,6 +64,11 @@ struct DTHubApp: App {
     }
     plugins.currentParameters = { generation.parameters }
     plugins.currentPrompts = { (generation.prompt, generation.negativePrompt) }
+    plugins.promptGuide = {
+      PromptGuides.guide(for: generation.family(in: connection)).map {
+        PluginPromptGuide(label: $0.label, usesNegative: $0.usesNegative, notes: $0.notes)
+      }
+    }
     plugins.startImageStrength = {
       guard control.inputs.image != nil else { return nil }
       return control.inputs.effectiveStrength(
