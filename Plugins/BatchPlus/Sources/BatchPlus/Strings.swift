@@ -46,8 +46,7 @@ enum L {
     .previewNote: "Values outside the allowed range are brought back into it by the app.",
     .needsNewApp: "Update DT Hub to use the Parameters mode.", .noParameters: "Waiting for the parameters of the tab…",
     .noIncrements: "Fill at least one increment.", .invalidIncrement: "An increment is not valid.",
-    .promptsHint: "You can write separate prompts by enclosing each one between < and >.
-Or create one or more lists of terms inside a prompt. Write each list like this: <term1 | term2 | term3>",
+    .promptsHint: "You can write separate prompts by enclosing each one between < and >.\nOr create one or more lists of terms inside a prompt. Write each list like this: <term1 | term2 | term3>",
     .promptsCount: "%d pass(es)", .promptsFew: "At least two passes are needed: use a list with two terms or more.", .shuffle: "Shuffle", .reshuffle: "Shuffle again",
     .send: "Send the series", .sending: "Sending…",
     .sent: "Sent.", .sentWithConflicts: "Sent. %d conflict(s) waiting in the app.", .notAnswered: "No answer from the app.",
@@ -66,8 +65,7 @@ Or create one or more lists of terms inside a prompt. Write each list like this:
     .previewNote: "I valori fuori limite vengono riportati nei limiti dall'app.",
     .needsNewApp: "Aggiorna DT Hub per usare la modalità Parametri.", .noParameters: "In attesa dei parametri della scheda…",
     .noIncrements: "Compila almeno un incremento.", .invalidIncrement: "Un incremento non è valido.",
-    .promptsHint: "Puoi scrivere prompt separati racchiudendo ognuno tra < e >.
-Oppure creare uno o più elenchi di termini in un prompt. Ogni elenco va scritto così <termine1 | termine2 | termine3>",
+    .promptsHint: "Puoi scrivere prompt separati racchiudendo ognuno tra < e >.\nOppure creare uno o più elenchi di termini in un prompt. Ogni elenco va scritto così <termine1 | termine2 | termine3>",
     .promptsCount: "%d passaggi", .promptsFew: "Servono almeno due passaggi: usa un elenco con due o più termini.", .shuffle: "Mescola", .reshuffle: "Rimescola",
     .send: "Invia la serie", .sending: "Invio…",
     .sent: "Inviato.", .sentWithConflicts: "Inviato. %d conflitti in attesa nell'app.", .notAnswered: "Nessuna risposta dall'app.",

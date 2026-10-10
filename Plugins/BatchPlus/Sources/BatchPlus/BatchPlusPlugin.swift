@@ -5,7 +5,7 @@ import SwiftUI
 @MainActor
 final class BatchPlusPlugin: DTHubPlugin {
   let manifest = DTHubManifest(
-    id: "com.exiztenz.dthub.batchplus", name: "Batch plus", version: "1.0", symbol: "square.stack.3d.up", families: nil)
+    id: "com.exiztenz.dthub.batchplus", name: "Batch plus", version: "1.1", symbol: "square.stack.3d.up", families: nil)
   private let state = BatchPlusState()
   private var host: DTHubHost?
 
