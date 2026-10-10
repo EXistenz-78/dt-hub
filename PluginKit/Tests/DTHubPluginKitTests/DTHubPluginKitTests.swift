@@ -115,4 +115,26 @@ struct DTHubProjectTests {
       DTHubContext.self, from: Data(#"{"type":"context","tempFolder":"/t","model":"m","parameters":"oops"}"#.utf8))
     #expect(wholeWrong.parameters == nil && wholeWrong.model == "m" && wholeWrong.tempFolder == "/t")
   }
+
+  @Test func thePromptsAndTheStrengthArriveInTheContextWhenTheAppSendsThem() throws {
+    let json = #"{"type":"context","tempFolder":"/t","model":"m","prompt":"a cat","negativePrompt":"","strength":0.7}"#
+    let context = try JSONDecoder().decode(DTHubContext.self, from: Data(json.utf8))
+    #expect(context.prompt == "a cat" && context.negativePrompt == "" && context.strength == 0.7)
+    let old = try JSONDecoder().decode(DTHubContext.self, from: Data(#"{"type":"context","tempFolder":"/t"}"#.utf8))
+    #expect(old.prompt == nil && old.negativePrompt == nil && old.strength == nil)
+    let wrong = try JSONDecoder().decode(
+      DTHubContext.self, from: Data(#"{"type":"context","tempFolder":"/t","model":"m","strength":"high","prompt":5}"#.utf8))
+    #expect(wrong.strength == nil && wrong.prompt == nil && wrong.model == "m")
+  }
+
+  @MainActor
+  @Test func theLLMMessageCarriesTheHistoryOnlyWhenThereIsOne() {
+    let turns = [DTHubLLMTurn(role: .user, text: "a"), DTHubLLMTurn(role: .assistant, text: "b")]
+    let with = DTHubHost.llmMessage(
+      prompt: "now", images: [], system: nil, model: nil, options: DTHubLLMOptions(), history: turns)
+    let list = with["messages"] as? [[String: String]]
+    #expect(list == [["role": "user", "text": "a"], ["role": "assistant", "text": "b"]])
+    let without = DTHubHost.llmMessage(prompt: "now", images: [], system: nil, model: nil, options: DTHubLLMOptions())
+    #expect(without["messages"] == nil)
+  }
 }
