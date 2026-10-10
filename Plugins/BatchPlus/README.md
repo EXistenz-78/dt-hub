@@ -6,7 +6,8 @@ Two modes, one at a time:
 
 - **Parameters.** The parameters of the Generation tab are shown read-only, each number that can vary with an **Increment** box. The number of passes is 2–50; pass *k* uses *value + (k − 1) × increment*, and several increments vary **together**. Pass 1 uses the current values. Steps 10 (+10) and guidance 3 (+2) over 3 passes give (10, 3), (20, 5), (30, 7).
   Varying parameters: **steps, guidance, shift, CFG-Zero\* initial steps, seed and the weight of each LoRA**. The **sampler** varies too, with a menu of the 20 samplers: tick them in the order you want, at most one per pass (pass 1 uses the first, and so on; later passes keep the tab's sampler). The others (model, size, switches, batch, advanced values, extras) are shown without an increment.
-- **Prompts.** A bulleted list (`-`, `•` or `*`): one pass per bullet, parameters unchanged. Lines without a bullet continue the previous prompt.
+- **Prompts.** One prompt written with **lists of terms**, one pass per term. A term sits between `<` or `|` and `>` or `|`: `<dog|cat|squirrel>` is a list of three terms. The text outside the lists is the same in every pass. Pass *k* takes the *k*-th term of each list, **not every combination**:
+  `A photo of a <dog|cat|squirrel> that <runs|jumps|rolls> on a lawn` gives three prompts (dog, runs), (cat, jumps), (squirrel, rolls). Terms on separate lines with nothing between them are one list: `<text1>` newline `<text2>` newline `<text3>` gives three prompts. With lists of different lengths the passes are as many as the longest list, and a shorter one keeps its last term for the extra passes. A `>` outside a list and a `<` inside a term are plain text (no `><`). The **Shuffle** switch uses each list in a random order of its own (the preview shows the order that will be sent; the dice button shuffles again, and every send draws a new order); with a shorter list, it goes on in a fresh random order.
 
 Details:
 

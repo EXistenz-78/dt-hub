@@ -47,6 +47,8 @@ final class BatchPlusPlugin: DTHubPlugin {
       let answer = await host.contribute(["pipeline": pipeline])
       state.status = BatchPlusState.describe(answer, italian: L.systemIsItalian)
       state.isSending = false
+      // The next send of the same text comes out in another random order.
+      state.reshuffle()
     }
   }
 }

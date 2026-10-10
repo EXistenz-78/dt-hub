@@ -162,7 +162,7 @@ struct BatchPlusView: View {
         .background(RoundedRectangle(cornerRadius: DS.boxRadius, style: .continuous).fill(Color.primary.opacity(0.06)))
         .frame(minHeight: 200)
       Text(L.text(.promptsHint)).font(.caption).foregroundStyle(.secondary)
-      Text(L.format(.promptsCount, state.promptItems.count)).font(.caption).foregroundStyle(.secondary)
+      Text(L.format(.promptsCount, state.promptPasses)).font(.caption).foregroundStyle(.secondary)
     }
     .padding(DS.panelPadding)
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -185,6 +185,22 @@ struct BatchPlusView: View {
         }
       }
       Toggle(L.text(.fixedSeed), isOn: $state.session.fixedSeed).toggleStyle(DSCheckboxToggleStyle())
+      if state.session.mode == .prompts {
+        HStack(spacing: DS.controlGap) {
+          Toggle(L.text(.shuffle), isOn: $state.session.shuffle).toggleStyle(DSCheckboxToggleStyle())
+          if state.session.shuffle {
+            Button {
+              state.reshuffle()
+            } label: {
+              Image(systemName: "dice")
+            }
+            .buttonStyle(.plain)
+            .help(L.text(.reshuffle))
+            .accessibilityLabel(L.text(.reshuffle))
+          }
+        }
+        .onChange(of: state.session.shuffle) { state.reshuffle() }
+      }
       previewList
       HStack(spacing: DS.controlGap) {
         Button(action: send) {
