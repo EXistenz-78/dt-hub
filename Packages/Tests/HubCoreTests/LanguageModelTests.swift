@@ -96,6 +96,7 @@ actor FakeLanguageModelService: LanguageModelService {
   private(set) var unloads = 0
   private(set) var questions: [(String, [URL])] = []
   private(set) var askedOptions: [LanguageModelOptions] = []
+  private(set) var askedHistories: [[LanguageModelTurn]] = []
   var loadError: LanguageModelError?
   var answer = "an answer"
   private var loadGate: Gate?
@@ -113,9 +114,12 @@ actor FakeLanguageModelService: LanguageModelService {
 
   func unload() async { unloads += 1 }
 
-  func respond(to prompt: String, images: [URL], options: LanguageModelOptions) async throws -> String {
+  func respond(to prompt: String, images: [URL], options: LanguageModelOptions, history: [LanguageModelTurn]) async throws
+    -> String
+  {
     questions.append((prompt, images))
     askedOptions.append(options)
+    askedHistories.append(history)
     return answer
   }
 }

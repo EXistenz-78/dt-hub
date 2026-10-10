@@ -47,14 +47,21 @@ public protocol LanguageModelService: Sendable {
   func load(_ model: LanguageModelDescriptor) async throws
   /// Frees the memory of the loaded model; does nothing when none is loaded.
   func unload() async
-  /// One question, with images for a vision model and the options of `LanguageModelOptions`. The model must be loaded.
-  func respond(to prompt: String, images: [URL], options: LanguageModelOptions) async throws -> String
+  /// One question, with images for a vision model and the options of `LanguageModelOptions`; `history` holds the
+  /// earlier turns of a conversation, oldest first (empty for a single question). The model must be loaded.
+  func respond(to prompt: String, images: [URL], options: LanguageModelOptions, history: [LanguageModelTurn]) async throws
+    -> String
 }
 
 extension LanguageModelService {
   /// A question with the default options.
   public func respond(to prompt: String, images: [URL]) async throws -> String {
-    try await respond(to: prompt, images: images, options: LanguageModelOptions())
+    try await respond(to: prompt, images: images, options: LanguageModelOptions(), history: [])
+  }
+
+  /// A single question with options and no conversation.
+  public func respond(to prompt: String, images: [URL], options: LanguageModelOptions) async throws -> String {
+    try await respond(to: prompt, images: images, options: options, history: [])
   }
 }
 

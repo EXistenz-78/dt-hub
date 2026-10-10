@@ -28,4 +28,11 @@ struct MLXOptionsTests {
     #expect(MLXLanguageModelService.templateContext(for: LanguageModelOptions(thinking: true))?["enable_thinking"] as? Bool == true)
     #expect(MLXLanguageModelService.templateContext(for: LanguageModelOptions(thinking: false))?["enable_thinking"] as? Bool == false)
   }
+
+  @Test func theTurnsBecomeChatMessagesInTheirRoles() {
+    let user = MLXLanguageModelService.message(LanguageModelTurn(role: .user, text: "hi"))
+    let assistant = MLXLanguageModelService.message(LanguageModelTurn(role: .assistant, text: "hello"))
+    #expect(user.role == .user && user.content == "hi")
+    #expect(assistant.role == .assistant && assistant.content == "hello")
+  }
 }
