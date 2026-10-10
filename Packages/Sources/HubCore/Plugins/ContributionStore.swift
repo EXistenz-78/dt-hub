@@ -67,6 +67,8 @@ public protocol ContributionTarget: AnyObject {
   func setStartImage(_ image: PluginImageRef, from pluginID: String) throws -> UUID
   /// The strength the start image is used with (0…1).
   func setStrength(_ value: Double)
+  /// The drawing a plug-in made, as the Brush layer of the Control tab (it replaces the one there).
+  func setPaint(_ image: PluginImageRef) throws
 }
 
 /// Remembers what each plug-in contributed, so the tab can show it (teal, the value in brackets) and so a
@@ -157,6 +159,19 @@ public final class ContributionStore {
         target.setStrength(strength)
       } else {
         problems.append("strength: there is no start image.")
+      }
+    }
+
+    // The drawing goes after the start image of the same message, as the Brush layer; no teal, no conflict: the last one wins.
+    if let image = contribution.paint {
+      if target.startImageID != nil {
+        do {
+          try target.setPaint(image)
+        } catch {
+          problems.append("\(image.name): \(error)")
+        }
+      } else {
+        problems.append("paint: there is no start image.")
       }
     }
 
