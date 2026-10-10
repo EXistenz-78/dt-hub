@@ -16,6 +16,8 @@ final class DrawThingsConnection {
   let managedServer = ManagedServer()
   private(set) var settings: ConnectionSettings
   private(set) var managed: ManagedServerSettings
+  /// The version of the gRPCServerCLI DT Hub starts and whether a newer one is out (checked at launch and on demand).
+  private(set) var serverVersion = ServerVersionInfo.idle
   /// True when the last Apply could not save the shared secret in the Keychain.
   private(set) var secretSaveFailed = false
 
@@ -37,11 +39,33 @@ final class DrawThingsConnection {
     ) { [managedServer] _ in
       MainActor.assumeIsolated { managedServer.terminateNow() }
     }
+    Task { await refreshServerVersion() }
     loop = Task {
       // Managed mode: the server starts with the app (spec §5).
       if managed.mode == .managed { await managedServer.start(managed) }
       await monitor.replaceBackend(makeBackend())
       await monitor.run()
+    }
+  }
+
+  /// Looks at the program of the managed server (its sha256 against the releases on GitHub): one request, at launch,
+  /// after Apply and when asked. Another mode has nothing to look at.
+  func refreshServerVersion() async {
+    guard managed.mode == .managed else {
+      serverVersion = .idle
+      return
+    }
+    serverVersion = ServerVersionInfo(state: .checking, installed: serverVersion.installed, latest: serverVersion.latest)
+    let defaults = UserDefaults.standard
+    let remembered = defaults.string(forKey: "drawThings.serverVersion.hash").flatMap { hash in
+      defaults.string(forKey: "drawThings.serverVersion.tag").map { (hash: hash, tag: $0) }
+    }
+    let result = await ServerVersionChecker.live.check(programAt: managed.binaryPath, remembered: remembered)
+    guard managed.mode == .managed else { return }
+    serverVersion = result.info
+    if let hash = result.hash, let tag = result.info.installed {
+      defaults.set(hash, forKey: "drawThings.serverVersion.hash")
+      defaults.set(tag, forKey: "drawThings.serverVersion.tag")
     }
   }
 
@@ -136,6 +160,7 @@ final class DrawThingsConnection {
       secretSaveFailed = true
     }
     await monitor.replaceBackend(makeBackend())
+    await refreshServerVersion()
   }
 
   /// Managed mode talks to its own server: this Mac, its port, TLS, no shared secret (the

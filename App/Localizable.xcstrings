@@ -5339,6 +5339,176 @@
         }
       }
     },
+    "prefs.server.version": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Server version"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Versione del server"
+          }
+        }
+      }
+    },
+    "prefs.server.version.checking": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking…"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Controllo in corso…"
+          }
+        }
+      }
+    },
+    "prefs.server.version.upToDate": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — up to date"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — aggiornato"
+          }
+        }
+      }
+    },
+    "prefs.server.version.update": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — update available: %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — aggiornamento disponibile: %@"
+          }
+        }
+      }
+    },
+    "prefs.server.version.unknown": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not one of the recent Draw Things releases. Latest: %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non è una delle ultime release di Draw Things. Ultima: %@"
+          }
+        }
+      }
+    },
+    "prefs.server.version.offline": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — could not check for updates"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — impossibile controllare gli aggiornamenti"
+          }
+        }
+      }
+    },
+    "prefs.server.version.offlineUnknown": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not check for updates"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile controllare gli aggiornamenti"
+          }
+        }
+      }
+    },
+    "prefs.server.version.download": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Download"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scarica"
+          }
+        }
+      }
+    },
+    "prefs.server.version.check": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check again"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Controlla di nuovo"
+          }
+        }
+      }
+    },
+    "prefs.server.version.note": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The server does not report its version: DT Hub recognizes the program among the releases published on GitHub (one request at launch, nothing is sent). It does not update the program for you."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il server non comunica la sua versione: DT Hub riconosce il programma tra le release pubblicate su GitHub (una richiesta all'avvio, non viene inviato nulla). Non aggiorna il programma al posto tuo."
+          }
+        }
+      }
+    },
     "prefs.server.get": {
       "extractionState": "manual",
       "localizations": {
