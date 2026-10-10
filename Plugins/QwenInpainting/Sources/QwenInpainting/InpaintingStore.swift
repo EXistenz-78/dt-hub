@@ -11,7 +11,7 @@ struct InpaintingSession: Codable, Equatable {
   var tool: MarkTool = .box
   var color: MarkColor = .red
   var width = Mark.defaultWidth
-  var usePE = true
+  var usePE = false
 
   init() {}
 
@@ -22,7 +22,7 @@ struct InpaintingSession: Codable, Equatable {
     tool = (try? c.decodeIfPresent(MarkTool.self, forKey: .tool)) ?? .box
     color = (try? c.decodeIfPresent(MarkColor.self, forKey: .color)) ?? .red
     width = (try? c.decodeIfPresent(Double.self, forKey: .width)) ?? Mark.defaultWidth
-    usePE = (try? c.decodeIfPresent(Bool.self, forKey: .usePE)) ?? true
+    usePE = (try? c.decodeIfPresent(Bool.self, forKey: .usePE)) ?? false
     var list = (try? c.nestedUnkeyedContainer(forKey: .marks))
     var read: [Mark] = []
     while let l = list, !l.isAtEnd {

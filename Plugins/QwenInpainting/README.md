@@ -24,7 +24,7 @@ The sentences, in the order of the cards, are followed by **«Remove all the col
 
 ## Qwen's prompt enhancer
 
-If an LLM is assigned to **Qwen Image 2.1 · I2I** in Settings › LLM (the PE I2I), a box *Improve with …* appears (on by default): the prompt is sent to it together with the start image and the marks, and the rewritten prompt is written into the tab. If it fails, the direct prompt is sent and the status says why. Without it, the sentences go straight into the prompt.
+If an LLM is assigned to **Qwen Image 2.1 · I2I** in Settings › LLM (the PE I2I), a box *Improve with …* appears (off by default): the prompt is sent to it together with the start image and the marks, and the rewritten prompt is written into the tab. If it fails, the direct prompt is sent and the status says why. Without it, the sentences go straight into the prompt.
 
 ## State
 

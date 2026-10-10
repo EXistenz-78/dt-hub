@@ -39,7 +39,7 @@ struct InpaintingStoreTests {
     try Data(json.utf8).write(to: dir.appendingPathComponent("state.json"))
     let loaded = try #require(InpaintingStore(folder: dir).load())
     #expect(loaded.marks.map(\.tool) == [.box, .sketch] && loaded.texts == ["red:box": "x"])
-    #expect(loaded.tool == .box && loaded.color == .red && loaded.width == 16 && loaded.usePE)  // defaults
+    #expect(loaded.tool == .box && loaded.color == .red && loaded.width == 16 && !loaded.usePE)  // defaults
   }
 
   @Test func twoProjectsAreSeparateAndABrokenFileIsNothing() throws {
