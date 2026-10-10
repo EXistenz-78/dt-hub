@@ -58,10 +58,24 @@ struct DTHubApp: App {
     // Contributions land on the Generation tab; a plug-in's question goes to the language model.
     generation.attach(plugins.contributions)
     plugins.presetStore = generation.presets
-    plugins.askLanguageModel = { prompt, images, options, name in
-      try await languageModel.respond(to: prompt, images: images, options: options, modelNamed: name)
+    plugins.askLanguageModel = { prompt, images, options, name, history in
+      try await languageModel.respond(
+        to: prompt, images: images, options: options, modelNamed: name, history: history)
     }
     plugins.currentParameters = { generation.parameters }
+    plugins.currentPrompts = { (generation.prompt, generation.negativePrompt) }
+    plugins.promptGuide = {
+      PromptGuides.guide(for: generation.family(in: connection)).map {
+        PluginPromptGuide(label: $0.label, usesNegative: $0.usesNegative, notes: $0.notes)
+      }
+    }
+    plugins.startImageStrength = {
+      guard control.inputs.image != nil else { return nil }
+      return control.inputs.effectiveStrength(
+        editModel: generation.isEditModel(in: connection),
+        hasMargins: control.hasMargins(
+          canvasWidth: generation.parameters.width, canvasHeight: generation.parameters.height))
+    }
     plugins.startImagePath = { control.startImageURL?.path }
     plugins.moodboardPaths = { control.moodboardURLs.map(\.path) }
     plugins.languageModels = {

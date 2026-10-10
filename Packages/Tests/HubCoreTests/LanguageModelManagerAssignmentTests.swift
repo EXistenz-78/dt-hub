@@ -52,6 +52,24 @@ struct LanguageModelManagerAssignmentTests {
     #expect((try? result.get())?.name == "vision-model")
     #expect(manager.model(for: .describe, family: nil).isSuccess)
   }
+
+  @Test func theHistoryReachesTheService() async throws {
+    let service = FakeLanguageModelService()
+    let manager = helper.manager(service, root: try helper.folder())
+    let turns = [LanguageModelTurn(role: .user, text: "a"), LanguageModelTurn(role: .assistant, text: "b")]
+    _ = try await manager.respond(to: "now", modelNamed: "text-model", history: turns)
+    _ = try await manager.respond(to: "again", modelNamed: "text-model")
+    #expect(await service.askedHistories == [turns, []])
+  }
+
+  @Test func picturesForATextModelAreStillRefusedWithAHistory() async throws {
+    let manager = helper.manager(FakeLanguageModelService(), root: try helper.folder())
+    await #expect(throws: LanguageModelError.imagesNotSupported) {
+      try await manager.respond(
+        to: "x", images: [URL(fileURLWithPath: "/tmp/i.png")], modelNamed: "text-model",
+        history: [LanguageModelTurn(role: .user, text: "a")])
+    }
+  }
 }
 
 extension Result {

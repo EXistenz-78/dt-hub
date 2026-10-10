@@ -95,6 +95,13 @@ public struct DTHubContext: Decodable, Sendable {
   public var languageModels: [DTHubLanguageModel]?
   /// The Generation tab's parameters as they are now; nil when the app does not say.
   public var parameters: DTHubParameters?
+  /// The Generation tab's prompt ("" when empty); nil from an app that does not send it.
+  public var prompt: String?
+  public var negativePrompt: String?
+  /// How much the start image is changed (0…1), as the Control tab shows it; nil without a start image.
+  public var strength: Double?
+  /// How to write prompts for the chosen model's family; nil when the app has no guide for it (or does not send it).
+  public var promptGuide: DTHubPromptGuide?
 
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -106,10 +113,32 @@ public struct DTHubContext: Decodable, Sendable {
     languageModels = try container.decodeIfPresent([DTHubLanguageModel].self, forKey: .languageModels)
     // Whatever is wrong in `parameters` must not cost the plug-in the rest of its context.
     parameters = (try? container.decodeIfPresent(DTHubParameters.self, forKey: .parameters)) ?? nil
+    prompt = (try? container.decodeIfPresent(String.self, forKey: .prompt)) ?? nil
+    negativePrompt = (try? container.decodeIfPresent(String.self, forKey: .negativePrompt)) ?? nil
+    strength = (try? container.decodeIfPresent(Double.self, forKey: .strength)) ?? nil
+    promptGuide = (try? container.decodeIfPresent(DTHubPromptGuide.self, forKey: .promptGuide)) ?? nil
   }
 
   private enum CodingKeys: String, CodingKey {
-    case model, family, tempFolder, startImage, moodboard, languageModels, parameters
+    case model, family, tempFolder, startImage, moodboard, languageModels, parameters, prompt, negativePrompt, strength
+    case promptGuide
+  }
+}
+
+/// How to write prompts for the family of the chosen model (`DTHubContext.promptGuide`): the same guide the app's Enhance
+/// Prompt follows.
+public struct DTHubPromptGuide: Decodable, Equatable, Sendable {
+  /// The family as the app names it ("Qwen Image 2.1").
+  public var label: String
+  /// The family reads a negative prompt.
+  public var usesNegative: Bool
+  /// The notes, a bullet list in English.
+  public var notes: String
+
+  public init(label: String, usesNegative: Bool, notes: String) {
+    self.label = label
+    self.usesNegative = usesNegative
+    self.notes = notes
   }
 }
 
@@ -244,6 +273,19 @@ public struct DTHubLLMOptions: Equatable, Sendable {
   }
 }
 
+/// One earlier turn of a conversation, for `askLanguageModel(history:)`.
+public struct DTHubLLMTurn: Equatable, Sendable {
+  public enum Role: String, Sendable { case user, assistant }
+
+  public var role: Role
+  public var text: String
+
+  public init(role: Role, text: String) {
+    self.role = role
+    self.text = text
+  }
+}
+
 /// What the language model answered, or why not.
 public enum DTHubLLMAnswer: Equatable, Sendable {
   case text(String)
@@ -294,10 +336,10 @@ public final class DTHubHost {
   /// `model` the name of a model of `DTHubContext.languageModels` to use instead of the one the user chose.
   public func askLanguageModel(
     _ prompt: String, images: [String] = [], system: String? = nil, model: String? = nil,
-    options: DTHubLLMOptions = DTHubLLMOptions()
+    options: DTHubLLMOptions = DTHubLLMOptions(), history: [DTHubLLMTurn] = []
   ) async -> String? {
     if case .text(let text) = await askLanguageModelAnswer(
-      prompt, images: images, system: system, model: model, options: options)
+      prompt, images: images, system: system, model: model, options: options, history: history)
     {
       return text
     }
@@ -307,9 +349,10 @@ public final class DTHubHost {
   /// Like `askLanguageModel`, with the app's reason when there is no answer.
   public func askLanguageModelAnswer(
     _ prompt: String, images: [String] = [], system: String? = nil, model: String? = nil,
-    options: DTHubLLMOptions = DTHubLLMOptions()
+    options: DTHubLLMOptions = DTHubLLMOptions(), history: [DTHubLLMTurn] = []
   ) async -> DTHubLLMAnswer {
-    let message = Self.llmMessage(prompt: prompt, images: images, system: system, model: model, options: options)
+    let message = Self.llmMessage(
+      prompt: prompt, images: images, system: system, model: model, options: options, history: history)
     guard let answer = await sendJSON(message, timeout: options.effectiveTimeout) else { return .failure("No answer.") }
     if answer["type"] as? String == "llm", let text = answer["text"] as? String { return .text(text) }
     return .failure(answer["text"] as? String ?? "No answer.")
@@ -317,13 +360,15 @@ public final class DTHubHost {
 
   /// The `llm` message: the keys that are not set are left out, so the app asks as it always did.
   nonisolated static func llmMessage(
-    prompt: String, images: [String], system: String?, model: String?, options: DTHubLLMOptions
+    prompt: String, images: [String], system: String?, model: String?, options: DTHubLLMOptions,
+    history: [DTHubLLMTurn] = []
   ) -> [String: Any] {
     var message: [String: Any] = ["type": "llm", "prompt": prompt, "images": images]
     if let system, !system.isEmpty { message["system"] = system }
     if let model, !model.isEmpty { message["model"] = model }
     let optionsJSON = options.json
     if !optionsJSON.isEmpty { message["options"] = optionsJSON }
+    if !history.isEmpty { message["messages"] = history.map { ["role": $0.role.rawValue, "text": $0.text] } }
     return message
   }
 

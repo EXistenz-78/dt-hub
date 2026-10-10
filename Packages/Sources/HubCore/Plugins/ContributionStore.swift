@@ -65,6 +65,8 @@ public protocol ContributionTarget: AnyObject {
   func addMoodboardImage(_ image: PluginImageRef, from pluginID: String) throws -> UUID
   func removeMoodboardImage(_ id: UUID)
   func setStartImage(_ image: PluginImageRef, from pluginID: String) throws -> UUID
+  /// The strength the start image is used with (0…1).
+  func setStrength(_ value: Double)
 }
 
 /// Remembers what each plug-in contributed, so the tab can show it (teal, the value in brackets) and so a
@@ -145,6 +147,16 @@ public final class ContributionStore {
         } catch {
           problems.append("\(image.name): \(error)")
         }
+      }
+    }
+
+    // The strength goes after the start image of the same message. It is not a field of the tab (no teal, no conflict):
+    // the last one to write wins.
+    if let strength = contribution.strength {
+      if target.startImageID != nil {
+        target.setStrength(strength)
+      } else {
+        problems.append("strength: there is no start image.")
       }
     }
 

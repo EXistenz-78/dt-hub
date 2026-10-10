@@ -76,7 +76,7 @@ public final class LanguageModelManager {
   /// the settings (a plug-in's wish): the choice in the settings stays as it is.
   public func respond(
     to prompt: String, images: [URL] = [], options: LanguageModelOptions = LanguageModelOptions(),
-    modelNamed name: String? = nil
+    modelNamed name: String? = nil, history: [LanguageModelTurn] = []
   ) async throws(LanguageModelError) -> String {
     activity += 1
     idleTask?.cancel()
@@ -98,17 +98,17 @@ public final class LanguageModelManager {
         throw error
       }
     }
-    return try await ask(model, prompt, images, options)
+    return try await ask(model, prompt, images, options, history)
   }
 
   /// Asks a model already chosen (by `model(for:family:)`): the prompt buttons' way in.
   public func respond(
     to prompt: String, images: [URL] = [], options: LanguageModelOptions = LanguageModelOptions(),
-    model: LanguageModelDescriptor
+    model: LanguageModelDescriptor, history: [LanguageModelTurn] = []
   ) async throws(LanguageModelError) -> String {
     activity += 1
     idleTask?.cancel()
-    return try await ask(model, prompt, images, options)
+    return try await ask(model, prompt, images, options, history)
   }
 
   /// Settings that change `assignments` when the list of installed LLMs does (see `LanguageModelAssignments`);
@@ -132,7 +132,8 @@ public final class LanguageModelManager {
   }
 
   private func ask(
-    _ model: LanguageModelDescriptor, _ prompt: String, _ images: [URL], _ options: LanguageModelOptions
+    _ model: LanguageModelDescriptor, _ prompt: String, _ images: [URL], _ options: LanguageModelOptions,
+    _ history: [LanguageModelTurn]
   ) async throws(LanguageModelError) -> String {
     if !images.isEmpty, !model.supportsImages {
       scheduleIdleUnload()
@@ -140,7 +141,7 @@ public final class LanguageModelManager {
     }
     try await ensureLoaded(model)
     do {
-      let answer = try await service.respond(to: prompt, images: images, options: options)
+      let answer = try await service.respond(to: prompt, images: images, options: options, history: history)
       scheduleIdleUnload()
       return answer
     } catch let error as LanguageModelError {

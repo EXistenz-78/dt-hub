@@ -11,6 +11,7 @@ final class FakeContributionTarget: ContributionTarget {
   private(set) var moodboard: [UUID: String] = [:]
   private(set) var startImageName: String?
   private(set) var startID: UUID?
+  private(set) var strengths: [Double] = []
   var failImages = false
 
   var loraFiles: Set<String> { Set(loras.map(\.file)) }
@@ -37,6 +38,8 @@ final class FakeContributionTarget: ContributionTarget {
     startImageName = image.name
     return id
   }
+
+  func setStrength(_ value: Double) { strengths.append(value) }
 
   func userRemovesStartImage() { startID = nil }
   func userRemovesLoRA(_ file: String) { loras.removeAll { $0.file == file } }
@@ -269,5 +272,32 @@ struct ContributionStoreTests {
     let lonely = ContributionStore()
     #expect(!lonely.receive(contribution([.steps: .int(5)]), from: "a").isEmpty)
     #expect(lonely.marks.isEmpty)
+  }
+
+  @Test func theStrengthIsAppliedWithAStartImage() throws {
+    let store = ContributionStore()
+    store.target = target
+    _ = target.userRemovesStartImage()
+    _ = try target.setStartImage(PluginImageRef(name: "a", path: "/tmp/a.png"), from: "x")
+    let problems = store.receive(PluginContribution(strength: 0.45), from: "chat")
+    #expect(problems.isEmpty)
+    #expect(target.strengths == [0.45])
+  }
+
+  @Test func withoutAStartImageTheStrengthIsAProblemAndChangesNothing() {
+    let store = ContributionStore()
+    store.target = target
+    let problems = store.receive(PluginContribution(strength: 0.45), from: "chat")
+    #expect(problems == ["strength: there is no start image."])
+    #expect(target.strengths.isEmpty)
+  }
+
+  @Test func aStartImageAndAStrengthInTheSameMessageApplyInThatOrder() {
+    let store = ContributionStore()
+    store.target = target
+    let image = PluginImageRef(name: "a", path: "/tmp/a.png")
+    let problems = store.receive(PluginContribution(startImage: image, strength: 0.3), from: "chat")
+    #expect(problems.isEmpty)
+    #expect(target.strengths == [0.3] && target.startImageName == "a")
   }
 }

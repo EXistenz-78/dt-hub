@@ -75,6 +75,22 @@ public struct PluginLanguageModel: Codable, Equatable, Sendable {
   }
 }
 
+/// What the app knows about writing prompts for a model family (the guide Enhance Prompt follows).
+public struct PluginPromptGuide: Codable, Equatable, Sendable {
+  /// The family as the app names it ("Qwen Image 2.1").
+  public var label: String
+  /// The family reads a negative prompt.
+  public var usesNegative: Bool
+  /// The notes, a bullet list in English.
+  public var notes: String
+
+  public init(label: String, usesNegative: Bool, notes: String) {
+    self.label = label
+    self.usesNegative = usesNegative
+    self.notes = notes
+  }
+}
+
 /// App → plug-in: where the app stands (sent when the plug-in is activated, when the model, its parameters or the
 /// start image change, and when the user comes back to a tab).
 public struct PluginContext: Codable, Equatable, Sendable {
@@ -90,11 +106,23 @@ public struct PluginContext: Codable, Equatable, Sendable {
   public var moodboard: [String]?
   /// The language models of the models folder. Absent when the app has none to list.
   public var languageModels: [PluginLanguageModel]?
+  /// The Generation tab's prompt ("" when empty). Absent from an app that does not send it.
+  public var prompt: String?
+  public var negativePrompt: String?
+  /// The strength the start image is used with (0…1), as the Control tab shows it. Absent without a start image.
+  public var strength: Double?
+  /// How to write prompts for the family of the chosen model. Absent when the app has no guide for it.
+  public var promptGuide: PluginPromptGuide?
 
   public init(
     model: String?, family: String?, parameters: GenerationParameters, tempFolder: String, startImage: String? = nil,
-    moodboard: [String]? = nil, languageModels: [PluginLanguageModel]? = nil
+    moodboard: [String]? = nil, languageModels: [PluginLanguageModel]? = nil, prompt: String? = nil,
+    negativePrompt: String? = nil, strength: Double? = nil, promptGuide: PluginPromptGuide? = nil
   ) {
+    self.promptGuide = promptGuide
+    self.prompt = prompt
+    self.negativePrompt = negativePrompt
+    self.strength = strength
     self.model = model
     self.family = family
     self.parameters = parameters
