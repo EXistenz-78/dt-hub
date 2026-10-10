@@ -179,21 +179,7 @@ struct LLMChatView: View {
           }
         }
         HStack(alignment: .bottom, spacing: DS.controlGap) {
-          TextField(L.text(.placeholder), text: $state.draft, axis: .vertical)
-            .lineLimit(1...6)
-            .textFieldStyle(.plain)
-            .padding(8)
-            .background(RoundedRectangle(cornerRadius: DS.boxRadius, style: .continuous).fill(Color.primary.opacity(0.06)))
-            .disabled(state.isWaiting)
-            .onKeyPress(.return, phases: .down) { press in
-              // Return sends, Shift-Return makes a new line.
-              if press.modifiers.contains(.shift) { return .ignored }
-              send()
-              return .handled
-            }
-          Button(L.command(italian: italian)) { state.insertCommand() }
-            .buttonStyle(DSPillButtonStyle())
-            .disabled(state.isWaiting)
+          field
           Button(action: send) {
             Image(systemName: "paperplane")
           }
@@ -206,5 +192,55 @@ struct LLMChatView: View {
       .padding(DS.panelPadding)
       .dsPanel()
     }
+  }
+
+  /// The text box: Return sends, Shift-Return makes a new line (a `TextEditor` does it at the cursor). The command button is
+  /// small, inside the box, at the bottom right.
+  private var field: some View {
+    ZStack(alignment: .bottomTrailing) {
+      TextEditor(text: $state.draft)
+        .font(.body)
+        .scrollContentBackground(.hidden)
+        .padding(.horizontal, 4)
+        .padding(.top, 4)
+        .padding(.bottom, 26)
+        .disabled(state.isWaiting)
+        .onKeyPress(.return, phases: .down) { press in
+          if press.modifiers.contains(.shift) { return .ignored }
+          send()
+          return .handled
+        }
+        .overlay(alignment: .topLeading) {
+          if state.draft.isEmpty {
+            Text(L.text(.placeholder))
+              .foregroundStyle(.secondary)
+              .padding(.horizontal, 9)
+              .padding(.top, 4)
+              .allowsHitTesting(false)
+          }
+        }
+      Button {
+        state.insertCommand()
+      } label: {
+        Text(L.command(italian: italian))
+          .font(.system(size: 11, weight: .semibold, design: .monospaced))
+          .padding(.horizontal, 7)
+          .padding(.vertical, 3)
+          .background(Capsule().fill(DS.accent.opacity(0.25)))
+      }
+      .buttonStyle(.plain)
+      .disabled(state.isWaiting)
+      .help(L.text(.commandHelp))
+      .padding(6)
+    }
+    .frame(height: fieldHeight)
+    .background(RoundedRectangle(cornerRadius: DS.boxRadius, style: .continuous).fill(Color.primary.opacity(0.06)))
+  }
+
+  /// From one line to six, by the text typed (a `TextEditor` does not grow by itself).
+  private var fieldHeight: CGFloat {
+    let lines = state.draft.split(separator: "\n", omittingEmptySubsequences: false)
+      .reduce(0) { $0 + max(1, ($1.count + 79) / 80) }
+    return CGFloat(min(6, max(1, lines))) * 19 + 34
   }
 }

@@ -63,7 +63,7 @@ struct ActionBlockTests {
       """#
     let result = try #require(body(json, italian: true))
     let pipeline = try #require(result["pipeline"] as? [String: Any])
-    #expect(pipeline["name"] as? String == "LLM Chat")
+    #expect(pipeline["name"] as? String == "AI Assistant")
     let steps = try #require(pipeline["steps"] as? [[String: Any]])
     #expect(steps.count == 3)
     #expect(steps[0]["title"] as? String == "A" && steps[1]["title"] as? String == "Passaggio 2")
@@ -79,7 +79,7 @@ struct ActionBlockTests {
     let pipeline = try #require(result["pipeline"] as? [String: Any])
     let steps = try #require(pipeline["steps"] as? [[String: Any]])
     #expect(steps.count == 2 && steps[1]["title"] as? String == "Pass 2")
-    #expect(pipeline["name"] as? String == "LLM Chat")
+    #expect(pipeline["name"] as? String == "AI Assistant")
     let many = Array(repeating: #"{"fields":{"steps":4}}"#, count: 21).joined(separator: ",")
     #expect(ActionBlock.body(from: #"{"pipeline":[\#(many)]}"#, italian: false).failureValue == .tooManySteps(21))
   }
@@ -140,7 +140,7 @@ struct ActionBlockTests {
     let steps = Array(repeating: ["title": "t"], count: 5)
     let sent: [String: Any] = [
       "fields": ["prompt": "x", "steps": 4], "loras": [["file": "a"], ["file": "b"]], "strength": 0.5,
-      "pipeline": ["name": "LLM Chat", "steps": steps],
+      "pipeline": ["name": "AI Assistant", "steps": steps],
     ]
     let it = ActionBlock.summary(of: sent, answer: ["type": "ok"], italian: true)
     #expect(it.text == "Inviati: prompt, passi, LoRA (2), forza, pipeline (5 passaggi)." && !it.isError)

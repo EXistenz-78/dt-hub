@@ -8,7 +8,7 @@ enum ChatTitle {
   static func make(
     from text: String, date: Date, italian: Bool, timeZone: TimeZone = .current
   ) -> String {
-    let cleaned = text.replacingOccurrences(of: "<INVIA>", with: "").replacingOccurrences(of: "<SEND>", with: "")
+    let cleaned = text.replacingOccurrences(of: "<FALLO>", with: "").replacingOccurrences(of: "<DO IT>", with: "")
     let first = cleaned.split(separator: "\n", omittingEmptySubsequences: true)
       .map { $0.trimmingCharacters(in: .whitespaces) }.first { !$0.isEmpty }
     if let first {

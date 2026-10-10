@@ -9,8 +9,8 @@ struct ChatTitleTests {
   let utc = TimeZone(identifier: "UTC")!
 
   @Test func theFirstLineWithoutTheCommand() {
-    #expect(ChatTitle.make(from: "Rendi il prompt più cupo <INVIA>\naltro", date: date, italian: true) == "Rendi il prompt più cupo")
-    #expect(ChatTitle.make(from: "<SEND> make it darker", date: date, italian: false) == "make it darker")
+    #expect(ChatTitle.make(from: "Rendi il prompt più cupo <FALLO>\naltro", date: date, italian: true) == "Rendi il prompt più cupo")
+    #expect(ChatTitle.make(from: "<DO IT> make it darker", date: date, italian: false) == "make it darker")
   }
 
   @Test func aLongTitleIsCutAt40WithAnEllipsis() {
@@ -20,8 +20,8 @@ struct ChatTitleTests {
   }
 
   @Test func aMessageWithOnlyTheCommandGetsTheDate() {
-    let it = ChatTitle.make(from: "<INVIA>", date: date, italian: true, timeZone: utc)
-    let en = ChatTitle.make(from: "<SEND>", date: date, italian: false, timeZone: utc)
+    let it = ChatTitle.make(from: "<FALLO>", date: date, italian: true, timeZone: utc)
+    let en = ChatTitle.make(from: "<DO IT>", date: date, italian: false, timeZone: utc)
     #expect(it.hasPrefix("Chat del ") && en.hasPrefix("Chat of "))
     #expect(it != en)
   }
