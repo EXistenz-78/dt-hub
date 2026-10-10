@@ -60,6 +60,7 @@ language models of the app's models folder (`family`: the family the user assign
   - `moodboard`: `[{"path", "name"}]`, files in the `tempFolder`, added to the Moodboard. Sending them again replaces
     the ones this plug-in sent before.
   - `startImage`: `{"path", "name"}`, the start image of the Control tab.
+  - `paint`: `{"path", "name"}`, a PNG with transparency in the `tempFolder`: it becomes the **Brush layer** of the Canvas card in the Control tab, over the start image, where the user sees it and can change it. It replaces the drawing that was there (Undo in Control brings it back), is stretched to the ratio of the start image, and at RUN the app puts it over the image. It needs a start image (otherwise `problems` says so) and applies after a `startImage` of the same message. It is not a field of the tab: no teal and no conflict, the last one to write wins.
   - `strength`: a number, 0–1 (values outside are brought into it): how much the start image is changed, the Control tab's slider. It applies only when the tab has a start image (otherwise `problems` says so), after a `startImage` of the same message; it is not a field of the tab, so it is not coloured teal and raises no conflict: the last one to write wins.
   - `pipeline`: `{"name", "steps": [...]}`; each step is `{"title", "preset", "fields", "loras", "moodboard",
     "startImage", "useOutputAsStart"}`: the name of a preset in the app's Preset menu (its parameters, prompt and negative

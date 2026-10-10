@@ -119,9 +119,23 @@ public struct PaintBitmap: Equatable, Sendable {
 
   /// A drawing read back from its PNG, at the PNG's own size.
   public init?(image: CGImage) {
-    let width = image.width
-    let height = image.height
-    guard width > 0, height > 0 else { return nil }
+    guard let bytes = Self.straightPixels(of: image, width: image.width, height: image.height) else { return nil }
+    width = image.width
+    height = image.height
+    pixels = bytes
+  }
+
+  /// The image drawn, stretched, at `width × height` (the Brush layer has the ratio of the start image; a drawing with another
+  /// ratio is stretched to it). Straight alpha, row 0 at the top, as `init?(image:)`.
+  public static func fitted(from image: CGImage, width: Int, height: Int) -> PaintBitmap? {
+    guard let bytes = straightPixels(of: image, width: width, height: height) else { return nil }
+    var bitmap = PaintBitmap(width: width, height: height)
+    bitmap.pixels = bytes
+    return bitmap
+  }
+
+  private static func straightPixels(of image: CGImage, width: Int, height: Int) -> [UInt8]? {
+    guard width > 0, height > 0, image.width > 0, image.height > 0 else { return nil }
     var bytes = [UInt8](repeating: 0, count: width * height * 4)
     let drawn = bytes.withUnsafeMutableBytes { buffer -> Bool in
       guard
@@ -129,6 +143,7 @@ public struct PaintBitmap: Equatable, Sendable {
           data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
           space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
       else { return false }
+      context.interpolationQuality = .high
       context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
       return true
     }
@@ -138,8 +153,6 @@ public struct PaintBitmap: Equatable, Sendable {
       let alpha = Double(bytes[base + 3]) / 255
       for channel in 0..<3 { bytes[base + channel] = UInt8(min(255, (Double(bytes[base + channel]) / alpha).rounded())) }
     }
-    self.width = width
-    self.height = height
-    pixels = bytes
+    return bytes
   }
 }
