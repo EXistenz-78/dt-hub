@@ -16,6 +16,8 @@ public struct GenerationParameters: Equatable, Codable, Sendable {
   /// Used as is when `randomSeed` is off; otherwise a new one is drawn at each RUN.
   public var seed: UInt32
   public var randomSeed: Bool
+  /// HiRes (beta): sides up to 8192 without the Tiled Diffusion. The Tiled Diffusion allows them too (see `isHighRes`).
+  public var highRes: Bool
   /// Images per batch, and batches per RUN.
   public var batchSize: Int
   public var batchCount: Int
@@ -31,7 +33,7 @@ public struct GenerationParameters: Equatable, Codable, Sendable {
     width: Int = 1024, height: Int = 1024, steps: Int = 8, guidanceScale: Double = 1,
     cfgZeroStar: Bool = false, cfgZeroInitSteps: Int = 0,
     sampler: Sampler = .uniPCTrailing, shift: Double = 3, resolutionDependentShift: Bool = true,
-    seed: UInt32 = 0, randomSeed: Bool = true, batchSize: Int = 1, batchCount: Int = 1,
+    seed: UInt32 = 0, randomSeed: Bool = true, highRes: Bool = false, batchSize: Int = 1, batchCount: Int = 1,
     loras: [LoRASelection] = [], advanced: AdvancedParameters = .default,
     extra: [String: JSONValue] = [:]
   ) {
@@ -46,6 +48,7 @@ public struct GenerationParameters: Equatable, Codable, Sendable {
     self.resolutionDependentShift = resolutionDependentShift
     self.seed = seed
     self.randomSeed = randomSeed
+    self.highRes = highRes
     self.batchSize = batchSize
     self.batchCount = batchCount
     self.loras = loras
@@ -72,6 +75,7 @@ public struct GenerationParameters: Equatable, Codable, Sendable {
     resolutionDependentShift = value(.resolutionDependentShift, fallback.resolutionDependentShift)
     seed = value(.seed, fallback.seed)
     randomSeed = value(.randomSeed, fallback.randomSeed)
+    highRes = value(.highRes, fallback.highRes)
     batchSize = value(.batchSize, fallback.batchSize)
     batchCount = value(.batchCount, fallback.batchCount)
     loras = value(.loras, fallback.loras)
@@ -102,7 +106,7 @@ public struct GenerationParameters: Equatable, Codable, Sendable {
 
   /// Allowed ranges, used by the cards and by `clamped()`.
   public static let sizeRange = 64...2048
-  /// The sizes allowed with the Tiled Diffusion on (spec: dimensioni fino a 8192).
+  /// The sizes allowed with HiRes (beta) or the Tiled Diffusion on (up to 8192).
   public static let tiledSizeRange = 64...8192
   public static let stepsRange = 1...150
   public static let guidanceRange = 0.0...50.0
@@ -110,15 +114,25 @@ public struct GenerationParameters: Equatable, Codable, Sendable {
   public static let batchSizeRange = 1...4
   public static let batchCountRange = 1...100
 
-  /// The largest side allowed now: 8192 with the Tiled Diffusion on, 2048 without.
+  /// HiRes is on: by hand (`highRes`), or because the Tiled Diffusion is, which turns it on by itself.
+  public var isHighRes: Bool { highRes || advanced.tiledDiffusion }
+
+  /// The largest side allowed now: 8192 with HiRes on (by hand or by the Tiled Diffusion), 2048 without.
   public var sizeLimit: Int {
-    advanced.tiledDiffusion ? Self.tiledSizeRange.upperBound : Self.sizeRange.upperBound
+    isHighRes ? Self.tiledSizeRange.upperBound : Self.sizeRange.upperBound
   }
 
-  /// Turns the Tiled Diffusion on or off. Turning it off with a side above 2048 brings the size back
-  /// within it (`fitSizeToLimit`).
+  /// Turns the Tiled Diffusion on or off. Turning it off with a side above 2048 and HiRes not on by hand
+  /// brings the size back within it (`fitSizeToLimit`).
   public mutating func setTiledDiffusion(_ on: Bool) {
     advanced.tiledDiffusion = on
+    fitSizeToLimit()
+  }
+
+  /// Turns HiRes (beta) on or off by hand. Turning it off with a side above 2048 (and the Tiled Diffusion off)
+  /// brings the size back within it.
+  public mutating func setHighRes(_ on: Bool) {
+    highRes = on
     fitSizeToLimit()
   }
 
