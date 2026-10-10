@@ -57,6 +57,13 @@ struct DimensionsCard: View {
           .padding(.leading, 4)
           Spacer(minLength: 0)
         }
+        Toggle(
+          isOn: Binding(
+            get: { controller.parameters.isHighRes }, set: { controller.setHighRes($0) })
+        ) { Text("card.dimensions.highRes") }
+          .toggleStyle(DSCheckboxToggleStyle())
+          .disabled(controller.parameters.advanced.tiledDiffusion)
+          .help(String(localized: "card.dimensions.highRes.help"))
       }
     }
   }

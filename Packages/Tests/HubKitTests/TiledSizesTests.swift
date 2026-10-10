@@ -83,4 +83,45 @@ struct TiledSizesTests {
     let limited = try JSONDecoder().decode(GenerationParameters.self, from: plain).clamped()
     #expect(limited.width == 2048 && limited.height == 2048)
   }
+
+  // MARK: HiRes (beta), by hand
+
+  @Test func hiResByHandAllowsTheBigSizesWithoutTheTiledDiffusion() {
+    var p = parameters(1024, 1024, tiled: false)
+    #expect(p.isHighRes == false && p.sizeLimit == 2048)
+    p.setHighRes(true)
+    #expect(p.isHighRes && p.sizeLimit == 8192 && p.advanced.tiledDiffusion == false)
+    p.width = 2816
+    p.height = 2816
+    let sent = p.clamped()
+    #expect(sent.width == 2816 && sent.height == 2816)
+  }
+
+  @Test func theTiledDiffusionTurnsHiResOnByItself() {
+    #expect(parameters(1024, 1024, tiled: true).isHighRes)
+    #expect(parameters(1024, 1024, tiled: true).highRes == false)  // derived, not stored
+  }
+
+  @Test func turningHiResOffBringsTheSizeBack() {
+    var p = parameters(4096, 2048, tiled: false)
+    p.highRes = true
+    p.setHighRes(false)
+    #expect(p.width == 2048 && p.height == 1024)
+  }
+
+  @Test func hiResByHandSurvivesTheTiledDiffusionBeingTurnedOff() {
+    var p = parameters(4096, 2048, tiled: true)
+    p.highRes = true
+    p.setTiledDiffusion(false)
+    #expect(p.width == 4096 && p.height == 2048 && p.sizeLimit == 8192)
+  }
+
+  @Test func hiResIsSavedAndOldFilesReadWithItOff() throws {
+    var p = GenerationParameters(width: 4096, height: 2048)
+    p.highRes = true
+    let back = try JSONDecoder().decode(GenerationParameters.self, from: JSONEncoder().encode(p))
+    #expect(back.highRes && back.clamped().width == 4096)
+    let old = try JSONDecoder().decode(GenerationParameters.self, from: Data(#"{"width": 4096}"#.utf8))
+    #expect(old.highRes == false && old.clamped().width == 2048)
+  }
 }

@@ -1055,6 +1055,40 @@
         }
       }
     },
+    "card.dimensions.highRes": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HiRes (beta)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HiRes (beta)"
+          }
+        }
+      }
+    },
+    "card.dimensions.highRes.help": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sides up to 8192 px even without Tiled Diffusion. Tiled Diffusion turns it on by itself. Very large sizes may exceed the memory of your Mac or the server."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lati fino a 8192 px anche senza Tiled Diffusion. Tiled Diffusion lo attiva da solo. Dimensioni molto grandi possono superare la memoria del Mac o del server."
+          }
+        }
+      }
+    },
     "card.dimensions.lockRatio": {
       "extractionState": "manual",
       "localizations": {
