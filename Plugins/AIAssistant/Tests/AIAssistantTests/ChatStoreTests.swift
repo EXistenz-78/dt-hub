@@ -1,7 +1,7 @@
 import Foundation
 import Testing
 
-@testable import LLMChat
+@testable import AIAssistant
 
 @Suite("Chat store")
 struct ChatStoreTests {

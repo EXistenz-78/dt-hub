@@ -3,15 +3,15 @@ import DTHubPluginKit
 import SwiftUI
 
 @MainActor
-final class LLMChatPlugin: DTHubPlugin {
+final class AIAssistantPlugin: DTHubPlugin {
   let manifest = DTHubManifest(
     id: "com.exiztenz.dthub.llmchat", name: "AI Assistant", version: "1.0", symbol: "bubble.left.and.text.bubble.right",
     families: nil)
-  private let state = LLMChatState()
+  private let state = AIAssistantState()
   private var host: DTHubHost?
 
   func makeViewController() -> NSViewController {
-    NSHostingController(rootView: LLMChatView(state: state, send: { [weak self] in self?.send() }))
+    NSHostingController(rootView: AIAssistantView(state: state, send: { [weak self] in self?.send() }))
   }
 
   func start(host: DTHubHost) {
@@ -54,7 +54,7 @@ final class LLMChatPlugin: DTHubPlugin {
   }
 }
 
-@objc(LLMChatEntry)
-public final class LLMChatEntry: DTHubPluginEntry {
-  public override func makePlugin() -> any DTHubPlugin { LLMChatPlugin() }
+@objc(AIAssistantEntry)
+public final class AIAssistantEntry: DTHubPluginEntry {
+  public override func makePlugin() -> any DTHubPlugin { AIAssistantPlugin() }
 }

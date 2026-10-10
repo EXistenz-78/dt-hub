@@ -1,4 +1,4 @@
-# Plug-in «LLM Chat» e tre aggiunte al contratto — Design
+# Plug-in «AI Assistant» e tre aggiunte al contratto — Design
 
 Data: 10 ottobre 2026. Stato: approvato in chat dall'utente; da implementare in una sessione locale con Xcode e Swift.
 Base: `origin/main` **0.1.5** (`5c6bf54`): «Migliora con immagini», «I2I/T2I», «pipeline-passaggi-con-valori» e Batch plus già uniti.
@@ -84,9 +84,9 @@ public var strength: Double?
 ## 6. Il plug-in
 
 - **Identità:**
-  - nome «LLM Chat», id `com.exiztenz.dthub.llmchat`, versione 1.0;
+  - nome «AI Assistant», id `com.exiztenz.dthub.llmchat`, versione 1.0;
   - simbolo `bubble.left.and.text.bubble.right`, tutte le famiglie (`families: nil`);
-  - cartella `Plugins/LLMChat`, bundle `LLMChat.dthubplugin`, entry `LLMChatEntry`, alias dei moduli `LLMChatKit` / `LLMChatDesign`.
+  - cartella `Plugins/AIAssistant`, bundle `AIAssistant.dthubplugin`, entry `AIAssistantEntry`, alias dei moduli `AIAssistantKit` / `AIAssistantDesign`.
   - Pacchetto e `Scripts/build.sh` come Batch plus.
 
 ### 6.1 Interfaccia
@@ -111,7 +111,7 @@ public var strength: Double?
   - riga «Sta scrivendo…» con **Annulla**, che smette di aspettare (la risposta, se arriva, viene scartata; il modello finisce comunque il suo lavoro nell'app);
   - campo e pulsanti disattivati.
 - **Avvisi al posto del campo:**
-  - plug-in spento per il lavoro in corso: «Accendi LLM Chat dal menu dei plug-in»;
+  - plug-in spento per il lavoro in corso: «Accendi AI Assistant dal menu dei plug-in»;
   - app senza `prompt` nel contesto: «Aggiorna DT Hub (0.1.6 o successiva)»;
   - nessun LLM: «Nessun LLM nella cartella dei modelli (Preferenze › LLM)».
 
@@ -198,7 +198,7 @@ You never press RUN and never change the model.
     - **`strength`:** numero;
     - **`pipeline`:**
       - **`steps` > 20:** nota rossa «La pipeline ha N passaggi: al massimo 20» e **niente** viene inviato;
-      - **nome:** «LLM Chat»;
+      - **nome:** «AI Assistant»;
       - **titolo** vuoto → «Passaggio k» / «Pass k»;
       - **per passo:** solo `title`, `fields` (senza `width`/`height`), `loras`, `useOutputAsStart`;
     - **corpo vuoto:** nota grigia «Nessuna azione nella risposta»;

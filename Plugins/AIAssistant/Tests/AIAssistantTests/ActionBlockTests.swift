@@ -1,7 +1,7 @@
 import Foundation
 import Testing
 
-@testable import LLMChat
+@testable import AIAssistant
 
 @Suite("Action block")
 struct ActionBlockTests {

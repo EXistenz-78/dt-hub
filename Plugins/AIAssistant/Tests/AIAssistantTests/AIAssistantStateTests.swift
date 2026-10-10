@@ -2,11 +2,11 @@ import DTHubPluginKit
 import Foundation
 import Testing
 
-@testable import LLMChat
+@testable import AIAssistant
 
 @MainActor
 @Suite("AI Assistant state")
-struct LLMChatStateTests {
+struct AIAssistantStateTests {
   let withVision = #"{"name":"vl","path":"/m/vl","supportsImages":true}"#
   let textOnly = #"{"name":"txt","path":"/m/txt","supportsImages":false}"#
 
@@ -19,8 +19,8 @@ struct LLMChatStateTests {
     return Data(("{" + parts.joined(separator: ",") + "}").utf8)
   }
 
-  func state(models: String? = nil, prompt: String? = "a cat", images: Bool = true, folder: URL? = nil) -> LLMChatState {
-    let s = LLMChatState(store: ChatStore(folder: folder), italian: false)
+  func state(models: String? = nil, prompt: String? = "a cat", images: Bool = true, folder: URL? = nil) -> AIAssistantState {
+    let s = AIAssistantState(store: ChatStore(folder: folder), italian: false)
     s.apply(context: contextJSON(models: models, prompt: prompt, images: images))
     s.active = true
     return s
@@ -31,14 +31,14 @@ struct LLMChatStateTests {
     var sent: [[String: Any]] = []
   }
 
-  func ask(_ log: Log, reply: DTHubLLMAnswer) -> LLMChatState.Ask {
+  func ask(_ log: Log, reply: DTHubLLMAnswer) -> AIAssistantState.Ask {
     { prompt, images, system, model, history in
       log.asked.append((prompt, images, system, model, history))
       return reply
     }
   }
 
-  func contribute(_ log: Log, answer: [String: Any]? = ["type": "ok"]) -> LLMChatState.Contribute {
+  func contribute(_ log: Log, answer: [String: Any]? = ["type": "ok"]) -> AIAssistantState.Contribute {
     { body in
       log.sent.append(body)
       return answer
@@ -160,7 +160,7 @@ struct LLMChatStateTests {
   }
 
   @Test func otherBlockers() {
-    let off = LLMChatState(store: ChatStore(folder: nil), italian: false)
+    let off = AIAssistantState(store: ChatStore(folder: nil), italian: false)
     #expect(off.blocker == L.text(.notActive, italian: false))
     off.active = true
     #expect(off.blocker == L.text(.waitingContext, italian: false))
