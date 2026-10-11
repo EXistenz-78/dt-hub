@@ -30,6 +30,7 @@ struct LanguagePreferencesView: View {
   var body: some View {
     Form {
       folderSection
+      PromptLibrarySection()
       memorySection
       testSection
     }
