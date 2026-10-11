@@ -17,7 +17,22 @@ final class Recorder {
 @MainActor
 @Suite("Writing the prompt")
 struct PMWriterTests {
-  private let masters = PMData.embeddedMasters
+  private let families = PMData.embeddedFamilies
+  /// An empty folder: the tests never read the user's own files.
+  private let emptyFolder = DTHubPromptFolder(
+    folder: FileManager.default.temporaryDirectory.appendingPathComponent("pm-writer-\(UUID().uuidString)"))
+
+  /// What the app's context says about a family (nothing for a family the app has no Family prompt for).
+  private func guide(_ family: String) -> DTHubPromptGuide {
+    guard let known = Fixtures.appFamilies[family] else { return DTHubPromptGuide(label: family, usesNegative: false, notes: "") }
+    return DTHubPromptGuide(label: known.label, usesNegative: known.negative, notes: "", familyPrompt: known.familyPrompt)
+  }
+
+  /// The system prompt of today for a family: the Rules, the app's family text and, with the switch, the tag rule.
+  private func system(_ family: String, booru: Bool = false) -> String {
+    BriefBuilder.make(
+      guide: guide(family), family: family, data: families, folder: emptyFolder, description: "x", terms: [], booru: booru)!.system
+  }
 
   private func writer(_ recorder: Recorder, files: [String: String] = [:], sizes: [String: Int64] = [:]) -> PMWriter {
     PMWriter(
@@ -26,7 +41,7 @@ struct PMWriterTests {
         return recorder.answer
       },
       contribute: { recorder.contributions.append($0); return recorder.accepted },
-      italian: false, folderSize: { sizes[$0] ?? 0 }, readFile: { files[$0.lastPathComponent] })
+      italian: false, folderSize: { sizes[$0] ?? 0 }, readFile: { files[$0.lastPathComponent] }, promptFolder: emptyFolder)
   }
 
   private func request(
@@ -34,7 +49,7 @@ struct PMWriterTests {
     booru: Bool = false, models: [DTHubLanguageModel] = []
   ) -> PMWriter.Request {
     PMWriter.Request(
-      family: family, masters: masters, description: description, terms: terms, booru: booru, languageModels: models)
+      family: family, guide: guide(family), data: families, description: description, terms: terms, booru: booru, languageModels: models)
   }
 
   private func term(_ english: String, avoid: Bool = false) -> SelectedTerm {
@@ -53,7 +68,7 @@ struct PMWriterTests {
     let recorder = Recorder()
     let outcome = await writer(recorder).write(request(terms: [term("Fog")]))
     let ask = recorder.asks[0]
-    #expect(ask.system == masters.families["flux2_9b"]?.system)
+    #expect(ask.system == system("flux2_9b"))
     #expect(ask.prompt.contains("un porto all'alba") && ask.prompt.contains("- Light Source: Fog"))
     #expect(ask.model == nil && ask.options == PMWriter.genericOptions)
     #expect(fields(recorder)?["prompt"] as? String == "A quiet harbour at dawn.")
@@ -83,7 +98,8 @@ struct PMWriterTests {
   @Test func theBooruSwitchReachesTheSystemPrompt() async {
     let recorder = Recorder()
     _ = await writer(recorder).write(request("v1", booru: true))
-    #expect(recorder.asks[0].system?.hasSuffix(masters.families["v1"]!.booruSystem!) == true)
+    #expect(recorder.asks[0].system == system("v1", booru: true))
+    #expect(recorder.asks[0].system?.hasSuffix(families.families["v1"]!.booruSystem!) == true)
   }
 
   @Test func aFamilyWithoutAMasterPromptSendsNothing() async {
@@ -149,7 +165,7 @@ struct PMWriterTests {
   @Test func withoutTheEnhancerTheGenericModelIsUsedAndTheLineSaysSoAndThatTheMasterPromptIsProvisional() async {
     let recorder = Recorder()
     let outcome = await writer(recorder).write(request("qwen_image_2.1"))
-    #expect(recorder.asks[0].model == nil && recorder.asks[0].system == masters.families["qwen_image_2.1"]?.system)
+    #expect(recorder.asks[0].model == nil && recorder.asks[0].system == system("qwen_image_2.1"))
     #expect(outcome.status.contains("Prompt enhancer not found") && outcome.status.contains("provisional"))
     let noSystem = Recorder()
     let second = await writer(noSystem, files: [:]).write(request("qwen_image_2.1", models: [model(t2i)]))
