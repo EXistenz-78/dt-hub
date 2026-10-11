@@ -7,9 +7,14 @@ final class CharacterSheetPlugin: DTHubPlugin {
   /// Qwen Image 2.1 only. On the other families the plug-in is switched off and its tab is hidden.
   static let families = ["qwen_image_2.1"]
   let manifest = DTHubManifest(
-    id: "com.exiztenz.dthub.charactersheet", name: "Character Sheet", version: "1.1", symbol: "person.text.rectangle",
+    id: "com.exiztenz.dthub.charactersheet", name: "Character Sheet", version: "1.2", symbol: "person.text.rectangle",
     families: CharacterSheetPlugin.families)
   private let state = CSState(store: CSSettingsStore(folder: CSTemplates.defaultFolder))
+
+  init() {
+    // The texts of earlier versions were `.txt`: same content, now Markdown.
+    CSTemplates.migrateLegacy(in: CSTemplates.defaultFolder)
+  }
   private var host: DTHubHost?
 
   func makeViewController() -> NSViewController {

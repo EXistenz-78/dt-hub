@@ -124,7 +124,7 @@ struct CSRunnerTests {
   @Test func aMissingFileOfAnotherKindNamesThatFile() async {
     let outcome = await run(job(useStatic: true, kind: .poses))
     #expect(
-      outcome.line == L.format(.templateMissing, "static-prompt-poses.txt", "/data/CharacterSheet", italian: false))
+      outcome.line == L.format(.templateMissing, "static-prompt-poses.md", "/data/CharacterSheet", italian: false))
     #expect(spy.bodies.isEmpty)
   }
 
@@ -184,15 +184,15 @@ struct CSRunnerTests {
     let outcome = await run(job())
     let expected =
       error == .missing(.master)
-      ? L.format(.templateMissing, "master-prompt.txt", "/data/CharacterSheet", italian: false)
-      : L.format(.templateEmpty, "master-prompt.txt", italian: false)
+      ? L.format(.templateMissing, "master-prompt.md", "/data/CharacterSheet", italian: false)
+      : L.format(.templateEmpty, "master-prompt.md", italian: false)
     #expect(outcome.line == expected)
     #expect(spy.bodies.isEmpty && spy.requests.isEmpty && spy.copied.isEmpty)
   }
 
   @Test func aMissingStaticFileStopsBeforeTouchingTheApp() async {
     let outcome = await run(job(useStatic: true))
-    #expect(outcome.line == L.format(.templateMissing, "static-prompt.txt", "/data/CharacterSheet", italian: false))
+    #expect(outcome.line == L.format(.templateMissing, "static-prompt.md", "/data/CharacterSheet", italian: false))
     #expect(spy.bodies.isEmpty && spy.copied.isEmpty)
   }
 

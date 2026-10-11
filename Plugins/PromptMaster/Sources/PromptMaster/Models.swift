@@ -42,32 +42,23 @@ struct PromptDatabase: Codable, Equatable, Sendable, VersionedData {
   }
 }
 
-/// The master prompt of one family and what goes with it.
-struct FamilyPrompt: Codable, Equatable, Sendable {
-  var label: String
-  /// The family reads a negative prompt: the language model is asked for one too.
-  var negative: Bool
+/// What Prompt Master knows about one family that the app's Family prompt does not say (`families.json`).
+struct PMFamily: Codable, Equatable, Sendable {
   /// Categories that make no sense for the family; they do not appear in the list.
   var hiddenCategories: [String]
-  /// The usual length of the prompt ("80-250": words, or tags for SD 1.5).
-  var words: String
-  /// The most it may have, from the real limit of the family's text encoder (spec §9); the system prompt says it.
-  var maxWords: Int?
-  /// Where the limit comes from, for whoever reviews the master prompts.
-  var lengthNote: String?
-  /// The system prompt, in English, which asks for an English-only answer.
-  var system: String
-  /// What is added to `system` when the "booru tags" switch is on (only for the families that have it).
+  /// What is added to the family's text when the "booru tags" switch is on (only for the families that have it).
   var booruSystem: String?
-  /// Written from the old notes only, waiting for the review of the spec §9.
+  /// The family's text is waiting for a review: the status line says so.
   var provisional: Bool?
+  /// The family is written in tags: its Rules are `compose-tags.md` (the scene is enriched less).
+  var tags: Bool?
 }
 
-/// `master-prompts.json`, keyed by the `version` Draw Things gives the family.
-struct MasterPrompts: Codable, Equatable, Sendable, VersionedData {
+/// `families.json`, keyed by the `version` Draw Things gives the family.
+struct PMFamiliesData: Codable, Equatable, Sendable, VersionedData {
   var schema: Int
   var version: String
-  var families: [String: FamilyPrompt]
+  var families: [String: PMFamily]
 }
 
 /// A term the user added to a category (spec §4): one string, in any language.

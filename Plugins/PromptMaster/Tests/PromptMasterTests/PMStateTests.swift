@@ -1,3 +1,4 @@
+import DTHubPluginKit
 import Foundation
 import Testing
 
@@ -6,6 +7,12 @@ import Testing
 @MainActor
 @Suite("The state of the tab")
 struct PMStateTests {
+  /// What the app's context says about a family.
+  static func guide(_ family: String) -> DTHubPromptGuide {
+    let known = Fixtures.appFamilies[family]!
+    return DTHubPromptGuide(label: known.label, usesNegative: known.negative, notes: "", familyPrompt: known.familyPrompt)
+  }
+
   private func defaults() -> UserDefaults { UserDefaults(suiteName: "pm-state-\(UUID().uuidString)")! }
   private func folder() -> URL { FileManager.default.temporaryDirectory.appendingPathComponent("pm-state-\(UUID().uuidString)") }
 
@@ -15,7 +22,7 @@ struct PMStateTests {
     let state = PMState(
       store: PMStore(defaults: defaults ?? self.defaults()), customStore: CustomTermsStore(folder: custom ?? folder()),
       italian: true, shuffler: { _, _, _ in shuffled })
-    state.update(family: "flux2_9b", languageModels: [])
+    state.update(family: "flux2_9b", guide: Self.guide("flux2_9b"), languageModels: [])
     state.active = true
     return state
   }
@@ -133,7 +140,7 @@ struct PMStateTests {
     #expect(!state.canWrite)
     state.isWriting = false
     state.update(family: "ideogram_4", languageModels: [])
-    #expect(!state.canWrite && state.writeRequest?.family == "ideogram_4")
+    #expect(!state.canWrite && state.writeRequest == nil)  // no Family prompt from the app for this family
   }
 
   @Test func theButtonIsOffWhileASceneIsBeingWritten() {
@@ -150,10 +157,10 @@ struct PMStateTests {
     let state = state()
     state.description = "ciao"
     state.booru = true
-    state.update(family: "v1", languageModels: [])
+    state.update(family: "v1", guide: Self.guide("v1"), languageModels: [])
     var request = try #require(state.writeRequest)
     #expect(request.booru && request.description == "ciao")
-    state.update(family: "flux1", languageModels: [])
+    state.update(family: "flux1", guide: Self.guide("flux1"), languageModels: [])
     request = try #require(state.writeRequest)
     #expect(!request.booru)
   }

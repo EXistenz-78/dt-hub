@@ -1,3 +1,4 @@
+import DTHubPluginKit
 import Foundation
 
 /// What is sent to the language model: the system prompt and the request.
@@ -50,14 +51,20 @@ enum BriefBuilder {
     return text.isEmpty ? line : text + "\n\n" + line
   }
 
-  /// The brief for a family's master prompt; nil for a family without one. `booru` adds the tag rule, for the two
-  /// families that have the switch.
+  /// The brief for a family: the Rules of the task, the app's Family prompt, the tag rule when the switch is on and the
+  /// user's own file last. Nil when the app sent no Family prompt (an older app, or a family without one). `booru` adds
+  /// the tag rule, for the two families that have the switch.
   static func make(
-    family: String, masters: MasterPrompts, description: String, terms: [SelectedTerm], booru: Bool
+    guide: DTHubPromptGuide, family: String, data: PMFamiliesData, folder: DTHubPromptFolder, description: String,
+    terms: [SelectedTerm], booru: Bool
   ) -> Brief? {
-    guard let master = masters.families[family] else { return nil }
-    var system = master.system
-    if booru, let extra = master.booruSystem { system += "\n\n" + extra }
+    guard let familyText = guide.familyPrompt?.trimmingCharacters(in: .whitespacesAndNewlines), !familyText.isEmpty
+    else { return nil }
+    let entry = data.families[family]
+    let rules = PMPrompts.rules(tags: entry?.tags == true, in: folder, label: guide.label)
+    let extras = booru ? (entry?.booruSystem.map { [$0] } ?? []) : []
+    let system = folder.assemble(
+      rules: rules, family: familyText, extras: extras, customName: "compose.md", label: guide.label)
     return Brief(system: system, prompt: request(description: description, terms: terms))
   }
 }

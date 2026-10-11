@@ -5,7 +5,24 @@ import Foundation
 enum SystemPrompt {
   private static func number(_ value: Double) -> String { String(format: "%g", value) }
 
-  static func make(context: DTHubContext, samplerNames: [String] = SamplerNames.names) -> String {
+  /// Where the rules file and the user's own are read from (every time a message is sent).
+  static func folder(dataFolder: URL = defaultDataFolder) -> DTHubPromptFolder {
+    DTHubPromptFolder(folder: dataFolder.appendingPathComponent("AIAssistant", isDirectory: true))
+  }
+
+  static var defaultDataFolder: URL {
+    FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+      .appendingPathComponent("DT Hub", isDirectory: true).appendingPathComponent("Data", isDirectory: true)
+  }
+
+  /// At launch: writes the rules if missing or older (and makes `custom/`).
+  static func install(dataFolder: URL = defaultDataFolder) {
+    folder(dataFolder: dataFolder).install([ChatRules.path: ChatRules.builtIn])
+  }
+
+  static func make(
+    context: DTHubContext, samplerNames: [String] = SamplerNames.names, folder: DTHubPromptFolder = SystemPrompt.folder()
+  ) -> String {
     let p = context.parameters
     func v(_ value: String?) -> String { value ?? "unknown" }
     let sampler = p?.sampler.map { SamplerNames.name($0) }
@@ -32,11 +49,7 @@ enum SystemPrompt {
         + (g.usesNegative ? "This model reads a negative prompt.\n" : "This model does not use a negative prompt.\n")
         + g.notes.trimmingCharacters(in: .whitespacesAndNewlines) + "\n"
     }
-    return """
-      You are the assistant of DT Hub, a Mac app that prepares images for Draw Things. You help the user write and
-      improve prompts and choose generation settings. Answer in the language the user writes in. Be concise.
-
-      CURRENT GENERATION TAB
+    let tab = """
       Model: \(v(context.model)) (family: \(v(context.family)))
       Prompt: \"\"\"\(context.prompt ?? "")\"\"\"
       Negative prompt: \"\"\"\(context.negativePrompt ?? "")\"\"\"
@@ -45,29 +58,15 @@ enum SystemPrompt {
       CFG-Zero*: \(v(cfgZero)), initial steps \(v(p?.cfgZeroInitSteps.map(String.init))). Batch: \(batch).
       LoRAs: \(loras)
       Start image: \(start). Moodboard pictures on: \(context.moodboard?.count ?? 0).
-      \(guide)
-      ACTIONS
-      You can change the Generation tab, but only when the user's latest message contains the exact command <DO IT> or
-      <FALLO>. Only then end your answer with exactly one block:
-      ```dthub
-      { JSON }
-      ```
-      Never write that block in any other case, even if the user asks in other words to send, apply or set something:
-      write what you propose as plain text (the user must be able to read it) and tell them to add <DO IT> (the button
-      inside the text box does it). Never claim you changed anything without it. When you do write the block, put a
-      short sentence for the user before it.
-      JSON keys, all optional; put only what changes:
-      - "fields": {"prompt": text, "negativePrompt": text, "width": int, "height": int, "steps": int,
-        "guidanceScale": number, "shift": number, "resolutionDependentShift": bool, "cfgZeroStar": bool,
-        "cfgZeroInitSteps": int, "seed": int, "randomSeed": bool, "sampler": one of [\(samplerNames.joined(separator: ", "))],
-        "batchSize": int, "batchCount": int}
-      - "loras": [{"file": a file name from the LoRAs above, "weight": number}]. Never invent a file name.
-      - "strength": number from 0 to 1: how much the start image is changed (only with a start image).
-      - "pipeline": an object with a "steps" list, never a bare list:
-        {"steps": [{"title": short text, "fields": {same keys, no size}, "loras": [...], "useOutputAsStart": bool}]}: passes that run one after the other when the user presses RUN, each on top of the
-        tab with only what it lists changed. Use it for variants, series and several passes. At most 20 steps.
-      You never press RUN and never change the model.
       """
+    // The rules (the file when valid, the built-in copy otherwise), the user's own after them; then the placeholders are
+    // filled, the state of the tab last so that nothing in the user's own text is read as a placeholder.
+    let rules = folder.base(ChatRules.path, embedded: ChatRules.builtIn).file.body
+    let text = folder.assemble(rules: rules, family: "", extras: [], customName: "chat.md", label: "AI Assistant")
+    return text
+      .replacingOccurrences(of: "{samplers}", with: samplerNames.joined(separator: ", "))
+      .replacingOccurrences(of: "{guide}", with: guide)
+      .replacingOccurrences(of: "{tab}", with: tab)
   }
 }
 

@@ -1,0 +1,92 @@
+{
+ "schema": 1,
+ "version": "1.0.0",
+ "families": {
+  "flux1": {
+   "hiddenCategories": [
+    "negative_terms",
+    "render_quality"
+   ]
+  },
+  "flux2": {
+   "hiddenCategories": [
+    "negative_terms",
+    "render_quality"
+   ],
+   "provisional": true
+  },
+  "flux2_9b": {
+   "hiddenCategories": [
+    "negative_terms",
+    "render_quality"
+   ]
+  },
+  "flux2_4b": {
+   "hiddenCategories": [
+    "negative_terms",
+    "render_quality"
+   ]
+  },
+  "krea_2": {
+   "hiddenCategories": [
+    "negative_terms",
+    "render_quality"
+   ]
+  },
+  "qwen_image": {
+   "hiddenCategories": [
+    "render_quality"
+   ]
+  },
+  "qwen_image_2.1": {
+   "hiddenCategories": [
+    "negative_terms",
+    "render_quality"
+   ],
+   "provisional": true
+  },
+  "z_image": {
+   "hiddenCategories": [
+    "negative_terms",
+    "render_quality",
+    "typography_text"
+   ]
+  },
+  "sdxl_base_v0.9": {
+   "hiddenCategories": [
+    "typography_text"
+   ],
+   "booruSystem": "Tag mode is ON: output only comma-separated booru tags (underscores between words), no sentences. Begin with quality tags such as masterpiece, best quality, absurdres (for Pony models score_9, score_8_up, score_7_up).",
+   "tags": true
+  },
+  "v1": {
+   "hiddenCategories": [
+    "typography_text"
+   ],
+   "booruSystem": "Tag mode is ON: output only comma-separated booru tags (underscores between words), no sentences. Begin with quality tags such as masterpiece, best quality.",
+   "tags": true
+  },
+  "ernie_image": {
+   "hiddenCategories": [
+    "negative_terms",
+    "render_quality"
+   ]
+  },
+  "hidream_i1": {
+   "hiddenCategories": [
+    "negative_terms",
+    "render_quality"
+   ],
+   "provisional": true
+  },
+  "cosmos2.5_2b": {
+   "hiddenCategories": [
+    "artist_classical",
+    "artist_modern",
+    "typography_text"
+   ],
+   "provisional": true,
+   "tags": true
+  }
+ }
+}

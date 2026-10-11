@@ -1,3 +1,4 @@
+import DTHubPluginKit
 import Foundation
 import Testing
 
@@ -22,121 +23,43 @@ struct DataTests {
     #expect(!EmbeddedData.database.contains("en_tag") && !EmbeddedData.database.contains("en_prose"))
   }
 
-  @Test func theEmbeddedMasterPromptsCoverTheThirteenFamiliesAndAskForEnglish() {
-    let masters = PMData.embeddedMasters
-    #expect(Set(masters.families.keys) == Set(PMFamilies.all))
-    #expect(PMFamilies.all.count == 13)
-    for (family, prompt) in masters.families {
-      #expect(prompt.system.contains("exclusively in English"), "\(family) must ask for English only")
-      #expect(prompt.system.contains(prompt.label))
-      // The JSON shape of the answer is the only place with braces: no placeholder was left unfilled.
-      if !prompt.negative { #expect(!prompt.system.contains("{"), "\(family): an unfilled placeholder") }
-      #expect(!prompt.system.contains("{label}") && !prompt.system.contains("{words}") && !prompt.system.contains("{notes}"))
-    }
-    // A family with a negative prompt asks for the JSON answer; one without does not.
-    #expect(masters.families["sdxl_base_v0.9"]?.system.contains(#""negative""#) == true)
-    #expect(masters.families["flux1"]?.system.contains(#""negative""#) == false)
-    #expect(masters.families["flux1"]?.negative == false)
-    #expect(masters.families["v1"]?.negative == true)
+  @Test func theEmbeddedFamilyDataCoversTheThirteenFamilies() {
+    let data = PMData.embeddedFamilies
+    #expect(Set(data.families.keys) == Set(PMFamilies.all))
+    #expect(data.schema == DataSource.supportedSchema)
   }
 
   @Test func hiddenCategoriesAreRealOnesAndNegativeTermsAreHiddenWhereThereIsNoNegative() {
     let ids = Set(PMData.embeddedDatabase.categories.map(\.id))
-    for (family, prompt) in PMData.embeddedMasters.families {
-      #expect(Set(prompt.hiddenCategories).isSubset(of: ids), "\(family)")
-      if !prompt.negative { #expect(prompt.hiddenCategories.contains("negative_terms"), "\(family)") }
+    for (family, entry) in PMData.embeddedFamilies.families {
+      #expect(Set(entry.hiddenCategories).isSubset(of: ids), Comment(rawValue: family))
+      // Whether the family reads a negative prompt is the app's to say (Family prompt); here only the terms.
+      let reads = Fixtures.appFamilies[family]?.negative == true
+      if !reads { #expect(entry.hiddenCategories.contains("negative_terms"), Comment(rawValue: family)) }
     }
-    #expect(PMData.embeddedMasters.families["z_image"]?.hiddenCategories.contains("typography_text") == true)
+    #expect(PMData.embeddedFamilies.families["z_image"]?.hiddenCategories.contains("typography_text") == true)
+    #expect(PMData.embeddedFamilies.families["qwen_image"]?.hiddenCategories == ["render_quality"])
+    #expect(PMData.embeddedFamilies.families["cosmos2.5_2b"]?.hiddenCategories.count == 3)
   }
 
   @Test func onlyTheTwoFamiliesWithTheBooruSwitchHaveItsText() {
-    for (family, prompt) in PMData.embeddedMasters.families {
-      #expect((prompt.booruSystem != nil) == PMFamilies.withBooruSwitch.contains(family), "\(family)")
-    }
-  }
-
-  /// The most a family's prompt may have, in words (or tags for SD 1.5): the real limit of its text encoder with a margin
-  /// (about 0.75 words per token), or the most the sources say works. Beyond it the prompt is cut off (FLUX, Z-Image),
-  /// corrupts the picture (Krea 2) or is ignored (CLIP).
-  private let ceilings: [String: ClosedRange<Int>] = [
-    "flux1": 250...330, "flux2": 250...330, "flux2_9b": 250...330, "flux2_4b": 250...330,  // 512 tokens
-    "krea_2": 250...330,  // 512 tokens; beyond that the picture is corrupted
-    "qwen_image": 400...500, "qwen_image_2.1": 400...500,  // 1024 tokens by default
-    "z_image": 250...330,  // 512 tokens, up to 1024 when asked
-    "ernie_image": 250...330,  // 2048 characters
-    "hidream_i1": 90...150,  // 128 tokens work, 248 at most
-    "cosmos2.5_2b": 250...330,  // 512 tokens
-    "sdxl_base_v0.9": 40...60, "v1": 30...45,  // 77 CLIP tokens
-  ]
-
-  @Test func everyFamilyHasACeilingThatFollowsTheRealLimitOfItsTextEncoderAndSaysIt() {
-    for (family, prompt) in PMData.embeddedMasters.families {
-      let ceiling = prompt.maxWords
-      #expect(ceiling != nil && (ceilings[family] ?? 0...0).contains(ceiling ?? -1), "\(family): \(String(describing: ceiling))")
-      guard let ceiling else { continue }
-      #expect(prompt.system.contains("never beyond \(ceiling) "), "\(family) must tell the model its ceiling")
-      #expect(prompt.lengthNote?.isEmpty == false, "\(family) must say why")
-      // The usual range always fits under the ceiling.
-      let top = prompt.words.split(separator: "-").last.flatMap { Int($0) } ?? Int.max
-      #expect(top <= ceiling, "\(family): \(prompt.words) vs \(ceiling)")
-    }
-    #expect(Set(ceilings.keys) == Set(PMFamilies.all))
-  }
-
-  @Test func theLimitsThatWereNotInTheSourcesAreGone() {
-    // Z-Image has no 800-character limit and does not lose attention after 75 tokens: it likes long, detailed prompts.
-    let z = PMData.embeddedMasters.families["z_image"]
-    #expect(z?.system.contains("800 characters") == false && z?.system.contains("75 tokens") == false)
-    #expect((z?.words.split(separator: "-").last.flatMap { Int($0) } ?? 0) >= 200)
-    // HiDream reads 128 tokens well and 248 at most: its usual range is shorter than FLUX's.
-    #expect((PMData.embeddedMasters.families["hidream_i1"]?.maxWords ?? 999) < (PMData.embeddedMasters.families["flux1"]?.maxWords ?? 0))
-  }
-
-  /// The families that read natural language are told to enrich the scene, as long as nothing contradicts it.
-  private let enriching: Set<String> = [
-    "flux1", "flux2", "flux2_9b", "flux2_4b", "krea_2", "qwen_image", "qwen_image_2.1", "z_image", "ernie_image",
-    "hidream_i1",
-  ]
-
-  @Test func theFamiliesThatReadNaturalLanguageAreAskedToEnrichWithoutContradicting() {
-    for (family, prompt) in PMData.embeddedMasters.families {
-      let asked = prompt.system.contains("Enrich the description")
-      #expect(asked == enriching.contains(family), "\(family)")
-      if asked {
-        #expect(prompt.system.contains("never contradicts"), "\(family): the additions must not contradict the scene")
-        #expect(!prompt.system.contains("Do not add subjects"), "\(family): the old ban on additions is replaced")
-      } else {
-        // Tag-based families keep the old, stricter rule.
-        #expect(prompt.system.contains("Do not add subjects"), "\(family)")
-      }
-    }
-  }
-
-  @Test func qwenImage21HasAMaximumOf500WordsAndFollowsTheEnhancersStructureInOurOwnWords() {
-    let qwen = PMData.embeddedMasters.families["qwen_image_2.1"]
-    #expect(qwen?.maxWords == 500 && qwen?.words == "300-450")
-    let system = qwen?.system ?? ""
-    for phrase in [
-      "never beyond 500 words", "Begin with one sentence", "position in the frame", "light a sentence of its own",
-      "double quotes", "single sentence that sums up", "RGBA image with an alpha channel",
-    ] {
-      #expect(system.contains(phrase), "\(phrase)")
-    }
-    // Qwen's own wording is not copied (Qwen Research License): none of these phrases of its system prompt, in any case.
-    let lower = system.lowercased()
-    for copied in [
-      "image prompt rewriting expert", "walk the frame", "shadows fall away from the light",
-      "reflections match what is in front of the surface", "shadows and highlights it leaves", "behind the left shoulder",
-      "masterpiece", "highly detailed", "deep navy, pale cream", "brushed metal, weathered wood", "small counts as words",
-      "life stage, never a number", "too small to read", "the top band", "bottom band", "along the lower edge",
-    ] {
-      #expect(!lower.contains(copied), "copied from Qwen: \(copied)")
+    for (family, entry) in PMData.embeddedFamilies.families {
+      #expect((entry.booruSystem != nil) == PMFamilies.withBooruSwitch.contains(family), Comment(rawValue: family))
     }
   }
 
   @Test func theFourFamiliesWithoutAReviewAreMarkedProvisional() {
-    let provisional = PMData.embeddedMasters.families.filter { $0.value.provisional == true }.keys
+    let provisional = PMData.embeddedFamilies.families.filter { $0.value.provisional == true }.keys
     #expect(Set(provisional) == ["flux2", "qwen_image_2.1", "hidream_i1", "cosmos2.5_2b"])
+  }
+
+  @Test func theTwoRulesFilesAreValidAndAskForTheLabel() {
+    for text in [EmbeddedPrompts.compose, EmbeddedPrompts.composeTags] {
+      let file = DTHubPromptFile.parse(text)
+      #expect(file.isValid && file.version == 1 && file.body.hasPrefix(#"You write prompts for the image model "{label}"."#))
+    }
+    #expect(EmbeddedPrompts.compose.contains("Enrich the description") && !EmbeddedPrompts.compose.contains("Do not add subjects"))
+    #expect(EmbeddedPrompts.composeTags.contains("Do not add subjects") && !EmbeddedPrompts.composeTags.contains("Enrich the description"))
   }
 
   // MARK: Which copy wins
@@ -157,7 +80,7 @@ struct DataTests {
 
   @Test func withoutAFileTheEmbeddedCopyIsUsedSilently() throws {
     let data = PMData.load(folder: try makeFolder())
-    #expect(data.database == PMData.embeddedDatabase && data.masters == PMData.embeddedMasters && data.warnings.isEmpty)
+    #expect(data.database == PMData.embeddedDatabase && data.families == PMData.embeddedFamilies && data.warnings.isEmpty)
   }
 
   @Test func aNewerFileWinsAndAnEqualOneToo() throws {
@@ -211,13 +134,13 @@ struct DataTests {
     #expect(PMData.load(folder: folder).warnings.isEmpty)
   }
 
-  @Test func theMasterPromptsFileLivesInThePluginsOwnFolder() throws {
+  @Test func theFamiliesFileLivesInThePluginsOwnFolder() throws {
     let folder = try makeFolder()
-    var masters = PMData.embeddedMasters
-    masters.version = "99.0.0"
-    masters.families["flux1"]?.system = "CHANGED exclusively in English"
-    try JSONEncoder().encode(masters).write(to: folder.appendingPathComponent("prompt-master/master-prompts.json"))
-    #expect(PMData.load(folder: folder).masters.families["flux1"]?.system == "CHANGED exclusively in English")
+    var families = PMData.embeddedFamilies
+    families.version = "99.0.0"
+    families.families["flux1"]?.hiddenCategories = ["render_quality"]
+    try JSONEncoder().encode(families).write(to: folder.appendingPathComponent("prompt-master/families.json"))
+    #expect(PMData.load(folder: folder).families.families["flux1"]?.hiddenCategories == ["render_quality"])
   }
 
   @Test func versionsAreComparedNumberByNumber() {
