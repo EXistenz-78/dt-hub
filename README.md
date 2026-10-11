@@ -106,6 +106,8 @@ What *Enhance Prompt* and *Generate Prompt* tell the LLM is not hidden in the co
 - `family/` — the instructions of each model family (one file per family, named with the id of the family), including the rule for the answer (plain prose, or JSON with a negative prompt) and the length. **These are the app's own files: changing them is not recommended** (a newer version of the app rewrites them, keeping the old one as `.md.bak`).
 - `custom/` — **yours**. `enhance.md` and `describe.md` add instructions for a task; `family-<id>.md` adds them for one family. They go last and win if they disagree with the app's. A file may start with a header `---` / `mode: replace` / `---` to replace the app's text instead of adding to it. `custom/families.txt` lists the names and ids of the families.
 
+An LLM that comes with a system prompt of its own (Qwen's prompt enhancers) receives only your `enhance.md` / `describe.md`, added after its own text; being trained for one job, such a model may ignore instructions that go against it (for example to write in another language).
+
 **Preferences › LLM › Prompts** opens the folder, shows which families have a file of their own and the final text the LLM receives.
 
 ## Plug-ins
