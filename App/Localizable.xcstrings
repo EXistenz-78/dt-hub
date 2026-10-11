@@ -5509,6 +5509,159 @@
         }
       }
     },
+    "prefs.prompts.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prompts"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prompt"
+          }
+        }
+      }
+    },
+    "prefs.prompts.open": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open the prompts folder"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apri la cartella dei prompt"
+          }
+        }
+      }
+    },
+    "prefs.prompts.family": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Family"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Famiglia"
+          }
+        }
+      }
+    },
+    "prefs.prompts.task": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Task"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compito"
+          }
+        }
+      }
+    },
+    "prefs.prompts.task.enhance": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enhance Prompt"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Migliora Prompt"
+          }
+        }
+      }
+    },
+    "prefs.prompts.task.describe": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Generate Prompt"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Genera Prompt"
+          }
+        }
+      }
+    },
+    "prefs.prompts.custom": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Custom"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Personalizzato"
+          }
+        }
+      }
+    },
+    "prefs.prompts.preview": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Final prompt"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prompt finale"
+          }
+        }
+      }
+    },
+    "prefs.prompts.note": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What the language model receives: the rules of the task, the family's instructions and, last, your own files in custom/. The app's files (family/, rules/) are rewritten when a new version brings newer ones; changing them is not recommended — put your changes in custom/ (see families.txt there for the ids). Files are read at every request."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ciò che riceve il modello linguistico: le regole del compito, le istruzioni della famiglia e, per ultimi, i tuoi file in custom/. I file dell'app (family/, rules/) vengono riscritti quando una nuova versione ne porta di più recenti; modificarli è sconsigliato: metti le tue modifiche in custom/ (gli id sono in families.txt). I file si leggono a ogni richiesta."
+          }
+        }
+      }
+    },
     "prefs.server.get": {
       "extractionState": "manual",
       "localizations": {

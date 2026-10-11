@@ -97,7 +97,8 @@ final class GenerationController {
       },
       respond: { prompt, images, options, model throws(LanguageModelError) in
         try await languageModel.respond(to: prompt, images: images, options: options, model: model)
-      })
+      },
+      library: .live)
     self.sessionStore = sessionStore
     outputFolder = outputSettings.folder()
     if let snapshot = sessionStore.load(), snapshot.project == restoringProject {

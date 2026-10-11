@@ -144,6 +144,11 @@ struct DTHubProjectTests {
     #expect(context.promptGuide == DTHubPromptGuide(label: "Flux", usesNegative: true, notes: "- a"))
     let none = try JSONDecoder().decode(DTHubContext.self, from: Data(#"{"type":"context","tempFolder":"/t"}"#.utf8))
     #expect(none.promptGuide == nil)
+    let rich = #"{"type":"context","tempFolder":"/t","promptGuide":{"label":"Flux","usesNegative":false,"notes":"- a","familyPrompt":"Rule.\n\nModel notes:\n- a","words":"60-250","maxWords":"300"}}"#
+    let richContext = try JSONDecoder().decode(DTHubContext.self, from: Data(rich.utf8))
+    #expect(richContext.promptGuide?.familyPrompt == "Rule.\n\nModel notes:\n- a")
+    #expect(richContext.promptGuide?.words == "60-250" && richContext.promptGuide?.maxWords == "300")
+    #expect(context.promptGuide?.familyPrompt == nil)
     let wrong = try JSONDecoder().decode(
       DTHubContext.self, from: Data(#"{"type":"context","tempFolder":"/t","model":"m","promptGuide":"x"}"#.utf8))
     #expect(wrong.promptGuide == nil && wrong.model == "m")
