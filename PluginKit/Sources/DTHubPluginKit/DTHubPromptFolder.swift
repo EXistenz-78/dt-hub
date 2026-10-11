@@ -56,7 +56,7 @@ public struct DTHubPromptFolder: Sendable {
     try? manager.createDirectory(at: folder.appendingPathComponent("custom"), withIntermediateDirectories: true)
   }
 
-  /// Rules, the family's text and the extras, then the user's file `custom/<customName>` (added after the priority line,
+  /// Rules, the family's text (may be empty) and the extras, then the user's file `custom/<customName>` (added after the priority line,
   /// or, with `mode: replace`, in place of the rules). `{label}` is resolved in the user's replacing text.
   public func assemble(rules: String, family: String, extras: [String], customName: String, label: String) -> String {
     var first = rules.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -72,6 +72,6 @@ public struct DTHubPromptFolder: Sendable {
     parts.append(first)
     parts.append(family.trimmingCharacters(in: .whitespacesAndNewlines))
     parts += extras.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-    return (parts + appended).joined(separator: "\n\n")
+    return (parts + appended).filter { !$0.isEmpty }.joined(separator: "\n\n")
   }
 }

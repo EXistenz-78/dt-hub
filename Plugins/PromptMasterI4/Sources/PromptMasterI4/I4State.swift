@@ -29,11 +29,13 @@ final class I4State: ObservableObject {
   @Published var active = false
   /// The element selected on the canvas or in the list (view state: not remembered).
   @Published var selectedElement: Int?
+  /// Where the master prompt and the user's own file are read from (every time it writes).
+  private let promptFolder: DTHubPromptFolder
   /// The size of the Generation tab, as the app last said it: the canvas takes its proportions.
   @Published private(set) var generationSize: CGSize?
 
   init(
-    data: I4Data = I4Data.load(), store: I4Store = I4Store(), italian: Bool = L.systemIsItalian,
+    data: I4Data = I4Data.load(), promptFolder: DTHubPromptFolder = I4Prompts.folder(), store: I4Store = I4Store(), italian: Bool = L.systemIsItalian,
     shuffler: @escaping (I4Catalog, StyleMode) -> Set<String> = { catalog, mode in
       var generator = SystemRandomNumberGenerator()
       return I4Shuffler.pick(catalog: catalog, mode: mode, using: &generator)
@@ -44,6 +46,7 @@ final class I4State: ObservableObject {
     }
   ) {
     self.data = data
+    self.promptFolder = promptFolder
     self.store = store
     legacyStorage = store.storage
     self.italian = italian
@@ -63,6 +66,7 @@ final class I4State: ObservableObject {
     let notes =
       data.warnings.map { Self.text(for: $0, italian: italian) }
       + catalog.missingCategories.map { L.format(.missingCategory, $0, italian: italian) }
+      + I4Prompts.problems(in: promptFolder)
     status = notes.joined(separator: " ")
   }
 
@@ -190,7 +194,7 @@ final class I4State: ObservableObject {
   var fieldsToWrite: [I4FieldInfo] { fields.filter(\.needsWriting) }
   var canWrite: Bool { active && !isWriting && !isSending && !fieldsToWrite.isEmpty }
 
-  var writeSystem: String { data.config.system }
+  var writeSystem: String { I4Prompts.system(in: promptFolder) }
   var writeOptions: DTHubLLMOptions {
     let settings = data.config.options
     return DTHubLLMOptions(

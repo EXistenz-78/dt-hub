@@ -10,6 +10,8 @@ struct WritingStateTests {
   private func state(_ storage: MemoryStorage = MemoryStorage()) -> I4State {
     let state = I4State(
       data: I4Data(database: I4Data.embeddedDatabase, config: I4Data.embeddedConfig, warnings: []),
+      promptFolder: DTHubPromptFolder(
+        folder: FileManager.default.temporaryDirectory.appendingPathComponent("i4-state-\(UUID().uuidString)")),
       store: I4Store(storage: storage), italian: false)
     state.active = true
     return state
@@ -34,7 +36,7 @@ struct WritingStateTests {
     let state = state()
     let options = state.writeOptions
     #expect(options.temperature == 0.6 && options.maxTokens == 4096 && options.thinking == false && options.timeout == 600)
-    #expect(state.writeSystem == I4Data.embeddedConfig.system && state.writeSystem.contains("<already_written>"))
+    #expect(state.writeSystem.contains("<already_written>") && state.writeSystem.hasPrefix("You write short English sentences"))
   }
 
   @Test func theSentencesAreKeptAcrossRunsAndSpentOnesGoWhenTheFieldEmpties() {

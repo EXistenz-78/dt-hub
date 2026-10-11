@@ -75,15 +75,14 @@ struct MergedCategory: Codable, Equatable, Sendable {
   var from: [String]
 }
 
-/// `ideogram4.json` (spec §3): which categories feed each field, the settings of the language model and the master
-/// prompt.
+/// `ideogram4.json` (spec §3): which categories feed each field and the settings of the language model. The master prompt
+/// is a Markdown file of its own since 1.2 (`I4Prompts`).
 struct IdeogramConfig: Codable, Equatable, Sendable, VersionedData {
   var schema: Int
   var version: String
   var fields: [String: FieldCategories]
   var mergedMood: MergedCategory
   var options: LLMSettings
-  var system: String
 
   struct LLMSettings: Codable, Equatable, Sendable {
     var temperature: Double

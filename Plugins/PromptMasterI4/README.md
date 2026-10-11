@@ -37,11 +37,13 @@ elements (objects and lettering, with their boxes and colours).
 | File | Where | Written by |
 |---|---|---|
 | `prompt-database.json` | `~/Library/Application Support/DT Hub/Data/` (the same as Prompt Master's) | you, to update it |
-| `ideogram4.json` | `…/Data/prompt-master/` | you: which categories feed each field, the LLM settings, the master prompt (version 1.1.0, tried with the 8B model) |
+| `ideogram4.json` | `…/Data/prompt-master/` | you: which categories feed each field and the LLM settings (version 1.2.0) |
+| `master-prompt.md` | `…/Data/prompt-master-i4/` | the plug-in (at launch; tried with the 8B model; **changing it is not recommended**) |
+| `custom/master-prompt.md` | `…/Data/prompt-master-i4/` | you: your own instructions, added after the master prompt (a header `mode: replace` replaces it instead) |
 
 A file is used if it exists, can be read, has `schema` 1, no repeated id and a `version` not older than the embedded one;
 otherwise the embedded copy is used (and if the file cannot be read, has an unknown layout or uses the same id twice, the status
-line says so; an older file is ignored without a word). The plug-in never writes either of them. The embedded copies and the files
+line says so; an older file is ignored without a word). The plug-in never writes the two JSON files; it writes `master-prompt.md` at launch if it is missing or older (keeping the old one as `.md.bak`) and reads it, and `custom/`, at every request. The embedded copies and the files
 in `Data/` are regenerated with `Scripts/make-i4-data.py` (the database is copied from `Plugins/PromptMaster/Data/`, which is not
 modified; a test checks that they are equal).
 
