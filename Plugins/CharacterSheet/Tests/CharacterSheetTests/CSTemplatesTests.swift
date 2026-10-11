@@ -14,7 +14,7 @@ struct CSTemplatesTests {
   @Test func loadReturnsTheTextWithoutOuterWhitespace() throws {
     let folder = try makeFolder()
     defer { try? FileManager.default.removeItem(at: folder) }
-    try "\n  Role text.  \n".write(to: folder.appendingPathComponent("master-prompt.txt"), atomically: true, encoding: .utf8)
+    try "\n  Role text.  \n".write(to: folder.appendingPathComponent("master-prompt.md"), atomically: true, encoding: .utf8)
     #expect(CSTemplates.load(.master, from: folder) == .success("Role text."))
   }
 
@@ -27,7 +27,7 @@ struct CSTemplatesTests {
   @Test func loadOfAWhitespaceOnlyFileIsEmpty() throws {
     let folder = try makeFolder()
     defer { try? FileManager.default.removeItem(at: folder) }
-    try "  \n \n".write(to: folder.appendingPathComponent("master-prompt.txt"), atomically: true, encoding: .utf8)
+    try "  \n \n".write(to: folder.appendingPathComponent("master-prompt.md"), atomically: true, encoding: .utf8)
     #expect(CSTemplates.load(.master, from: folder) == .failure(.empty(.master)))
   }
 
@@ -60,10 +60,10 @@ struct CSTemplatesTests {
   @Test func theFileFollowsTheSwitchAndTheSheetKind() {
     #expect(CSTemplateFile.of(useStatic: false, kind: .base) == .master)
     #expect(CSTemplateFile.of(useStatic: true, kind: .base) == .staticPrompt)
-    #expect(CSTemplateFile.of(useStatic: false, kind: .expressions).rawValue == "master-prompt-expressions.txt")
-    #expect(CSTemplateFile.of(useStatic: true, kind: .expressions).rawValue == "static-prompt-expressions.txt")
-    #expect(CSTemplateFile.of(useStatic: false, kind: .poses).rawValue == "master-prompt-poses.txt")
-    #expect(CSTemplateFile.of(useStatic: true, kind: .poses).rawValue == "static-prompt-poses.txt")
+    #expect(CSTemplateFile.of(useStatic: false, kind: .expressions).rawValue == "master-prompt-expressions.md")
+    #expect(CSTemplateFile.of(useStatic: true, kind: .expressions).rawValue == "static-prompt-expressions.md")
+    #expect(CSTemplateFile.of(useStatic: false, kind: .poses).rawValue == "master-prompt-poses.md")
+    #expect(CSTemplateFile.of(useStatic: true, kind: .poses).rawValue == "static-prompt-poses.md")
     #expect(Set(CSTemplateFile.allCases.map(\.rawValue)).count == 6)
   }
 
@@ -71,7 +71,7 @@ struct CSTemplatesTests {
     let folder = try makeFolder()
     defer { try? FileManager.default.removeItem(at: folder) }
     try "Faces.".write(
-      to: folder.appendingPathComponent("master-prompt-expressions.txt"), atomically: true, encoding: .utf8)
+      to: folder.appendingPathComponent("master-prompt-expressions.md"), atomically: true, encoding: .utf8)
     #expect(CSTemplates.load(.masterExpressions, from: folder) == .success("Faces."))
     #expect(CSTemplates.load(.masterPoses, from: folder) == .failure(.missing(.masterPoses)))
   }
@@ -80,7 +80,7 @@ struct CSTemplatesTests {
     let folder = try makeFolder()
     defer { try? FileManager.default.removeItem(at: folder) }
     try "  My own master.  \n".write(
-      to: folder.appendingPathComponent("master-prompt.txt"), atomically: true, encoding: .utf8)
+      to: folder.appendingPathComponent("master-prompt.md"), atomically: true, encoding: .utf8)
     #expect(CSTemplates.resolved(.master, from: folder) == "My own master.")
   }
 
@@ -88,7 +88,7 @@ struct CSTemplatesTests {
     let folder = try makeFolder()
     defer { try? FileManager.default.removeItem(at: folder) }
     #expect(CSTemplates.resolved(.masterPoses, from: folder) == CSBuiltIn.text(for: .masterPoses))
-    try " \n".write(to: folder.appendingPathComponent("static-prompt.txt"), atomically: true, encoding: .utf8)
+    try " \n".write(to: folder.appendingPathComponent("static-prompt.md"), atomically: true, encoding: .utf8)
     #expect(CSTemplates.resolved(.staticPrompt, from: folder) == CSBuiltIn.text(for: .staticPrompt))
   }
 
@@ -97,9 +97,9 @@ struct CSTemplatesTests {
     defer { try? FileManager.default.removeItem(at: root) }
     let folder = root.appendingPathComponent("not/yet")
     try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-    try "Mine.".write(to: folder.appendingPathComponent("master-prompt.txt"), atomically: true, encoding: .utf8)
+    try "Mine.".write(to: folder.appendingPathComponent("master-prompt.md"), atomically: true, encoding: .utf8)
     CSTemplates.seedMissing(in: folder)
-    #expect(try String(contentsOf: folder.appendingPathComponent("master-prompt.txt"), encoding: .utf8) == "Mine.")
+    #expect(try String(contentsOf: folder.appendingPathComponent("master-prompt.md"), encoding: .utf8) == "Mine.")
     for file in CSTemplateFile.allCases where file != .master {
       let written = try String(contentsOf: folder.appendingPathComponent(file.rawValue), encoding: .utf8)
       #expect(written.trimmingCharacters(in: .whitespacesAndNewlines) == CSBuiltIn.text(for: file), "\(file)")
@@ -111,10 +111,52 @@ struct CSTemplatesTests {
     defer { try? FileManager.default.removeItem(at: root) }
     let folder = root.appendingPathComponent("a/b")
     CSTemplates.seedMissing(in: folder)
-    #expect(FileManager.default.fileExists(atPath: folder.appendingPathComponent("static-prompt.txt").path))
+    #expect(FileManager.default.fileExists(atPath: folder.appendingPathComponent("static-prompt.md").path))
   }
 
   @Test func defaultFolderEndsWithTheDataPath() {
     #expect(CSTemplates.defaultFolder.path.hasSuffix("DT Hub/Data/CharacterSheet"))
+  }
+
+  @Test func aTxtFileOfAnEarlierVersionIsStillRead() throws {
+    let folder = FileManager.default.temporaryDirectory.appendingPathComponent("cs-legacy-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    try "Old text.".write(to: folder.appendingPathComponent("master-prompt.txt"), atomically: true, encoding: .utf8)
+    #expect(CSTemplates.load(.master, from: folder) == .success("Old text."))
+    // The .md wins when both exist.
+    try "New text.".write(to: folder.appendingPathComponent("master-prompt.md"), atomically: true, encoding: .utf8)
+    #expect(CSTemplates.load(.master, from: folder) == .success("New text."))
+  }
+
+  @Test func theHeaderOfAMarkdownFileIsNotPartOfTheText() throws {
+    let folder = FileManager.default.temporaryDirectory.appendingPathComponent("cs-header-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    try "---\nversion: 2\n---\nRole text.".write(
+      to: folder.appendingPathComponent("master-prompt.md"), atomically: true, encoding: .utf8)
+    #expect(CSTemplates.load(.master, from: folder) == .success("Role text."))
+  }
+
+  @Test func migrationRenamesTheTxtFilesAndKeepsTheirContent() throws {
+    let folder = FileManager.default.temporaryDirectory.appendingPathComponent("cs-migrate-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    try "Mine.".write(to: folder.appendingPathComponent("master-prompt.txt"), atomically: true, encoding: .utf8)
+    try "Both, old.".write(to: folder.appendingPathComponent("static-prompt.txt"), atomically: true, encoding: .utf8)
+    try "Both, new.".write(to: folder.appendingPathComponent("static-prompt.md"), atomically: true, encoding: .utf8)
+    CSTemplates.migrateLegacy(in: folder)
+    #expect(try String(contentsOf: folder.appendingPathComponent("master-prompt.md"), encoding: .utf8) == "Mine.")
+    #expect(!FileManager.default.fileExists(atPath: folder.appendingPathComponent("master-prompt.txt").path))
+    // A name with both is left alone: nothing is overwritten.
+    #expect(try String(contentsOf: folder.appendingPathComponent("static-prompt.md"), encoding: .utf8) == "Both, new.")
+    #expect(FileManager.default.fileExists(atPath: folder.appendingPathComponent("static-prompt.txt").path))
+  }
+
+  @Test func seedingDoesNotWriteAnMdNextToAnExistingTxtThatCouldNotBeRenamed() throws {
+    let folder = FileManager.default.temporaryDirectory.appendingPathComponent("cs-seed-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    try "Both, old.".write(to: folder.appendingPathComponent("static-prompt.txt"), atomically: true, encoding: .utf8)
+    try "Both, new.".write(to: folder.appendingPathComponent("static-prompt.md"), atomically: true, encoding: .utf8)
+    CSTemplates.seedMissing(in: folder)
+    #expect(try String(contentsOf: folder.appendingPathComponent("static-prompt.md"), encoding: .utf8) == "Both, new.")
+    #expect(FileManager.default.fileExists(atPath: folder.appendingPathComponent("master-prompt.md").path))
   }
 }

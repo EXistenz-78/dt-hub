@@ -52,11 +52,11 @@ folder**: it writes the texts that are not there yet into `~/Library/Application
 
 | Kind | Language model | Static prompt |
 | --- | --- | --- |
-| Base sheet | `master-prompt.txt` | `static-prompt.txt` |
-| Expressions sheet | `master-prompt-expressions.txt` | `static-prompt-expressions.txt` |
-| Poses sheet | `master-prompt-poses.txt` | `static-prompt-poses.txt` |
+| Base sheet | `master-prompt.md` | `static-prompt.md` |
+| Expressions sheet | `master-prompt-expressions.md` | `static-prompt-expressions.md` |
+| Poses sheet | `master-prompt-poses.md` | `static-prompt-poses.md` |
 
-A file in that folder wins over the built-in text, with no rebuild: edit it freely, and **delete it to go back to the built-in one**. In a
+The texts are Markdown files (before 1.2 they were `.txt`: the plug-in renames yours at launch, keeping their content). A file in that folder wins over the built-in text, with no rebuild: edit it freely, and **delete it to go back to the built-in one**. These are specialist prompts for Qwen Image 2.1 only, so they stay apart from DT Hub's Rules and Family prompts. In a
 static prompt `{{name}}` is replaced by the character's name (`CHARACTER` if the field is empty).
 
 `Scripts/extract-from-workflow.py` reads the base pair out of a copy of the ComfyUI workflow, and `Scripts/make-builtin-texts.py` regenerates
