@@ -5,9 +5,14 @@ import SwiftUI
 @MainActor
 final class AIAssistantPlugin: DTHubPlugin {
   let manifest = DTHubManifest(
-    id: "com.exiztenz.dthub.llmchat", name: "AI Assistant", version: "1.0", symbol: "bubble.left.and.text.bubble.right",
+    id: "com.exiztenz.dthub.llmchat", name: "AI Assistant", version: "1.1", symbol: "bubble.left.and.text.bubble.right",
     families: nil)
   private let state = AIAssistantState()
+
+  init() {
+    // The rules of the chat, written to Data/AIAssistant/rules if missing or older (and custom/ made).
+    SystemPrompt.install()
+  }
   private var host: DTHubHost?
 
   func makeViewController() -> NSViewController {

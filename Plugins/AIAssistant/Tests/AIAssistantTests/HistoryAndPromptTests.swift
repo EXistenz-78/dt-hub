@@ -37,6 +37,11 @@ struct HistoryAndPromptTests {
     #expect(ImageLabels.block(hasStart: false, references: 0) == nil)
   }
 
+  /// A folder with nothing in it: the tests never read the user's own files.
+  func emptyFolder() -> DTHubPromptFolder {
+    DTHubPromptFolder(folder: FileManager.default.temporaryDirectory.appendingPathComponent("chat-\(UUID().uuidString)"))
+  }
+
   func context(_ json: String) throws -> DTHubContext {
     try JSONDecoder().decode(DTHubContext.self, from: Data(json.utf8))
   }
@@ -47,7 +52,7 @@ struct HistoryAndPromptTests {
        "parameters":{"width":832,"height":1216,"steps":8,"guidanceScale":1.5,"sampler":0,"shift":3,"resolutionDependentShift":true,"seed":99,"randomSeed":true,"cfgZeroStar":false,"cfgZeroInitSteps":0,"batchSize":1,"batchCount":2,
        "loras":[{"file":"x.ckpt","weight":0.6,"mode":0,"trigger":""}]}}
       """#
-    let text = SystemPrompt.make(context: try context(json))
+    let text = SystemPrompt.make(context: try context(json), folder: emptyFolder())
     #expect(text.contains(#"Prompt: """a cat""""#) && text.contains(#"Negative prompt: """blur""""#))
     #expect(text.contains("Sampler: DPM++ 2M Karras"))
     #expect(text.contains("Start image: yes, strength 0.70") && text.contains("Moodboard pictures on: 1"))
@@ -58,18 +63,79 @@ struct HistoryAndPromptTests {
   }
 
   @Test func withoutParametersTheValuesAreUnknown() throws {
-    let text = SystemPrompt.make(context: try context(#"{"type":"context","tempFolder":"/t"}"#))
+    let text = SystemPrompt.make(context: try context(#"{"type":"context","tempFolder":"/t"}"#), folder: emptyFolder())
     #expect(text.contains("Model: unknown (family: unknown)") && text.contains("Size: unknown") && text.contains("LoRAs: unknown"))
     #expect(text.contains("Start image: none"))
   }
 
   @Test func theFamilyGuideOfTheAppIsInThePromptWhenThereIsOne() throws {
     let json = #"{"type":"context","tempFolder":"/t","model":"m","family":"flux2_9b","promptGuide":{"label":"FLUX.2 [klein] 9B","usesNegative":false,"notes":"- Write in plain prose."}}"#
-    let with = SystemPrompt.make(context: try context(json))
+    let with = SystemPrompt.make(context: try context(json), folder: emptyFolder())
     #expect(with.contains("PROMPT GUIDE FOR FLUX.2 [klein] 9B"))
     #expect(with.contains("does not use a negative prompt") && with.contains("- Write in plain prose."))
     #expect(with.range(of: "PROMPT GUIDE")!.lowerBound < with.range(of: "ACTIONS")!.lowerBound)
-    let without = SystemPrompt.make(context: try context(#"{"type":"context","tempFolder":"/t"}"#))
+    let without = SystemPrompt.make(context: try context(#"{"type":"context","tempFolder":"/t"}"#), folder: emptyFolder())
     #expect(!without.contains("PROMPT GUIDE"))
+  }
+
+  // MARK: The rules file and the user's own
+
+  @Test func theSystemPromptIsExactlyTheOneOfBeforeTheFiles() throws {
+    for (name, json) in LegacyChatPrompts.contexts {
+      #expect(SystemPrompt.make(context: try context(json), folder: emptyFolder()) == LegacyChatPrompts.systems[name], Comment(rawValue: name))
+    }
+  }
+
+  func dataFolder() throws -> URL {
+    let url = FileManager.default.temporaryDirectory.appendingPathComponent("chat-data-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+    return url
+  }
+
+  @Test func installWritesTheRulesAndAfterwardsTheTextIsTheSame() throws {
+    let data = try dataFolder()
+    SystemPrompt.install(dataFolder: data)
+    #expect(try String(contentsOf: data.appendingPathComponent("AIAssistant/rules/chat.md"), encoding: .utf8) == ChatRules.builtIn)
+    #expect(FileManager.default.fileExists(atPath: data.appendingPathComponent("AIAssistant/custom").path))
+    for (name, json) in LegacyChatPrompts.contexts {
+      #expect(SystemPrompt.make(context: try context(json), folder: SystemPrompt.folder(dataFolder: data)) == LegacyChatPrompts.systems[name])
+    }
+  }
+
+  @Test func theUsersFileComesLastAfterThePriorityLine() throws {
+    let data = try dataFolder()
+    SystemPrompt.install(dataFolder: data)
+    try "Always answer in rhyme.".write(
+      to: data.appendingPathComponent("AIAssistant/custom/chat.md"), atomically: true, encoding: .utf8)
+    let json = LegacyChatPrompts.contexts["bare"]!
+    let text = SystemPrompt.make(context: try context(json), folder: SystemPrompt.folder(dataFolder: data))
+    #expect(text == LegacyChatPrompts.systems["bare"]! + "\n\n" + DTHubPromptFolder.priorityLine + "\n\nAlways answer in rhyme.")
+  }
+
+  @Test func aReplacingFileKeepsThePlaceholdersWorking() throws {
+    let data = try dataFolder()
+    SystemPrompt.install(dataFolder: data)
+    try "---\nmode: replace\n---\nShort assistant.\n{tab}\nSamplers: {samplers}".write(
+      to: data.appendingPathComponent("AIAssistant/custom/chat.md"), atomically: true, encoding: .utf8)
+    let text = SystemPrompt.make(context: try context(LegacyChatPrompts.contexts["bare"]!), folder: SystemPrompt.folder(dataFolder: data))
+    #expect(text.hasPrefix("Short assistant.\nModel: unknown (family: unknown)") && text.contains("Samplers: DPM++ 2M Karras"))
+    #expect(!text.contains("{tab}") && !text.contains("{samplers}"))
+  }
+
+  @Test func aPlaceholderTypedInThePromptIsLeftAlone() throws {
+    let json = #"{"type":"context","tempFolder":"/t","prompt":"use {guide} and {samplers}"}"#
+    let text = SystemPrompt.make(context: try context(json), folder: emptyFolder())
+    #expect(text.contains(#"Prompt: """use {guide} and {samplers}""""#))
+  }
+
+  @Test func aBrokenOrOlderRulesFileFallsBackToTheBuiltInOne() throws {
+    let data = try dataFolder()
+    SystemPrompt.install(dataFolder: data)
+    let file = data.appendingPathComponent("AIAssistant/rules/chat.md")
+    for broken in ["---\nrotto", "---\nversion: 0\n---\nOld."] {
+      try broken.write(to: file, atomically: true, encoding: .utf8)
+      let text = SystemPrompt.make(context: try context(LegacyChatPrompts.contexts["bare"]!), folder: SystemPrompt.folder(dataFolder: data))
+      #expect(text == LegacyChatPrompts.systems["bare"])
+    }
   }
 }
