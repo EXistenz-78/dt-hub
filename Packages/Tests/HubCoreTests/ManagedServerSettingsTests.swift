@@ -111,3 +111,47 @@ struct ServerArgumentsTests {
     #expect(!arguments.contains("--no-tls"))
   }
 }
+
+struct WeightsCacheTests {
+  @Test func theAutomaticCacheIsHalfTheMemoryOfTheMacWithAFloor() {
+    let gib: UInt64 = 1024 * 1024 * 1024
+    #expect(ManagedServerSettings.automaticWeightsCacheGB(physicalMemory: 64 * gib) == 32)
+    #expect(ManagedServerSettings.automaticWeightsCacheGB(physicalMemory: 96 * gib) == 48)
+    #expect(ManagedServerSettings.automaticWeightsCacheGB(physicalMemory: 16 * gib) == 8)
+    #expect(ManagedServerSettings.automaticWeightsCacheGB(physicalMemory: 8 * gib) == 4)
+    #expect(ManagedServerSettings.automaticWeightsCacheGB(physicalMemory: 4 * gib) == 4)  // the floor
+  }
+
+  @Test func theDefaultAndAnOldSavedSettingGetTheAutomaticCache() throws {
+    #expect(ManagedServerSettings.default.weightsCacheGB == ManagedServerSettings.automaticWeightsCacheGB())
+    let old = Data(#"{"mode":"managed","binaryPath":"/bin/cli","modelsFolder":"/m","port":7860}"#.utf8)
+    #expect(try JSONDecoder().decode(ManagedServerSettings.self, from: old).weightsCacheGB == ManagedServerSettings.automaticWeightsCacheGB())
+  }
+
+  @Test func theChosenValueIsSavedAndRead() throws {
+    var settings = ManagedServerSettings(mode: .managed, binaryPath: "/bin/cli", modelsFolder: "/m")
+    settings.weightsCacheGB = 20
+    let back = try JSONDecoder().decode(ManagedServerSettings.self, from: JSONEncoder().encode(settings))
+    #expect(back.weightsCacheGB == 20)
+  }
+
+  @Test func theCommandLineAsksForTheCacheOnlyWhenItIsOn() {
+    var settings = ManagedServerSettings(mode: .managed, binaryPath: "/bin/cli", modelsFolder: "/Volumes/Models", port: 7861)
+    settings.weightsCacheGB = 24
+    let on = ServerArguments.make(settings)
+    #expect(on.firstIndex(of: "-w").map { on[$0 + 1] } == "24")
+    settings.weightsCacheGB = 0
+    #expect(!ServerArguments.make(settings).contains("-w"))
+  }
+
+  @Test func aCacheBeyondTheMemoryOfTheMacIsBroughtBackToIt() {
+    var settings = ManagedServerSettings(mode: .managed, binaryPath: "/bin/cli", modelsFolder: "/m")
+    settings.weightsCacheGB = 100_000
+    let args = ServerArguments.make(settings)
+    let value = args.firstIndex(of: "-w").flatMap { Int(args[$0 + 1]) } ?? 0
+    #expect(value == Int(ProcessInfo.processInfo.physicalMemory / (1024 * 1024 * 1024)))
+    settings.weightsCacheGB = -5
+    #expect(!ServerArguments.make(settings).contains("-w"))
+  }
+}
+

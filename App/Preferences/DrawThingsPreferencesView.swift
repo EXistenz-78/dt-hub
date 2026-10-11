@@ -15,6 +15,7 @@ struct DrawThingsPreferencesView: View {
   /// The ports as typed: parsed on every keystroke, so Connect never uses a stale value.
   @State private var portText = ""
   @State private var managedPortText = ""
+  @State private var managedCacheText = ""
   @State private var isApplying = false
 
   private var monitor: ConnectionMonitor { connection.monitor }
@@ -76,6 +77,7 @@ struct DrawThingsPreferencesView: View {
       managedDraft = connection.managed
       portText = String(connection.settings.port)
       managedPortText = String(connection.managed.port)
+      managedCacheText = String(connection.managed.weightsCacheGB)
       secret = connection.savedSecret()
       // A program found in the usual places is offered; nothing is looked for elsewhere.
       if managedDraft.binaryPath.isEmpty, let found = CLILocator.find() { managedDraft.binaryPath = found }
@@ -123,6 +125,12 @@ struct DrawThingsPreferencesView: View {
         .onChange(of: managedPortText) {
           managedDraft.port = ConnectionSettings.parsePort(managedPortText) ?? 0
         }
+      TextField("prefs.server.cache", text: $managedCacheText)
+        .onChange(of: managedCacheText) {
+          if let value = Int(managedCacheText.trimmingCharacters(in: .whitespaces)), value >= 0 {
+            managedDraft.weightsCacheGB = value
+          }
+        }
     } footer: {
       VStack(alignment: .leading, spacing: 4) {
         if let problem = managedDraft.validationError() {
@@ -133,6 +141,8 @@ struct DrawThingsPreferencesView: View {
             .foregroundStyle(DS.remove)
         }
         Text("prefs.server.note")
+          .foregroundStyle(.secondary)
+        Text("prefs.server.cache.note")
           .foregroundStyle(.secondary)
         if managedDraft.binaryPath.isEmpty || managedDraft.validationError() == .binaryNotExecutable {
           Link("prefs.server.get", destination: Self.releasesURL)
