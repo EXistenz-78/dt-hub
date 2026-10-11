@@ -68,7 +68,9 @@ struct DTHubApp: App {
     plugins.currentPrompts = { (generation.prompt, generation.negativePrompt) }
     plugins.promptGuide = {
       PromptLibrary.live.family(generation.family(in: connection)).map {
-        PluginPromptGuide(label: $0.label, usesNegative: $0.negative, notes: $0.notes)
+        PluginPromptGuide(
+          label: $0.label, usesNegative: $0.negative, notes: $0.notes, familyPrompt: $0.body, words: $0.words,
+          maxWords: $0.maxWords)
       }
     }
     plugins.startImageStrength = {
