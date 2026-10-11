@@ -116,4 +116,13 @@ struct PluginContractTests {
     let object = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(bare)) as? [String: Any])
     #expect(object["promptGuide"] == nil)
   }
+
+  @Test func theFamilyPromptFieldsAreOptionalAndRoundTrip() throws {
+    let full = PluginPromptGuide(
+      label: "Q", usesNegative: false, notes: "- n", familyPrompt: "Rule.\n\nModel notes:\n- n", words: "300-450", maxWords: "500")
+    let back = try JSONDecoder().decode(PluginPromptGuide.self, from: JSONEncoder().encode(full))
+    #expect(back == full)
+    let old = try JSONDecoder().decode(PluginPromptGuide.self, from: Data(#"{"label":"Q","usesNegative":true,"notes":"- n"}"#.utf8))
+    #expect(old.familyPrompt == nil && old.words == nil && old.maxWords == nil)
+  }
 }

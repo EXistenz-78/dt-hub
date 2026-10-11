@@ -39,6 +39,7 @@ public final class PromptAssistant {
 
   @ObservationIgnored private let resolve: Resolve
   @ObservationIgnored private let respond: Respond
+  @ObservationIgnored private let library: PromptLibrary
   /// What the fields held before the last successful operation, and what that operation wrote.
   private var undo: (before: PromptPair, written: PromptPair)?
 
@@ -49,9 +50,10 @@ public final class PromptAssistant {
   /// Of the last operation; every new operation clears it.
   public private(set) var note: Note?
 
-  public init(resolve: @escaping Resolve, respond: @escaping Respond) {
+  public init(resolve: @escaping Resolve, respond: @escaping Respond, library: PromptLibrary = .builtIn) {
     self.resolve = resolve
     self.respond = respond
+    self.library = library
   }
 
   /// With `images` (the start image and the Moodboard pictures that are on) they go to the LLM, numbered; when no LLM
@@ -65,8 +67,8 @@ public final class PromptAssistant {
     return await run(.enhance, current: current, family: family, withImages: !images.isEmpty) { choice, withImages in
       let attached = withImages ? images : EnhanceImages()
       return choice.profile.systemPrompt(for: .enhance, withImages: withImages).map {
-        PromptBrief.enhance(current, ownSystem: $0, generation: choice.profile.generation, images: attached)
-      } ?? PromptBrief.enhance(current, family: family, images: attached)
+        PromptBrief.enhance(current, ownSystem: $0, generation: choice.profile.generation, images: attached, library: library)
+      } ?? PromptBrief.enhance(current, family: family, images: attached, library: library)
     }
   }
 
@@ -78,8 +80,8 @@ public final class PromptAssistant {
     }
     return await run(.describe, current: current, family: family, withImages: true) { choice, _ in
       choice.profile.systemPrompt(for: .describe).map {
-        PromptBrief.describe(imageAt: url, ownSystem: $0, generation: choice.profile.generation)
-      } ?? PromptBrief.describe(imageAt: url, family: family)
+        PromptBrief.describe(imageAt: url, ownSystem: $0, generation: choice.profile.generation, library: library)
+      } ?? PromptBrief.describe(imageAt: url, family: family, library: library)
     }
   }
 
@@ -131,7 +133,7 @@ public final class PromptAssistant {
       failure = .emptyAnswer
       return nil
     }
-    let usesNegative = PromptGuides.guide(for: family)?.usesNegative == true
+    let usesNegative = library.family(family)?.negative == true
     let result = PromptPair(
       prompt: parsed.prompt, negative: usesNegative && !parsed.negative.isEmpty ? parsed.negative : current.negative)
     undo = (before: current, written: result)

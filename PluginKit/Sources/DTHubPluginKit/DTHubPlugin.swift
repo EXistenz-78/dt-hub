@@ -134,11 +134,22 @@ public struct DTHubPromptGuide: Decodable, Equatable, Sendable {
   public var usesNegative: Bool
   /// The notes, a bullet list in English.
   public var notes: String
+  /// The whole Family prompt, placeholders resolved: the rule for the answer and the notes. Nil from an older app.
+  public var familyPrompt: String?
+  /// How long the prompt should be, and the most it can be (words, or tags for some families).
+  public var words: String?
+  public var maxWords: String?
 
-  public init(label: String, usesNegative: Bool, notes: String) {
+  public init(
+    label: String, usesNegative: Bool, notes: String, familyPrompt: String? = nil, words: String? = nil,
+    maxWords: String? = nil
+  ) {
     self.label = label
     self.usesNegative = usesNegative
     self.notes = notes
+    self.familyPrompt = familyPrompt
+    self.words = words
+    self.maxWords = maxWords
   }
 }
 
