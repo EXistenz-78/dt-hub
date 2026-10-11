@@ -98,6 +98,16 @@ DT Hub looks for MLX models (Hugging Face format: a folder with `config.json` an
 
 Each installed LLM can be assigned to a model family and a use (enhance, generate, both, plug-ins only); a dedicated LLM's own `system_prompt.txt` is used when present. With a single LLM installed nothing needs to be set up.
 
+### The prompts that guide the LLM
+
+What *Enhance Prompt* and *Generate Prompt* tell the LLM is not hidden in the code: it is a set of Markdown files in `~/Library/Application Support/DT Hub/Data/DTHub/`, written by the app at launch and read at every request.
+
+- `rules/` — the rules of the task (`enhance.md`, `describe.md`).
+- `family/` — the instructions of each model family (one file per family, named with the id of the family), including the rule for the answer (plain prose, or JSON with a negative prompt) and the length. **These are the app's own files: changing them is not recommended** (a newer version of the app rewrites them, keeping the old one as `.md.bak`).
+- `custom/` — **yours**. `enhance.md` and `describe.md` add instructions for a task; `family-<id>.md` adds them for one family. They go last and win if they disagree with the app's. A file may start with a header `---` / `mode: replace` / `---` to replace the app's text instead of adding to it. `custom/families.txt` lists the names and ids of the families.
+
+**Preferences › LLM › Prompts** opens the folder, shows which families have a file of their own and the final text the LLM receives.
+
 ## Plug-ins
 
 A plug-in is a bundle (`.dthubplugin`) with a dynamic library, loaded into the app and shown as a tab. You add one in **Preferences › Plug-ins**. A plug-in only works with the model families it was made for: on any other family it is switched off and its tab is hidden. The four plug-ins in this repository, which families each one works with, and how to build and install them are described in [`Plugins/README.md`](Plugins/README.md). To write your own, start from [`PluginKit/README.md`](PluginKit/README.md): the app and a plug-in talk only through Objective-C selectors and JSON messages, and the kit includes the design system so a plug-in tab looks like the rest of the app.
