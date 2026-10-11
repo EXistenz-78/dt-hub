@@ -148,3 +148,44 @@ public struct PromptLibrary: Sendable {
     return ([rules, familyText] + appended.map { Self.priorityLine + "\n\n" + $0 }).joined(separator: "\n\n")
   }
 }
+
+// MARK: Installation
+
+extension PromptLibrary {
+  /// `custom/families.txt`: the names and ids of the families, to name the user's own files.
+  public var familiesListURL: URL { folderURL.appendingPathComponent("custom/families.txt") }
+
+  /// At launch: writes the base files that are missing, not readable, or older than the built-in copy (the old one
+  /// is kept as `<name>.md.bak`), makes `custom/` and rewrites `families.txt`. A folder that cannot be written is
+  /// no error: the built-in copies are used.
+  public func install() {
+    let manager = FileManager.default
+    func place(_ path: String, embedded: String, needsLabel: Bool) {
+      let url = folderURL.appendingPathComponent(path)
+      try? manager.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+      if let text = try? String(contentsOf: url, encoding: .utf8) {
+        let file = PromptFile.parse(text)
+        let usable = file.isValid && (!needsLabel || !(file.header["label"] ?? "").isEmpty)
+        if usable && file.version >= PromptFile.parse(embedded).version { return }
+        let backup = url.appendingPathExtension("bak")
+        try? manager.removeItem(at: backup)
+        try? manager.copyItem(at: url, to: backup)
+      }
+      try? embedded.write(to: url, atomically: true, encoding: .utf8)
+    }
+    for (id, text) in EmbeddedPrompts.families { place("family/\(id).md", embedded: text, needsLabel: true) }
+    for (name, text) in EmbeddedPrompts.rules { place("rules/\(name).md", embedded: text, needsLabel: false) }
+    try? manager.createDirectory(at: folderURL.appendingPathComponent("custom"), withIntermediateDirectories: true)
+    let lines = families().map { "\($0.label) = \($0.id) (\($0.negative ? "negative prompt" : "no negative prompt"))" }
+    let header = """
+      Your own prompts go in this folder (custom/). They are added after the app's, and win if they disagree.
+        enhance.md / describe.md      for Enhance Prompt / Generate Prompt, for every family
+        family-<id>.md                for one family; <id> is the id in the list below
+      A file may start with a header:  ---  then  mode: replace  then  ---   (replace the app's text instead of adding).
+      The app's own files are in ../family and ../rules; changing those is not recommended.
+      This list is rewritten at every launch.
+
+      """
+    try? (header + "\n" + lines.joined(separator: "\n") + "\n").write(to: familiesListURL, atomically: true, encoding: .utf8)
+  }
+}
