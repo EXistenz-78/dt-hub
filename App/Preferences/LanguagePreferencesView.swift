@@ -85,7 +85,8 @@ struct LanguagePreferencesView: View {
         manager.settings.assignments[model.name] ?? LanguageModelAssignment(family: .none, use: .both)
       },
       set: { manager.settings.assignments[model.name] = $0 })
-    var families = LanguageModelFamilyOptions.list(catalogFamilies: connection.monitor.catalog.models.compactMap(\.family))
+    var families = LanguageModelFamilyOptions.list(
+      catalogFamilies: connection.monitor.catalog.models.compactMap(\.family), library: .live)
     if case .family(let key) = binding.wrappedValue.family, !families.contains(where: { $0.key == key }) {
       families.append((key: key, label: key))
     }

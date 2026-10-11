@@ -38,43 +38,42 @@ public struct EnhanceImages: Equatable, Sendable {
 
 /// The messages the Enhance/Generate Prompt tools send to the language model (pure functions).
 public enum PromptBrief {
-  private static let proseRule =
-    "The final prompt must be written exclusively in English, whatever the language of the input. Reply with the prompt only: no title, no quotation marks around it, no explanation, no comments, no markdown, no alternatives."
-  private static let jsonRule =
-    "The final prompt must be written exclusively in English, whatever the language of the input. Reply with a JSON object and nothing else, in this shape: {\"prompt\": \"...\", \"negative\": \"...\"}. \"prompt\" is the final prompt; \"negative\" lists only what to avoid, short and targeted. Both values are in English. No explanation, no comments, no markdown."
-
-  public static func system(family: String?) -> String {
-    let guide = PromptGuides.guide(for: family)
-    let intro = guide.map { "You write prompts for the image model \"\($0.label)\"." }
-      ?? "You write prompts for an image-generation model."
-    var text = intro + "\n\n" + (guide?.usesNegative == true ? jsonRule : proseRule)
-    if let guide { text += "\n\nModel notes:\n" + guide.notes }
-    return text
+  /// The system prompt for a family and a task: Rules, Family and the user's own, from the library.
+  public static func system(family: String?, task: PromptTask = .enhance, library: PromptLibrary = .builtIn) -> String {
+    library.system(task: task, family: family)
   }
 
-  public static func enhance(_ current: PromptPair, family: String?) -> PromptRequest {
+  /// A language model's own system prompt, plus what the user added for the task (if anything).
+  private static func ownSystem(_ system: String, task: PromptTask, library: PromptLibrary) -> String {
+    library.ownSystemAddition(task: task).map { system + "\n\n" + $0 } ?? system
+  }
+
+  public static func enhance(_ current: PromptPair, family: String?, library: PromptLibrary = .builtIn) -> PromptRequest {
     var text =
       "Improve the prompt below for this model. Keep every element it describes and never contradict it; add concrete visual detail as the model notes ask. The prompt may be in any language.\n\nPrompt:\n"
       + current.prompt
-    if PromptGuides.guide(for: family)?.usesNegative == true, !current.negative.isEmpty {
+    if library.family(family)?.negative == true, !current.negative.isEmpty {
       text += "\n\nNegative prompt:\n" + current.negative
     }
-    return PromptRequest(prompt: text, images: [], options: options(system: system(family: family)))
+    return PromptRequest(prompt: text, images: [], options: options(system: system(family: family, task: .enhance, library: library)))
   }
 
-  public static func describe(imageAt url: URL, family: String?) -> PromptRequest {
+  public static func describe(imageAt url: URL, family: String?, library: PromptLibrary = .builtIn) -> PromptRequest {
     PromptRequest(
       prompt:
         "Describe this image as a prompt for this model, following the model notes. Describe only what is visible; do not invent a story.",
-      images: [url], options: options(system: system(family: family)))
+      images: [url], options: options(system: system(family: family, task: .describe, library: library)))
   }
 
   /// Enhance with an LLM that has its own system prompt: the user's text goes as it is (the model was made for
   /// exactly that), with the model's own sampling values and room to think.
   public static func enhance(
-    _ current: PromptPair, ownSystem: String, generation: LanguageModelProfile.Generation?
+    _ current: PromptPair, ownSystem: String, generation: LanguageModelProfile.Generation?,
+    library: PromptLibrary = .builtIn
   ) -> PromptRequest {
-    PromptRequest(prompt: current.prompt, images: [], options: ownOptions(ownSystem, generation))
+    PromptRequest(
+      prompt: current.prompt, images: [],
+      options: ownOptions(Self.ownSystem(ownSystem, task: .enhance, library: library), generation))
   }
 
   /// One line per picture, in sending order, numbered as Draw Things numbers them: the start image is 1 when there
@@ -96,28 +95,31 @@ public enum PromptBrief {
   }
 
   /// Enhance with the pictures attached: the numbered list first, then the usual request.
-  public static func enhance(_ current: PromptPair, family: String?, images: EnhanceImages) -> PromptRequest {
-    let usual = enhance(current, family: family)
+  public static func enhance(
+    _ current: PromptPair, family: String?, images: EnhanceImages, library: PromptLibrary = .builtIn
+  ) -> PromptRequest {
+    let usual = enhance(current, family: family, library: library)
     guard let block = imagesBlock(images) else { return usual }
     return PromptRequest(prompt: block + usual.prompt, images: images.all, options: usual.options)
   }
 
   /// Enhance with the pictures attached, for an LLM with its own system prompt.
   public static func enhance(
-    _ current: PromptPair, ownSystem: String, generation: LanguageModelProfile.Generation?, images: EnhanceImages
+    _ current: PromptPair, ownSystem: String, generation: LanguageModelProfile.Generation?, images: EnhanceImages,
+    library: PromptLibrary = .builtIn
   ) -> PromptRequest {
-    let usual = enhance(current, ownSystem: ownSystem, generation: generation)
+    let usual = enhance(current, ownSystem: ownSystem, generation: generation, library: library)
     guard let block = imagesBlock(images) else { return usual }
     return PromptRequest(prompt: block + usual.prompt, images: images.all, options: usual.options)
   }
 
   /// Generate with an LLM that has its own system prompt.
   public static func describe(
-    imageAt url: URL, ownSystem: String, generation: LanguageModelProfile.Generation?
+    imageAt url: URL, ownSystem: String, generation: LanguageModelProfile.Generation?, library: PromptLibrary = .builtIn
   ) -> PromptRequest {
     PromptRequest(
       prompt: "Describe this image as a prompt for an image-generation model.", images: [url],
-      options: ownOptions(ownSystem, generation))
+      options: ownOptions(Self.ownSystem(ownSystem, task: .describe, library: library), generation))
   }
 
   private static func ownOptions(_ system: String, _ generation: LanguageModelProfile.Generation?) -> LanguageModelOptions {
