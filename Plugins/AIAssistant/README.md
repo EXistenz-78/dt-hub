@@ -20,6 +20,10 @@ The **Images** switch sends, with your message, the start image and the Moodboar
 - **Chats are kept per project.** *New chat* archives the open one; the *Chats* menu opens an earlier chat, renames or deletes it.
 - The LLM receives the earlier messages of the chat, the most recent ones that fit in 24 000 characters (a note says when the oldest are left out), the current state of the Generation tab, and the app's **guide for writing prompts** for the family of the chosen model (the same one Enhance Prompt follows), when the app has one.
 
+## The prompt files
+
+The instructions the model gets with every message are a Markdown file, `~/Library/Application Support/DT Hub/Data/AIAssistant/rules/chat.md`, which the plug-in writes at launch if it is missing or older (keeping the old one as `.md.bak`; **changing it is not recommended**). `{tab}`, `{guide}` and `{samplers}` in it are filled with the state of the Generation tab, the app's guide for the family and the names of the samplers each time a message is sent. Your own instructions go in `Data/AIAssistant/custom/chat.md`: they are added at the end, after a line that says they win on conflict (a header `---` / `mode: replace` / `---` replaces the rules instead, and then keep the three placeholders). The files are read at every message.
+
 ## Requirements
 
 DT Hub 0.1.6 or later (the app has to send the prompts and the strength in its context, accept the chat history in the `llm` message and the `strength` key in `contribute`), and an LLM in the models folder (Settings › LLM). For the images, a model with vision.

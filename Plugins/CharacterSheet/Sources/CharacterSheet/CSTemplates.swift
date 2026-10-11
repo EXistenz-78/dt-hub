@@ -1,3 +1,4 @@
+import DTHubPluginKit
 import Foundation
 
 /// The three kinds of sheet the plug-in prepares.
@@ -14,12 +15,16 @@ enum CSSheetKind: String, CaseIterable, Codable {
 /// prompt (no model). The plug-in carries its own copy (`CSBuiltIn`); a file of the same name in the user's data folder
 /// wins, so the texts can be edited at any time.
 enum CSTemplateFile: String, CaseIterable {
-  case master = "master-prompt.txt"
-  case staticPrompt = "static-prompt.txt"
-  case masterExpressions = "master-prompt-expressions.txt"
-  case staticExpressions = "static-prompt-expressions.txt"
-  case masterPoses = "master-prompt-poses.txt"
-  case staticPoses = "static-prompt-poses.txt"
+  // Markdown files since 1.2; the `.txt` of earlier versions are still read (and renamed at launch).
+  case master = "master-prompt.md"
+  case staticPrompt = "static-prompt.md"
+  case masterExpressions = "master-prompt-expressions.md"
+  case staticExpressions = "static-prompt-expressions.md"
+  case masterPoses = "master-prompt-poses.md"
+  case staticPoses = "static-prompt-poses.md"
+
+  /// The name the file had before 1.2.
+  var legacyName: String { String(rawValue.dropLast(3)) + ".txt" }
 
   static func of(useStatic: Bool, kind: CSSheetKind) -> CSTemplateFile {
     switch (kind, useStatic) {
@@ -53,10 +58,10 @@ enum CSTemplates {
 
   /// The text of a file without outer whitespace.
   static func load(_ file: CSTemplateFile, from folder: URL) -> Result<String, CSTemplateError> {
-    guard let text = try? String(contentsOf: folder.appendingPathComponent(file.rawValue), encoding: .utf8) else {
-      return .failure(.missing(file))
-    }
-    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    func read(_ name: String) -> String? { try? String(contentsOf: folder.appendingPathComponent(name), encoding: .utf8) }
+    // The `.md` file, else the `.txt` of an earlier version; an optional header (`---`) is not part of the text.
+    guard let text = read(file.rawValue) ?? read(file.legacyName) else { return .failure(.missing(file)) }
+    let trimmed = DTHubPromptFile.parse(text).body.trimmingCharacters(in: .whitespacesAndNewlines)
     return trimmed.isEmpty ? .failure(.empty(file)) : .success(trimmed)
   }
 
@@ -71,10 +76,24 @@ enum CSTemplates {
   /// something to edit; a file that is already there is never touched.
   static func seedMissing(in folder: URL) {
     try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    migrateLegacy(in: folder)
     for file in CSTemplateFile.allCases {
       let url = folder.appendingPathComponent(file.rawValue)
-      guard !FileManager.default.fileExists(atPath: url.path) else { continue }
+      let old = folder.appendingPathComponent(file.legacyName)
+      guard !FileManager.default.fileExists(atPath: url.path), !FileManager.default.fileExists(atPath: old.path) else { continue }
       try? (CSBuiltIn.text(for: file) + "\n").write(to: url, atomically: true, encoding: .utf8)
+    }
+  }
+
+  /// The files of earlier versions (`.txt`) become `.md` with the same content; a name that already has its `.md` is left
+  /// alone. A folder that cannot be written keeps the `.txt`, which are still read.
+  static func migrateLegacy(in folder: URL) {
+    let manager = FileManager.default
+    for file in CSTemplateFile.allCases {
+      let old = folder.appendingPathComponent(file.legacyName)
+      let new = folder.appendingPathComponent(file.rawValue)
+      guard manager.fileExists(atPath: old.path), !manager.fileExists(atPath: new.path) else { continue }
+      try? manager.moveItem(at: old, to: new)
     }
   }
 

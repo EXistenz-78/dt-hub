@@ -31,6 +31,8 @@ final class PMState: ObservableObject {
   @Published var newTermText = ""
 
   private(set) var family: String?
+  /// How the app says prompts for the family are written (`context.promptGuide`); nil from an older app.
+  private(set) var guide: DTHubPromptGuide?
   /// The size of the Generation tab now (from the `context` message).
   private(set) var currentWidth: Int?
   private(set) var currentHeight: Int?
@@ -77,9 +79,13 @@ final class PMState: ObservableObject {
   // MARK: What the app says
 
   /// The `context` message: the family decides which categories are hidden and which master prompt is used.
-  func update(family: String?, languageModels: [DTHubLanguageModel], width: Int? = nil, height: Int? = nil) {
+  func update(
+    family: String?, guide: DTHubPromptGuide? = nil, languageModels: [DTHubLanguageModel], width: Int? = nil,
+    height: Int? = nil
+  ) {
     let changed = family != self.family
     self.family = family
+    self.guide = guide
     self.languageModels = languageModels
     currentWidth = width
     currentHeight = height
@@ -89,9 +95,12 @@ final class PMState: ObservableObject {
     }
   }
 
-  var master: FamilyPrompt? { family.flatMap { data.masters.families[$0] } }
+  /// What Prompt Master knows of the family (categories to hide, the tag rule…).
+  var familyData: PMFamily? { family.flatMap { data.families.families[$0] } }
+  /// There is a Family prompt from the app to write with.
+  var hasFamilyPrompt: Bool { !(guide?.familyPrompt ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
   var hasBooruSwitch: Bool { family.map(PMFamilies.withBooruSwitch.contains) ?? false }
-  var hiddenCategories: Set<String> { Set(master?.hiddenCategories ?? []) }
+  var hiddenCategories: Set<String> { Set(familyData?.hiddenCategories ?? []) }
 
   // MARK: The list
 
@@ -160,7 +169,7 @@ final class PMState: ObservableObject {
 
   /// There is something to write from, a master prompt to write with, and the plug-in is on and not busy.
   var canWrite: Bool {
-    active && !isWriting && !isMakingScene && master != nil
+    active && !isWriting && !isMakingScene && hasFamilyPrompt
       && (!description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !selectedTerms.isEmpty)
   }
 
@@ -168,9 +177,9 @@ final class PMState: ObservableObject {
   var canApplyRatio: Bool { active && !isWriting && suggestedRatio != nil }
 
   var writeRequest: PMWriter.Request? {
-    guard let family else { return nil }
+    guard let family, let guide else { return nil }
     return PMWriter.Request(
-      family: family, masters: data.masters, description: description, terms: selectedTerms,
+      family: family, guide: guide, data: data.families, description: description, terms: selectedTerms,
       booru: booru && hasBooruSwitch, languageModels: languageModels)
   }
 

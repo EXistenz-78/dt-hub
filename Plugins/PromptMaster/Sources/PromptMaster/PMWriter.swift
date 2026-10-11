@@ -13,11 +13,13 @@ struct PMWriter {
   var italian = L.systemIsItalian
   var folderSize: (String) -> Int64 = PEPlanner.folderSize
   var readFile: (URL) -> String? = { try? String(contentsOf: $0, encoding: .utf8) }
+  var promptFolder: DTHubPromptFolder = PMPrompts.folder()
 
   /// What the tab knows when the button is pressed.
   struct Request {
     var family: String
-    var masters: MasterPrompts
+    var guide: DTHubPromptGuide
+    var data: PMFamiliesData
     var description: String
     var terms: [SelectedTerm]
     var booru: Bool
@@ -37,7 +39,7 @@ struct PMWriter {
   static let genericOptions = DTHubLLMOptions(maxTokens: 2048, thinking: false)
 
   func write(_ request: Request) async -> Outcome {
-    let master = request.masters.families[request.family]
+    let entry = request.data.families[request.family]
     let plan = PEPlanner.plan(
       family: request.family, languageModels: request.languageModels, folderSize: folderSize, readFile: readFile)
     var notes: [String] = []
@@ -49,8 +51,8 @@ struct PMWriter {
         enhancer.options)
     case .generic(let reason):
       guard let brief = BriefBuilder.make(
-        family: request.family, masters: request.masters, description: request.description, terms: request.terms,
-        booru: request.booru)
+        guide: request.guide, family: request.family, data: request.data, folder: promptFolder,
+        description: request.description, terms: request.terms, booru: request.booru)
       else { return Outcome(status: L.text(.noMasterPrompt, italian: italian), ratio: nil, sent: false) }
       switch reason {
       case .modelMissing?:
@@ -75,11 +77,11 @@ struct PMWriter {
     }
     // The negative prompt is written only where the family reads one.
     var fields: [String: Any] = ["prompt": parsed.prompt]
-    if master?.negative == true, let negative = parsed.negative { fields["negativePrompt"] = negative }
+    if request.guide.usesNegative, let negative = parsed.negative { fields["negativePrompt"] = negative }
     let result = await contribute(["fields": fields])
     var lines = [Self.describe(result, italian: italian)] + notes
     if let ratio = parsed.ratio { lines.append(L.format(.ratio, ratio, italian: italian)) }
-    if master?.provisional == true, case .generic = plan { lines.append(L.text(.provisional, italian: italian)) }
+    if entry?.provisional == true, case .generic = plan { lines.append(L.text(.provisional, italian: italian)) }
     return Outcome(status: lines.joined(separator: " "), ratio: parsed.ratio, sent: Self.wasAccepted(result))
   }
 
