@@ -5,7 +5,7 @@
 
 A DT Hub plug-in: a list of terms (8 groups → 40 categories → 875 terms of photography, light, colour, style and matter) that you
 pick with a checkbox, plus a free description in any language. *Write prompt* sends everything to the app's local LLM, together
-with the master prompt of the selected model family, and the English prompt that comes back lands in the Prompt field of the
+with the prompt of the selected model family (the Family prompt of DT Hub, from DT Hub 0.1.9: it must send it in the context) and this plug-in's own rules, and the English prompt that comes back lands in the Prompt field of the
 Generation tab (and in the negative prompt, for the families that read one).
 
 ![Prompt Master](../../docs/images/prompt-master.png)
@@ -19,23 +19,29 @@ Generation tab (and in the negative prompt, for the families that read one).
 - **Qwen Image 2.1:** the enhancer is the LLM assigned to that family (use *Enhance prompt* or *Both*) in Settings › LLM, as long as its folder has a `system_prompt.txt`; its folder name is only a fallback. If the models folder holds the official T2I prompt enhancer (`…PE-T2I…`, with its `system_prompt.txt` next
   to the weights) the plug-in uses it instead of the general LLM, with a prose request (the description and a `Look: …` line).
   Under the prompt appears the format it suggests, with an **Apply** button that sets the width and height of the Generation tab
-  to that ratio, keeping the same area in pixels. Without the enhancer, the chosen model is used with the fallback master prompt
-  (same structure, 500 words at most). The I2I enhancer is not supported: it belongs to a plug-in dedicated to Qwen Image 2.1.
+  to that ratio, keeping the same area in pixels. Without the enhancer, the chosen model is used with the rules and the family's prompt
+  (500 words at most for Qwen Image 2.1). The I2I enhancer is not supported: it belongs to a plug-in dedicated to Qwen Image 2.1.
 
 ## Data
 
-Three JSON files, each with a copy embedded in the plug-in (a plug-in bundle holds only the library):
+Two JSON files, each with a copy embedded in the plug-in (a plug-in bundle holds only the library), and the prompt files:
 
 | File | Where | Written by |
 |---|---|---|
 | `prompt-database.json` | `~/Library/Application Support/DT Hub/Data/` (shared with other plug-ins) | you, to update it |
-| `master-prompts.json` | `…/Data/prompt-master/` | you (this is how master prompts are revised) |
+| `families.json` | `…/Data/prompt-master/` | you: the categories hidden for each family, the tag rule of SDXL and SD 1.5, which families are provisional |
+| `rules/compose.md`, `rules/compose-tags.md` | `…/Data/prompt-master/` | the plug-in (at launch; **changing them is not recommended**) |
+| `custom/compose.md` | `…/Data/prompt-master/` | you: your own instructions, added after the others (a header `mode: replace` replaces the rules instead) |
 | `custom-terms.json` | `…/Data/prompt-master/` | the plug-in |
 
-A file is used if it exists, can be read, has `schema` 1 and a `version` not older than the embedded one; otherwise the embedded
-copy is used (and if the file cannot be read or has an unknown layout, the status line says so). The plug-in never writes the
-first two. The embedded copies and the files in `Data/` are regenerated with `Scripts/make-prompt-data.py` from Prompt Master 2.0
-(which is never modified): pass its folder with `--source` or the `PM2_SOURCE` variable.
+The **instructions of each model family** are not here any more: they are DT Hub's Family prompts (`…/Data/DTHub/family/`), which the
+app sends in the context. The system prompt the model receives is the rules (`compose.md` for the families written in sentences,
+`compose-tags.md` for SDXL, SD 1.5 and Anima), the family's prompt, the tag rule when the switch is on, and last your `custom/compose.md`.
+The files are read at every request. A JSON file is used if it exists, can be read, has `schema` 1 and a `version` not older than
+the embedded one; a rules file if its header reads and its `version` is not older; otherwise the embedded copy is used (and the status
+line says so). The database and its embedded copy are regenerated with `Scripts/make-prompt-data.py` from Prompt Master 2.0
+(which is never modified): pass its folder with `--source` or the `PM2_SOURCE` variable. An LLM with a system prompt of its own
+(Qwen's prompt enhancer) does not receive these files.
 
 ## Projects
 

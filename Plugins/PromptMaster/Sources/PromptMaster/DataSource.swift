@@ -68,16 +68,16 @@ enum DataSource {
 /// The data the tab works with.
 struct PMData {
   var database: PromptDatabase
-  var masters: MasterPrompts
+  var families: PMFamiliesData
   var warnings: [DataWarning]
 
   static let databaseFileName = "prompt-database.json"
-  static let mastersFileName = "master-prompts.json"
+  static let familiesFileName = "families.json"
   static let pluginFolderName = "prompt-master"
 
   /// The copies built into the plug-in. A broken one is a bug of the build, caught by the tests.
   static let embeddedDatabase: PromptDatabase = decode(EmbeddedData.database)
-  static let embeddedMasters: MasterPrompts = decode(EmbeddedData.masterPrompts)
+  static let embeddedFamilies: PMFamiliesData = decode(EmbeddedPrompts.families)
 
   private static func decode<T: Decodable>(_ text: String) -> T {
     do { return try JSONDecoder().decode(T.self, from: Data(text.utf8)) } catch { fatalError("Embedded data: \(error)") }
@@ -86,11 +86,11 @@ struct PMData {
   static func load(folder: URL = DataSource.defaultFolder) -> PMData {
     let database = DataSource.load(
       PromptDatabase.self, fileURL: folder.appendingPathComponent(databaseFileName), embedded: embeddedDatabase)
-    let masters = DataSource.load(
-      MasterPrompts.self,
-      fileURL: folder.appendingPathComponent(pluginFolderName).appendingPathComponent(mastersFileName),
-      embedded: embeddedMasters)
+    let families = DataSource.load(
+      PMFamiliesData.self,
+      fileURL: folder.appendingPathComponent(pluginFolderName).appendingPathComponent(familiesFileName),
+      embedded: embeddedFamilies)
     return PMData(
-      database: database.value, masters: masters.value, warnings: [database.warning, masters.warning].compactMap { $0 })
+      database: database.value, families: families.value, warnings: [database.warning, families.warning].compactMap { $0 })
   }
 }

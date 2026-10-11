@@ -1,3 +1,4 @@
+import DTHubPluginKit
 import Foundation
 import Testing
 
@@ -5,7 +6,24 @@ import Testing
 
 @Suite("The brief for the language model")
 struct BriefTests {
-  private let masters = PMData.embeddedMasters
+  private let families = PMData.embeddedFamilies
+  private func emptyFolder() -> DTHubPromptFolder {
+    DTHubPromptFolder(folder: FileManager.default.temporaryDirectory.appendingPathComponent("pm-brief-\(UUID().uuidString)"))
+  }
+
+  private func guide(_ family: String, familyPrompt: String?? = nil) -> DTHubPromptGuide {
+    let known = Fixtures.appFamilies[family]!
+    return DTHubPromptGuide(
+      label: known.label, usesNegative: known.negative, notes: "", familyPrompt: familyPrompt ?? known.familyPrompt)
+  }
+
+  private func make(
+    _ family: String, folder: DTHubPromptFolder? = nil, booru: Bool = false, familyPrompt: String?? = nil
+  ) -> Brief? {
+    BriefBuilder.make(
+      guide: guide(family, familyPrompt: familyPrompt), family: family, data: families, folder: folder ?? emptyFolder(),
+      description: "ciao", terms: [], booru: booru)
+  }
   private func term(_ id: String, _ english: String, in category: String = "Light Source", avoid: Bool = false) -> SelectedTerm {
     SelectedTerm(id: id, title: english, categoryTitle: "C", categoryEnglish: category, english: english, isNegative: avoid)
   }
@@ -96,23 +114,64 @@ struct BriefTests {
     #expect(text == "Description (any language):\na cat")
   }
 
-  @Test func theSystemPromptIsTheFamilysAndAsksForEnglish() throws {
-    let brief = try #require(
-      BriefBuilder.make(family: "flux2_9b", masters: masters, description: "ciao", terms: [], booru: false))
-    #expect(brief.system == masters.families["flux2_9b"]?.system)
-    #expect(brief.system.contains("exclusively in English"))
+  @Test func everyFamilyStartsWithTheSameTwoParagraphsAsBeforeAndKeepsTheFamilyNotes() throws {
+    for family in PMFamilies.all {
+      let system = try #require(make(family)).system
+      let old = try #require(Fixtures.oldSystems[family])
+      let head = old.components(separatedBy: "\n\n").prefix(2).joined(separator: "\n\n")
+      #expect(system.hasPrefix(head), Comment(rawValue: family))
+      let notes = try #require(old.range(of: "Model notes:\n").map { String(old[$0.upperBound...]) })
+      // The old text ended, on four families, with a note for the reviewers that no longer goes to the model.
+      let clean = notes.components(separatedBy: "\n(Provisional master prompt").first ?? notes
+      #expect(system.contains(clean), Comment(rawValue: family))
+      #expect(system.contains("exclusively in English"), Comment(rawValue: family))
+    }
   }
 
-  @Test func theBooruRuleIsAddedOnlyWhenOnAndOnlyWhereThereIsOne() throws {
-    let on = try #require(BriefBuilder.make(family: "v1", masters: masters, description: "x", terms: [], booru: true))
-    #expect(on.system.hasSuffix(masters.families["v1"]!.booruSystem!))
-    let off = try #require(BriefBuilder.make(family: "v1", masters: masters, description: "x", terms: [], booru: false))
-    #expect(off.system == masters.families["v1"]?.system)
-    let flux = try #require(BriefBuilder.make(family: "flux1", masters: masters, description: "x", terms: [], booru: true))
-    #expect(flux.system == masters.families["flux1"]?.system)  // no switch on this family
+  @Test func theFamiliesWrittenInTagsUseTheTagsRules() throws {
+    for family in PMFamilies.all {
+      let system = try #require(make(family)).system
+      #expect(system.contains("Do not add subjects") == (families.families[family]?.tags == true), Comment(rawValue: family))
+      #expect(system.contains("Enrich the description") == (families.families[family]?.tags != true), Comment(rawValue: family))
+    }
+    #expect(Set(families.families.filter { $0.value.tags == true }.keys) == ["sdxl_base_v0.9", "v1", "cosmos2.5_2b"])
   }
 
-  @Test func aFamilyWithoutAMasterPromptHasNoBrief() {
-    #expect(BriefBuilder.make(family: "ideogram_4", masters: masters, description: "x", terms: [], booru: false) == nil)
+  @Test func theRulesCarryTheLabelAndNoPlaceholderIsLeft() throws {
+    let system = try #require(make("qwen_image_2.1")).system
+    #expect(system.hasPrefix("You write prompts for the image model \"Qwen Image 2.1\"."))
+    #expect(!system.contains("{label}") && !system.contains("{words}") && !system.contains("{maxWords}"))
+  }
+
+  @Test func theBooruRuleComesAfterTheFamilyTextAndOnlyWhenOnAndOnlyWhereThereIsOne() throws {
+    let on = try #require(make("v1", booru: true)).system
+    #expect(on.hasSuffix(families.families["v1"]!.booruSystem!))
+    let off = try #require(make("v1", booru: false)).system
+    #expect(!off.contains("Tag mode is ON") && on.hasPrefix(off))
+    let flux = try #require(make("flux1", booru: true)).system
+    #expect(flux == (try #require(make("flux1", booru: false)).system))  // no switch on this family
+  }
+
+  @Test func theUsersFileComesLastAfterThePriorityLine() throws {
+    let folder = emptyFolder()
+    try FileManager.default.createDirectory(at: folder.folder.appendingPathComponent("custom"), withIntermediateDirectories: true)
+    try "Always rhyme.".write(to: folder.folder.appendingPathComponent("custom/compose.md"), atomically: true, encoding: .utf8)
+    let plain = try #require(make("v1", booru: true)).system
+    let mine = try #require(make("v1", folder: folder, booru: true)).system
+    #expect(mine == plain + "\n\n" + DTHubPromptFolder.priorityLine + "\n\nAlways rhyme.")
+  }
+
+  @Test func theUsersFileCanReplaceTheRules() throws {
+    let folder = emptyFolder()
+    try FileManager.default.createDirectory(at: folder.folder.appendingPathComponent("custom"), withIntermediateDirectories: true)
+    try "---\nmode: replace\n---\nMy rules for {label}.".write(
+      to: folder.folder.appendingPathComponent("custom/compose.md"), atomically: true, encoding: .utf8)
+    let system = try #require(make("flux2_9b", folder: folder)).system
+    #expect(system.hasPrefix("My rules for FLUX.2 [klein] 9B.\n\nThe final prompt must be written"))
+  }
+
+  @Test func withoutAFamilyPromptThereIsNoBrief() {
+    #expect(make("flux2_9b", familyPrompt: .some(nil)) == nil)
+    #expect(make("flux2_9b", familyPrompt: .some("  \n")) == nil)
   }
 }

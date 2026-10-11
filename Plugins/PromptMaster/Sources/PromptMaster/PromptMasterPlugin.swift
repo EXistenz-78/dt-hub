@@ -6,10 +6,15 @@ import SwiftUI
 final class PromptMasterPlugin: DTHubPlugin {
   /// On the other families the plug-in is switched off and its tab is hidden: those are the ones Prompt Master has a master prompt for.
   let manifest = DTHubManifest(
-    id: "com.exiztenz.dthub.promptmaster", name: "Prompt Master", version: "1.3", symbol: "wand.and.stars",
+    id: "com.exiztenz.dthub.promptmaster", name: "Prompt Master", version: "1.4", symbol: "wand.and.stars",
     families: PMFamilies.all)
   private let state = PMState()
   private var host: DTHubHost?
+
+  init() {
+    // The Rules of the task, written to Data/prompt-master/rules if missing or older (and custom/ made).
+    PMPrompts.install()
+  }
 
   func makeViewController() -> NSViewController {
     NSHostingController(
@@ -28,7 +33,7 @@ final class PromptMasterPlugin: DTHubPlugin {
       if let context = try? JSONDecoder().decode(DTHubContext.self, from: message) {
         let size = RatioSize.currentSize(inContext: message)
         state.update(
-          family: context.family, languageModels: context.languageModels ?? [], width: size?.width, height: size?.height)
+          family: context.family, guide: context.promptGuide, languageModels: context.languageModels ?? [], width: size?.width, height: size?.height)
       }
       return nil
     case "project":
