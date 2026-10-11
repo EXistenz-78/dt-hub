@@ -1,3 +1,4 @@
+import DTHubPluginKit
 import Foundation
 import Testing
 
@@ -24,16 +25,17 @@ struct DataTests {
     #expect(config.schema == DataSource.supportedSchema)
     #expect(catalog.missingCategories.isEmpty)
     #expect(config.options == IdeogramConfig.LLMSettings(temperature: 0.6, maxTokens: 4096, thinking: false, timeout: 600))
+    let system = I4Prompts.system(in: DTHubPromptFolder(folder: FileManager.default.temporaryDirectory.appendingPathComponent("i4-none-\(UUID().uuidString)")))
     for phrase in [
       "high_level_description", "aesthetics", "lighting", "photo", "art_style", "medium", "background", "element",
       "<already_written>", #"kind="text""#, "English only", "ONE tag", "Reply in exactly this shape",
     ] {
-      #expect(config.system.contains(phrase), "\(phrase)")
+      #expect(system.contains(phrase), "\(phrase)")
     }
     // The words a lettering prints are never given to the model, so the master prompt does not talk about them.
-    #expect(!config.system.contains("Printed text"))
+    #expect(!system.contains("Printed text"))
     // The rule about the overview and the details (spec §8, rule 7).
-    #expect(config.system.contains("is the overview of the picture") && config.system.contains("never repeat its sentences"))
+    #expect(system.contains("is the overview of the picture") && system.contains("never repeat its sentences"))
   }
 
   // MARK: The lists
@@ -108,9 +110,9 @@ struct DataTests {
     let folder = try makeFolder()
     var config = I4Data.embeddedConfig
     config.version = "99.0.0"
-    config.system = "CHANGED"
+    config.options.maxTokens = 123
     try JSONEncoder().encode(config).write(to: folder.appendingPathComponent("prompt-master/ideogram4.json"))
-    #expect(I4Data.load(folder: folder).config.system == "CHANGED")
+    #expect(I4Data.load(folder: folder).config.options.maxTokens == 123)
     config.version = "0.0.1"
     try JSONEncoder().encode(config).write(to: folder.appendingPathComponent("prompt-master/ideogram4.json"))
     #expect(I4Data.load(folder: folder).config == I4Data.embeddedConfig)  // older: the embedded one, no warning
@@ -133,5 +135,62 @@ struct DataTests {
   @Test func versionsAreComparedNumberByNumber() {
     #expect(DataSource.isOlder("2.9.0", than: "2.10.0") && !DataSource.isOlder("2.10.0", than: "2.9.0"))
     #expect(!DataSource.isOlder("2.1", than: "2.1.0") && DataSource.isOlder("2.1", than: "2.1.1"))
+  }
+
+  // MARK: The master prompt file
+
+  private func promptData() throws -> URL {
+    let url = FileManager.default.temporaryDirectory.appendingPathComponent("i4-prompts-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+    return url
+  }
+
+  @Test func theMasterPromptFileIsWrittenAtLaunchAndSaysWhatTheBuiltInOneSays() throws {
+    let data = try promptData()
+    I4Prompts.install(dataFolder: data)
+    let file = data.appendingPathComponent("prompt-master-i4/master-prompt.md")
+    #expect(try String(contentsOf: file, encoding: .utf8) == EmbeddedData.masterPrompt)
+    #expect(FileManager.default.fileExists(atPath: data.appendingPathComponent("prompt-master-i4/custom").path))
+    let master = DTHubPromptFile.parse(EmbeddedData.masterPrompt)
+    #expect(master.isValid && master.version == 1 && master.body.hasPrefix("You write short English sentences"))
+    #expect(I4Prompts.system(in: I4Prompts.folder(dataFolder: data)) == master.body)
+    #expect(I4Prompts.problems(in: I4Prompts.folder(dataFolder: data)).isEmpty)
+  }
+
+  @Test func theUsersFileComesLastAfterThePriorityLineOrReplacesTheMaster() throws {
+    let data = try promptData()
+    I4Prompts.install(dataFolder: data)
+    let custom = data.appendingPathComponent("prompt-master-i4/custom/master-prompt.md")
+    try "Keep every sentence short.".write(to: custom, atomically: true, encoding: .utf8)
+    let folder = I4Prompts.folder(dataFolder: data)
+    #expect(
+      I4Prompts.system(in: folder)
+        == DTHubPromptFile.parse(EmbeddedData.masterPrompt).body + "\n\n" + DTHubPromptFolder.priorityLine + "\n\nKeep every sentence short.")
+    try "---\nmode: replace\n---\nMy own master.".write(to: custom, atomically: true, encoding: .utf8)
+    #expect(I4Prompts.system(in: folder) == "My own master.")
+    try "  \n".write(to: custom, atomically: true, encoding: .utf8)
+    #expect(I4Prompts.system(in: folder) == DTHubPromptFile.parse(EmbeddedData.masterPrompt).body)
+  }
+
+  @Test func aBrokenOrOlderMasterFileFallsBackAndIsReported() throws {
+    let data = try promptData()
+    I4Prompts.install(dataFolder: data)
+    let file = data.appendingPathComponent("prompt-master-i4/master-prompt.md")
+    let folder = I4Prompts.folder(dataFolder: data)
+    try "---\nrotto".write(to: file, atomically: true, encoding: .utf8)
+    #expect(I4Prompts.system(in: folder) == DTHubPromptFile.parse(EmbeddedData.masterPrompt).body)
+    #expect(I4Prompts.problems(in: folder).count == 1)
+    try "---\nversion: 0\n---\nOld.".write(to: file, atomically: true, encoding: .utf8)
+    #expect(I4Prompts.system(in: folder) == DTHubPromptFile.parse(EmbeddedData.masterPrompt).body)
+    #expect(I4Prompts.problems(in: folder).count == 1)
+  }
+
+  @Test func aMasterFileOfTheUsersOwnWinsWhenNotOlder() throws {
+    let data = try promptData()
+    I4Prompts.install(dataFolder: data)
+    try "---\nversion: 2\n---\nMy master.".write(
+      to: data.appendingPathComponent("prompt-master-i4/master-prompt.md"), atomically: true, encoding: .utf8)
+    I4Prompts.install(dataFolder: data)  // a file of the same or a newer version is never rewritten
+    #expect(I4Prompts.system(in: I4Prompts.folder(dataFolder: data)) == "My master.")
   }
 }

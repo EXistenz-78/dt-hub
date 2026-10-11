@@ -104,4 +104,13 @@ struct DTHubPromptFolderTests {
     try write("   ", "custom/c.md", in: d)
     #expect(DTHubPromptFolder(folder: d).assemble(rules: "R.", family: "F.", extras: [], customName: "c.md", label: "L") == "R.\n\nF.")
   }
+
+  @Test func assembleSkipsAnEmptyFamilyText() throws {
+    let d = try dir()
+    #expect(DTHubPromptFolder(folder: d).assemble(rules: "R.", family: "", extras: [], customName: "c.md", label: "L") == "R.")
+    try write("Mia.", "custom/c.md", in: d)
+    #expect(
+      DTHubPromptFolder(folder: d).assemble(rules: "R.", family: "", extras: [], customName: "c.md", label: "L")
+        == "R.\n\n" + DTHubPromptFolder.priorityLine + "\n\nMia.")
+  }
 }
