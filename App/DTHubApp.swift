@@ -25,6 +25,8 @@ struct DTHubApp: App {
   @State private var canvasWindow = CanvasWindowState()
 
   init() {
+    // The prompts for Enhance/Generate Prompt: the base files in Data/DTHub, written if missing or old.
+    PromptLibrary.live.install()
     let connection = DrawThingsConnection()
     // The user's own LoRA trigger words and weights: read now, written at every change (`loras.json`).
     let loraStore = LoRAOverridesStore(fileURL: LoRAOverridesStore.defaultFileURL)
@@ -65,8 +67,8 @@ struct DTHubApp: App {
     plugins.currentParameters = { generation.parameters }
     plugins.currentPrompts = { (generation.prompt, generation.negativePrompt) }
     plugins.promptGuide = {
-      PromptGuides.guide(for: generation.family(in: connection)).map {
-        PluginPromptGuide(label: $0.label, usesNegative: $0.usesNegative, notes: $0.notes)
+      PromptLibrary.live.family(generation.family(in: connection)).map {
+        PluginPromptGuide(label: $0.label, usesNegative: $0.negative, notes: $0.notes)
       }
     }
     plugins.startImageStrength = {

@@ -39,6 +39,9 @@ public struct PromptLibrary: Sendable {
         .appendingPathComponent("DTHub", isDirectory: true))
   }
 
+  /// Only the built-in copies: no folder to read (what the tests and any default argument use).
+  public static let builtIn = PromptLibrary(folder: URL(fileURLWithPath: "/nonexistent/DT Hub/DTHub", isDirectory: true))
+
   public static let priorityLine = "In case of conflict, the instructions below take precedence over those above."
 
   // MARK: Reading

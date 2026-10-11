@@ -11,7 +11,7 @@ struct PromptBriefTests {
     #expect(system.contains("exclusively in English"))
     #expect(system.contains("Reply with the prompt only"))
     #expect(!system.contains("JSON"))
-    #expect(system.hasSuffix("\n\nModel notes:\n" + PromptGuides.all["flux2_9b"]!.notes))
+    #expect(system.hasSuffix("\n\nModel notes:\n" + PromptLibrary.builtIn.family("flux2_9b")!.notes))
   }
 
   @Test func systemForAFamilyWithNegativeAsksForJSON() {
