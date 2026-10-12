@@ -21,13 +21,10 @@ public enum PresetError: Error, Equatable, Sendable {
 public final class PresetStore {
   /// The names of the presets, sorted; read from the folder by `refresh()`.
   public private(set) var names: [String] = []
-  @ObservationIgnored private let folder: URL
-  /// Moves a file; the tests give one that fails.
-  @ObservationIgnored private let move: (URL, URL) throws -> Void
+  @ObservationIgnored private let files: NamedJSONFolder
 
   public init(folder: URL, move: @escaping (URL, URL) throws -> Void = { try FileManager.default.moveItem(at: $0, to: $1) }) {
-    self.folder = folder
-    self.move = move
+    files = NamedJSONFolder(folder: folder, move: move)
     refresh()
   }
 
@@ -40,29 +37,19 @@ public final class PresetStore {
 
   /// Reads the folder again (a file added, changed or removed by hand shows up).
   public func refresh() {
-    let files = (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? []
-    let list = files
-      .filter { $0.pathExtension.lowercased() == "json" && !$0.lastPathComponent.hasPrefix(".") }
-      .map { $0.deletingPathExtension().lastPathComponent }
-      .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+    let list = files.names()
     if list != names { names = list }
   }
 
   /// A name the file system takes: not empty once trimmed, no "/" or ":", not starting with a dot, at most 120
   /// characters and 240 bytes (the file system's limit is 255 bytes, ".json" included).
-  public static func isValidName(_ raw: String) -> Bool {
-    let name = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-    return !name.isEmpty && name.count <= 120 && name.utf8.count <= 240 && !name.hasPrefix(".") && !name.contains("/")
-      && !name.contains(":")
-  }
+  public nonisolated static func isValidName(_ raw: String) -> Bool { NamedJSONFolder.isValidName(raw) }
 
   /// The name as it is written in the folder, if a preset has this name. The exact name wins; then the name
-  /// without the spaces at its ends; then a name that differs only by capitals or accents. (The file system
-  /// keeps apart two files that differ only by an accent, if someone put them there by hand.)
+  /// without the spaces at its ends; then a name that differs only by capitals or accents.
   public func existingName(for name: String) -> String? {
     refresh()
-    let wanted = name.trimmingCharacters(in: .whitespacesAndNewlines)
-    return names.first { $0 == name } ?? names.first { $0 == wanted } ?? names.first { Self.same($0, wanted) }
+    return files.existingName(for: name)
   }
 
   public func contains(_ name: String) -> Bool { existingName(for: name) != nil }
@@ -70,7 +57,7 @@ public final class PresetStore {
   /// Reads the file of a preset, now.
   public func load(named name: String) throws(PresetError) -> Preset {
     guard let actual = existingName(for: name) else { throw .notFound(name) }
-    guard let data = try? Data(contentsOf: url(actual)), var preset = try? JSONDecoder().decode(Preset.self, from: data)
+    guard let data = files.data(named: actual), var preset = try? JSONDecoder().decode(Preset.self, from: data)
     else { throw .unreadable(actual) }
     preset.name = actual
     return preset
@@ -87,34 +74,14 @@ public final class PresetStore {
   }
 
   public func delete(named name: String) {
-    guard let actual = existingName(for: name) else { return }
-    try? FileManager.default.removeItem(at: url(actual))
+    files.remove(named: name)
     refresh()
   }
 
   /// Renames the file. Changing only the capitals of a name is allowed.
   public func rename(_ old: String, to newName: String) throws(PresetError) {
-    let name = newName.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard Self.isValidName(name) else { throw .invalidName }
-    guard let actual = existingName(for: old) else { throw .notFound(old) }
-    if let other = existingName(for: name), other != actual { throw .nameTaken }
-    guard actual != name else { return }
-    // Two steps: on a file system that ignores capitals a one-step move to a name that differs only by them can fail.
-    let temporary = folder.appendingPathComponent(".renaming-\(UUID().uuidString).json")
-    do {
-      try move(url(actual), temporary)
-    } catch {
-      throw .cannotWrite(error.localizedDescription)
-    }
-    do {
-      try move(temporary, url(name))
-    } catch {
-      // The preset goes back where it was: a file left under the temporary name would be hidden from the list.
-      try? move(temporary, url(actual))
-      refresh()
-      throw .cannotWrite(error.localizedDescription)
-    }
-    refresh()
+    defer { refresh() }
+    try files.rename(old, to: newName)
   }
 
   /// Adds imported presets, each under a free name ("Name", "Name (2)", …); a "/" or ":" in a name becomes "-".
@@ -160,22 +127,12 @@ public final class PresetStore {
 
   // MARK: Private
 
-  private func url(_ name: String) -> URL { folder.appendingPathComponent(name + ".json") }
-
   private func write(_ preset: Preset, as name: String) throws(PresetError) {
-    do {
-      try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-      let encoder = JSONEncoder()
-      encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-      try encoder.encode(preset).write(to: url(name), options: .atomic)
-    } catch {
-      throw .cannotWrite(error.localizedDescription)
-    }
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+    guard let data = try? encoder.encode(preset) else { throw .cannotWrite(name) }
+    try files.write(data, as: name)
     refresh()
-  }
-
-  private static func same(_ a: String, _ b: String) -> Bool {
-    a.compare(b, options: [.caseInsensitive, .diacriticInsensitive]) == .orderedSame
   }
 }
 

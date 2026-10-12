@@ -71,14 +71,26 @@ struct ManagePresetsSheet: View {
     VStack(alignment: .leading, spacing: DS.rowGap) {
       Text("preset.manage.title")
         .font(.headline)
-      if controller.presets.names.isEmpty {
-        Text("preset.none")
-          .foregroundStyle(.secondary)
-      }
       ScrollView {
-        VStack(spacing: DS.controlGap) {
+        VStack(alignment: .leading, spacing: DS.controlGap) {
+          Text("pipeline.group.presets")
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(.secondary)
+          if controller.presets.names.isEmpty {
+            Text("preset.none")
+              .foregroundStyle(.secondary)
+          }
           ForEach(controller.presets.names, id: \.self) { name in
-            PresetRow(presetName: name, store: controller.presets)
+            PresetRow(presetName: name, controller: controller)
+          }
+          if !controller.userPipelines.names.isEmpty {
+            Text("pipeline.group.pipelines")
+              .font(.subheadline.weight(.semibold))
+              .foregroundStyle(.secondary)
+              .padding(.top, DS.controlGap)
+            ForEach(controller.userPipelines.names, id: \.self) { name in
+              PipelineRow(pipelineName: name, controller: controller)
+            }
           }
         }
       }
@@ -103,7 +115,8 @@ struct ManagePresetsSheet: View {
 
 private struct PresetRow: View {
   let presetName: String
-  let store: PresetStore
+  let controller: GenerationController
+  private var store: PresetStore { controller.presets }
   @State private var name = ""
   @State private var model = ""
   @State private var problem: String?
@@ -146,9 +159,84 @@ private struct PresetRow: View {
     do {
       try store.rename(presetName, to: name)
       problem = nil
+      // The pipelines that name the preset follow it, and so does the one on RUN.
+      controller.userPipelines.renamePreset(presetName, to: name.trimmingCharacters(in: .whitespacesAndNewlines))
+      controller.syncActivePipeline()
     } catch {
       problem = PresetBar.text(of: error)
       name = presetName
+    }
+  }
+}
+
+/// A saved pipeline: renamed in place or deleted. Under the name, how many passes it has, or the presets it names
+/// that are not there any more.
+private struct PipelineRow: View {
+  let pipelineName: String
+  let controller: GenerationController
+  @State private var name = ""
+  @State private var pipeline: UserPipeline?
+  @State private var unreadable = false
+  @State private var problem: String?
+
+  /// The presets the pipeline names that the Preset menu does not have.
+  private var missing: [String] {
+    let presets = controller.presets.names
+    return (pipeline?.presetNames ?? []).filter { wanted in
+      !presets.contains { $0.compare(wanted, options: [.caseInsensitive, .diacriticInsensitive]) == .orderedSame }
+    }
+  }
+
+  var body: some View {
+    HStack(spacing: DS.controlGap) {
+      VStack(alignment: .leading, spacing: 2) {
+        TextField(String(localized: "preset.save.name"), text: $name)
+          .textFieldStyle(.roundedBorder)
+          .onSubmit(rename)
+        if let problem {
+          note(problem, warning: true)
+        } else if unreadable {
+          note(String(format: String(localized: "pipeline.unreadable"), pipelineName), warning: true)
+        } else if !missing.isEmpty {
+          note(String(format: String(localized: "pipeline.missing"), missing.joined(separator: ", ")), warning: true)
+        } else if let pipeline {
+          note(ContributionText.passes(pipeline.steps.count), warning: false)
+        }
+      }
+      Button {
+        controller.userPipelines.delete(named: pipelineName)
+        controller.syncActivePipeline()
+      } label: {
+        Image(systemName: "trash")
+          .foregroundStyle(DS.remove)
+      }
+      .buttonStyle(.plain)
+      .help(String(localized: "pipeline.delete"))
+      .accessibilityLabel(String(localized: "pipeline.delete"))
+    }
+    .onAppear { name = pipelineName }
+    // Read again when the presets change: a renamed preset rewrites the pipelines that name it.
+    .task(id: controller.presets.names) {
+      pipeline = try? controller.userPipelines.load(named: pipelineName)
+      unreadable = pipeline == nil
+    }
+  }
+
+  private func note(_ text: String, warning: Bool) -> some View {
+    Text(verbatim: text)
+      .font(.caption)
+      .foregroundStyle(warning ? AnyShapeStyle(DS.remove) : AnyShapeStyle(.secondary))
+      .lineLimit(2)
+  }
+
+  private func rename() {
+    do {
+      try controller.userPipelines.rename(pipelineName, to: name)
+      problem = nil
+      controller.syncActivePipeline(renamedTo: name.trimmingCharacters(in: .whitespacesAndNewlines))
+    } catch {
+      problem = PresetBar.text(of: error)
+      name = pipelineName
     }
   }
 }

@@ -47,6 +47,26 @@ public enum PipelinePresets {
     return result
   }
 
+  /// The model a pass runs with: the one of its preset for a pass of a user's pipeline whose preset names one, the
+  /// header's for every other pass (a plug-in's pipeline never changes the model).
+  public static func model(for step: PipelineStep, presets: [String: Preset], header: String?) -> String? {
+    if step.usesPresetModel, let model = presets[step.preset]?.model, !model.isEmpty { return model }
+    return header
+  }
+
+  /// The models the passes take from their presets that the server does not have, once each. One of them stops the
+  /// pipeline before its first pass.
+  public static func missingModels(in pipeline: PluginPipeline, presets: [String: Preset], catalog: ModelCatalog) -> [String] {
+    var missing: [String] = []
+    for step in pipeline.steps where step.usesPresetModel {
+      guard let model = presets[step.preset]?.model, !model.isEmpty, catalog.model(forFile: model) == nil,
+        !missing.contains(model)
+      else { continue }
+      missing.append(model)
+    }
+    return missing
+  }
+
   /// A LoRA of the step already on the card gets the step's weight (and its mode or trigger word when it gives a
   /// non-default one); a new one goes at the end.
   static func merged(_ current: [LoRASelection], with step: [LoRASelection]) -> [LoRASelection] {

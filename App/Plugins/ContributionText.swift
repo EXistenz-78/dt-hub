@@ -65,7 +65,17 @@ enum ContributionText {
 
   /// The tooltip of the Run button with a pipeline: who proposed it and the passes.
   static func pipelineHelp(_ contribution: PipelineContribution, plugins: PluginRegistry) -> String {
-    let plugin = plugins.entries.first { $0.id == contribution.pluginID }?.name ?? contribution.pluginID
+    // The user's own pipeline: its name, then a line per pass with the preset it runs.
+    if let name = contribution.userPipelineName {
+      let list = contribution.pipeline.steps.enumerated().map { index, step in
+        var line = "\(index + 1). " + (step.preset.isEmpty ? String(localized: "pipeline.current") : step.preset)
+        if step.useOutputAsStart { line += " ← " + String(localized: "contribution.fromPrevious") }
+        return line
+      }
+      return ([name] + list).joined(separator: "\n")
+    }
+    let pluginID = contribution.pluginID ?? ""
+    let plugin = plugins.entries.first { $0.id == pluginID }?.name ?? pluginID
     let list = contribution.pipeline.steps.enumerated().map { index, step in
       var line = "\(index + 1). " + (step.title.isEmpty ? String(format: String(localized: "contribution.pass"), index + 1) : step.title)
       if !step.preset.isEmpty { line += " — " + step.preset }

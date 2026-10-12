@@ -11,6 +11,7 @@ struct PresetBar: View {
   let connection: DrawThingsConnection
   @State private var saving = false
   @State private var managing = false
+  @State private var creatingPipeline = false
   @State private var editingJSON = false
   @State private var importMessage: String?
 
@@ -31,6 +32,21 @@ struct PresetBar: View {
             Text(verbatim: name)
           }
         }
+        if !controller.userPipelines.names.isEmpty {
+          Divider()
+          // The user's pipelines; the one on RUN is ticked. None can be sent to RUN while a pipeline runs.
+          let active = controller.contributions?.pipeline?.userPipelineName
+          ForEach(controller.userPipelines.names, id: \.self) { name in
+            Toggle(
+              isOn: Binding(
+                get: { active == name },
+                set: { _ in importMessage = controller.selectPipeline(named: name) })
+            ) {
+              Text(verbatim: name)
+            }
+            .disabled(controller.isPipelineRunning)
+          }
+        }
         Divider()
         Button {
           saving = true
@@ -38,11 +54,17 @@ struct PresetBar: View {
           Text("preset.saveAs")
         }
         Button {
+          creatingPipeline = true
+        } label: {
+          Text("pipeline.create")
+        }
+        .disabled(controller.presets.names.isEmpty)
+        Button {
           managing = true
         } label: {
           Text("preset.manage")
         }
-        .disabled(controller.presets.names.isEmpty)
+        .disabled(controller.presets.names.isEmpty && controller.userPipelines.names.isEmpty)
         Button {
           importFile()
         } label: {
@@ -79,9 +101,16 @@ struct PresetBar: View {
       Spacer(minLength: 0)
     }
     // The list is the folder's: files added or changed by hand show up when the window comes back.
-    .onAppear { controller.presets.refresh() }
+    .onAppear {
+      controller.presets.refresh()
+      controller.userPipelines.refresh()
+    }
     .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
       controller.presets.refresh()
+      controller.userPipelines.refresh()
+    }
+    .sheet(isPresented: $creatingPipeline) {
+      CreatePipelineSheet(controller: controller)
     }
     .sheet(isPresented: $saving) {
       SavePresetSheet(controller: controller, connection: connection)
