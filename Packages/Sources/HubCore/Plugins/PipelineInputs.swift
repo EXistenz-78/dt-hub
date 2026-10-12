@@ -44,8 +44,12 @@ extension PipelineInputs {
   }
 
   /// The strength of a pass. A pass that replaces the start image does not send the tab's mask or margins, so
-  /// they must not make the automatic strength 100%.
-  public static func strength(tab: ControlInputs, replacesStart: Bool, editModel: Bool, hasMargins: Bool) -> Double {
+  /// they must not make the automatic strength 100%. `step` is the strength a pass of a user's pipeline has of its
+  /// own: it wins over the automatic one.
+  public static func strength(
+    tab: ControlInputs, replacesStart: Bool, editModel: Bool, hasMargins: Bool, step: Double? = nil
+  ) -> Double {
+    if let step { return min(1, max(0, step)) }
     var inputs = tab
     if replacesStart { inputs.mask = nil }
     return inputs.effectiveStrength(editModel: editModel, hasMargins: hasMargins && !replacesStart)

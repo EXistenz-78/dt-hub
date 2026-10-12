@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crea Pipeline mockup</title>
+<style>
+  :root {
+    --bg: #ececec; --sheet: #f6f6f6; --text: #1d1d1f; --secondary: #6e6e73; --line: #d6d6d6;
+    --field: #ffffff; --accent: #0a9396; --accent-text: #ffffff; --danger: #c0392b; --disabled: #b0b0b5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1c1c1e; --sheet: #2a2a2d; --text: #f2f2f7; --secondary: #a1a1a6; --line: #3a3a3d;
+      --field: #1f1f22; --accent: #2ab7b9; --accent-text: #0b1d1d; --danger: #ff6b5b; --disabled: #5a5a60;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1c1c1e; --sheet: #2a2a2d; --text: #f2f2f7; --secondary: #a1a1a6; --line: #3a3a3d;
+    --field: #1f1f22; --accent: #2ab7b9; --accent-text: #0b1d1d; --danger: #ff6b5b; --disabled: #5a5a60;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 24px 16px; background: var(--bg); color: var(--text);
+    font: 13px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; }
+  .sheet { max-width: 500px; margin: 0 auto; background: var(--sheet); border-radius: 12px; padding: 20px;
+    box-shadow: 0 10px 40px rgba(0,0,0,.25); }
+  h1 { font-size: 15px; margin: 0 0 12px; }
+  input[type=text] { width: 100%; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px;
+    background: var(--field); color: var(--text); font: inherit; }
+  .note { font-size: 11px; color: var(--secondary); margin: 4px 0 0; }
+  .warn { color: var(--danger); }
+  .toggle { display: flex; align-items: center; gap: 8px; margin: 12px 0 10px; }
+  .box { width: 16px; height: 16px; border-radius: 4px; border: 1px solid var(--line); background: var(--field);
+    display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex: none; }
+  .box.on { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  .list { border: 1px solid var(--line); border-radius: 8px; background: var(--field); overflow: hidden; }
+  .head, .row { display: grid; grid-template-columns: 26px 1fr 64px 64px; align-items: center; gap: 8px; padding: 6px 10px; }
+  .head { font-size: 11px; color: var(--secondary); border-bottom: 1px solid var(--line); }
+  .head span:nth-child(3), .head span:nth-child(4) { text-align: center; }
+  .row + .row { border-top: 1px solid var(--line); }
+  .name { min-width: 0; }
+  .name b { font-weight: 500; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .name small { color: var(--secondary); font-size: 11px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .current b { font-style: italic; }
+  .num { display: flex; align-items: center; gap: 3px; justify-content: center; }
+  .num input { width: 40px; text-align: right; padding: 2px 5px; border: 1px solid var(--line); border-radius: 5px;
+    background: var(--field); color: var(--text); font: inherit; }
+  .num input:disabled { color: var(--disabled); background: transparent; }
+  .num span { color: var(--secondary); }
+  .off .name b, .off .name small { color: var(--disabled); }
+  .summary { font-size: 11px; color: var(--secondary); margin: 10px 0 0; }
+  .buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+  button { font: inherit; padding: 5px 16px; border-radius: 999px; border: 1px solid var(--line); background: var(--field); color: var(--text); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+  .legend { max-width: 500px; margin: 16px auto 0; font-size: 12px; color: var(--secondary); }
+  .legend li { margin: 3px 0; }
+</style>
+</head>
+<body>
+  <div class="sheet" role="dialog" aria-label="Crea pipeline">
+    <h1>Crea pipeline</h1>
+    <input type="text" value="Flux2 + upscale Qwen" aria-label="Nome della pipeline">
+    <p class="note warn">Esiste già una pipeline con questo nome: verrà sostituita.</p>
+
+    <div class="toggle"><span class="box on">✓</span> Concatena i risultati
+      <span class="note" style="margin:0">(il risultato di un passaggio è l'immagine di partenza del successivo)</span></div>
+
+    <div class="list">
+      <div class="head"><span>#</span><span>Preset</span><span>Scala</span><span>Forza</span></div>
+
+      <div class="row current">
+        <span class="box on">1</span>
+        <div class="name"><b>Impostazioni attuali</b><small>Generazione e Control al lancio</small></div>
+        <div class="num"><input value="—" disabled><span>×</span></div>
+        <div class="num"><input value="" disabled><span>%</span></div>
+      </div>
+
+      <div class="row off">
+        <span class="box"></span>
+        <div class="name"><b>Flux2 · Ritratto morbido</b><small>flux_2_klein_9b_q8p.ckpt</small></div>
+        <div class="num"><input value="1" disabled><span>×</span></div>
+        <div class="num"><input value="" disabled><span>%</span></div>
+      </div>
+
+      <div class="row">
+        <span class="box on">2</span>
+        <div class="name"><b>Qwen · Upscale</b><small>qwen_image_edit_2511_q6p.ckpt</small></div>
+        <div class="num"><input value="2"><span>×</span></div>
+        <div class="num"><input value="" placeholder="auto"><span>%</span></div>
+      </div>
+
+      <div class="row off">
+        <span class="box"></span>
+        <div class="name"><b>SDXL · Dettagli</b><small>juggernaut_xl_v9_q6p.ckpt</small></div>
+        <div class="num"><input value="1" disabled><span>×</span></div>
+        <div class="num"><input value="" disabled><span>%</span></div>
+      </div>
+
+      <div class="row">
+        <span class="box on">3</span>
+        <div class="name"><b>SD 1.5 · Rifinitura</b><small>Nessun modello: quello dell'header</small></div>
+        <div class="num"><input value="1"><span>×</span></div>
+        <div class="num"><input value="30"><span>%</span></div>
+      </div>
+    </div>
+
+    <p class="summary">3 passaggi · dimensioni con la scheda attuale (1024×1024): 1024×1024 → 2048×2048 → 2048×2048</p>
+
+    <div class="buttons">
+      <button>Chiudi</button>
+      <button class="primary">Salva</button>
+    </div>
+  </div>
+
+  <ul class="legend">
+    <li><b>Numero nella casella</b> = ordine del passaggio, nell'ordine in cui spunti. Togliendo una spunta i numeri successivi scalano.</li>
+    <li><b>Scala</b>: disattivata per il passaggio 1 (usa le dimensioni di Generazione). Dal 2 in poi moltiplica le dimensioni del passaggio precedente.</li>
+    <li><b>Forza</b>: vuota = automatica (come Control). Vale solo nei passaggi con un'immagine di partenza; per il passaggio 1 e per «Impostazioni attuali» segue Control.</li>
+    <li>Le righe non spuntate hanno i campi disattivati. Sotto il nome: il modello del preset.</li>
+    <li><b>Salva</b> scrive la pipeline e lascia la finestra aperta («Salvata.» al posto dell'avviso); attivo con un nome valido e almeno un passaggio. <b>Chiudi</b> chiude senza salvare.</li>
+  </ul>
+</body>
+</html>
