@@ -38,11 +38,23 @@ public struct PipelineStep: Equatable, Sendable {
   public var startImage: PluginImageRef?
   /// The picture the previous pass made becomes the start image of this one.
   public var useOutputAsStart: Bool
+  /// The three values below belong to the pipelines the user makes in the Preset menu
+  /// (`2026-10-12-pipeline-di-preset-utente-design.md` §5); they are never read from a plug-in's JSON.
+  /// The pass runs with the model of its preset, when the preset names one; false keeps the header's model.
+  public var usesPresetModel: Bool
+  /// The size of the previous pass is multiplied by this (from the second pass on).
+  public var scale: Double
+  /// The strength of this pass (0…1); nil is the automatic one.
+  public var strength: Double?
 
   public init(
     title: String = "", preset: String = "", fields: FieldOverlay = FieldOverlay(), loras: [LoRASelection] = [],
-    moodboard: [PluginImageRef]? = nil, startImage: PluginImageRef? = nil, useOutputAsStart: Bool = false
+    moodboard: [PluginImageRef]? = nil, startImage: PluginImageRef? = nil, useOutputAsStart: Bool = false,
+    usesPresetModel: Bool = false, scale: Double = 1, strength: Double? = nil
   ) {
+    self.usesPresetModel = usesPresetModel
+    self.scale = scale
+    self.strength = strength
     self.title = title
     self.preset = preset
     self.fields = fields

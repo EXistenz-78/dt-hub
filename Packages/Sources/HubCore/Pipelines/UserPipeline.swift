@@ -83,4 +83,16 @@ public struct UserPipeline: Equatable, Sendable {
     for name in steps.compactMap(\.preset) where !names.contains(name) { names.append(name) }
     return names
   }
+
+  /// The pipeline as RUN executes it. The first pass has no scale and no strength of its own (it uses the tab's
+  /// size and the Control tab), and neither has a "Current settings" pass a strength.
+  public func pluginPipeline(named name: String) -> PluginPipeline {
+    PluginPipeline(
+      name: name,
+      steps: steps.enumerated().map { index, step in
+        PipelineStep(
+          preset: step.preset ?? "", useOutputAsStart: chain && index > 0, usesPresetModel: true,
+          scale: index == 0 ? 1 : step.scale, strength: index == 0 || step.preset == nil ? nil : step.strength)
+      })
+  }
 }
