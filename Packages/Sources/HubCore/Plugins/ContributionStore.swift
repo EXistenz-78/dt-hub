@@ -13,8 +13,34 @@ public struct FieldMark: Equatable, Sendable {
 
 /// The pipeline a plug-in proposed, shown on the Run button.
 public struct PipelineContribution: Equatable, Sendable {
-  public let pluginID: String
+  /// Who the pipeline comes from: a plug-in, or the user's own (by the name of its file).
+  public enum Source: Equatable, Sendable {
+    case plugin(String)
+    case user(String)
+  }
+
+  public let source: Source
   public let pipeline: PluginPipeline
+
+  public init(pluginID: String, pipeline: PluginPipeline) {
+    source = .plugin(pluginID)
+    self.pipeline = pipeline
+  }
+
+  public init(userPipeline name: String, pipeline: PluginPipeline) {
+    source = .user(name)
+    self.pipeline = pipeline
+  }
+
+  /// Nil for a pipeline of the user.
+  public var pluginID: String? {
+    if case .plugin(let id) = source { id } else { nil }
+  }
+
+  /// Nil for a pipeline of a plug-in.
+  public var userPipelineName: String? {
+    if case .user(let name) = source { name } else { nil }
+  }
 }
 
 /// Two plug-ins want the same thing: the user picks one in a pop-up (the only conflict there is).
@@ -84,6 +110,8 @@ public final class ContributionStore {
   public private(set) var moodboardPlugins: [UUID: String] = [:]
   public private(set) var startImage: (pluginID: String, id: UUID, name: String)?
   public private(set) var pipeline: PipelineContribution?
+  /// True while a pipeline runs: no pipeline can be sent to RUN then (a plug-in's is refused).
+  @ObservationIgnored public var pipelineLocked = false
   /// Waiting for the user, in order; the pop-up lists them all.
   public private(set) var conflicts: [ContributionConflict] = []
 
@@ -176,9 +204,12 @@ public final class ContributionStore {
     }
 
     if let proposed = contribution.pipeline {
-      if let held = pipeline, held.pluginID != pluginID {
+      if pipelineLocked {
+        problems.append("pipeline: a pipeline is running.")
+      } else if let held = pipeline, let owner = held.pluginID, owner != pluginID {
+        // Only another plug-in's pipeline is a conflict: the user's own is replaced (the user pressed the plug-in's button).
         addConflict(
-          subject: .pipeline, current: .init(pluginID: held.pluginID, content: .passes(held.pipeline.steps.count)),
+          subject: .pipeline, current: .init(pluginID: owner, content: .passes(held.pipeline.steps.count)),
           proposed: .init(pluginID: pluginID, content: .passes(proposed.steps.count)), payload: .pipeline(proposed))
       } else {
         pipeline = PipelineContribution(pluginID: pluginID, pipeline: proposed)
@@ -234,6 +265,29 @@ public final class ContributionStore {
     if startImage?.pluginID == pluginID { startImage = nil }
     if pipeline?.pluginID == pluginID { pipeline = nil }
     conflicts.removeAll { $0.current.pluginID == pluginID || $0.proposed.pluginID == pluginID }
+  }
+
+  /// The user chose one of their pipelines in the Preset menu: it becomes the pipeline of RUN, in place of anyone's,
+  /// with no question (a pending one about pipelines goes). False while a pipeline runs: nothing changes then.
+  @discardableResult
+  public func setUserPipeline(_ pipeline: PluginPipeline, named name: String) -> Bool {
+    guard !pipelineLocked else { return false }
+    conflicts.removeAll { $0.subject == .pipeline }
+    self.pipeline = PipelineContribution(userPipeline: name, pipeline: pipeline)
+    return true
+  }
+
+  /// Realigns the user's pipeline on RUN with its file, after a pipeline or a preset was saved, renamed or deleted
+  /// (`renamedTo` when the file of the pipeline itself was just renamed). A pipeline that cannot be read any more is
+  /// taken away. A plug-in's pipeline is left alone.
+  public func syncUserPipeline(with store: UserPipelineStore, renamedTo newName: String? = nil) {
+    guard let current = pipeline?.userPipelineName else { return }
+    let wanted = newName ?? current
+    if let actual = store.existingName(for: wanted), let loaded = try? store.load(named: actual) {
+      pipeline = PipelineContribution(userPipeline: actual, pipeline: loaded.pluginPipeline(named: actual))
+    } else {
+      pipeline = nil
+    }
   }
 
   /// "Take away the pipeline" in the Run button's menu.
