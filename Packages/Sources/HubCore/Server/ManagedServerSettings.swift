@@ -43,17 +43,28 @@ public struct ManagedServerSettings: Equatable, Codable, Sendable {
   public var binaryPath: String
   public var modelsFolder: String
   public var port: Int
+  /// GiB the server keeps of the model's weights between one image and the next (its `-w` option); 0 = none, and
+  /// every image reads the model from the disk again. The automatic value is half the memory of this Mac.
+  public var weightsCacheGB: Int
 
   /// 7860, next to the Draw Things app's own API server on 7859.
   public static let defaultPort = 7860
 
   public init(
-    mode: ServerMode = .attach, binaryPath: String = "", modelsFolder: String = "", port: Int = defaultPort
+    mode: ServerMode = .attach, binaryPath: String = "", modelsFolder: String = "", port: Int = defaultPort,
+    weightsCacheGB: Int = automaticWeightsCacheGB()
   ) {
     self.mode = mode
     self.binaryPath = binaryPath
     self.modelsFolder = modelsFolder
     self.port = port
+    self.weightsCacheGB = weightsCacheGB
+  }
+
+  /// Half the memory of the Mac, in GiB, and never under 4: enough to hold the weights of a big model next to what the
+  /// server and the language model need.
+  public static func automaticWeightsCacheGB(physicalMemory: UInt64 = ProcessInfo.processInfo.physicalMemory) -> Int {
+    max(4, Int(physicalMemory / (1024 * 1024 * 1024) / 2))
   }
 
   public static let `default` = ManagedServerSettings()
@@ -100,6 +111,7 @@ public struct ManagedServerSettings: Equatable, Codable, Sendable {
     binaryPath = value(.binaryPath, "")
     modelsFolder = value(.modelsFolder, "")
     port = value(.port, Self.defaultPort)
+    weightsCacheGB = value(.weightsCacheGB, Self.automaticWeightsCacheGB())
   }
 }
 
@@ -160,11 +172,17 @@ public enum ServerArguments {
   /// (without it DT Hub cannot list the models). No shared secret: on the command line any
   /// program could read it, and the server is not reachable from outside.
   public static func make(_ settings: ManagedServerSettings) -> [String] {
-    [
+    var arguments = [
       settings.modelsFolder.trimmingCharacters(in: .whitespacesAndNewlines),
       "--address", "127.0.0.1",
       "--port", String(settings.port),
       "--model-browser",
     ]
+    // `-w`: the weights stay in memory between images (the program's default, 0, reads the model again every time:
+    // tens of seconds of "preparation" on an external disk). Never more than the Mac has.
+    let memoryGB = Int(ProcessInfo.processInfo.physicalMemory / (1024 * 1024 * 1024))
+    let cache = min(settings.weightsCacheGB, memoryGB)
+    if cache > 0 { arguments += ["-w", String(cache)] }
+    return arguments
   }
 }

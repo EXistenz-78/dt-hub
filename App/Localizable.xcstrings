@@ -5662,6 +5662,40 @@
         }
       }
     },
+    "prefs.server.cache": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weights cache (GB)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cache dei pesi (GB)"
+          }
+        }
+      }
+    },
+    "prefs.server.cache.note": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The server keeps the model's weights in memory between images, so only the first image waits for the model to be read from the disk (0 = every image reads it again). It should be at least as large as the biggest model you use. The suggested value is half the memory of this Mac. It applies the next time the server starts."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il server tiene in memoria i pesi del modello tra un'immagine e l'altra, così solo la prima aspetta che il modello venga letto dal disco (0 = ogni immagine lo rilegge). Dovrebbe essere grande almeno quanto il modello più grande che usi. Il valore suggerito è metà della memoria di questo Mac. Vale dal prossimo avvio del server."
+          }
+        }
+      }
+    },
     "prefs.server.get": {
       "extractionState": "manual",
       "localizations": {
