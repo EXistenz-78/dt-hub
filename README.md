@@ -76,6 +76,25 @@ When you see *"Apple could not verify 'DT Hub' is free of malware"*:
 
 You only need to do this once per download. If you would rather not trust a binary, build it yourself from source (below).
 
+## Updating the server (`gRPCServerCLI`)
+
+When DT Hub starts the server for you, it runs the `gRPCServerCLI` binary you chose in **Preferences › Draw Things**; the same pane shows which release it is and tells you when a newer one exists. DT Hub does not update it by itself:
+
+1. Download `gRPCServerCLI-macOS` from the [Draw Things releases](https://github.com/drawthingsai/draw-things-community/releases) and put it in place of the old one (same folder, same name, so the path in Preferences stays valid).
+2. A file downloaded with a browser is not executable and is marked as quarantined by macOS, so the server will not start. In Terminal, with the path of your file:
+
+```bash
+chmod +x "/path/to/gRPCServerCLI-macOS"
+```
+
+```bash
+xattr -d com.apple.quarantine "/path/to/gRPCServerCLI-macOS"
+```
+
+3. Start the server again from DT Hub (Connect, or restart the app).
+
+The second command tells macOS to skip its check on a downloaded program: run it only on a file you downloaded yourself from the official releases page.
+
 ## Build from source
 
 1. Install the Metal Toolchain once (MLX's shaders need it):
