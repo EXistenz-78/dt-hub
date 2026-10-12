@@ -60,6 +60,10 @@ final class GenerationController {
   private(set) var isPreparing = false
   /// The pass of a plug-in's pipeline that is running (1-based), nil outside one.
   private(set) var pipelinePass: (index: Int, count: Int)?
+  /// True from the click on RUN to the end of a pipeline: no pipeline can be sent to RUN meanwhile.
+  private(set) var isPipelineRunning = false {
+    didSet { contributions?.pipelineLocked = isPipelineRunning }
+  }
   /// What the plug-ins contributed (teal fields, conflicts, the pipeline); set by `attach`.
   @ObservationIgnored private(set) var contributions: ContributionStore?
 
@@ -134,6 +138,25 @@ final class GenerationController {
 
   /// The saved presets (spec §6).
   let presets = PresetStore(folder: PresetStore.defaultFolder)
+  /// The pipelines the user made from the presets (`2026-10-12-pipeline-di-preset-utente-design.md`).
+  let userPipelines = UserPipelineStore(folder: UserPipelineStore.defaultFolder)
+
+  /// Makes a saved pipeline the pipeline of RUN, in place of a plug-in's. Returns what went wrong, or nil.
+  func selectPipeline(named name: String) -> String? {
+    guard !isPipelineRunning else { return nil }
+    guard let pipeline = try? userPipelines.load(named: name) else {
+      return String(format: String(localized: "pipeline.unreadable"), name)
+    }
+    let actual = userPipelines.existingName(for: name) ?? name
+    contributions?.setUserPipeline(pipeline.pluginPipeline(named: actual), named: actual)
+    return nil
+  }
+
+  /// After a pipeline or a preset was saved, renamed or deleted: the user's pipeline on RUN follows its file
+  /// (`renamedTo` when the file of the pipeline itself was renamed).
+  func syncActivePipeline(renamedTo newName: String? = nil) {
+    contributions?.syncUserPipeline(with: userPipelines, renamedTo: newName)
+  }
   /// Reads and writes the Draw Things configuration JSON (spec §6, level 3).
   @ObservationIgnored let codec: any ConfigurationCodec = DrawThingsConfigurationCodec()
 
@@ -293,13 +316,23 @@ final class GenerationController {
   func run(with connection: DrawThingsConnection) -> Bool {
     guard canRun(with: connection) else { return false }
     // A pipeline reads the presets it names now, once; if one is missing or is not a preset, nothing starts.
-    var passes: [PipelineStep]?
+    var passes: PluginPipeline?
     var loadedPresets: [String: Preset] = [:]
-    if let pipeline = contributions?.pipeline?.pipeline {
+    if let held = contributions?.pipeline {
+      var pipeline = held.pipeline
+      // The user's pipeline is read from its file now: what RUN executes is what is saved.
+      if let name = held.userPipelineName {
+        guard let saved = try? userPipelines.load(named: name) else {
+          session.fail(with: .generationFailed(String(format: String(localized: "pipeline.unreadable"), name)))
+          return true
+        }
+        pipeline = saved.pluginPipeline(named: name)
+        contributions?.setUserPipeline(pipeline, named: name)
+      }
       switch PipelinePresets.load(pipeline, from: presets) {
       case .success(let loaded):
         loadedPresets = loaded
-        passes = pipeline.steps
+        passes = pipeline
       case .failure(let problem):
         var lines: [String] = []
         if !problem.missing.isEmpty {
@@ -313,6 +346,7 @@ final class GenerationController {
       }
     }
     isPreparing = true
+    isPipelineRunning = passes != nil
     preparation = Task {
       // Memory first: the language model leaves, a server parked for it comes back.
       await languageModel.prepareForRun()
@@ -322,7 +356,7 @@ final class GenerationController {
         if incremental, let made, !Task.isCancelled { await useAsStart(made) }
         return
       }
-      let inputs = await renderInputs(in: connection, parameters: parameters)
+      let inputs = await renderInputs(in: connection, parameters: parameters, model: selectedModel(in: connection))
       isPreparing = false
       preparation = nil
       guard !Task.isCancelled, let inputs else { return }
@@ -345,34 +379,58 @@ final class GenerationController {
   /// pass ends the pipeline; the pictures already made stay in the strip. Returns the picture of the last pass when
   /// every pass finished (nil when the pipeline ended early or was stopped).
   private func runPipeline(
-    _ passes: [PipelineStep], presets loaded: [String: Preset], with connection: DrawThingsConnection
+    _ pipeline: PluginPipeline, presets loaded: [String: Preset], with connection: DrawThingsConnection
   ) async -> GeneratedImage? {
     defer {
       isPreparing = false
       pipelinePass = nil
       preparation = nil
+      isPipelineRunning = false
+    }
+    let passes = pipeline.steps
+    // Checked here and not at the click: a server parked for the language model has no catalog until it is back.
+    let missing = PipelinePresets.missingModels(in: pipeline, presets: loaded, catalog: connection.monitor.catalog)
+    guard missing.isEmpty else {
+      if !Task.isCancelled {
+        session.fail(
+          with: .generationFailed(String(format: String(localized: "pipeline.missingModel"), missing.joined(separator: ", "))))
+      }
+      return nil
     }
     var previous: CGImage?
+    var previousSize: Size?
     var lastMade: GeneratedImage?
     for (index, pass) in passes.enumerated() {
       guard !Task.isCancelled else { return nil }
       pipelinePass = (index + 1, passes.count)
-      let used = PipelinePresets.fields(for: pass, over: fields, presets: loaded, catalog: connection.monitor.catalog)
-      guard let base = await renderInputs(in: connection, parameters: used.parameters) else { return nil }
-      guard !Task.isCancelled, let backend = connection.monitor.backend, let model = connection.selection.selectedFile,
+      var used = PipelinePresets.fields(for: pass, over: fields, presets: loaded, catalog: connection.monitor.catalog)
+      // A user's pipeline: from the second pass on, the size is the previous pass's, multiplied by the pass's scale.
+      if pass.usesPresetModel, let previousSize {
+        let size = PipelineSizes.scaled(previousSize, by: pass.scale, limit: used.parameters.sizeLimit)
+        used.parameters.width = size.width
+        used.parameters.height = size.height
+      }
+      previousSize = Size(width: used.parameters.width, height: used.parameters.height)
+      // The model of the pass: its preset's in a user's pipeline, the header's otherwise. Everything below uses it.
+      let file = PipelinePresets.model(for: pass, presets: loaded, header: connection.selection.selectedFile)
+      let passModel = file.flatMap { connection.monitor.catalog.model(forFile: $0) }
+      let family = passModel?.family
+      guard let base = await renderInputs(in: connection, parameters: used.parameters, model: passModel) else { return nil }
+      guard !Task.isCancelled, let backend = connection.monitor.backend, let model = file,
         RunAvailability.blocker(
           connection: connection.monitor.status, selectedModel: model, catalog: connection.monitor.catalog) == nil
       else { return nil }
       let inputs = PipelineInputs.inputs(
         for: pass, base: base, previousOutput: previous, canvasWidth: used.parameters.width,
-        canvasHeight: used.parameters.height, usesMoodboard: FamilyTraits.of(family(in: connection)).usesMoodboard)
+        canvasHeight: used.parameters.height, usesMoodboard: FamilyTraits.of(family).usesMoodboard)
       let replacesStart = inputs.image != nil && inputs.image !== base.image
       let batches = JobComposer.batches(
-        prompt: used.prompt, negativePrompt: used.negativePrompt, model: model, family: family(in: connection),
+        prompt: used.prompt, negativePrompt: used.negativePrompt, model: model, family: family,
         parameters: used.parameters, catalog: connection.monitor.catalog,
         imageStrength: inputs.image == nil ? nil : PipelineInputs.strength(
-          tab: control.inputs, replacesStart: replacesStart, editModel: isEditModel(in: connection),
-          hasMargins: control.hasMargins(canvasWidth: used.parameters.width, canvasHeight: used.parameters.height)),
+          tab: control.inputs, replacesStart: replacesStart, editModel: passModel?.capabilities.isEditModel ?? false,
+          hasMargins: control.hasMargins(canvasWidth: used.parameters.width, canvasHeight: used.parameters.height),
+          step: pass.strength),
         moodboardCount: inputs.hints.count, maskSettings: inputs.mask == nil ? nil : control.inputs.maskSettings)
       let before = session.results.first?.id
       session.start(batches, inputs: inputs, backend: backend, monitor: connection.monitor)
@@ -427,15 +485,18 @@ final class GenerationController {
 
   /// The Control tab's images framed to the canvas, decoded away from the main actor. A failure
   /// is shown as the RUN's failure, and nothing starts.
-  private func renderInputs(in connection: DrawThingsConnection, parameters: GenerationParameters) async -> GenerationInputs? {
+  /// `model` is the model the job runs with: the header's, or the one of a pipeline's pass.
+  private func renderInputs(
+    in connection: DrawThingsConnection, parameters: GenerationParameters, model: CatalogModel?
+  ) async -> GenerationInputs? {
     // The Moodboard goes only to a model that uses it (the old families would need an adapter).
     let pending = control.pendingInputs(
       canvasWidth: parameters.width, canvasHeight: parameters.height,
-      includeMoodboard: FamilyTraits.of(family(in: connection)).usesMoodboard,
+      includeMoodboard: FamilyTraits.of(model?.family).usesMoodboard,
       marginFill: control.inputs.marginFill ?? MarginFill.automatic(loras: parameters.loras))
     do {
       var inputs = try await Task.detached { try pending.render() }.value
-      inputs.enableInpainting = selectedModel(in: connection)?.capabilities.needsInpaintControl ?? false
+      inputs.enableInpainting = model?.capabilities.needsInpaintControl ?? false
       return inputs
     } catch {
       let text = (error as? ControlError).map(ControlText.error) ?? error.localizedDescription
@@ -453,6 +514,7 @@ final class GenerationController {
   func attach(_ store: ContributionStore) {
     contributions = store
     store.target = self
+    store.pipelineLocked = isPipelineRunning
   }
 
   /// True when the chosen model is an Edit model (the canvas image is the one to modify).
