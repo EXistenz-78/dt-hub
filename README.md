@@ -29,7 +29,7 @@ This is an independent community project, not affiliated with or endorsed by Dra
 
 <p align="center"><img src="docs/images/generation.png" alt="The Generation tab" width="55%"></p>
 
-**Presets.** Save a configuration as a preset, import and manage them, and let a plug-in register its own: Sphere Light's two presets, for example, are chained into one Run.
+**Presets.** Save a configuration as a preset, import and manage them, and let a plug-in register its own: Sphere Light's two presets, for example, are chained into one Run. You can also build your own pipelines: **Create Pipeline…** in the Preset menu lines up your presets in the order you tick them; each pass can use its preset's model, scale the size of the previous pass and have its own strength, and the result of a pass can be the start image of the next.
 
 <p align="center"><img src="docs/images/presets.png" alt="The Presets menu" width="55%"></p>
 
@@ -57,7 +57,7 @@ This is an independent community project, not affiliated with or endorsed by Dra
 
 ## Install
 
-1. Download **`DT-Hub-0.2.0-macOS-arm64.zip`** from the [latest release](https://github.com/EXistenz-78/dt-hub/releases/latest).
+1. Download **`DT-Hub-0.2.1-macOS-arm64.zip`** from the [latest release](https://github.com/EXistenz-78/dt-hub/releases/latest).
 2. Unzip it and drag **DT Hub.app** into `/Applications`.
 3. Read **First launch** below before you open it.
 4. Optional: add the plug-ins (they are in the same release, see [`Plugins/`](Plugins/README.md#install)).
@@ -130,7 +130,7 @@ The interface of the app and of the plug-ins is available in **English and Itali
 
 ## Status
 
-An early version (0.2.0), used daily by its author. Feedback, bug reports and ideas are welcome: open an [Issue](../../issues).
+An early version (0.2.1), used daily by its author. Feedback, bug reports and ideas are welcome: open an [Issue](../../issues).
 
 ## License
 
