@@ -172,7 +172,11 @@ struct LARow: View {
       } else if entry.foundBySearch {
         LATag(text: state.text(.foundAuto))
       } else if entry.searched && entry.link == nil {
-        LATag(text: state.text(.pageNotFound), warning: true)
+        if entry.candidates.isEmpty {
+          LATag(text: state.text(.pageNotFound), warning: true)
+        } else {
+          LATag(text: state.text(.choosePage))
+        }
       }
     }
   }
@@ -222,6 +226,7 @@ struct LARow: View {
         .disabled(link.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || state.isBusy)
       }
     }
+    if !entry.candidates.isEmpty { candidates }
     HStack(spacing: DS.controlGap) {
       if state.jobs.isRaw(file) {
         Button(state.text(.summarise)) { Task { await state.summarise(lora) } }
@@ -245,6 +250,45 @@ struct LARow: View {
     if let message = state.rowMessage(for: file) {
       Text(verbatim: message).font(.caption).foregroundStyle(DS.remove)
     }
+  }
+
+  /// The pages the search found without one of the LoRA's own name: the user looks at them and takes one, or none.
+  private var candidates: some View {
+    VStack(alignment: .leading, spacing: 4) {
+      ForEach(entry.candidates, id: \.link) { candidate in
+        HStack(spacing: DS.controlGap) {
+          VStack(alignment: .leading, spacing: 1) {
+            Text(verbatim: candidate.title).lineLimit(1).truncationMode(.middle)
+            Text(verbatim: detail(of: candidate)).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+          }
+          Spacer(minLength: 0)
+          Button {
+            if let url = URL(string: candidate.link), LAHosts.isAllowed(url) { NSWorkspace.shared.open(url) }
+          } label: {
+            Image(systemName: "safari")
+          }
+          .buttonStyle(.plain)
+          .help(state.text(.openInBrowser))
+          .accessibilityLabel(state.text(.openInBrowser))
+          Button(state.text(.useThis)) {
+            link = candidate.link
+            if state.needsConfirmationToImport(file) { confirming = true } else { state.startImport(for: file, link: candidate.link, notes: .keepUsers) }
+          }
+          .buttonStyle(DSPillButtonStyle())
+          .disabled(state.isBusy)
+        }
+      }
+    }
+    .padding(8)
+    .background(RoundedRectangle(cornerRadius: 8).fill(.background.opacity(0.35)))
+  }
+
+  /// "Civitai · Krea 2", or "Hugging Face · 40,308 downloads".
+  private func detail(of candidate: LACandidate) -> String {
+    var parts = [candidate.link.contains("huggingface.co") ? "Hugging Face" : "Civitai"]
+    if let info = candidate.info { parts.append(info) }
+    if let downloads = candidate.downloads { parts.append(L.text(.downloads, downloads)) }
+    return parts.joined(separator: " · ")
   }
 
   /// A picture of the user's own for the thumbnail: a file, or the start image of the Control tab.

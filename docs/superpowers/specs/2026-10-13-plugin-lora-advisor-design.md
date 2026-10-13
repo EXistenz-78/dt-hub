@@ -18,7 +18,7 @@ L'elenco conta più del consiglio: funziona anche senza LLM.
 - **Il plug-in riceve dall'app solo l'elenco dei LoRA** con trigger, peso e famiglia.
 - **Un solo campo «Note»** per LoRA: vi finisce il testo della pagina, poi il riassunto; l'utente lo modifica o aggiunge i suoi appunti nello stesso campo. Nessun campo «descrizione» a parte.
 - **Tre passi, ognuno con il suo tasto, mai da soli:**
-  1. **«Cerca le pagine»** trova su Civitai, dal nome, la pagina dei LoRA che non ne hanno una;
+  1. **«Cerca le pagine»** cerca su Civitai e su Hugging Face, dal nome (anche senza la sigla iniziale dell'utente), la pagina dei LoRA che non ne hanno una; se non c'è un nome uguale propone dei candidati da scegliere;
   2. l'**importazione** scarica testo e anteprima della pagina (parte da sola dopo una ricerca riuscita, o da «Importa dalla pagina» con un link incollato);
   3. **«Riassumi tutti»** fa riassumere all'LLM le Note ancora grezze.
 - **Ogni passo lavora solo su ciò che manca:** la prima volta a tappeto; dopo, solo sui LoRA nuovi e su quelli a cui l'utente ha dato o cambiato il link. Mai di nuovo su tutto.
@@ -81,7 +81,8 @@ Globali, non per progetto: note e anteprime riguardano il LoRA, non un lavoro.
   - `manualThumbnail`: l'anteprima l'ha scelta l'utente (file o Control): l'importazione non la sostituisce;
   - `searched`: «Cerca le pagine» è già passato su questo LoRA (trovato o no): non lo ricerca più;
   - `foundBySearch`: il link viene dalla ricerca, non dall'utente (etichetta «trovato automaticamente»);
-  - `rawNotes`: le Note sono ancora il testo grezzo della pagina, in attesa del riassunto.
+  - `rawNotes`: le Note sono ancora il testo grezzo della pagina, in attesa del riassunto;
+  - `candidates`: le pagine trovate senza un nome uguale, tra cui l'utente sceglie: `[{"title", "link", "info", "downloads"}]`.
 - `thumbs/<nome>.jpg`: JPEG, lato lungo 256 px. Il nome è generato; il file vecchio si cancella quando l'anteprima cambia o si rimuove.
 - `pages/<nome>.txt`: il testo ripulito della pagina, tenuto finché le Note sono grezze, così «Riassumi» non riscarica nulla. Si cancella dopo il riassunto o quando l'utente modifica le Note.
 - Chiave: il nome del file del LoRA, come in `loras.json` dell'app.
@@ -94,17 +95,24 @@ Globali, non per progetto: note e anteprime riguardano il LoRA, non un lavoro.
 
 ## 6. Pagine: cercare, importare, riassumere
 
-### 6.1 «Cerca le pagine» (solo Civitai)
+### 6.1 «Cerca le pagine» (Civitai e Hugging Face)
+
+Rivista il 13 ottobre dopo la prima prova dell'utente: su 141 LoRA il solo confronto «nome uguale» su Civitai ne aveva trovati 11. I nomi dell'utente cominciano con una sua sigla di famiglia (`k2`, `q21`, `zit`…), i titoli su Civitai sono lunghi e decorati, e molti LoRA stanno su Hugging Face.
 
 - Lavora sui LoRA di `loraCatalog` **senza link e con `searched` non vero**. Il tasto mostra quanti sono («Cerca le pagine · 12») ed è spento a zero.
-- Per ognuno, uno alla volta: `https://civitai.com/api/v1/models?query=<nome>&types=LORA&limit=10&nsfw=true` (`nsfw=true` serve: senza, i LoRA per adulti non compaiono).
-  - `<nome>`: il nome del LoRA nel catalogo; se è vuoto, il nome del file senza estensione, senza i suffissi di Draw Things (`_lora`, `_f16`, `_q8p`…) e con `_` e `-` come spazi.
-- **Un risultato è accettato solo se il nome coincide**: confronto senza maiuscole, accenti, spazi e punteggiatura, prima con il nome intero e poi senza un'eventuale versione in coda (`v1.0`, `v2`). Tra più risultati uguali, il primo. Nessun «più simile».
-  - Trovato: `link` = la pagina del modello, `foundBySearch` e `searched` veri, e parte l'importazione (§6.3).
-  - Non trovato: solo `searched` vero; la riga mostra «pagina non trovata».
-- Avanzamento visibile («7 di 12»), mezzo secondo tra una richiesta e l'altra, tasto «Ferma». Fermato o chiuso il tab, i LoRA non ancora cercati restano da cercare.
-- Risposta 429: la ricerca si ferma con «Civitai chiede di rallentare: riprova più tardi.»; i LoRA non cercati restano da cercare.
-- **Sulla riga:** «Non è questo» (solo con `foundBySearch`) toglie link, anteprima e Note grezze della pagina, e lascia `searched` vero; «Cerca di nuovo» su una riga «pagina non trovata» ripete la ricerca per quel LoRA.
+- **Due nomi per LoRA:** il nome intero e il nome **senza la prima parola** (la sigla). Il nome intero è quello del catalogo; se è vuoto, il nome del file senza estensione, senza i suffissi di Draw Things (`_lora`, `_f16`, `_q8p`…) e con `_` e `-` come spazi.
+- **Fino a tre richieste per LoRA**, una alla volta:
+  1. Civitai con il nome senza la prima parola (se il nome ha più parole);
+  2. Civitai con il nome intero: `https://civitai.com/api/v1/models?query=<nome>&types=LORA&limit=10&nsfw=true` (`nsfw=true` serve: senza, i LoRA per adulti non compaiono);
+  3. Hugging Face con il nome senza la prima parola: `https://huggingface.co/api/models?search=<nome>&sort=downloads&direction=-1&limit=5` (i più scaricati per primi: un LoRA ha spesso molte copie, l'originale è quello più preso).
+- **Esito:**
+  - **un risultato con il nome uguale** a uno dei due nomi (senza maiuscole, accenti, spazi, punteggiatura e un'eventuale versione in coda; per Hugging Face conta il nome del repository senza l'autore): `link`, `foundBySearch` e `searched` veri, e parte l'importazione (§6.3). Le richieste successive non si fanno;
+  - **altrimenti, se ci sono risultati:** `searched` vero e in `candidates` i primi tre di Civitai (prima quelli del nome senza sigla) e i primi due di Hugging Face. La riga mostra «scegli la pagina»;
+  - **nessun risultato:** solo `searched` vero; la riga mostra «pagina non trovata».
+- **Scegliere:** nella riga aperta ogni candidato ha il nome, «Civitai · <modello di base>» oppure «Hugging Face · <n> download», un tasto che apre la pagina nel browser e **«Usa questa»**, che la collega come un link dato dall'utente (niente «trovato automaticamente») e la importa. Dei candidati non si scaricano anteprime: sarebbero centinaia di immagini, e caricarle all'apertura della riga violerebbe «rete solo al clic».
+- Avanzamento visibile («7 di 12»), mezzo secondo tra un LoRA e l'altro, tasto «Ferma». Fermato o chiuso il tab, i LoRA non ancora cercati restano da cercare.
+- Risposta 429 da uno dei due siti: la ricerca si ferma con «Civitai chiede di rallentare: riprova più tardi.»; il LoRA in corso e i successivi restano da cercare. Un sito che non risponde: quel LoRA resta da cercare e si passa al successivo.
+- **Sulla riga:** «Non è questo» (solo con `foundBySearch`) toglie link, anteprima e Note grezze della pagina, e lascia `searched` vero; «Cerca di nuovo» su una riga «pagina non trovata» o «scegli la pagina» ripete la ricerca per quel LoRA.
 - I bundle (più LoRA come versioni di una sola pagina) non si trovano dal nome: per quelli serve il link con `?modelVersionId=`.
 
 ### 6.2 Link riconosciuti
@@ -155,7 +163,7 @@ Parte dopo una ricerca riuscita, o dal tasto «Importa dalla pagina» della riga
 - Indirizzi contattati, scritti nel codice: `civitai.com` e i suoi sottodomini (le immagini passano da `image.civitai.com` a `blobs-b2.civitai.com`); `huggingface.co` e `hf.co` con i loro sottodomini (le immagini arrivano da `us.aws.cdn.hf.co` e simili). Un reindirizzamento fuori da questi si rifiuta. Solo `https`. `civitai.red` si accetta nei link ma non si contatta.
 - Dimensioni: risposta JSON o README al massimo 5 MB, immagine al massimo 10 MB; oltre, errore.
 - L'immagine si decodifica con ImageIO (primo fotogramma se animata) e si ricodifica in JPEG da 256 px: sul disco non resta mai il file scaricato.
-- Dal Mac escono: con «Cerca le pagine», **i nomi dei LoRA** come testo di ricerca; con l'importazione, la richiesta della pagina e dell'immagine. Nessun prompt, nessun altro dato.
+- Dal Mac escono: con «Cerca le pagine», **i nomi dei LoRA** come testo di ricerca, a Civitai e a Hugging Face; con l'importazione, la richiesta della pagina e dell'immagine. Nessun prompt, nessun altro dato.
 
 ### 6.6 Errori
 
@@ -223,7 +231,7 @@ Una riga sotto il link, in `DS.remove`, e la voce resta com'era: «Pagina non tr
 ## 12. Fuori ambito (rinviati)
 
 - Ricerca automatica senza tasto (all'apertura o all'arrivo di LoRA nuovi).
-- Ricerca per nome su Hugging Face; ricerca dentro le versioni di un bundle; abbinamento «più simile» quando il nome non coincide.
+- Ricerca dentro le versioni di un bundle; anteprime dei candidati; note ricavate dai prompt d'esempio delle immagini o dall'immagine stessa con un LLM con visione (proposte il 13 ottobre, non scelte).
 - Riconoscere il LoRA dall'hash del file (Draw Things converte i LoRA: l'hash non coincide con l'originale).
 - Scegliere un'altra immagine della galleria della pagina.
 - Note e anteprime anche per i modelli, non solo per i LoRA.

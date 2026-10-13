@@ -4,7 +4,7 @@ import Foundation
 /// `.strings` files: the table is here.
 enum L {
   enum Key: CaseIterable {
-    case needsNewApp, notActive, noLoRAs, unreadableStore, listTitle, adviceTitle, filterPlaceholder, findPages, summariseAll, jobsNote, stop, progress, currentModel, unknownFamily, trigger, noTrigger, weight, noNotes, foundAuto, pageNotFound, toSummarise, add, onTab, otherFamily,
+    case choosePage, useThis, openInBrowser, downloads, needsNewApp, notActive, noLoRAs, unreadableStore, listTitle, adviceTitle, filterPlaceholder, findPages, summariseAll, jobsNote, stop, progress, currentModel, unknownFamily, trigger, noTrigger, weight, noNotes, foundAuto, pageNotFound, toSummarise, add, onTab, otherFamily,
       notes, link, importPage, cancel, summarise, notThisOne, searchAgain, thumbnail, chooseFile, useControlImage, removeThumbnail, unreadableImage, replaceNotesQuestion, replace, keepMine, linkNotRecognised, needsAccess, noImageInPage, notFound, unreachable, unreadableAnswer, tooLarge, notAllowed,
       rateLimited, imported, summaryFailed,
       needsLLM, request, onlyFamily, advise, resetRequest, noSuitable, adviceNotUnderstood, noLoRAsForFamily, updateWeight, addAll, sent, sentWithConflicts, notAnswered, languageName
@@ -49,6 +49,10 @@ enum L {
     .noNotes: "Nessuna nota.",
     .foundAuto: "trovato automaticamente",
     .pageNotFound: "pagina non trovata",
+    .choosePage: "scegli la pagina",
+    .useThis: "Usa questa",
+    .openInBrowser: "Apri nel browser",
+    .downloads: "%d download",
     .toSummarise: "da riassumere",
     .add: "Aggiungi",
     .onTab: "già nella lista",
@@ -116,6 +120,10 @@ enum L {
     .noNotes: "No notes.",
     .foundAuto: "found automatically",
     .pageNotFound: "page not found",
+    .choosePage: "choose the page",
+    .useThis: "Use This",
+    .openInBrowser: "Open in the Browser",
+    .downloads: "%d downloads",
     .toSummarise: "to summarise",
     .add: "Add",
     .onTab: "already in the list",

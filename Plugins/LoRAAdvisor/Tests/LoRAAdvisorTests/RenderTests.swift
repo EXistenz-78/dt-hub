@@ -10,7 +10,7 @@ import Testing
 @MainActor
 @Suite("The tab on screen")
 struct RenderTests {
-  private func state(filled: Bool) throws -> LAState {
+  private func state(filled: Bool, candidatesOpen: Bool = false) throws -> LAState {
     let folder = FileManager.default.temporaryDirectory.appendingPathComponent("la-render-\(UUID().uuidString)", isDirectory: true)
     let store = LAStore(folder: folder)
     let fetcher = FakeFetcher()
@@ -48,8 +48,14 @@ struct RenderTests {
       $0.rawNotes = true
     }
     store.setPageText("page", for: "skin.ckpt")
-    store.update("sun.ckpt") { $0.searched = true }
-    state.openFile = "skin.ckpt"
+    store.update("sun.ckpt") {
+      $0.searched = true
+      $0.candidates = [
+        LACandidate(title: "Sun Direction LoRA", link: "https://civitai.com/models/3", info: "Flux.2 Klein 9B"),
+        LACandidate(title: "eric-venti-seeds/Sun-Direction-Lora-Flux2Klein9B", link: "https://huggingface.co/eric-venti-seeds/Sun-Direction-Lora-Flux2Klein9B", downloads: 40308),
+      ]
+    }
+    state.openFile = candidatesOpen ? "sun.ckpt" : "skin.ckpt"
     state.setAdvice(
       #"[{"n":1,"weight":0.8,"why":"Dà la grana e i colori della pellicola 35 mm che chiedi."},{"n":2,"weight":0.6,"why":"Rughe e pelle credibili per un volto anziano."}]"#,
       candidates: state.candidates())
@@ -81,6 +87,11 @@ struct RenderTests {
       }
     }
     return seen.count
+  }
+
+  @Test func aRowWithCandidatesIsDrawn() throws {
+    let rep = try render(try state(filled: true, candidatesOpen: true), dark: true, name: "tab-candidates-dark.png")
+    #expect(distinctColors(rep) > 20)
   }
 
   @Test func theTabIsDrawnInLightAndDarkFilledAndEmpty() throws {

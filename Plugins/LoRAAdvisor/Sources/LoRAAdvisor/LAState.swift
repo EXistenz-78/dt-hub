@@ -211,8 +211,11 @@ final class LAState: ObservableObject {
     }
     importing = file
     rowMessages[file] = nil
-    // A link the user gave is theirs, whatever the search had found.
-    store.update(file) { $0.foundBySearch = false }
+    // A link the user gave, or chose among the candidates, is theirs, whatever the search had found.
+    store.update(file) {
+      $0.foundBySearch = false
+      $0.candidates = []
+    }
     let outcome = await LAImporter(fetcher: fetcher, store: store).importPage(link, for: file, notes: notes)
     importing = nil
     guard !Task.isCancelled else { return }

@@ -18,6 +18,18 @@ enum LACivitai {
     return URL(string: "https://civitai.com/api/v1/models?query=\(text)&types=LORA&limit=10&nsfw=true")!
   }
 
+  /// The models a search found, as pages to choose from.
+  static func candidates(json: Data) -> [LACandidate] {
+    guard let root = (try? JSONSerialization.jsonObject(with: json)) as? [String: Any],
+      let items = root["items"] as? [Any]
+    else { return [] }
+    return items.compactMap { $0 as? [String: Any] }.compactMap { item in
+      guard let id = item["id"] as? Int, let name = item["name"] as? String, !name.isEmpty else { return nil }
+      let base = ((item["modelVersions"] as? [[String: Any]])?.first?["baseModel"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+      return LACandidate(title: name, link: LALink.civitai(model: id, version: nil).canonical, info: base)
+    }
+  }
+
   /// The page of a model: the version the link names, or the first one. A version that is not public needs an account.
   static func page(json: Data, version: Int?) throws(LAFetchError) -> LAPage {
     guard let root = (try? JSONSerialization.jsonObject(with: json)) as? [String: Any],
@@ -51,12 +63,46 @@ enum LACivitai {
     else { return nil }
     return items.first { LAName.matches(lora: name, result: $0["name"] as? String ?? "") }?["id"] as? Int
   }
+
+  /// The link of the first candidate whose name is one of the LoRA's names.
+  static func match(_ candidates: [LACandidate], names: [String]) -> LALink? {
+    candidates.first { candidate in names.contains { LAName.matches(lora: $0, result: candidate.title) } }
+      .flatMap { LALink.parse($0.link) }
+  }
 }
 
 /// Hugging Face: the repository's list of files and its model card.
 enum LAHuggingFace {
   static func apiURL(repo: String) -> URL { URL(string: "https://huggingface.co/api/models/" + encoded(repo))! }
   static func readmeURL(repo: String) -> URL { URL(string: "https://huggingface.co/\(encoded(repo))/raw/main/README.md")! }
+
+  /// The repositories for a name, the most downloaded first: a LoRA is often copied, and the original is the one
+  /// people take.
+  static func searchURL(_ query: String) -> URL {
+    var allowed = CharacterSet.alphanumerics
+    allowed.insert(charactersIn: "-._~")
+    let text = query.addingPercentEncoding(withAllowedCharacters: allowed) ?? ""
+    return URL(string: "https://huggingface.co/api/models?search=\(text)&sort=downloads&direction=-1&limit=5")!
+  }
+
+  /// The repositories a search found, as pages to choose from.
+  static func candidates(json: Data) -> [LACandidate] {
+    guard let list = (try? JSONSerialization.jsonObject(with: json)) as? [Any] else { return [] }
+    return list.compactMap { item in
+      guard let repo = (item as? [String: Any])?["id"] as? String, repo.split(separator: "/").count == 2 else { return nil }
+      return LACandidate(
+        title: repo, link: LALink.huggingFace(repo: repo).canonical, downloads: (item as? [String: Any])?["downloads"] as? Int)
+    }
+  }
+
+  /// The link of the first repository whose name (without its author) is one of the LoRA's names.
+  static func match(_ candidates: [LACandidate], names: [String]) -> LALink? {
+    candidates.first { candidate in
+      let repo = candidate.title.split(separator: "/").last.map(String.init) ?? ""
+      return names.contains { LAName.matches(lora: $0, result: repo) }
+    }
+    .flatMap { LALink.parse($0.link) }
+  }
 
   /// The text is the card without its YAML block. The picture is the card's first example (`widget`), then the first
   /// picture the card shows, then the first picture file of the repository; many repositories have none.

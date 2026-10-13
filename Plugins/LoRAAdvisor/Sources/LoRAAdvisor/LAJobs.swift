@@ -74,7 +74,10 @@ final class LAJobs: ObservableObject {
 
   /// "Search again" on a LoRA whose page was not found.
   func searchAgain(_ lora: DTHubCatalogLoRA) async {
-    store.update(lora.file) { $0.searched = false }
+    store.update(lora.file) {
+      $0.searched = false
+      $0.candidates = []
+    }
     await run(.search, [lora]) { lora in await self.search(lora) }
   }
 
@@ -139,33 +142,83 @@ final class LAJobs: ObservableObject {
     progress = nil
   }
 
-  /// False when Civitai asks to slow down: the run ends and the LoRA stays to search.
+  /// What a search request gave: its answer, nothing (the site has no such thing), or a reason to leave the LoRA.
+  private enum Asked {
+    case answer(Data)
+    case nothing
+    /// The site asks to slow down: the run ends.
+    case slowDown
+    /// The site does not answer: this LoRA stays to search, the run goes on.
+    case noAnswer
+  }
+
+  private func ask(_ url: URL) async -> Asked {
+    do throws(LAFetchError) {
+      return .answer(try await fetcher.data(from: url, limit: LALimits.text))
+    } catch {
+      switch error {
+      case .rateLimited: return .slowDown
+      case .unreachable: return .noAnswer
+      default: return .nothing
+      }
+    }
+  }
+
+  /// Looks for the page of a LoRA on Civitai and on Hugging Face, by its name and by its name without the first word
+  /// (often the user's own tag for the family). A page of the same name is taken at once; otherwise what was found is
+  /// kept for the user to choose from. False when a site asks to slow down: the run ends and the LoRA stays to search.
   private func search(_ lora: DTHubCatalogLoRA) async -> Bool {
     // A LoRA the server gives no name to carries its file's name.
-    let query = LAName.query(name: lora.name == lora.file ? "" : lora.name, file: lora.file)
-    let found: Data
-    do throws(LAFetchError) {
-      found = try await fetcher.data(from: LACivitai.searchURL(query), limit: LALimits.text)
-    } catch {
-      guard error == .rateLimited else { return true }
-      message = L.text(.rateLimited, italian: italian)
-      return false
+    let full = LAName.query(name: lora.name == lora.file ? "" : lora.name, file: lora.file)
+    let short = LAName.withoutPrefix(full)
+    let names = [full] + (short.map { [$0] } ?? [])
+    var civitai: [LACandidate] = []
+    var found: LALink?
+    // The name without the tag is the likelier one: its results come first.
+    for query in names.reversed() where found == nil {
+      switch await ask(LACivitai.searchURL(query)) {
+      case .answer(let data):
+        let results = LACivitai.candidates(json: data)
+        found = LACivitai.match(results, names: names)
+        civitai += results.filter { result in !civitai.contains { $0.link == result.link } }
+      case .nothing: break
+      case .slowDown: return slowDown()
+      case .noAnswer: return true
+      }
     }
-    guard let model = LACivitai.match(json: found, name: query) else {
-      store.update(lora.file) { $0.searched = true }
+    var repositories: [LACandidate] = []
+    if found == nil {
+      switch await ask(LAHuggingFace.searchURL(short ?? full)) {
+      case .answer(let data):
+        repositories = LAHuggingFace.candidates(json: data)
+        found = LAHuggingFace.match(repositories, names: names)
+      case .nothing: break
+      case .slowDown: return slowDown()
+      case .noAnswer: return true
+      }
+    }
+    guard let link = found else {
+      store.update(lora.file) {
+        $0.searched = true
+        $0.candidates = Array(civitai.prefix(3)) + Array(repositories.prefix(2))
+      }
       return true
     }
-    let link = LALink.civitai(model: model, version: nil)
     store.update(lora.file) {
       $0.link = link.canonical
       $0.foundBySearch = true
       $0.searched = true
+      $0.candidates = []
     }
     if await LAImporter(fetcher: fetcher, store: store).importPage(link, for: lora.file, notes: .keepUsers) == .failed(.rateLimited) {
-      message = L.text(.rateLimited, italian: italian)
-      return false
+      return slowDown()
     }
     return true
+  }
+
+  private func slowDown() -> Bool {
+    message = L.text(.rateLimited, italian: italian)
+    return false
   }
 
   private func write(_ lora: DTHubCatalogLoRA) async -> Bool {

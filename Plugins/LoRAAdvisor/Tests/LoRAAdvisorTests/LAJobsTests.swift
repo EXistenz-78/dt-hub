@@ -94,7 +94,8 @@ struct LAJobsTests {
     await jobs.searchAll(catalog)
     #expect(jobs.message == L.text(.rateLimited, italian: true))
     #expect(jobs.toSearch(in: catalog) == [c, d])
-    #expect(searches.count == 1)
+    // The run ended there: the next LoRA was not asked for.
+    #expect(!searches.contains(LACivitai.searchURL("Delta").absoluteString))
   }
 
   @Test func stopLeavesTheRestToDo() async {
