@@ -46,8 +46,60 @@ enum LAFamily {
     return shared(name) ?? (["wanvideo", "hunyuanvideo", "ltxv", "svd"].contains { name.contains($0) } ? "video" : nil)
   }
 
+  /// The words authors put in a title for the family ("Krea 2", "Z-Image"): added to a search, they bring up the
+  /// LoRAs for that model first. Nil for a family without a common wording.
+  static func label(ofFamily key: String?) -> String? {
+    switch group(ofFamily: key) {
+    case "krea2": "Krea 2"
+    case "zimage": "Z-Image"
+    case "flux2-klein-9b": "Klein 9B"
+    case "flux2-klein-4b": "Klein 4B"
+    case "flux2-dev": "Flux.2"
+    case "flux1": "Flux"
+    case "qwen": "Qwen"
+    case "sdxl": "SDXL"
+    case "sd1": "SD 1.5"
+    case "ideogram": "Ideogram"
+    default: nil
+    }
+  }
+
+  /// A title without the words that only say which model it is for, whether the author's ("[KREA 2] Detail Slider")
+  /// or the user's own tag ("K2 Detail Slider"): what is left is the LoRA's name on both sides. Whole words only.
+  static func withoutFamilyWords(_ title: String, family key: String?) -> String {
+    guard let group = group(ofFamily: key), let sequences = words[group] else { return title }
+    var tokens = title.components(separatedBy: CharacterSet.alphanumerics.inverted).filter { !$0.isEmpty }
+    var index = 0
+    while index < tokens.count {
+      let rest = tokens[index...].map { $0.lowercased() }
+      if let hit = sequences.first(where: { rest.starts(with: $0) }) {
+        tokens.removeSubrange(index..<(index + hit.count))
+      } else {
+        index += 1
+      }
+    }
+    return tokens.joined(separator: " ")
+  }
+
+  /// The ways a family is written, as words in lower case, the longest first.
+  private static let flux2: [[String]] = [
+    ["flux", "2", "klein", "9b"], ["flux", "2", "klein", "4b"], ["flux", "2", "klein"], ["flux2", "klein", "9b"],
+    ["flux2", "klein", "4b"], ["flux2", "klein"], ["klein", "9b"], ["klein", "4b"], ["flux", "2", "dev"], ["flux", "2"],
+    ["klein"], ["flux2"], ["f2"],
+  ]
+  private static let words: [String: [[String]]] = [
+    "krea2": [["krea", "2"], ["krea2"], ["krea"], ["k2"]],
+    "zimage": [["z", "image", "turbo"], ["z", "image", "base"], ["z", "image"], ["zimage"], ["zit"], ["zib"], ["zi"]],
+    "flux2-klein-9b": flux2, "flux2-klein-4b": flux2, "flux2-dev": flux2,
+    "flux1": [["flux", "1", "dev"], ["flux", "1", "d"], ["flux", "1"], ["flux1"], ["flux"]],
+    "qwen": [["qwen", "image", "2", "1"], ["qwen", "image", "edit"], ["qwen", "image"], ["qwen", "2", "1"], ["qwen"], ["q21"]],
+    "sdxl": [["sdxl"], ["pony"], ["illustrious"]],
+    "sd1": [["sd", "1", "5"], ["sd15"]],
+    "ideogram": [["ideogram", "4"], ["ideogram4"], ["ideogram"], ["ideo4"], ["i4"]],
+  ]
+
   /// The names the two sides write alike.
   private static func shared(_ name: String) -> String? {
-    ["hidream", "pixart", "ideogram"].first { name.contains($0) }
+    ["hidream", "pixart", "ideogram", "anima", "chroma", "ernie"].first { name.contains($0) }
   }
 }
