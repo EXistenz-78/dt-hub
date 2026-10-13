@@ -102,6 +102,26 @@ public struct PluginPromptGuide: Codable, Equatable, Sendable {
   }
 }
 
+/// A LoRA of the server as a plug-in sees it (`PluginContext.loraCatalog`): the trigger word and the weight are the
+/// ones of the app's LoRA manager.
+public struct PluginCatalogLoRA: Codable, Equatable, Sendable {
+  public var file: String
+  public var name: String
+  /// The family the LoRA was made for; left out when the server does not say.
+  public var family: String?
+  /// Empty when the LoRA has none.
+  public var trigger: String
+  public var weight: Double
+
+  public init(_ lora: CatalogLoRA) {
+    file = lora.file
+    name = lora.name
+    family = lora.family
+    trigger = lora.trigger
+    weight = lora.defaultWeight ?? 1
+  }
+}
+
 /// App → plug-in: where the app stands (sent when the plug-in is activated, when the model, its parameters or the
 /// start image change, and when the user comes back to a tab).
 public struct PluginContext: Codable, Equatable, Sendable {
@@ -124,12 +144,17 @@ public struct PluginContext: Codable, Equatable, Sendable {
   public var strength: Double?
   /// How to write prompts for the family of the chosen model. Absent when the app has no guide for it.
   public var promptGuide: PluginPromptGuide?
+  /// The LoRAs of the server, with the user's trigger words and weights. Always sent by the app, even empty (no LoRA,
+  /// no server): a plug-in that does not find the key is talking to an older app.
+  public var loraCatalog: [PluginCatalogLoRA]?
 
   public init(
     model: String?, family: String?, parameters: GenerationParameters, tempFolder: String, startImage: String? = nil,
     moodboard: [String]? = nil, languageModels: [PluginLanguageModel]? = nil, prompt: String? = nil,
-    negativePrompt: String? = nil, strength: Double? = nil, promptGuide: PluginPromptGuide? = nil
+    negativePrompt: String? = nil, strength: Double? = nil, promptGuide: PluginPromptGuide? = nil,
+    loraCatalog: [PluginCatalogLoRA]? = nil
   ) {
+    self.loraCatalog = loraCatalog
     self.promptGuide = promptGuide
     self.prompt = prompt
     self.negativePrompt = negativePrompt

@@ -65,6 +65,7 @@ struct DTHubApp: App {
         to: prompt, images: images, options: options, modelNamed: name, history: history)
     }
     plugins.currentParameters = { generation.parameters }
+    plugins.loraCatalog = { connection.monitor.catalog.loras }
     plugins.currentPrompts = { (generation.prompt, generation.negativePrompt) }
     plugins.promptGuide = {
       PromptLibrary.live.family(generation.family(in: connection)).map {
