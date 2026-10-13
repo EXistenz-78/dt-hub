@@ -58,6 +58,37 @@ public struct RecommendedSettings: Equatable, Sendable {
     self.init(models: read(root["models"]), families: read(root["families"]))
   }
 
+  /// The list of official configurations Draw Things publishes (`configs.json`, the one its app downloads): for each
+  /// model its basic values, as `Scripts/make-recommended-settings.py` reads them. Entries that use LoRAs (the "with
+  /// Lightning" variants) are not a model's base values and are left out, and so are those without steps, guidance or
+  /// sampler. The first entry that names a family is that family's fallback.
+  public init(configurations data: Data) {
+    var models: [String: RecommendedValues] = [:]
+    var families: [String: RecommendedValues] = [:]
+    for case let entry as [String: Any] in ((try? JSONSerialization.jsonObject(with: data)) as? [Any]) ?? [] {
+      guard let configuration = entry["configuration"] as? [String: Any], let model = configuration["model"] as? String,
+        (configuration["loras"] as? [Any] ?? []).isEmpty, let steps = configuration["steps"] as? Int,
+        let guidance = (configuration["guidanceScale"] as? NSNumber)?.doubleValue,
+        let sampler = (configuration["sampler"] as? Int).flatMap(Sampler.init(rawValue:))
+      else { continue }
+      let values = RecommendedValues(
+        steps: steps, guidanceScale: guidance, sampler: sampler, shift: (configuration["shift"] as? NSNumber)?.doubleValue,
+        resolutionDependentShift: configuration["resolutionDependentShift"] as? Bool)
+      let key = Self.key(forFile: model)
+      if models[key] == nil { models[key] = values }
+      if let family = entry["version"] as? String, !family.isEmpty, families[family] == nil { families[family] = values }
+    }
+    self.init(models: models, families: families)
+  }
+
+  /// This table with what a newer list knows: its models are added and win over the ones here; of its families only
+  /// those this table does not have are taken (a new variant listed first, as a Turbo, must not become what every
+  /// other model of the family falls back to).
+  public func merging(_ live: RecommendedSettings) -> RecommendedSettings {
+    RecommendedSettings(
+      models: models.merging(live.models) { _, new in new }, families: families.merging(live.families) { old, _ in old })
+  }
+
   /// The model's file name without its quantization and extension: `flux_2_klein_9b_f16.ckpt` and
   /// `flux_2_klein_9b_q6p.ckpt` are both `flux_2_klein_9b`.
   public static func key(forFile file: String) -> String {
