@@ -18,15 +18,22 @@ enum LACivitai {
     return URL(string: "https://civitai.com/api/v1/models?query=\(text)&types=LORA&limit=10&nsfw=true")!
   }
 
-  /// The models a search found, as pages to choose from.
-  static func candidates(json: Data) -> [LACandidate] {
+  /// The models a search found, as pages to choose from. With a `family`, a model stays only if one of its versions
+  /// is for that family (or for a base model the plug-in does not know), and the link names that version: one page
+  /// often holds the same LoRA for several models.
+  static func candidates(json: Data, family: String? = nil) -> [LACandidate] {
     guard let root = (try? JSONSerialization.jsonObject(with: json)) as? [String: Any],
       let items = root["items"] as? [Any]
     else { return [] }
     return items.compactMap { $0 as? [String: Any] }.compactMap { item in
       guard let id = item["id"] as? Int, let name = item["name"] as? String, !name.isEmpty else { return nil }
-      let base = ((item["modelVersions"] as? [[String: Any]])?.first?["baseModel"] as? String).flatMap { $0.isEmpty ? nil : $0 }
-      return LACandidate(title: name, link: LALink.civitai(model: id, version: nil).canonical, info: base)
+      let versions = item["modelVersions"] as? [[String: Any]] ?? []
+      func base(_ version: [String: Any]) -> String? { (version["baseModel"] as? String).flatMap { $0.isEmpty ? nil : $0 } }
+      guard !versions.isEmpty else { return LACandidate(title: name, link: LALink.civitai(model: id, version: nil).canonical) }
+      guard let index = versions.firstIndex(where: { LAFamily.fits(baseModel: base($0), family: family) }) else { return nil }
+      // The first version is the one a bare link opens: only another one needs its number.
+      let version = index == 0 ? nil : versions[index]["id"] as? Int
+      return LACandidate(title: name, link: LALink.civitai(model: id, version: version).canonical, info: base(versions[index]))
     }
   }
 
@@ -64,10 +71,14 @@ enum LACivitai {
     return items.first { LAName.matches(lora: name, result: $0["name"] as? String ?? "") }?["id"] as? Int
   }
 
-  /// The link of the first candidate whose name is one of the LoRA's names.
-  static func match(_ candidates: [LACandidate], names: [String]) -> LALink? {
-    candidates.first { candidate in names.contains { LAName.matches(lora: $0, result: candidate.title) } }
-      .flatMap { LALink.parse($0.link) }
+  /// The link of the first candidate whose name is one of the LoRA's names, with or without the words that only say
+  /// which model it is for ("[KREA 2] Detail Slider" is "Detail Slider").
+  static func match(_ candidates: [LACandidate], names: [String], family: String? = nil) -> LALink? {
+    candidates.first { candidate in
+      let titles = [candidate.title, LAFamily.withoutFamilyWords(candidate.title, family: family)]
+      return names.contains { name in titles.contains { LAName.matches(lora: name, result: $0) } }
+    }
+    .flatMap { LALink.parse($0.link) }
   }
 }
 

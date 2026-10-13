@@ -164,23 +164,32 @@ final class LAJobs: ObservableObject {
     }
   }
 
-  /// Looks for the page of a LoRA on Civitai and on Hugging Face, by its name and by its name without the first word
-  /// (often the user's own tag for the family). A page of the same name is taken at once; otherwise what was found is
-  /// kept for the user to choose from. False when a site asks to slow down: the run ends and the LoRA stays to search.
+  /// Looks for the page of a LoRA on Civitai and on Hugging Face. The name is freed of the words that only say which
+  /// model it is for (the user's own tag, as "k2"), and searched once with the words authors use for that family
+  /// ("Krea 2 Detail Slider") and once alone; results for another model are left out. A page of the same name is taken
+  /// at once; otherwise what was found is kept for the user to choose from. False when a site asks to slow down: the
+  /// run ends and the LoRA stays to search.
   private func search(_ lora: DTHubCatalogLoRA) async -> Bool {
     // A LoRA the server gives no name to carries its file's name.
     let full = LAName.query(name: lora.name == lora.file ? "" : lora.name, file: lora.file)
     let short = LAName.withoutPrefix(full)
-    let names = [full] + (short.map { [$0] } ?? [])
+    let stripped = LAFamily.withoutFamilyWords(full, family: lora.family)
+    let tagged = !stripped.isEmpty && LAName.key(stripped) != LAName.key(full)
+    let label = LAFamily.label(ofFamily: lora.family)
+    // The name to search for: without the family's words when it had them; without its first word (often a tag) when
+    // the family is unknown.
+    let core = tagged ? stripped : (label == nil ? short ?? full : full)
+    let queries = label.map { [$0 + " " + core, core] } ?? [core] + (core == full ? [] : [full])
+    var names: [String] = []
+    for name in [full, short, tagged ? stripped : nil].compactMap({ $0 }) where !names.contains(name) { names.append(name) }
     var civitai: [LACandidate] = []
     var found: LALink?
-    // The name without the tag is the likelier one: its results come first.
-    for query in names.reversed() where found == nil {
+    for query in queries where found == nil {
       switch await ask(LACivitai.searchURL(query)) {
       case .answer(let data):
         // A LoRA made for another model is not this one, whatever its name.
-        let results = LACivitai.candidates(json: data).filter { LAFamily.fits(baseModel: $0.info, family: lora.family) }
-        found = LACivitai.match(results, names: names)
+        let results = LACivitai.candidates(json: data, family: lora.family)
+        found = LACivitai.match(results, names: names, family: lora.family)
         civitai += results.filter { result in !civitai.contains { $0.link == result.link } }
       case .nothing: break
       case .slowDown: return slowDown()
@@ -189,7 +198,7 @@ final class LAJobs: ObservableObject {
     }
     var repositories: [LACandidate] = []
     if found == nil {
-      switch await ask(LAHuggingFace.searchURL(short ?? full)) {
+      switch await ask(LAHuggingFace.searchURL(core)) {
       case .answer(let data):
         repositories = LAHuggingFace.candidates(json: data)
         found = LAHuggingFace.match(repositories, names: names)
