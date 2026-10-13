@@ -108,6 +108,7 @@ struct LARow: View {
   let lora: DTHubCatalogLoRA
   @State private var link = ""
   @State private var confirming = false
+  @State private var dropTargeted = false
 
   private var file: String { lora.file }
   private var isOpen: Bool { state.openFile == file }
@@ -138,7 +139,12 @@ struct LARow: View {
     }
     .padding(8)
     .background(RoundedRectangle(cornerRadius: DS.boxRadius).fill(isOpen ? AnyShapeStyle(.background.opacity(0.35)) : AnyShapeStyle(.clear)))
-    .overlay(RoundedRectangle(cornerRadius: DS.boxRadius).strokeBorder(isOpen ? AnyShapeStyle(.separator) : AnyShapeStyle(.clear)))
+    .overlay(
+      RoundedRectangle(cornerRadius: DS.boxRadius)
+        .strokeBorder(dropTargeted ? AnyShapeStyle(DS.accent) : isOpen ? AnyShapeStyle(.separator) : AnyShapeStyle(.clear), lineWidth: dropTargeted ? 2 : 1)
+    )
+    // A picture dropped on the row is its thumbnail: a file from the Finder, or a picture dragged from a browser.
+    .onDrop(of: [.image, .fileURL, .url], isTargeted: $dropTargeted, perform: drop)
     .contentShape(Rectangle())
     .onTapGesture { if !isOpen { open() } }
     // The field shows the link the entry has: a search, or "Not this one", changes it under an open row.
@@ -289,6 +295,30 @@ struct LARow: View {
     if let info = candidate.info { parts.append(info) }
     if let downloads = candidate.downloads { parts.append(L.text(.downloads, downloads)) }
     return parts.joined(separator: " · ")
+  }
+
+  /// Takes the picture of what was dropped: its data when the source hands it over, the file otherwise. An address
+  /// alone is not followed (the plug-in only contacts Civitai and Hugging Face, and only for pages).
+  private func drop(_ providers: [NSItemProvider]) -> Bool {
+    guard let provider = providers.first else { return false }
+    let state = state
+    let file = file
+    if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
+      _ = provider.loadDataRepresentation(forTypeIdentifier: UTType.image.identifier) { data, _ in
+        Task { @MainActor in
+          if let data { state.setThumbnail(fromData: data, for: file) } else { state.dropHadNoPicture(for: file) }
+        }
+      }
+    } else if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
+      _ = provider.loadObject(ofClass: URL.self) { url, _ in
+        Task { @MainActor in
+          if let url, url.isFileURL { state.setThumbnail(fromFile: url, for: file) } else { state.dropHadNoPicture(for: file) }
+        }
+      }
+    } else {
+      state.dropHadNoPicture(for: file)
+    }
+    return true
   }
 
   /// A picture of the user's own for the thumbnail: a file, or the start image of the Control tab.

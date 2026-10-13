@@ -4,7 +4,7 @@ import Foundation
 /// `.strings` files: the table is here.
 enum L {
   enum Key: CaseIterable {
-    case choosePage, useThis, openInBrowser, downloads, needsNewApp, notActive, noLoRAs, unreadableStore, listTitle, adviceTitle, filterPlaceholder, findPages, summariseAll, jobsNote, stop, progress, currentModel, unknownFamily, trigger, noTrigger, weight, noNotes, foundAuto, pageNotFound, toSummarise, add, onTab, otherFamily,
+    case dropOnlyAddress, choosePage, useThis, openInBrowser, downloads, needsNewApp, notActive, noLoRAs, unreadableStore, listTitle, adviceTitle, filterPlaceholder, findPages, summariseAll, jobsNote, stop, progress, currentModel, unknownFamily, trigger, noTrigger, weight, noNotes, foundAuto, pageNotFound, toSummarise, add, onTab, otherFamily,
       notes, link, importPage, cancel, summarise, notThisOne, searchAgain, thumbnail, chooseFile, useControlImage, removeThumbnail, unreadableImage, replaceNotesQuestion, replace, keepMine, linkNotRecognised, needsAccess, noImageInPage, notFound, unreachable, unreadableAnswer, tooLarge, notAllowed,
       rateLimited, imported, summaryFailed,
       needsLLM, request, onlyFamily, advise, resetRequest, noSuitable, adviceNotUnderstood, noLoRAsForFamily, updateWeight, addAll, sent, sentWithConflicts, notAnswered, languageName
@@ -69,6 +69,7 @@ enum L {
     .useControlImage: "Usa l'immagine di Control",
     .removeThumbnail: "Rimuovi",
     .unreadableImage: "Immagine non leggibile.",
+    .dropOnlyAddress: "Il browser ha passato solo l'indirizzo: salva l'immagine e trascina il file.",
     .replaceNotesQuestion: "Sostituire le note con il testo della pagina?",
     .replace: "Sostituisci",
     .keepMine: "Tieni le mie",
@@ -140,6 +141,7 @@ enum L {
     .useControlImage: "Use the Control Image",
     .removeThumbnail: "Remove",
     .unreadableImage: "The image cannot be read.",
+    .dropOnlyAddress: "The browser gave only the address: save the picture and drop the file.",
     .replaceNotesQuestion: "Replace the notes with the text of the page?",
     .replace: "Replace",
     .keepMine: "Keep Mine",

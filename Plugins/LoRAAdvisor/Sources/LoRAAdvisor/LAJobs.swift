@@ -178,7 +178,8 @@ final class LAJobs: ObservableObject {
     for query in names.reversed() where found == nil {
       switch await ask(LACivitai.searchURL(query)) {
       case .answer(let data):
-        let results = LACivitai.candidates(json: data)
+        // A LoRA made for another model is not this one, whatever its name.
+        let results = LACivitai.candidates(json: data).filter { LAFamily.fits(baseModel: $0.info, family: lora.family) }
         found = LACivitai.match(results, names: names)
         civitai += results.filter { result in !civitai.contains { $0.link == result.link } }
       case .nothing: break
