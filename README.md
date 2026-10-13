@@ -22,6 +22,7 @@ This is an independent community project, not affiliated with or endorsed by Dra
 - **Plug-ins**, each with its own tab and active only on the model families it was made for: Prompt Master, Prompt Master I4 (Ideogram 4), Sphere Light Reference, Character Sheet (Qwen Image 2.1), Batch plus (a series of RUNs with growing parameters, or one per prompt; all families), AI Assistant (chat with a local LLM that can write the prompt and the settings on command), Qwen 2.1 Inpainting (colored marks and instructions on the start image, for Qwen Image 2.1) and LoRA Advisor (a visual list of your LoRAs with thumbnails and notes, and the LLM's advice on which to use; all families). See [`Plugins/`](Plugins/README.md).
 - **Keyboard.** ⌘↩ Run, ⌘. Stop, ⌘R Results, ⌃Page Up / ⌃Page Down to step through the tabs.
 - **Managed server.** DT Hub can start Draw Things' `gRPCServerCLI` by itself, or connect to the server of the Draw Things app.
+- **New models without waiting for an update.** When it connects, DT Hub downloads the list of official models that Draw Things publishes (`models.drawthings.ai`, the same list the Draw Things app reads) and keeps a copy, so a model released after this version of DT Hub is recognised as soon as its file is in your models folder. Offline, the saved copy is used. Nothing of yours is sent.
 
 ## A look around
 
