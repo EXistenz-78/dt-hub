@@ -140,7 +140,7 @@ struct LAJobsTests {
     await jobs.summariseAll(catalog)
     #expect(llm.calls.count == 1)
     #expect(store.entry(for: "c.ckpt").notes == "Riassunto breve." && !store.entry(for: "c.ckpt").rawNotes)
-    #expect(store.pageText(for: "c.ckpt") == nil)
+    #expect(store.pageText(for: "c.ckpt") == nil && jobs.message == nil)
     await jobs.summariseAll(catalog)
     #expect(llm.calls.count == 1)
   }
@@ -151,6 +151,7 @@ struct LAJobsTests {
     llm.answer = { _ in nil }
     await jobs.summariseAll(catalog)
     #expect(store.entry(for: "c.ckpt").rawNotes && jobs.toSummarise(in: catalog) == [c])
+    #expect(jobs.message == L.text(.summaryFailed, italian: true))
     llm.answer = { _ in "  \n" }
     #expect(await jobs.summarise(c) == false)
     #expect(store.entry(for: "c.ckpt").notes == "Page of Gamma Ray")

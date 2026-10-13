@@ -58,6 +58,9 @@ final class LAState: ObservableObject {
     guard let new = try? JSONDecoder().decode(DTHubContext.self, from: data) else { return }
     let modelChanged = context != nil && context?.model != new.model
     context = new
+    // A server parked to make room for the language model lists no LoRAs until it is back: the list that was there
+    // stays, and so does the advice just given.
+    if let listed = new.loraCatalog, !listed.isEmpty { catalog = listed }
     if !requestEditedByUser { request = new.prompt ?? "" }
     if modelChanged {
       suggestions = []
@@ -69,7 +72,8 @@ final class LAState: ObservableObject {
     }
   }
 
-  var catalog: [DTHubCatalogLoRA] { context?.loraCatalog ?? [] }
+  /// The LoRAs of the server, as the last context that listed any gave them.
+  @Published private(set) var catalog: [DTHubCatalogLoRA] = []
 
   enum Blocker: Equatable {
     /// The plug-in is not on for the job, so the app never told it anything.
@@ -82,7 +86,7 @@ final class LAState: ObservableObject {
   /// Why the list is empty; nil when it is not (or while the first context is on its way).
   var blocker: Blocker? {
     guard let context else { return active ? nil : .notActive }
-    guard let catalog = context.loraCatalog else { return .oldApp }
+    guard context.loraCatalog != nil else { return .oldApp }
     return catalog.isEmpty ? .noLoRAs : nil
   }
 

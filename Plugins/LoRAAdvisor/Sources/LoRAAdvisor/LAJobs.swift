@@ -79,10 +79,13 @@ final class LAJobs: ObservableObject {
   }
 
   func summariseAll(_ catalog: [DTHubCatalogLoRA]) async {
+    var failed = false
     await run(.summarise, toSummarise(in: catalog)) { lora in
-      _ = await self.write(lora)
+      if await !self.write(lora) { failed = true }
       return true
     }
+    // The entries the language model gave nothing for are still raw: say so, they can be tried again.
+    if failed { message = L.text(.summaryFailed, italian: italian) }
   }
 
   /// "Summarise" on one LoRA; false when the language model gave nothing.
