@@ -116,15 +116,28 @@ final class GenerationController {
     }
     pendingSave?.cancel()
     pendingSave = nil
+    Task { await refreshRecommended() }
   }
 
-  /// The recommended values per model, from the file the app ships (`RecommendedSettings.json`).
-  @ObservationIgnored let recommended: RecommendedSettings = {
+  /// The recommended values per model: the file the app ships (`RecommendedSettings.json`), with what the list Draw
+  /// Things publishes knows of newer models once `refreshRecommended()` has it.
+  @ObservationIgnored private(set) var recommended: RecommendedSettings = {
     guard let url = Bundle.main.url(forResource: "RecommendedSettings", withExtension: "json"),
       let data = try? Data(contentsOf: url)
     else { return .empty }
     return RecommendedSettings(data: data)
   }()
+
+  /// The list of official configurations Draw Things publishes, downloaded once per launch and kept on disk.
+  private static let liveConfigurations = CachedDownload(
+    address: URL(string: "https://models.drawthings.ai/configs.json")!, cacheURL: CachedDownload.supportFile("configs-list.json"),
+    isValid: { RecommendedSettings(configurations: $0) != .empty })
+
+  /// Adds to the table the models released after this app was built (at launch; offline, the copy saved last time).
+  func refreshRecommended() async {
+    guard let data = await Self.liveConfigurations.data() else { return }
+    recommended = recommended.merging(RecommendedSettings(configurations: data))
+  }
 
   /// The model chosen in the header: selected, and the tab takes its recommended steps, guidance, sampler and
   /// shift when the model changes (a model the table does not know leaves the values as they are).
