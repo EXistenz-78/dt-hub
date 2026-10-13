@@ -286,6 +286,9 @@ public final class PluginRegistry: PluginHosting {
   /// The parameters as they are now. The context carries these when set, so a plug-in whose tab is opened after only
   /// a number changed does not get an old copy; without it, the last `updateContext` counts.
   @ObservationIgnored public var currentParameters: (@MainActor () -> GenerationParameters)?
+  /// The LoRAs of the server as the LoRA manager has them (the user's trigger words and weights); they go with every
+  /// context as `loraCatalog`.
+  @ObservationIgnored public var loraCatalog: (@MainActor () -> [CatalogLoRA])?
 
   /// Tells the active plug-ins where the app stands again, for what changed without the model or its parameters
   /// changing (a model added to the models folder, a start image): the app calls it when a plug-in's tab is shown.
@@ -298,7 +301,8 @@ public final class PluginRegistry: PluginHosting {
       model: model, family: family, parameters: currentParameters?() ?? latestParameters, tempFolder: tempFolder.path,
       startImage: startImagePath?(), moodboard: moodboardPaths.flatMap { $0().nilIfEmpty },
       languageModels: languageModels?(), prompt: currentPrompts?().prompt, negativePrompt: currentPrompts?().negativePrompt,
-      strength: startImageStrength?(), promptGuide: promptGuide?())
+      strength: startImageStrength?(), promptGuide: promptGuide?(),
+      loraCatalog: loraCatalog?().map(PluginCatalogLoRA.init))
     guard let data = try? JSONEncoder().encode(context) else { return }
     send(data, to: identifier)
   }

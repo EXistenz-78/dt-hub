@@ -102,6 +102,9 @@ public struct DTHubContext: Decodable, Sendable {
   public var strength: Double?
   /// How to write prompts for the chosen model's family; nil when the app has no guide for it (or does not send it).
   public var promptGuide: DTHubPromptGuide?
+  /// The LoRAs of the server, with the trigger words and weights of the app's LoRA manager. Empty when there are none;
+  /// nil from an app that does not send it (before 0.2.2).
+  public var loraCatalog: [DTHubCatalogLoRA]?
 
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -117,11 +120,57 @@ public struct DTHubContext: Decodable, Sendable {
     negativePrompt = (try? container.decodeIfPresent(String.self, forKey: .negativePrompt)) ?? nil
     strength = (try? container.decodeIfPresent(Double.self, forKey: .strength)) ?? nil
     promptGuide = (try? container.decodeIfPresent(DTHubPromptGuide.self, forKey: .promptGuide)) ?? nil
+    // An entry that cannot be read is left out; a catalog that is not a list is no catalog.
+    loraCatalog = ((try? container.decodeIfPresent([Lenient<DTHubCatalogLoRA>].self, forKey: .loraCatalog)) ?? nil)?
+      .compactMap(\.value)
   }
 
   private enum CodingKeys: String, CodingKey {
     case model, family, tempFolder, startImage, moodboard, languageModels, parameters, prompt, negativePrompt, strength
-    case promptGuide
+    case promptGuide, loraCatalog
+  }
+}
+
+/// An element of a list that may fail to decode without costing the rest of the list.
+private struct Lenient<Value: Decodable>: Decodable {
+  let value: Value?
+  init(from decoder: any Decoder) throws { value = try? Value(from: decoder) }
+}
+
+/// A LoRA of the server (`DTHubContext.loraCatalog`).
+public struct DTHubCatalogLoRA: Decodable, Equatable, Sendable {
+  public var file: String
+  /// The name Draw Things shows; the file's name when the app gives none.
+  public var name: String
+  /// The family of models the LoRA was made for; nil when the server does not say.
+  public var family: String?
+  /// The trigger word; empty when there is none.
+  public var trigger: String
+  /// The weight the LoRA starts with.
+  public var weight: Double
+
+  public init(file: String, name: String, family: String? = nil, trigger: String = "", weight: Double = 1) {
+    self.file = file
+    self.name = name
+    self.family = family
+    self.trigger = trigger
+    self.weight = weight
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    file = try container.decode(String.self, forKey: .file)
+    guard !file.isEmpty else {
+      throw DecodingError.dataCorruptedError(forKey: .file, in: container, debugDescription: "empty file name")
+    }
+    name = ((try? container.decodeIfPresent(String.self, forKey: .name)) ?? nil).flatMap { $0.isEmpty ? nil : $0 } ?? file
+    family = (try? container.decodeIfPresent(String.self, forKey: .family)) ?? nil
+    trigger = ((try? container.decodeIfPresent(String.self, forKey: .trigger)) ?? nil) ?? ""
+    weight = ((try? container.decodeIfPresent(Double.self, forKey: .weight)) ?? nil) ?? 1
+  }
+
+  private enum CodingKeys: String, CodingKey {
+    case file, name, family, trigger, weight
   }
 }
 

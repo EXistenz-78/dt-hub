@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LoRA Advisor mockup</title>
+<style>
+  :root {
+    --bg: #1b1c1f; --card: #26272b; --box: #1f2023; --line: #3a3b40; --text: #f2f2f7; --secondary: #a1a1a6;
+    --accent: #3ec8c8; --accent-text: #0b1d1d; --warn: #f09837; --disabled: #5a5a60;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 18px; background: var(--bg); color: var(--text);
+    font: 13px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; }
+  .tab { display: flex; gap: 18px; align-items: flex-start; max-width: 1180px; margin: 0 auto; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 14px; }
+  .side { width: 320px; flex: none; }
+  .main { flex: 1; min-width: 0; }
+  h2 { font-size: 13px; font-weight: 600; margin: 0 0 10px; }
+  .note { font-size: 11px; color: var(--secondary); margin: 6px 0 0; }
+  textarea, input[type=text] { width: 100%; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--box); color: var(--text); font: inherit; resize: none; }
+  button { font: inherit; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--box); color: var(--text); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+  button.small { padding: 3px 10px; font-size: 12px; }
+  .rowline { display: flex; align-items: center; gap: 8px; }
+  .spacer { flex: 1; }
+  .thumb { border-radius: 8px; flex: none; background: linear-gradient(135deg, #5b6a7a, #2e3540); }
+  .thumb.t2 { background: linear-gradient(135deg, #8a6f4d, #40342a); }
+  .thumb.t3 { background: linear-gradient(135deg, #5d7a5b, #2b3a2c); }
+  .thumb.none { background: var(--box); border: 1px dashed var(--line); }
+  .advice { background: var(--box); border: 1px solid var(--line); border-radius: 10px; padding: 8px; margin-top: 8px; }
+  .advice .thumb { width: 44px; height: 44px; }
+  .advice b { font-weight: 600; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .advice p { margin: 6px 0; font-size: 12px; color: var(--secondary); }
+  .weight { width: 52px !important; text-align: right; padding: 2px 6px !important; }
+  .tag { font-size: 11px; color: var(--accent); }
+  .group { font-size: 11px; font-weight: 600; color: var(--secondary); margin: 14px 0 6px; text-transform: uppercase; letter-spacing: .04em; }
+  .group:first-of-type { margin-top: 10px; }
+  .lora { display: flex; gap: 10px; padding: 8px; border-radius: 10px; }
+  .lora + .lora { margin-top: 2px; }
+  .lora .thumb { width: 64px; height: 64px; }
+  .lora .body { flex: 1; min-width: 0; }
+  .lora b { font-weight: 600; }
+  .lora .meta { font-size: 11px; color: var(--secondary); }
+  .lora .preview { color: var(--secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 3px; }
+  .lora.open { background: var(--box); border: 1px solid var(--line); }
+  .lora.open .thumb { width: 112px; height: 112px; }
+  .lora.open textarea { height: 86px; margin-top: 6px; }
+  .legend { max-width: 1180px; margin: 16px auto 0; font-size: 12px; color: var(--secondary); }
+  .legend li { margin: 3px 0; }
+</style>
+</head>
+<body>
+  <div class="tab">
+
+    <div class="card main" aria-label="I tuoi LoRA">
+      <div class="rowline">
+        <h2 style="margin:0">I tuoi LoRA</h2>
+        <span class="spacer"></span>
+        <input type="text" placeholder="Filtra per nome, trigger o note" style="max-width:240px" aria-label="Filtra">
+      </div>
+      <div class="rowline" style="margin-top:10px">
+        <button class="small">Cerca le pagine · 1</button>
+        <button class="small">Riassumi tutti · 2</button>
+        <span class="note" style="margin:0">lavorano solo sui LoRA nuovi o senza pagina</span>
+      </div>
+
+      <div class="group">FLUX.2 klein 9B · modello attuale</div>
+
+      <div class="lora">
+        <div class="thumb"></div>
+        <div class="body">
+          <b>Analog Film 35</b>
+          <div class="meta">trigger: analogfilm35 · peso 0,8 · <span class="tag">trovato automaticamente</span></div>
+          <div class="preview">Grana e resa cromatica da pellicola 35 mm; funziona meglio tra 0,6 e 0,9. Con la luce dura…</div>
+        </div>
+        <div><span class="tag">già nella lista</span></div>
+      </div>
+
+      <div class="lora open">
+        <div>
+          <div class="thumb t2"></div>
+          <div style="margin-top:6px"><button class="small">Anteprima ▾</button></div>
+        </div>
+        <div class="body">
+          <div class="rowline"><b>Skin Detail Realism</b><span class="spacer"></span><button class="small">Aggiungi</button></div>
+          <div class="meta">trigger: skindetail · peso 1 · <span style="color:var(--warn)">da riassumere</span></div>
+          <textarea aria-label="Note">Aumenta il dettaglio della pelle (pori, rughe). Parola di attivazione: skindetail. Sopra 0,8 indurisce i lineamenti.
+
+Mio: ottimo con i ritratti in luce morbida, da evitare con i bambini.</textarea>
+          <div class="rowline" style="margin-top:6px">
+            <input type="text" value="https://civitai.com/models/123456" aria-label="Link alla pagina">
+            <button class="small" style="white-space:nowrap">Importa dalla pagina</button>
+          </div>
+          <div class="rowline" style="margin-top:6px"><button class="small">Riassumi</button><button class="small">Non è questo</button></div>
+        </div>
+      </div>
+
+      <div class="lora">
+        <div class="thumb none"></div>
+        <div class="body">
+          <b>SLR · Match the sun</b>
+          <div class="meta">nessun trigger · peso 1 · <span style="color:var(--warn)">pagina non trovata</span></div>
+          <div class="preview">Nessuna nota. Aprila per incollare il link o scriverne una.</div>
+        </div>
+        <div><button class="small">Aggiungi</button></div>
+      </div>
+
+      <div class="group">Qwen Image 2.1</div>
+
+      <div class="lora">
+        <div class="thumb t3"></div>
+        <div class="body">
+          <b>Qwen Lightning 8 steps</b>
+          <div class="meta">nessun trigger · peso 1</div>
+          <div class="preview">Riduce i passi a 8 con guidance 1. Non serve una parola di attivazione.</div>
+        </div>
+        <div><button class="small" disabled style="color:var(--disabled)">Aggiungi</button></div>
+      </div>
+    </div>
+
+    <div class="card side" aria-label="Consiglia">
+      <h2>Consiglia</h2>
+      <textarea rows="5" aria-label="Richiesta">ritratto di una donna anziana in una cucina, luce dalla finestra, pellicola 35 mm, grana fine</textarea>
+      <div class="rowline" style="margin-top:8px">
+        <span class="note" style="margin:0">Solo i LoRA di FLUX.2 klein 9B</span>
+        <span class="spacer"></span>
+        <button class="primary">Consiglia</button>
+      </div>
+
+      <div class="advice">
+        <div class="rowline">
+          <div class="thumb"></div>
+          <div style="min-width:0;flex:1"><b>Analog Film 35</b><span class="tag">già nella lista</span></div>
+        </div>
+        <p>Dà la grana e i colori della pellicola 35 mm che chiedi.</p>
+        <div class="rowline"><input class="weight" type="text" value="0,8" aria-label="Peso"><span class="spacer"></span><button class="small">Aggiorna il peso</button></div>
+      </div>
+
+      <div class="advice">
+        <div class="rowline">
+          <div class="thumb t2"></div>
+          <div style="min-width:0;flex:1"><b>Skin Detail Realism</b></div>
+        </div>
+        <p>Rughe e pelle credibili per un volto anziano.</p>
+        <div class="rowline"><input class="weight" type="text" value="0,6" aria-label="Peso"><span class="spacer"></span><button class="small">Aggiungi</button></div>
+      </div>
+
+      <div class="rowline" style="margin-top:10px"><span class="spacer"></span><button>Aggiungi tutti</button></div>
+      <p class="note">Senza un LLM per i plug-in il tasto è spento; l'elenco a sinistra funziona lo stesso.</p>
+    </div>
+  </div>
+
+  <ul class="legend">
+    <li><b>Destra, stretta (320 pt):</b> il consiglio dell'LLM. Il campo parte con il prompt attuale; si può riscrivere per cercare un'esigenza. Consiglia solo tra i LoRA della famiglia del modello attuale.</li>
+    <li><b>Sinistra, larga:</b> tutti i LoRA del server, per famiglia, con quella del modello attuale per prima. Una riga chiusa mostra anteprima, nome, trigger, peso e l'inizio delle Note.</li>
+    <li><b>Riga aperta:</b> Note (un solo campo: riassunto importato e appunti), link e «Importa dalla pagina», e il menu «Anteprima» (Scegli file…, Usa l'immagine di Control, Rimuovi).</li>
+    <li><b>Cerca le pagine</b> trova su Civitai, dal nome, la pagina dei LoRA che non ne hanno una e ne importa testo e prima immagine; <b>Riassumi tutti</b> fa riassumere all'LLM le Note ancora grezze. Tutti e due lavorano solo su ciò che manca, mai di nuovo su tutto, e solo al clic.</li>
+    <li><b>Aggiungi</b> su ogni riga manda il LoRA a Generazione (file, peso e trigger del gestore), anche senza consiglio. È spento per i LoRA di un'altra famiglia; per uno già nella lista compare «già nella lista».</li>
+    <li>Trigger e peso sono quelli del gestore dell'app: qui si leggono, non si cambiano. Ogni modifica alle Note si salva subito.</li>
+  </ul>
+</body>
+</html>
