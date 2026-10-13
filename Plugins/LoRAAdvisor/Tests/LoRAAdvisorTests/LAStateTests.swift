@@ -214,6 +214,16 @@ struct LAStateTests {
     #expect(state.rowMessage(for: "a.ckpt") == L.text(.needsAccess, italian: true) && store.entry(for: "a.ckpt").notes == "mie")
   }
 
+  @Test func aPictureDroppedOnARowIsTheUsersThumbnail() {
+    state.apply(context: context())
+    #expect(state.setThumbnail(fromData: Data("no".utf8), for: "a.ckpt") == false)
+    #expect(state.rowMessage(for: "a.ckpt") == L.text(.unreadableImage, italian: true))
+    #expect(state.setThumbnail(fromData: Pictures.png(), for: "a.ckpt"))
+    #expect(store.entry(for: "a.ckpt").manualThumbnail && state.rowMessage(for: "a.ckpt") == nil)
+    state.dropHadNoPicture(for: "p.ckpt")
+    #expect(state.rowMessage(for: "p.ckpt") == L.text(.dropOnlyAddress, italian: true))
+  }
+
   @Test func aThumbnailFromAFileIsTheUsers() throws {
     state.apply(context: context())
     let folder = FileManager.default.temporaryDirectory.appendingPathComponent("la-pics-\(UUID().uuidString)")

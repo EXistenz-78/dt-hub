@@ -105,6 +105,7 @@ Rivista il 13 ottobre dopo la prima prova dell'utente: su 141 LoRA il solo confr
   1. Civitai con il nome senza la prima parola (se il nome ha più parole);
   2. Civitai con il nome intero: `https://civitai.com/api/v1/models?query=<nome>&types=LORA&limit=10&nsfw=true` (`nsfw=true` serve: senza, i LoRA per adulti non compaiono);
   3. Hugging Face con il nome senza la prima parola: `https://huggingface.co/api/models?search=<nome>&sort=downloads&direction=-1&limit=5` (i più scaricati per primi: un LoRA ha spesso molte copie, l'originale è quello più preso).
+- **Filtro per modello** (chiesto dall'utente dopo la seconda prova): un risultato di Civitai si scarta quando il suo modello di base è di una famiglia diversa da quella del LoRA (`LAFamily`: `krea_2` ↔ «Krea 2»; `z_image` ↔ «ZImageTurbo/Base»; `flux2_9b` ↔ «Flux.2 Klein 9B», distinto da Klein 4B e da «Flux.2 D»; `qwen…` ↔ «Qwen», «Qwen 2.1»; SDXL ↔ «SDXL», «Pony», «Illustrious», «NoobAI»; `v1` ↔ «SD 1.x»; `v2`, `sd3…`, `flux1`, video…). Vale prima del confronto dei nomi e prima di scegliere i candidati. Nel dubbio si tiene: famiglia del LoRA sconosciuta, o modello di base fuori tabella («Other», «Chroma»…). Hugging Face non si filtra: la sua ricerca non dice il modello di base.
 - **Esito:**
   - **un risultato con il nome uguale** a uno dei due nomi (senza maiuscole, accenti, spazi, punteggiatura e un'eventuale versione in coda; per Hugging Face conta il nome del repository senza l'autore): `link`, `foundBySearch` e `searched` veri, e parte l'importazione (§6.3). Le richieste successive non si fanno;
   - **altrimenti, se ci sono risultati:** `searched` vero e in `candidates` i primi tre di Civitai (prima quelli del nome senza sigla) e i primi due di Hugging Face. La riga mostra «scegli la pagina»;
@@ -180,6 +181,7 @@ Una riga sotto il link, in `DS.remove`, e la voce resta com'era: «Pagina non tr
   - acceso per un LoRA di famiglia sconosciuta;
   - per un LoRA già nella lista di Generazione, al posto del tasto c'è «già nella lista».
 - Trigger e peso si leggono soltanto: si cambiano nel gestore dell'app.
+- **Trascinamento:** un'immagine trascinata su una riga (chiusa o aperta) diventa la sua anteprima, scelta dall'utente: un file dal Finder, o i dati dell'immagine quando il browser li passa. Se arriva solo un indirizzo il plug-in non lo segue («Il browser ha passato solo l'indirizzo: salva l'immagine e trascina il file.»): la rete resta solo per le pagine.
 - «Usa l'immagine di Control» è spenta senza un'immagine di partenza. «Scegli file…» accetta PNG, JPEG, WebP, HEIC; un file che non si decodifica dà «Immagine non leggibile.».
 - Come per ogni plug-in, «Aggiungi» funziona solo se il plug-in è acceso per il lavoro; altrimenti l'app risponde con l'errore di sempre, mostrato nella riga di stato del tab.
 

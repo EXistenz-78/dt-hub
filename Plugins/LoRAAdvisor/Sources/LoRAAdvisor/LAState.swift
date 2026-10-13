@@ -265,7 +265,13 @@ final class LAState: ObservableObject {
   /// A picture the user chose becomes the thumbnail; false when the file is not a picture.
   @discardableResult
   func setThumbnail(fromFile url: URL, for file: String) -> Bool {
-    guard let data = try? Data(contentsOf: url), let jpeg = LAThumbnail.jpeg(from: data) else {
+    setThumbnail(fromData: (try? Data(contentsOf: url)) ?? Data(), for: file)
+  }
+
+  /// A picture dropped on a row (a file from the Finder, or the picture a browser hands over) becomes the thumbnail.
+  @discardableResult
+  func setThumbnail(fromData data: Data, for file: String) -> Bool {
+    guard let jpeg = LAThumbnail.jpeg(from: data) else {
       rowMessages[file] = text(.unreadableImage)
       return false
     }
@@ -274,6 +280,9 @@ final class LAState: ObservableObject {
     objectWillChange.send()
     return true
   }
+
+  /// What was dropped carried no picture, only its address: the plug-in does not download from other sites.
+  func dropHadNoPicture(for file: String) { rowMessages[file] = text(.dropOnlyAddress) }
 
   var canUseControlImage: Bool { context?.startImage?.isEmpty == false }
 
