@@ -48,6 +48,15 @@ struct LAStateTests {
     #expect(state.blocker == nil)
   }
 
+  /// A server parked to make room for the language model lists no LoRAs for a while: the list and the advice stay.
+  @Test func anEmptyCatalogDoesNotWipeAListThatWasThere() {
+    state.apply(context: context())
+    state.setAdvice(#"[{"n":1}]"#, candidates: state.candidates())
+    state.apply(context: context(catalog: "[]"))
+    #expect(state.catalog.count == 4 && state.blocker == nil)
+    #expect(state.suggestions.count == 1)
+  }
+
   @Test func theCurrentFamilyComesFirstAndUnknownLast() {
     state.apply(context: context())
     #expect(state.groups.map(\.family) == ["b", "a", nil])
