@@ -1,6 +1,24 @@
 import CryptoKit
 import Foundation
 
+/// A page the search found that may be the LoRA's: the user chooses (spec §6.1).
+struct LACandidate: Codable, Equatable {
+  /// The name of the model on Civitai, or "author/repo" on Hugging Face.
+  var title: String
+  var link: String
+  /// The base model, when Civitai gives it.
+  var info: String?
+  /// How often the repository was downloaded (Hugging Face): the original stands out among its copies.
+  var downloads: Int?
+
+  init(title: String, link: String, info: String? = nil, downloads: Int? = nil) {
+    self.title = title
+    self.link = link
+    self.info = info
+    self.downloads = downloads
+  }
+}
+
 /// What the plug-in keeps for one LoRA (spec §5). Every field is optional in the file; one that is missing or of the
 /// wrong type takes its default.
 struct LAEntry: Codable, Equatable {
@@ -17,11 +35,14 @@ struct LAEntry: Codable, Equatable {
   var rawNotes: Bool
   /// The user chose the thumbnail (a file, or the Control tab's picture): an import does not replace it.
   var manualThumbnail: Bool
+  /// The pages the search found without one of the LoRA's own name: the user picks one, or none.
+  var candidates: [LACandidate]
 
   init(
     link: String? = nil, notes: String = "", thumbnail: String? = nil, searched: Bool = false, foundBySearch: Bool = false,
-    rawNotes: Bool = false, manualThumbnail: Bool = false
+    rawNotes: Bool = false, manualThumbnail: Bool = false, candidates: [LACandidate] = []
   ) {
+    self.candidates = candidates
     self.link = link
     self.notes = notes
     self.thumbnail = thumbnail
@@ -34,7 +55,13 @@ struct LAEntry: Codable, Equatable {
   var isEmpty: Bool { self == LAEntry() }
 
   private enum CodingKeys: String, CodingKey {
-    case link, notes, thumbnail, searched, foundBySearch, rawNotes, manualThumbnail
+    case link, notes, thumbnail, searched, foundBySearch, rawNotes, manualThumbnail, candidates
+  }
+
+  /// A candidate that cannot be read is left out without costing the others.
+  private struct LenientCandidate: Decodable {
+    var value: LACandidate?
+    init(from decoder: any Decoder) throws { value = try? LACandidate(from: decoder) }
   }
 
   init(from decoder: any Decoder) throws {
@@ -45,7 +72,9 @@ struct LAEntry: Codable, Equatable {
     func flag(_ key: CodingKeys) -> Bool { ((try? container.decodeIfPresent(Bool.self, forKey: key)) ?? nil) ?? false }
     self.init(
       link: text(.link), notes: text(.notes) ?? "", thumbnail: text(.thumbnail), searched: flag(.searched),
-      foundBySearch: flag(.foundBySearch), rawNotes: flag(.rawNotes), manualThumbnail: flag(.manualThumbnail))
+      foundBySearch: flag(.foundBySearch), rawNotes: flag(.rawNotes), manualThumbnail: flag(.manualThumbnail),
+      candidates: ((try? container.decodeIfPresent([LenientCandidate].self, forKey: .candidates)) ?? nil)?
+        .compactMap(\.value) ?? [])
   }
 
   /// Only what is not the default is written.
@@ -58,6 +87,7 @@ struct LAEntry: Codable, Equatable {
     if foundBySearch { try container.encode(true, forKey: .foundBySearch) }
     if rawNotes { try container.encode(true, forKey: .rawNotes) }
     if manualThumbnail { try container.encode(true, forKey: .manualThumbnail) }
+    if !candidates.isEmpty { try container.encode(candidates, forKey: .candidates) }
   }
 }
 

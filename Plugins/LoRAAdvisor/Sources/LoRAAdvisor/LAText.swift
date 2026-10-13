@@ -80,6 +80,13 @@ enum LAName {
       .components(separatedBy: .whitespaces).filter { !$0.isEmpty }.joined(separator: " ")
   }
 
+  /// The name without its first word, which is often a tag of the user's own for the model family ("k2", "q21");
+  /// nil for a name of one word.
+  static func withoutPrefix(_ name: String) -> String? {
+    let words = name.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
+    return words.count > 1 ? words.dropFirst().joined(separator: " ") : nil
+  }
+
   /// Letters and digits only, without capitals or accents: what two names are compared by.
   static func key(_ text: String) -> String {
     String(

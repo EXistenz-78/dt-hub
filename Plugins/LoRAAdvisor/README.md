@@ -12,7 +12,7 @@ Every LoRA of the server, grouped by family, the family of the current model fir
 
 Three steps fill the list in, each with its own button and **never by themselves**:
 
-1. **Find pages** looks on Civitai, by name, for the page of each LoRA that has none. A result is taken only when its name is the LoRA's (capitals, punctuation and a version at the end such as `v1.0` do not count); a name that only looks alike is not. Rows found this way say *found automatically* and have **Not this one**; the others say *page not found* and have **Search again**.
+1. **Find pages** looks on Civitai and on Hugging Face, by name, for the page of each LoRA that has none. It tries the name as it is and without its first word, which is often a tag of your own for the model family (`k2`, `q21`). A result is taken at once only when its name is the LoRA's (capitals, punctuation and a version at the end such as `v1.0` do not count): those rows say *found automatically* and have **Not this one**. Otherwise the row says *choose the page* and, opened, lists up to five candidates (three from Civitai, two from Hugging Face, the most downloaded first) with **Use This** and a button that opens the page in your browser. With no result at all it says *page not found*. **Search again** repeats the search for one LoRA.
 2. **Import** brings the text of the page into the notes and the first picture of its gallery as the thumbnail. It runs after a page is found, or from **Import from the page** with a link you paste: a model page of Civitai (`civitai.com` or `civitai.red`, with `?modelVersionId=` for a LoRA that is one version of a bundle) or a repository of Hugging Face.
 3. **Summarise all** has the local LLM rewrite the notes that are still the raw beginning of a page as a short summary (what the LoRA is for, its trigger words, the suggested weights).
 
@@ -26,7 +26,7 @@ A text field that starts as the current prompt; leave it to get advice for the p
 
 This is the one plug-in of DT Hub that uses the network, and only when you press **Find pages**, **Search again** or **Import from the page**:
 
-- **Find pages** sends the **names of your LoRAs** to Civitai as search text.
+- **Find pages** sends the **names of your LoRAs** to Civitai and to Hugging Face as search text (up to three requests per LoRA).
 - **Import** asks Civitai's public API or Hugging Face for the page, and downloads its first picture.
 - Nothing else leaves your Mac: no prompt, no image, no account. The summaries and the advice are written by the local LLM.
 
@@ -36,7 +36,7 @@ Requests are `GET` over https, with no cookies and no credentials, to `civitai.c
 
 - The plug-in must be **on for the job** (header menu) to see the LoRAs and to add them.
 - The notes and thumbnails are **global**, not per project: `~/Library/Application Support/DT Hub/Data/LoRAAdvisor/` (`loras.json`, `thumbs/`, `pages/`). The entries of LoRAs the server no longer has are kept.
-- The search is by name and can be wrong, or find nothing: a LoRA that is not on Civitai, one with another name there, one that is a version of a bundle. Paste the link for those.
+- The search is by name and can find nothing: a LoRA you renamed, one that is not on either site, one that is a version of a bundle. Paste the link for those. Look at a candidate's page before you take it: on Hugging Face a LoRA often has several copies.
 - Pages that need an account are not read; write the notes and choose a picture yourself.
 - The first picture of a page's gallery is taken as it is, whatever it shows.
 
