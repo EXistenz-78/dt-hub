@@ -38,6 +38,21 @@ enum CatalogBuilder {
       upscalers: others.filter(isUpscaler).sorted(), faceRestorers: others.filter(isFaceRestorer).sorted())
   }
 
+  /// The catalog with the models of Draw Things' lists (official and community) that are not in the server's folder,
+  /// marked as remote: with DT+ (Bridge Mode) the cloud runs them. Nothing else changes.
+  static func addingRemoteModels(to catalog: ModelCatalog, live: [String: Data]) -> ModelCatalog {
+    let installed = Set(catalog.models.map(\.file))
+    let remote = live.keys.sorted().filter { !installed.contains($0) }.compactMap { file -> CatalogModel? in
+      guard let json = live[file] else { return nil }
+      let info = specInfo(json: json, file: file)
+      return CatalogModel(file: file, name: info.name, family: info.family, capabilities: info.capabilities, isRemote: true)
+    }
+    guard !remote.isEmpty else { return catalog }
+    return ModelCatalog(
+      models: catalog.models + remote, loras: catalog.loras, fileCount: catalog.fileCount, upscalers: catalog.upscalers,
+      faceRestorers: catalog.faceRestorers)
+  }
+
   /// Upscalers of Draw Things' zoo (Real-ESRGAN, UltraSharp, Remacri, NMKD…), by file name.
   static func isUpscaler(_ file: String) -> Bool {
     let name = file.lowercased()

@@ -7,8 +7,13 @@ public struct CatalogModel: Identifiable, Equatable, Sendable {
   public let family: String?
   /// What the model supports, from its specification.
   public let capabilities: ModelCapabilities
+  /// In Draw Things' lists but not in the server's folder: only DT+ (the cloud, through Bridge Mode) can run it.
+  public let isRemote: Bool
 
-  public init(file: String, name: String, family: String?, capabilities: ModelCapabilities = .unknown) {
+  public init(
+    file: String, name: String, family: String?, capabilities: ModelCapabilities = .unknown, isRemote: Bool = false
+  ) {
+    self.isRemote = isRemote
     self.file = file
     self.name = name
     self.family = family

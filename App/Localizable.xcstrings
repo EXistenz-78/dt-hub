@@ -3316,6 +3316,40 @@
         }
       }
     },
+    "header.dtplus.help": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DT+: also lists the Draw Things models you have not downloaded, to run in the cloud. Turn it on when DT Hub is connected to the Draw Things app with Bridge Mode on."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DT+: mostra anche i modelli di Draw Things non scaricati, da usare in cloud. Accendilo se DT Hub è collegato all'app Draw Things con Bridge Mode attivo."
+          }
+        }
+      }
+    },
+    "header.dtplus.managed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DT+ works only when connected to the Draw Things app (Bridge Mode): the server DT Hub starts does not have it."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DT+ funziona solo collegandosi all'app Draw Things (Bridge Mode): il server avviato da DT Hub non lo ha."
+          }
+        }
+      }
+    },
     "header.model.browsingDisabled": {
       "extractionState": "manual",
       "localizations": {
