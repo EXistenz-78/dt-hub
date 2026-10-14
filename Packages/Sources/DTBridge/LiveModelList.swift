@@ -7,8 +7,14 @@ import HubKit
 public actor LiveModelList {
   public static let address = URL(string: "https://models.drawthings.ai/models.json")!
 
+  /// The community models (`uncurated_models.json`): with DT+ the cloud runs them too.
+  public static let communityAddress = URL(string: "https://models.drawthings.ai/uncurated_models.json")!
+
   /// The list of the app: ~/Library/Application Support/DT Hub/models-list.json.
   public static let shared = LiveModelList(cacheURL: CachedDownload.supportFile("models-list.json"))
+  /// The community list, downloaded only while DT+ is on: …/DT Hub/community-models-list.json.
+  public static let community = LiveModelList(
+    cacheURL: CachedDownload.supportFile("community-models-list.json"), address: LiveModelList.communityAddress)
 
   private let source: CachedDownload
   private var parsed: (generation: Int, specs: [String: Data])?

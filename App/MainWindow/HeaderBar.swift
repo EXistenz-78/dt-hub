@@ -24,6 +24,7 @@ struct HeaderBar: View {
       projectMenu
       pluginsMenu
       modelMenu
+      dtPlusButton
       Spacer(minLength: DS.groupGap)
       DSStatusDot(status: connection.indicator)
         .padding(.horizontal, 6)
@@ -41,6 +42,24 @@ struct HeaderBar: View {
     .padding(.horizontal, DS.panelPadding)
     .padding(.vertical, 10)
     .dsPanel()
+  }
+
+  /// DT+: with the Draw Things app's server in Bridge Mode, the models of Draw Things' lists that are not downloaded
+  /// are offered too, and run in the cloud. Teal while on; off and disabled with the server DT Hub starts.
+  private var dtPlusButton: some View {
+    let on = connection.dtPlus && connection.canUseDTPlus
+    return Button {
+      Task { await connection.setDTPlus(!connection.dtPlus) }
+    } label: {
+      Text(verbatim: "DT+")
+        .fontWeight(.semibold)
+        .foregroundStyle(on ? DS.accent : Color.primary)
+    }
+    .buttonStyle(DSPillButtonStyle())
+    .disabled(!connection.canUseDTPlus || generation.session.isRunning || generation.isPreparing)
+    .help(String(localized: connection.canUseDTPlus ? "header.dtplus.help" : "header.dtplus.managed"))
+    .accessibilityLabel(String(localized: "header.dtplus.help"))
+    .accessibilityValue(String(localized: on ? "header.incremental.on" : "header.incremental.off"))
   }
 
   /// Incremental mode: each result becomes the start image of the next RUN. Teal and filled while on.
@@ -136,7 +155,12 @@ struct HeaderBar: View {
                 get: { selection.selectedFile == model.file },
                 set: { _ in generation.chooseModel(model.file, in: connection) })
             ) {
-              Text(verbatim: model.name)
+              // A model that is not downloaded runs in the cloud (DT+).
+              if model.isRemote {
+                Label(model.name, systemImage: "cloud")
+              } else {
+                Text(verbatim: model.name)
+              }
             }
           }
         } header: {
