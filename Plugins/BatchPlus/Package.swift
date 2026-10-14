@@ -4,7 +4,7 @@ import PackageDescription
 // The Batch plus plug-in of DT Hub (docs/superpowers/specs/2026-10-09-plugin-batch-plus-design.md).
 let package = Package(
   name: "BatchPlus",
-  platforms: [.macOS(.v26)],
+  platforms: [.macOS(.v15)],
   products: [.library(name: "BatchPlus", type: .dynamic, targets: ["BatchPlus"])],
   dependencies: [.package(name: "PluginKit", path: "../../PluginKit")],
   targets: [

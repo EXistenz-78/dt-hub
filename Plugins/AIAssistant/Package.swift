@@ -4,7 +4,7 @@ import PackageDescription
 // The AI Assistant plug-in of DT Hub (docs/superpowers/specs/2026-10-10-plugin-llm-chat-design.md).
 let package = Package(
   name: "AIAssistant",
-  platforms: [.macOS(.v26)],
+  platforms: [.macOS(.v15)],
   products: [.library(name: "AIAssistant", type: .dynamic, targets: ["AIAssistant"])],
   dependencies: [.package(name: "PluginKit", path: "../../PluginKit")],
   targets: [

@@ -9,7 +9,7 @@ import PackageDescription
 // its own with `moduleAliases` (see Plugins/SphereLight/Package.swift).
 let package = Package(
   name: "DTHubPluginKit",
-  platforms: [.macOS(.v26)],
+  platforms: [.macOS(.v15)],
   products: [
     .library(name: "DTHubPluginKit", targets: ["DTHubPluginKit"]),
     .library(name: "DTHubDesign", targets: ["DTHubDesign"]),

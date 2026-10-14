@@ -6,7 +6,7 @@ import PackageDescription
 let package = Package(
   name: "DTHubPackages",
   defaultLocalization: "en",
-  platforms: [.macOS(.v26)],
+  platforms: [.macOS(.v15)],
   products: [
     .library(name: "HubKit", targets: ["HubKit"]),
     .library(name: "HubCore", targets: ["HubCore"]),

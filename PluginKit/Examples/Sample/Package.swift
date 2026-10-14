@@ -13,7 +13,7 @@ let name = variantB ? "SamplePluginB" : "SamplePlugin"
 let kitAlias = variantB ? "SampleBKit" : "SampleKit"
 let package = Package(
   name: name,
-  platforms: [.macOS(.v26)],
+  platforms: [.macOS(.v15)],
   products: [.library(name: name, type: .dynamic, targets: [name])],
   dependencies: [.package(name: "PluginKit", path: "../..")],
   targets: [
