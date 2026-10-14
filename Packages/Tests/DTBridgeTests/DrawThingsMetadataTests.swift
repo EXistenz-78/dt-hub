@@ -73,4 +73,35 @@ struct DrawThingsMetadataTests {
     #expect(try object(try #require(PNGImageStore.comment(in: url)))["c"] == nil)
     #expect(PNGImageStore.job(in: url) == job && PNGImageStore.elapsed(in: url) == 3)
   }
+
+  @Test func theDescriptionIsThePromptThenTheNegativeThenTheParameters() {
+    let lines = DrawThingsMetadata.description(for: job).components(separatedBy: "\n")
+    #expect(lines == [
+      "xx a cat",
+      "-blurry",
+      "Steps: 40, Sampler: DDIM Trailing, Guidance Scale: 1.0, Seed: 2140239989, Size: 2048x1792, "
+        + "Model: qwen_image_2.1_q8p.ckpt, Strength: 0.6, Seed Mode: Scale Alike, Shift: 1.0, "
+        + "LoRA Model: x_lora_f16.ckpt, LoRA Weight: 0.8",
+    ])
+  }
+
+  @Test func withoutANegativeThereIsNoDashLine() {
+    var parameters = job.parameters
+    parameters.loras = []
+    let plain = GenerationJob(prompt: "a cat", negativePrompt: "", model: job.model, parameters: parameters)
+    let lines = DrawThingsMetadata.description(for: plain).components(separatedBy: "\n")
+    #expect(lines.count == 2)
+    #expect(lines[1].hasSuffix("Strength: 1.0, Seed Mode: Scale Alike, Shift: 1.0"))
+  }
+
+  @Test func thePictureCarriesTheDescription() throws {
+    let store = PNGImageStore(
+      folder: folder(), metadata: DrawThingsMetadata.comment, description: DrawThingsMetadata.description)
+    let url = try store.save(image(), job: job, index: 0, date: Date(), elapsed: 1)
+    let source = try #require(CGImageSourceCreateWithURL(url as CFURL, nil))
+    let properties = try #require(CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any])
+    let png = try #require(properties[kCGImagePropertyPNGDictionary] as? [CFString: Any])
+    #expect(png[kCGImagePropertyPNGDescription] as? String == DrawThingsMetadata.description(for: job))
+    #expect(PNGImageStore.job(in: url) == job)
+  }
 }
