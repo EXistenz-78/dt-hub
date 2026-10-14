@@ -52,7 +52,7 @@ This is an independent community project, not affiliated with or endorsed by Dra
 
 ## Requirements
 
-- macOS 26 and an Apple Silicon Mac.
+- macOS 15 Sequoia or later and an Apple Silicon Mac (Liquid Glass on macOS 26).
 - A Draw Things gRPC server: the Draw Things app with its API server enabled, or the `gRPCServerCLI` binary, which DT Hub can start itself.
 - To build: Xcode 27.
 

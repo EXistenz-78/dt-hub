@@ -5,7 +5,7 @@ Objective-C selectors and JSON messages (see `docs/superpowers/specs/2026-10-03-
 
 ## Writing a plug-in
 
-1. A Swift package with a **dynamic** library product that depends on `DTHubPluginKit` (copy `Examples/Sample`).
+1. A Swift package with a **dynamic** library product that depends on `DTHubPluginKit` (copy `Examples/Sample`). Build with `platforms: [.macOS(.v15)]`: a plug-in built for a newer macOS does not load on macOS 15.
 2. A class conforming to `DTHubPlugin` (`manifest`, `makeViewController()`, `start(host:)`, `handle(_:)`).
 3. A subclass of `DTHubPluginEntry` with an Objective-C name, overriding `makePlugin()`:
 
