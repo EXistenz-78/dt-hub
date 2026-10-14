@@ -32,4 +32,31 @@ public enum DrawThingsMetadata {
     guard let data = try? JSONSerialization.data(withJSONObject: object, options: [.sortedKeys]) else { return "" }
     return String(data: data, encoding: .utf8) ?? ""
   }
+
+  /// The PNG "Description" in the layout of Draw Things (which ImageIO mirrors into the XMP `dc:description`, shown
+  /// as IPTC): the prompt as sent, then the negative prompt on a line of its own after a "-" (left out when empty),
+  /// then one line of parameters; DTInspector reads the parameters from here. Decimals keep their ".0" as in
+  /// Draw Things.
+  @Sendable public static func description(for job: GenerationJob) -> String {
+    let parameters = job.parameters
+    var fields = [
+      "Steps: \(parameters.steps)",
+      "Sampler: \(parameters.sampler.displayName)",
+      "Guidance Scale: \(parameters.guidanceScale)",
+      "Seed: \(parameters.seed)",
+      "Size: \(parameters.width)x\(parameters.height)",
+      "Model: \(job.model)",
+      "Strength: \(job.imageStrength ?? 1)",
+      "Seed Mode: Scale Alike",
+      "Shift: \(parameters.shift)",
+    ]
+    for lora in parameters.loras {
+      fields.append("LoRA Model: \(lora.file)")
+      fields.append("LoRA Weight: \(lora.weight)")
+    }
+    var lines = [job.promptWithTriggers]
+    if !job.negativePrompt.isEmpty { lines.append("-" + job.negativePrompt) }
+    lines.append(fields.joined(separator: ", "))
+    return lines.joined(separator: "\n")
+  }
 }

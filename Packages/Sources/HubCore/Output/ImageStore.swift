@@ -47,8 +47,15 @@ public struct PNGImageStore: ImageStore {
 
   /// Writes the "UserComment" of a picture from its job and the seconds it took.
   public let metadata: @Sendable (GenerationJob, TimeInterval?) -> String
+  /// The PNG "Description": the prompt alone, or in the app the layout of Draw Things (prompt, negative, parameters).
+  public let description: @Sendable (GenerationJob) -> String
 
-  public init(folder: URL, metadata: @escaping @Sendable (GenerationJob, TimeInterval?) -> String = PNGImageStore.legacyComment) {
+  public init(
+    folder: URL,
+    metadata: @escaping @Sendable (GenerationJob, TimeInterval?) -> String = PNGImageStore.legacyComment,
+    description: @escaping @Sendable (GenerationJob) -> String = { $0.promptWithTriggers }
+  ) {
+    self.description = description
     self.folder = folder
     self.metadata = metadata
   }
@@ -69,7 +76,7 @@ public struct PNGImageStore: ImageStore {
     let json = metadata(job, elapsed)
     let properties: [CFString: Any] = [
       kCGImagePropertyPNGDictionary: [
-        kCGImagePropertyPNGDescription: job.promptWithTriggers,
+        kCGImagePropertyPNGDescription: description(job),
         kCGImagePropertyPNGSoftware: "DT Hub",
       ],
       kCGImagePropertyExifDictionary: [kCGImagePropertyExifUserComment: json],
