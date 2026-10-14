@@ -4,7 +4,7 @@ import PackageDescription
 // The Character Sheet plug-in of DT Hub (docs/superpowers/specs/2026-10-07-plugin-character-sheet-design.md).
 let package = Package(
   name: "CharacterSheet",
-  platforms: [.macOS(.v26)],
+  platforms: [.macOS(.v15)],
   products: [.library(name: "CharacterSheet", type: .dynamic, targets: ["CharacterSheet"])],
   dependencies: [.package(name: "PluginKit", path: "../../PluginKit")],
   targets: [

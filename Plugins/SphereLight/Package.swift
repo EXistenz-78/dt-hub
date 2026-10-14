@@ -4,7 +4,7 @@ import PackageDescription
 // The Sphere Light Reference plug-in of DT Hub (docs/superpowers/specs/2026-10-04-plugin-sphere-light-design.md).
 let package = Package(
   name: "SphereLight",
-  platforms: [.macOS(.v26)],
+  platforms: [.macOS(.v15)],
   products: [.library(name: "SphereLight", type: .dynamic, targets: ["SphereLight"])],
   dependencies: [.package(name: "PluginKit", path: "../../PluginKit")],
   targets: [

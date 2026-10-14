@@ -4,7 +4,7 @@ import PackageDescription
 // The LoRA Advisor plug-in of DT Hub (docs/superpowers/specs/2026-10-13-plugin-lora-advisor-design.md).
 let package = Package(
   name: "LoRAAdvisor",
-  platforms: [.macOS(.v26)],
+  platforms: [.macOS(.v15)],
   products: [.library(name: "LoRAAdvisor", type: .dynamic, targets: ["LoRAAdvisor"])],
   dependencies: [.package(name: "PluginKit", path: "../../PluginKit")],
   targets: [

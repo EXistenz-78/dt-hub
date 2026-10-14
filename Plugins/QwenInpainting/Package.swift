@@ -4,7 +4,7 @@ import PackageDescription
 // The Qwen 2.1 Inpainting plug-in of DT Hub (docs/superpowers/specs/2026-10-10-plugin-qwen-inpainting-design.md).
 let package = Package(
   name: "QwenInpainting",
-  platforms: [.macOS(.v26)],
+  platforms: [.macOS(.v15)],
   products: [.library(name: "QwenInpainting", type: .dynamic, targets: ["QwenInpainting"])],
   dependencies: [.package(name: "PluginKit", path: "../../PluginKit")],
   targets: [

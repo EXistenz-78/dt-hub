@@ -4,7 +4,7 @@ import PackageDescription
 // The Prompt Master I4 plug-in of DT Hub (docs/superpowers/specs/2026-10-06-plugin-prompt-master-i4-design.md).
 let package = Package(
   name: "PromptMasterI4",
-  platforms: [.macOS(.v26)],
+  platforms: [.macOS(.v15)],
   products: [.library(name: "PromptMasterI4", type: .dynamic, targets: ["PromptMasterI4"])],
   dependencies: [.package(name: "PluginKit", path: "../../PluginKit")],
   targets: [
