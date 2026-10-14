@@ -46,6 +46,12 @@ public actor CloudCatalog {
     CatalogBuilder.parseLoRAMetadata(await loraList.data() ?? Data())
   }
 
+  /// The same LoRAs as Draw Things' JSON objects, by file: a cloud LoRA's goes into the request's override, so the
+  /// cloud reads it with its own name, trigger and family.
+  public func loraSpecs() async -> [String: Data] {
+    LiveModelList.parse(await loraList.data() ?? Data())
+  }
+
   static func decode(_ data: Data) -> Set<String> {
     Set((try? JSONDecoder().decode([String].self, from: data)) ?? [])
   }

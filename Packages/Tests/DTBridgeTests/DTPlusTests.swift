@@ -148,6 +148,9 @@ struct CloudCatalogTests {
     #expect(await cloud.files() == ["a.ckpt", "b_lora_f16.ckpt"])
     let loras = await cloud.loras()
     #expect(loras.map(\.file) == ["b_lora_f16.ckpt"] && loras.first?.trigger == "bb")
+    // The description as Draw Things writes it, for the request's override.
+    let spec = try #require(await cloud.loraSpecs()["b_lora_f16.ckpt"])
+    #expect(String(decoding: spec, as: UTF8.self).contains("\"version\":\"flux1\""))
     // Kept on disk: the next launch has it even when the cloud does not answer.
     let offline = CloudCatalog(
       filesCache: cache, lorasCache: cache.appendingPathExtension("loras"),
