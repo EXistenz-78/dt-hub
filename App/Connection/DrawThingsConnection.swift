@@ -18,6 +18,20 @@ final class DrawThingsConnection {
   private(set) var managed: ManagedServerSettings
   /// The version of the gRPCServerCLI DT Hub starts and whether a newer one is out (checked at launch and on demand).
   private(set) var serverVersion = ServerVersionInfo.idle
+  /// DT+: the server is the Draw Things app with Bridge Mode on, so the cloud can run every model of Draw Things' lists,
+  /// downloaded or not. Set by hand (the server does not say it); remembered. Only with the app's server: the server
+  /// DT Hub starts has no Bridge Mode.
+  private(set) var dtPlus = UserDefaults.standard.bool(forKey: DrawThingsConnection.dtPlusKey)
+  static let dtPlusKey = "drawThings.dtPlus"
+  var canUseDTPlus: Bool { managed.mode != .managed }
+
+  func setDTPlus(_ on: Bool) async {
+    guard on != dtPlus else { return }
+    dtPlus = on
+    UserDefaults.standard.set(on, forKey: Self.dtPlusKey)
+    await monitor.replaceBackend(makeBackend())
+  }
+
   /// True when the last Apply could not save the shared secret in the Keychain.
   private(set) var secretSaveFailed = false
 
@@ -174,6 +188,6 @@ final class DrawThingsConnection {
     guard effective.validationError == nil else { return nil }
     return DrawThingsBackend(
       host: effective.trimmedHost, port: effective.port, useTLS: effective.useTLS,
-      sharedSecret: managed.mode == .managed ? nil : secretStore.read())
+      sharedSecret: managed.mode == .managed ? nil : secretStore.read(), includeRemoteModels: dtPlus && canUseDTPlus)
   }
 }

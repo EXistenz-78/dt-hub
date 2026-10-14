@@ -129,7 +129,8 @@ enum JobMapper {
 
   /// The update for a library event; nil for events DT Hub does not show (audio, downloads,
   /// single images: the batch's full list arrives with `.completed`).
-  static func update(for event: GenerationEvent) throws -> GenerationUpdate? {
+  /// `expected` is how many images the job asked for (its batch size).
+  static func update(for event: GenerationEvent, expected: Int = 1) throws -> GenerationUpdate? {
     switch event {
     case .progress(let progress):
       switch progress.stage {
@@ -143,10 +144,19 @@ enum JobMapper {
       return .preview(image)
     case .completed(let result):
       guard !result.images.isEmpty else { throw BackendError.noImages }
-      return .finished(result.images)
-    case .image, .audio, .remoteDownload:
+      return .finished(finalImages(result.images, expected: expected))
+    case .image(let image, _):
+      // In Bridge Mode the cloud sends the picture several times while it works: shown as it comes, like a preview.
+      return .preview(image)
+    case .audio, .remoteDownload:
       return nil
     }
+  }
+
+  /// The results of a job: the last `expected` images. A server on this Mac sends exactly those; the cloud of Draw
+  /// Things (Bridge Mode) sends the picture several times while it works, and only the last ones are finished.
+  static func finalImages(_ images: [CGImage], expected: Int) -> [CGImage] {
+    Array(images.suffix(max(1, expected)))
   }
 
   /// A library error as DT Hub reports it; cancellation passes through unchanged.

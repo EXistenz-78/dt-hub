@@ -14,12 +14,17 @@ public actor DrawThingsBackend: GenerationBackend {
   private var service: DrawThingsService?
   /// The models Draw Things published after the snapshot this app carries; nil in the tests.
   private let liveModels: LiveModelList?
+  /// DT+ is on: the models of Draw Things' lists that are not on the server are listed too, for the cloud.
+  private let includeRemoteModels: Bool
+  private let communityModels: LiveModelList?
 
   /// - Parameters:
   ///   - useTLS: the Draw Things API server uses TLS by default (spec §5).
   ///   - sharedSecret: sent with every request when the server requires one.
-  public init(host: String, port: Int, useTLS: Bool, sharedSecret: String?) {
-    self.init(host: host, port: port, useTLS: useTLS, sharedSecret: sharedSecret, liveModels: .shared) {}
+  public init(host: String, port: Int, useTLS: Bool, sharedSecret: String?, includeRemoteModels: Bool = false) {
+    self.init(
+      host: host, port: port, useTLS: useTLS, sharedSecret: sharedSecret, liveModels: .shared,
+      includeRemoteModels: includeRemoteModels, communityModels: .community) {}
   }
 
   /// The ceiling of a request or reply: 1 GiB. The default (256 MiB) stops an image-to-image or an
@@ -28,9 +33,12 @@ public actor DrawThingsBackend: GenerationBackend {
 
   init(
     host: String, port: Int, useTLS: Bool, sharedSecret: String?, liveModels: LiveModelList? = nil,
+    includeRemoteModels: Bool = false, communityModels: LiveModelList? = nil,
     onNewClient: @escaping @Sendable () -> Void
   ) {
     self.liveModels = liveModels
+    self.includeRemoteModels = includeRemoteModels
+    self.communityModels = communityModels
     endpoint = ServerEndpoint(host: host, port: port)
     options = ConnectionOptions(
       security: useTLS ? .tls() : .plaintext,
@@ -56,7 +64,8 @@ public actor DrawThingsBackend: GenerationBackend {
     }
     // The models released after the bundled snapshot: registered, they are listed and their requests carry the
     // right specification.
-    if let live = await liveModels?.specs(), !live.isEmpty {
+    let live: [String: Data] = await liveModels?.specs() ?? [:]
+    if !live.isEmpty {
       await service.modelSpecs.register(Self.specs(toRegisterFor: reply.files, live: live))
     }
     var specs: [String: ModelSpecInfo] = [:]
@@ -65,7 +74,20 @@ public actor DrawThingsBackend: GenerationBackend {
         specs[file] = CatalogBuilder.specInfo(json: spec.json, file: file)
       }
     }
-    return CatalogBuilder.build(files: reply.files, modelSpecs: specs, loraMetadata: reply.override.loras)
+    let catalog = CatalogBuilder.build(files: reply.files, modelSpecs: specs, loraMetadata: reply.override.loras)
+    guard includeRemoteModels else { return catalog }
+    // The official list first: a file in both lists keeps its official description.
+    let community: [String: Data] = await communityModels?.specs() ?? [:]
+    let remote = community.merging(live) { _, official in official }
+    return CatalogBuilder.addingRemoteModels(to: catalog, live: remote)
+  }
+
+  /// A model the server's folder does not have (DT+): its specification goes with the request, so the cloud knows it.
+  private func registerRemoteSpec(for file: String, on service: DrawThingsService) async {
+    guard includeRemoteModels else { return }
+    var json = (await liveModels?.specs() ?? [:])[file]
+    if json == nil { json = (await communityModels?.specs() ?? [:])[file] }
+    if let json, let spec = ModelSpec(json: json) { await service.modelSpecs.register([spec]) }
   }
 
   /// The specifications of the live list for the files the server has.
@@ -78,8 +100,9 @@ public actor DrawThingsBackend: GenerationBackend {
       let task = Task {
         do {
           let service = await self.currentService()
+          await self.registerRemoteSpec(for: job.model, on: service)
           for try await event in service.stream(try JobMapper.request(for: job, inputs: inputs)) {
-            if let update = try JobMapper.update(for: event) { continuation.yield(update) }
+            if let update = try JobMapper.update(for: event, expected: job.parameters.batchSize) { continuation.yield(update) }
           }
           continuation.finish()
         } catch {
