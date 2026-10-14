@@ -38,6 +38,63 @@ enum CatalogBuilder {
       upscalers: others.filter(isUpscaler).sorted(), faceRestorers: others.filter(isFaceRestorer).sorted())
   }
 
+  /// The catalog with the models of Draw Things' lists (official and community) that are not in the server's folder,
+  /// marked as remote: with DT+ (Bridge Mode) the cloud runs them. Nothing else changes.
+  static func addingRemoteModels(to catalog: ModelCatalog, live: [String: Data]) -> ModelCatalog {
+    let installed = Set(catalog.models.map(\.file))
+    let remote = live.keys.sorted().filter { !installed.contains($0) }.compactMap { file -> CatalogModel? in
+      guard let json = live[file] else { return nil }
+      let info = specInfo(json: json, file: file)
+      return CatalogModel(file: file, name: info.name, family: info.family, capabilities: info.capabilities, isRemote: true)
+    }
+    guard !remote.isEmpty else { return catalog }
+    return ModelCatalog(
+      models: catalog.models + remote, loras: catalog.loras, fileCount: catalog.fileCount, upscalers: catalog.upscalers,
+      faceRestorers: catalog.faceRestorers)
+  }
+
+  /// The catalog while DT+ is on and the cloud's list is known: the models are only those the cloud has (the
+  /// downloaded ones keep the server's description, the others come from `specs` and are marked as remote); the
+  /// LoRAs are the local ones plus the cloud's (`cloudLoRAs`, from Draw Things' `loras.json`, or by name when it does
+  /// not list them). The LoRA card keeps showing only the family of the current model.
+  static func cloudCatalog(
+    local: ModelCatalog, specs: [String: Data], cloudFiles: Set<String>, cloudLoRAs: [CatalogLoRA]
+  ) -> ModelCatalog {
+    let localModels = local.models.filter { cloudFiles.contains($0.file) }
+    let localFiles = Set(local.models.map(\.file))
+    let remote = specs.keys.sorted().filter { cloudFiles.contains($0) && !localFiles.contains($0) }.compactMap {
+      file -> CatalogModel? in
+      guard let json = specs[file] else { return nil }
+      let info = specInfo(json: json, file: file)
+      return CatalogModel(file: file, name: info.name, family: info.family, capabilities: info.capabilities, isRemote: true)
+    }
+
+    var known = Set(local.loras.map(\.file))
+    var loras = local.loras
+    let described = Dictionary(cloudLoRAs.map { ($0.file, $0) }) { first, _ in first }
+    for file in cloudFiles.sorted() where file.contains("_lora") && !known.contains(file) {
+      known.insert(file)
+      loras.append(described[file] ?? CatalogLoRA(file: file, name: file, family: inferredFamily(ofLoRA: file)))
+    }
+    return ModelCatalog(
+      models: localModels + remote, loras: loras, fileCount: local.fileCount, upscalers: local.upscalers,
+      faceRestorers: local.faceRestorers)
+  }
+
+  /// The family of a cloud LoRA that `loras.json` does not list (old speed-ups of SD 1.5, SDXL, SD3, LTX, Wan), from
+  /// its file name; nil when the name does not say (it then shows for every model, as an unknown one).
+  static func inferredFamily(ofLoRA file: String) -> String? {
+    let name = file.lowercased()
+    if name.contains("refiner") { return nil }
+    if name.contains("sd3") { return "sd3" }
+    if name.contains("ltx_2.3") { return "ltx2.3" }
+    if name.contains("wan_2.1_14b") { return "wan_v2.1_14b" }
+    if name.contains("wan_2.1_1.3b") { return "wan_v2.1_1.3b" }
+    if name.contains("sdxl") || name.contains("_xl_") || name.contains("fooocus") { return "sdxl_base_v0.9" }
+    if name.contains("sd_v1") || name.contains("v1.5") { return "v1" }
+    return nil
+  }
+
   /// Upscalers of Draw Things' zoo (Real-ESRGAN, UltraSharp, Remacri, NMKD…), by file name.
   static func isUpscaler(_ file: String) -> Bool {
     let name = file.lowercased()
