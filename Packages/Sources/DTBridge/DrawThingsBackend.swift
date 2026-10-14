@@ -17,6 +17,8 @@ public actor DrawThingsBackend: GenerationBackend {
   /// DT+ is on: the models of Draw Things' lists that are not on the server are listed too, for the cloud.
   private let includeRemoteModels: Bool
   private let communityModels: LiveModelList?
+  /// What the cloud has: with DT+ the menu lists only its models, and its LoRAs join the local ones.
+  private let cloud: CloudCatalog?
 
   /// - Parameters:
   ///   - useTLS: the Draw Things API server uses TLS by default (spec §5).
@@ -24,7 +26,7 @@ public actor DrawThingsBackend: GenerationBackend {
   public init(host: String, port: Int, useTLS: Bool, sharedSecret: String?, includeRemoteModels: Bool = false) {
     self.init(
       host: host, port: port, useTLS: useTLS, sharedSecret: sharedSecret, liveModels: .shared,
-      includeRemoteModels: includeRemoteModels, communityModels: .community) {}
+      includeRemoteModels: includeRemoteModels, communityModels: .community, cloud: .shared) {}
   }
 
   /// The ceiling of a request or reply: 1 GiB. The default (256 MiB) stops an image-to-image or an
@@ -33,12 +35,13 @@ public actor DrawThingsBackend: GenerationBackend {
 
   init(
     host: String, port: Int, useTLS: Bool, sharedSecret: String?, liveModels: LiveModelList? = nil,
-    includeRemoteModels: Bool = false, communityModels: LiveModelList? = nil,
+    includeRemoteModels: Bool = false, communityModels: LiveModelList? = nil, cloud: CloudCatalog? = nil,
     onNewClient: @escaping @Sendable () -> Void
   ) {
     self.liveModels = liveModels
     self.includeRemoteModels = includeRemoteModels
     self.communityModels = communityModels
+    self.cloud = cloud
     endpoint = ServerEndpoint(host: host, port: port)
     options = ConnectionOptions(
       security: useTLS ? .tls() : .plaintext,
@@ -79,6 +82,11 @@ public actor DrawThingsBackend: GenerationBackend {
     // The official list first: a file in both lists keeps its official description.
     let community: [String: Data] = await communityModels?.specs() ?? [:]
     let remote = community.merging(live) { _, official in official }
+    // The cloud's own list: only what it can run. Without it (never reached, nothing saved) every model of the lists.
+    if let cloudFiles = await cloud?.files() {
+      let cloudLoRAs = await cloud?.loras() ?? []
+      return CatalogBuilder.cloudCatalog(local: catalog, specs: remote, cloudFiles: cloudFiles, cloudLoRAs: cloudLoRAs)
+    }
     return CatalogBuilder.addingRemoteModels(to: catalog, live: remote)
   }
 
