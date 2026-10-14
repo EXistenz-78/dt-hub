@@ -58,3 +58,20 @@ public enum GenerationUpdate: Sendable {
   /// All the final images of the RUN.
   case finished([CGImage])
 }
+
+extension GenerationJob {
+  /// The key under which the layout of Draw Things keeps DT Hub's own job in a picture's "UserComment".
+  public static let metadataKey = "dthub"
+  /// The key of the seconds a picture took, next to the job.
+  public static let elapsedKey = "elapsedSeconds"
+
+  /// The job as a JSON object, with the seconds the picture took when they are known: what DT Hub keeps in a picture.
+  public func metadataObject(elapsed: TimeInterval?) -> [String: Any] {
+    guard let data = try? JSONEncoder().encode(self),
+      var object = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+    else { return [:] }
+    if let elapsed { object[Self.elapsedKey] = elapsed }
+    return object
+  }
+}
+
