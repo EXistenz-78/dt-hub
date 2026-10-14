@@ -91,11 +91,16 @@ public actor DrawThingsBackend: GenerationBackend {
   }
 
   /// A model the server's folder does not have (DT+): its specification goes with the request, so the cloud knows it.
-  private func registerRemoteSpec(for file: String, on service: DrawThingsService) async {
+  private func registerRemoteSpec(for file: String, loras lorasFiles: [String], on service: DrawThingsService) async {
     guard includeRemoteModels else { return }
     var json = (await liveModels?.specs() ?? [:])[file]
     if json == nil { json = (await communityModels?.specs() ?? [:])[file] }
-    if let json, let spec = ModelSpec(json: json) { await service.modelSpecs.register([spec]) }
+    var specs = [json.flatMap { ModelSpec(json: $0) }].compactMap { $0 }
+    // The cloud's LoRAs with their official description (otherwise the override would carry a minimal one).
+    if !lorasFiles.isEmpty, let cloudLoRAs = await cloud?.loraSpecs() {
+      specs += lorasFiles.compactMap { cloudLoRAs[$0].flatMap { ModelSpec(json: $0) } }
+    }
+    if !specs.isEmpty { await service.modelSpecs.register(specs) }
   }
 
   /// The specifications of the live list for the files the server has.
@@ -108,7 +113,7 @@ public actor DrawThingsBackend: GenerationBackend {
       let task = Task {
         do {
           let service = await self.currentService()
-          await self.registerRemoteSpec(for: job.model, on: service)
+          await self.registerRemoteSpec(for: job.model, loras: job.parameters.loras.map(\.file), on: service)
           for try await event in service.stream(try JobMapper.request(for: job, inputs: inputs)) {
             if let update = try JobMapper.update(for: event, expected: job.parameters.batchSize) { continuation.yield(update) }
           }
