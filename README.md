@@ -11,7 +11,7 @@ This is an independent community project, not affiliated with or endorsed by Dra
 - **Canvas on your iPad.** The Canvas card opens in a window of its own that shows nothing but the drawing, as large as the window allows. Move it to an iPad connected with **Sidecar** and paint the inpainting mask, or draw in colour onto the image, with an **Apple Pencil** or your fingers. Undo and redo keep working in the window.
 - **Image and Moodboard always in sight.** The Control tab shows the start image, the Moodboard and the Canvas side by side, never behind a menu: every Moodboard picture can be switched on or off with its eye, and you drag pictures in from the Results strip, the Finder or the clipboard.
 - **A lock on the canvas proportions.** Width and height follow the ratio you choose: *Lock ratio* keeps it while you type or step either value, and the Ratios menu and the swap button change it in one click.
-- **Everything you made, at hand.** The Results window keeps the images of the session (and brings back the last ones after a restart); each thumbnail shows **how many seconds it took**, can be dragged anywhere, and offers *Use as image*, *Add to Moodboard*, *Show in Finder*, *Resume parameters* and *Trash*. Every PNG is saved with its prompt, its whole configuration and the time it took inside the file.
+- **Everything you made, at hand.** The Results window keeps the images of the session (and brings back the last ones after a restart); each thumbnail shows **how many seconds it took**, can be dragged anywhere, and offers *Use as image*, *Add to Moodboard*, *Show in Finder*, *Resume parameters* and *Trash*. Every PNG is saved with its prompt, its whole configuration and the time it took inside the file, in the same layout as Draw Things' own images, so tools made for those read DT Hub's too.
 - **Result details.** A collapsible sidebar in the Results window shows the prompt, settings, LoRAs and timing saved in the selected image; the text can be selected and copied.
 - **Incremental mode.** A switch in the header makes each result the start image of the next RUN.
 - **Projects.** Each project is a subfolder of the output folder with its own start image, mask, Moodboard, results strip and plug-in state; reopening one restores the prompt and settings of its last image. Switch from the **Project** menu in the header.
@@ -22,6 +22,7 @@ This is an independent community project, not affiliated with or endorsed by Dra
 - **Plug-ins**, each with its own tab and active only on the model families it was made for: Prompt Master, Prompt Master I4 (Ideogram 4), Sphere Light Reference, Character Sheet (Qwen Image 2.1), Batch plus (a series of RUNs with growing parameters, or one per prompt; all families), AI Assistant (chat with a local LLM that can write the prompt and the settings on command), Qwen 2.1 Inpainting (colored marks and instructions on the start image, for Qwen Image 2.1) and LoRA Advisor (a visual list of your LoRAs with thumbnails and notes, and the LLM's advice on which to use; all families). See [`Plugins/`](Plugins/README.md).
 - **Keyboard.** ⌘↩ Run, ⌘. Stop, ⌘R Results, ⌃Page Up / ⌃Page Down to step through the tabs.
 - **Managed server.** DT Hub can start Draw Things' `gRPCServerCLI` by itself, or connect to the server of the Draw Things app.
+- **DT+ (Draw Things+ cloud).** When DT Hub is connected to the Draw Things app with Bridge Mode on, the **DT+** switch next to the model menu lists the models the cloud can run (asked to Draw Things' cloud server, no account involved) and adds the cloud's LoRAs to yours, always for the current model. Account and subscription stay in the Draw Things app.
 - **New models without waiting for an update.** When it connects, DT Hub downloads the lists of official models and of their recommended settings that Draw Things publishes (`models.drawthings.ai`, the same lists the Draw Things app reads) and keeps a copy, so a model released after this version of DT Hub is recognised, with its own steps, guidance, sampler and shift, as soon as its file is in your models folder. Offline, the saved copy is used. Nothing of yours is sent.
 
 ## A look around
@@ -58,7 +59,7 @@ This is an independent community project, not affiliated with or endorsed by Dra
 
 ## Install
 
-1. Download **`DT-Hub-0.2.2-macOS-arm64.zip`** from the [latest release](https://github.com/EXistenz-78/dt-hub/releases/latest).
+1. Download **`DT-Hub-0.2.3-macOS-arm64.zip`** from the [latest release](https://github.com/EXistenz-78/dt-hub/releases/latest).
 2. Unzip it and drag **DT Hub.app** into `/Applications`.
 3. Read **First launch** below before you open it.
 4. Optional: add the plug-ins (they are in the same release, see [`Plugins/`](Plugins/README.md#install)).
@@ -150,7 +151,7 @@ The interface of the app and of the plug-ins is available in **English and Itali
 
 ## Status
 
-An early version (0.2.2), used daily by its author. Feedback, bug reports and ideas are welcome: open an [Issue](../../issues).
+An early version (0.2.3), used daily by its author. Feedback, bug reports and ideas are welcome: open an [Issue](../../issues).
 
 ## License
 
