@@ -617,7 +617,9 @@ struct ProjectImageStore: ImageStore {
 
   func save(_ image: CGImage, job: GenerationJob, index: Int, date: Date, elapsed: TimeInterval?) throws -> URL {
     guard let folder = box.folder else { throw ImageStoreError.cannotWrite("no project") }
-    return try PNGImageStore(folder: folder).save(image, job: job, index: index, date: date, elapsed: elapsed)
+    // The layout of Draw Things, so the tools made for its pictures read DT Hub's too.
+    return try PNGImageStore(folder: folder, metadata: DrawThingsMetadata.comment)
+      .save(image, job: job, index: index, date: date, elapsed: elapsed)
   }
 }
 

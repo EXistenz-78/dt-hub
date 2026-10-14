@@ -37,16 +37,20 @@ public enum ImageStoreError: Error, Equatable, Sendable {
 }
 
 /// PNG files in `folder/yyyy-MM-dd/HHmmss-<seed>[-<n>].png`. The PNG "Description" holds the
-/// prompt; the EXIF "UserComment" holds the whole job as JSON (read back by `job(in:)`), with one more
-/// key, `elapsedSeconds`, for the time the image took (read back by `elapsed(in:)`).
-/// ImageIO does not write the PNG "Comment" chunk, hence EXIF.
+/// prompt; the EXIF "UserComment" holds the job as JSON, written by `metadata`: in the app, the layout of Draw Things
+/// with DT Hub's own job under `dthub` (`DrawThingsMetadata`); before, and by default, the job itself with one more key,
+/// `elapsedSeconds`. `job(in:)` and `elapsed(in:)` read both. ImageIO does not write the PNG "Comment" chunk, hence EXIF.
 public struct PNGImageStore: ImageStore {
   public let folder: URL
   /// The key of the time in the job's JSON; the job's own decoding ignores it.
-  static let elapsedKey = "elapsedSeconds"
+  static let elapsedKey = GenerationJob.elapsedKey
 
-  public init(folder: URL) {
+  /// Writes the "UserComment" of a picture from its job and the seconds it took.
+  public let metadata: @Sendable (GenerationJob, TimeInterval?) -> String
+
+  public init(folder: URL, metadata: @escaping @Sendable (GenerationJob, TimeInterval?) -> String = PNGImageStore.legacyComment) {
     self.folder = folder
+    self.metadata = metadata
   }
 
   public func save(_ image: CGImage, job: GenerationJob, index: Int, date: Date, elapsed: TimeInterval?) throws -> URL {
@@ -62,7 +66,7 @@ public struct PNGImageStore: ImageStore {
 
     guard let destination = CGImageDestinationCreateWithURL(url as CFURL, UTType.png.identifier as CFString, 1, nil)
     else { throw ImageStoreError.cannotWrite(url.path) }
-    let json = Self.comment(for: job, elapsed: elapsed)
+    let json = metadata(job, elapsed)
     let properties: [CFString: Any] = [
       kCGImagePropertyPNGDictionary: [
         kCGImagePropertyPNGDescription: job.promptWithTriggers,
@@ -89,32 +93,33 @@ public struct PNGImageStore: ImageStore {
 
   /// The job saved inside a PNG written by this store, or nil.
   public static func job(in url: URL) -> GenerationJob? {
-    guard let json = comment(in: url) else { return nil }
-    return try? JSONDecoder().decode(GenerationJob.self, from: Data(json.utf8))
+    guard let object = ownObject(in: url), let data = try? JSONSerialization.data(withJSONObject: object) else { return nil }
+    return try? JSONDecoder().decode(GenerationJob.self, from: data)
   }
 
   /// The seconds the image took, saved inside a PNG written by this store; nil for a file from before
   /// the time was kept.
   public static func elapsed(in url: URL) -> TimeInterval? {
+    ownObject(in: url)?[elapsedKey] as? Double
+  }
+
+  /// DT Hub's own part of the "UserComment": under `dthub` in the layout of Draw Things, the whole of it before.
+  private static func ownObject(in url: URL) -> [String: Any]? {
     guard let json = comment(in: url),
       let object = try? JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any]
     else { return nil }
-    return object[elapsedKey] as? Double
+    return object[GenerationJob.metadataKey] as? [String: Any] ?? object
   }
 
-  /// The job as JSON, with the time when it is known.
-  private static func comment(for job: GenerationJob, elapsed: TimeInterval?) -> String {
-    guard let data = try? JSONEncoder().encode(job) else { return "" }
-    if let elapsed, var object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-      object[elapsedKey] = elapsed
-      if let withTime = try? JSONSerialization.data(withJSONObject: object) {
-        return String(data: withTime, encoding: .utf8) ?? ""
-      }
-    }
+  /// The layout before 0.2.3: the job as JSON, with the time when it is known.
+  @Sendable public static func legacyComment(for job: GenerationJob, elapsed: TimeInterval?) -> String {
+    let object = job.metadataObject(elapsed: elapsed)
+    guard !object.isEmpty, let data = try? JSONSerialization.data(withJSONObject: object) else { return "" }
     return String(data: data, encoding: .utf8) ?? ""
   }
 
-  private static func comment(in url: URL) -> String? {
+  /// The "UserComment" of a picture, as it is.
+  public static func comment(in url: URL) -> String? {
     guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
       let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
       let exif = properties[kCGImagePropertyExifDictionary] as? [CFString: Any]
