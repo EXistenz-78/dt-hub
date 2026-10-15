@@ -73,4 +73,35 @@ struct ComputeUnitsEstimatorTests {
     #expect(batch > single)
     #expect(batch < 2 * single)
   }
+
+  @Test(arguments: ["flux1", "flux2", "flux2_9b", "flux2_4b", "krea_2"])
+  func theFluxAndKreaFamiliesHaveAnEstimate(family: String) {
+    #expect(estimate(inputs(family, steps: 20, guidance: 4)) > 0)
+  }
+
+  func edit(_ modifier: String) -> ModelCapabilities {
+    ModelCapabilities(
+      guidanceEmbed: false, teaCache: false, clipL: false, openClipG: false, t5: false, optionalT5: false,
+      clipSkip: false, nativeSize: nil, modifier: modifier)
+  }
+
+  @Test func referenceImagesRaiseTheEstimateOfAnEditModel() {
+    let none = estimate(inputs("flux2_9b", hasImage: true, references: 0, capabilities: edit("kontext")))
+    let two = estimate(inputs("flux2_9b", hasImage: true, references: 2, capabilities: edit("kontext")))
+    #expect(two > none)
+  }
+
+  @Test func theKVCacheMovesReferenceWorkAwayFromEveryStep() {
+    let plain = estimate(inputs("flux2_9b", hasImage: true, references: 1, capabilities: edit("kontext")))
+    let cached = estimate(inputs("flux2_9b", hasImage: true, references: 1, capabilities: edit("kontext_kv")))
+    #expect(cached != plain)
+    #expect(cached < plain)
+  }
+
+  @Test func aReferenceImageMeansNothingToAModelWithoutAModifier() {
+    let none = estimate(inputs("flux2_9b", references: 0))
+    let some = estimate(inputs("flux2_9b", references: 3))
+    #expect(none > 0)
+    #expect(none == some)
+  }
 }

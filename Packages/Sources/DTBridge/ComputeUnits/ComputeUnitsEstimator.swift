@@ -15,6 +15,11 @@ enum CUFamily: String {
   case ideogram4 = "ideogram_4"
   case seedvr2_3b = "seedvr2_3b"
   case seedvr2_7b = "seedvr2_7b"
+  case flux1 = "flux1"
+  case flux2 = "flux2"
+  case flux2_9b = "flux2_9b"
+  case flux2_4b = "flux2_4b"
+  case krea2 = "krea_2"
 }
 
 /// The spec's `modifier` of a model (Draw Things' `SamplerModifier`).
@@ -117,6 +122,46 @@ enum ComputeUnitsEstimator {
       let fixed = Ideogram4FixedInstructionCount(
         timesteps: 1, batchSize: 1, textLength: baseTokenLength, channels: 4_608, layers: 34)
       counts = (main * imageBatch, fixed * imageBatch)
+    case .flux1:
+      let main = Flux1InstructionCount(
+        batchSize: 1, tokenLength: baseTokenLength, referenceSequenceLength: referenceLength,
+        height: startHeight, width: startWidth, channels: 3072, layers: (19, 38), contextPreloaded: true)
+      let fixed = Flux1FixedInstructionCount(
+        batchSize: (1, 1), tokenLength: baseTokenLength, referenceSequenceLength: referenceLength,
+        channels: 3072, layers: (19, 38), contextPreloaded: true, guidanceEmbed: isGuidanceEmbedEnabled)
+      counts = (main * imageBatch, fixed * imageBatch)
+    case .flux2, .flux2_9b, .flux2_4b:
+      let channels: Int
+      let layers: (Int, Int)
+      if family == .flux2_9b {
+        channels = 4096
+        layers = (8, 24)
+      } else if family == .flux2_4b {
+        channels = 3072
+        layers = (5, 20)
+      } else {
+        channels = 6144
+        layers = (8, 48)
+      }
+      let kvCache = modifier == .kontextKv && referenceLength > 0
+      let main = Flux2InstructionCount(
+        batchSize: 1, tokenLength: baseTokenLength, referenceSequenceLength: kvCache ? 0 : referenceLength,
+        cachedReferenceSequenceLength: kvCache ? referenceLength : 0, height: startHeight, width: startWidth,
+        channels: channels, layers: layers)
+      let fixed = Flux2FixedInstructionCount(
+        contextBatchSize: 1, tokenLength: baseTokenLength, timestepCount: kvCache ? 2 : 1,
+        referenceSequenceLength: referenceLength, channels: channels, layers: layers,
+        guidanceEmbed: isGuidanceEmbedEnabled, kvCache: kvCache)
+      counts = (main * imageBatch, fixed * imageBatch)
+    case .krea2:
+      let fixedTextLength: (Int, Int) = cfg > 1 ? (baseTokenLength, baseTokenLength) : (0, baseTokenLength)
+      let totalFixedTextLength = fixedTextLength.0 + fixedTextLength.1
+      let main = Krea2InstructionCount(
+        batchSize: 1, height: startHeight, width: startWidth, textLength: baseTokenLength,
+        hiddenSize: 6_144, layers: 28, intermediateSize: 16_384)
+      let textFusion = Krea2TextFusionAdapterInstructionCount(batchSize: 1, textLength: fixedTextLength)
+      let fixed = Krea2FixedInstructionCount(batchSize: 1, timesteps: 1, textLength: totalFixedTextLength)
+      counts = (main * imageBatch, textFusion + fixed * imageBatch)
     case .seedvr2_3b, .seedvr2_7b:
       // SeedVR2's DiT configurations (SeedVR2DiTConfiguration._3B / ._7B) go through the ERNIE count.
       let is7B = family == .seedvr2_7b
@@ -149,7 +194,9 @@ enum ComputeUnitsEstimator {
   static func tokenLength(family: CUFamily, padded: Int) -> Int {
     if padded > 0 { return padded }
     switch family {
-    case .zImage, .qwenImage, .qwenImage2_1, .ernieImage, .ideogram4: return 512
+    case .zImage, .qwenImage, .qwenImage2_1, .ernieImage, .ideogram4, .flux1, .flux2, .flux2_9b, .flux2_4b:
+      return 512
+    case .krea2: return 256
     case .seedvr2_3b, .seedvr2_7b: return 77
     }
   }
