@@ -148,4 +148,23 @@ struct ComputeUnitsEstimatorTests {
     let value = estimate(inputs(family, steps: 20, guidance: 4))
     #expect(value == expected, "\(family) -> \(value)")
   }
+
+  @Test func theStartImageDoesNotChangeTheEstimateOfAKontextModel() {
+    // The Draw Things app counts one base reference for these models whether or not there is a start image
+    // (the user's readings of 15 Oct 2026: the start image moves nothing, only the Moodboard does).
+    let caps = edit("kontext")
+    for family in ["flux2_9b", "flux2", "qwen_image_2.1"] {
+      let without = estimate(inputs(family, hasImage: false, capabilities: caps))
+      let with = estimate(inputs(family, hasImage: true, capabilities: caps))
+      #expect(without > 0)
+      #expect(without == with, "\(family)")
+    }
+  }
+
+  @Test func theMoodboardAddsToTheBaseReference() {
+    let caps = edit("kontext")
+    let none = estimate(inputs("flux2_9b", references: 0, capabilities: caps))
+    let two = estimate(inputs("flux2_9b", references: 2, capabilities: caps))
+    #expect(two > none)
+  }
 }

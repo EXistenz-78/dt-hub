@@ -14,6 +14,8 @@ public struct CUInputs: Equatable, Sendable {
   public var guidanceScale: Double
   public var imageGuidanceScale: Double
   public var batchSize: Int
+  /// Whether a start image goes with the request. The Draw Things app's estimate does not depend on it (a Kontext
+  /// model always counts one base reference); kept for callers that describe the request.
   public var hasImage: Bool
   /// Advanced › guidance embed shortcut (on by default): a guidance-embed model then runs without CFG.
   public var speedUpWithGuidanceEmbed: Bool
