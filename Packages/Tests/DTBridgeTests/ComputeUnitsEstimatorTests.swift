@@ -61,4 +61,16 @@ struct ComputeUnitsEstimatorTests {
     let huge = try #require(ComputeUnitsEstimator.estimate(inputs("z_image", width: 8192, height: 8192, batch: 64)))
     #expect(huge > 0 && huge <= ComputeUnitsEstimator.ceiling)
   }
+
+  @Test(arguments: ["qwen_image", "qwen_image_2.1", "ernie_image", "ideogram_4", "seedvr2_3b", "seedvr2_7b"])
+  func theFamiliesOfThisGroupHaveAnEstimate(family: String) {
+    #expect(estimate(inputs(family, steps: 20, guidance: 4)) > 0)
+  }
+
+  @Test func qwenImage2_1SharesItsPrefixWorkAcrossTheBatch() {
+    let single = estimate(inputs("qwen_image_2.1", batch: 1))
+    let batch = estimate(inputs("qwen_image_2.1", batch: 2))
+    #expect(batch > single)
+    #expect(batch < 2 * single)
+  }
 }
