@@ -237,6 +237,28 @@ final class GenerationController {
     connection.selection.selectedModel(in: connection.monitor.catalog)
   }
 
+  /// The requests the next RUN would make, for the CU meter: one, or one per pass of the held pipeline.
+  func cuPasses(in connection: DrawThingsConnection) -> [CUPass] {
+    let hasMargins = control.hasMargins(canvasWidth: parameters.width, canvasHeight: parameters.height)
+    let summary = CUControlSummary(
+      hasImage: control.inputs.image != nil, moodboardCount: control.moodboardURLs.count,
+      strength: control.inputs.effectiveStrength(editModel: isEditModel(in: connection), hasMargins: hasMargins))
+    var pipeline: PluginPipeline?
+    var loaded: [String: Preset] = [:]
+    if let held = contributions?.pipeline {
+      var steps = held.pipeline
+      if let name = held.userPipelineName, let saved = try? userPipelines.load(named: name) {
+        steps = saved.pluginPipeline(named: name)
+      }
+      pipeline = steps
+      // A preset that cannot be read leaves its pass without an estimate.
+      if case .success(let presetsOfPipeline) = PipelinePresets.load(steps, from: presets) { loaded = presetsOfPipeline }
+    }
+    return CUPlanner.passes(
+      fields: fields, model: selectedModel(in: connection), control: summary, pipeline: pipeline, presets: loaded,
+      catalog: connection.monitor.catalog, headerModel: connection.selection.selectedFile)
+  }
+
   /// The family of the chosen model, nil when unknown or while the catalog is not loaded.
   func family(in connection: DrawThingsConnection) -> String? {
     selectedModel(in: connection)?.family

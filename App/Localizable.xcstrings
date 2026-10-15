@@ -8534,6 +8534,176 @@
           }
         }
       }
+    },
+    "header.cu.help": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compute units this RUN needs, against the limit per RUN of DT+. Click for details."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compute Units che serve questo RUN, rispetto al limite per RUN di DT+. Clic per i dettagli."
+          }
+        }
+      }
+    },
+    "header.cu.none": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No estimate: the family of this model is not covered, or a pass has no model."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessuna stima: la famiglia di questo modello non è coperta, o un passaggio non ha un modello."
+          }
+        }
+      }
+    },
+    "header.cu.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compute units of the RUN"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compute Units del RUN"
+          }
+        }
+      }
+    },
+    "header.cu.limit": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Limit per RUN: %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Limite per RUN: %@"
+          }
+        }
+      }
+    },
+    "header.cu.heaviest": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Heaviest pass: %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passaggio più pesante: %@"
+          }
+        }
+      }
+    },
+    "header.cu.withoutMoodboard": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Without the Moodboard: %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Senza il Moodboard: %@"
+          }
+        }
+      }
+    },
+    "header.cu.within": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Within the limit"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entro il limite"
+          }
+        }
+      }
+    },
+    "header.cu.near": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close to the limit"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vicino al limite"
+          }
+        }
+      }
+    },
+    "header.cu.boost.one": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Needs 1 boost"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Serve 1 boost"
+          }
+        }
+      }
+    },
+    "header.cu.boost.other": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Needs %lld boosts"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Servono %lld boost"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

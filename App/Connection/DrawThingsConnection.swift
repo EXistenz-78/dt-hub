@@ -25,6 +25,15 @@ final class DrawThingsConnection {
   static let dtPlusKey = "drawThings.dtPlus"
   var canUseDTPlus: Bool { managed.mode != .managed }
 
+  /// The compute-unit estimate of a request and the limit per RUN (the CU meter, next to DT+).
+  @ObservationIgnored let computeUnits: any ComputeUnitsProviding = DTComputeUnits()
+  /// The limit per RUN: Draw Things' default, or the policy the cloud announced; read when DT+ is on.
+  private(set) var cuLimits = CULimits.standard
+
+  func refreshCULimits() async {
+    cuLimits = await computeUnits.limits()
+  }
+
   func setDTPlus(_ on: Bool) async {
     guard on != dtPlus else { return }
     dtPlus = on
