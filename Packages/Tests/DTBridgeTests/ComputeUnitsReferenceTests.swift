@@ -82,4 +82,15 @@ struct ComputeUnitsReferenceTests {
   @Test func krea2Turbo1024With8Steps() {
     reading(2451, family: "krea_2", file: "krea_2_turbo_q8p.ckpt", width: 1024, height: 1024, steps: 8, guidance: 1)
   }
+
+  /// Qwen Image 2.1 (modifier `kontext`), 1536×1536, 40 steps, guidance 1, with the canvas image as the reference:
+  /// the app shows 20 446 (exact). Without the image the port gives 18 200.
+  @Test func qwenImage2_1At1536With40StepsAndTheCanvasImage() {
+    let caps = ModelCapabilities(
+      guidanceEmbed: false, teaCache: false, clipL: false, openClipG: false, t5: false, optionalT5: false,
+      clipSkip: false, nativeSize: nil, modifier: "kontext")
+    reading(
+      20446, family: "qwen_image_2.1", file: "qwen_image_2.1_q8p.ckpt", width: 1536, height: 1536, steps: 40, guidance: 1,
+      hasImage: true, capabilities: caps)
+  }
 }
