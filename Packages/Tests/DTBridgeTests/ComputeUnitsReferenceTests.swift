@@ -31,4 +31,18 @@ struct ComputeUnitsReferenceTests {
   @Test func zImage1024With30StepsAndGuidance4() {
     reading(9601, family: "z_image", file: "z_image_1.0_f16.ckpt", width: 1024, height: 1024, steps: 30, guidance: 4)
   }
+
+  /// FLUX.2 dev (guidance embed, modifier `kontext`), 1024×1024, 28 steps: the app shows 44 892. The port gives 20 375
+  /// without an image, 41 892 with one reference picture the size of the canvas (3 000 less, exactly) and 40 749 with
+  /// CFG. OPEN: the reading may have been taken with an image on the canvas; asked of the user on 15 Oct 2026.
+  @Test func flux2Dev1024With28StepsAndGuidance4_5() {
+    let caps = ModelCapabilities(
+      guidanceEmbed: true, teaCache: false, clipL: false, openClipG: false, t5: false, optionalT5: false,
+      clipSkip: false, nativeSize: nil, modifier: "kontext")
+    withKnownIssue("the 44 892 reading is not yet explained (image on the canvas? see the comment)") {
+      reading(
+        44892, family: "flux2", file: "flux_2_dev_f16.ckpt", width: 1024, height: 1024, steps: 28, guidance: 4.5,
+        capabilities: caps)
+    }
+  }
 }
