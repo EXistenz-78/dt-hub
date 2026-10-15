@@ -92,4 +92,15 @@ struct CatalogBuilderTests {
     #expect(named.name == "Z Image" && named.family == "z_image")
     #expect(unnamed.name == "z.ckpt" && unnamed.family == nil)
   }
+
+  @Test func specInfoReadsTheTextLengthAndTheConsistencyFlag() {
+    let json = Data(
+      #"{"file":"a.ckpt","name":"A","version":"z_image","padded_text_encoding_length":512,"is_consistency_model":true}"#.utf8)
+    let info = CatalogBuilder.specInfo(json: json, file: "a.ckpt")
+    #expect(info.capabilities.paddedTextEncodingLength == 512)
+    #expect(info.capabilities.isConsistencyModel)
+    let plain = CatalogBuilder.specInfo(json: Data(#"{"file":"b.ckpt","version":"z_image"}"#.utf8), file: "b.ckpt")
+    #expect(plain.capabilities.paddedTextEncodingLength == 0)
+    #expect(!plain.capabilities.isConsistencyModel)
+  }
 }
