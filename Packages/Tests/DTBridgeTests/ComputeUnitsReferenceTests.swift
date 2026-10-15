@@ -51,4 +51,15 @@ struct ComputeUnitsReferenceTests {
       41892, family: "flux2", file: "flux_2_dev_f16.ckpt", width: 1024, height: 1024, steps: 28, guidance: 4.5,
       hasImage: true, capabilities: Self.flux2Dev)
   }
+
+  /// FLUX.2 klein base 9B (modifier `kontext`, no guidance embed), 1024×1024, 30 steps, guidance 4 (CFG on), with the
+  /// canvas image as the reference: the app shows 24 782.
+  @Test func flux2Klein9BBaseWithCFGAndTheCanvasImage() {
+    let caps = ModelCapabilities(
+      guidanceEmbed: false, teaCache: false, clipL: false, openClipG: false, t5: false, optionalT5: false,
+      clipSkip: false, nativeSize: nil, modifier: "kontext")
+    reading(
+      24782, family: "flux2_9b", file: "flux_2_klein_base_9b_f16.ckpt", width: 1024, height: 1024, steps: 30, guidance: 4,
+      hasImage: true, capabilities: caps)
+  }
 }
