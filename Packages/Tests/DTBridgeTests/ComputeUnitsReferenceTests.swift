@@ -93,4 +93,9 @@ struct ComputeUnitsReferenceTests {
       20446, family: "qwen_image_2.1", file: "qwen_image_2.1_q8p.ckpt", width: 1536, height: 1536, steps: 40, guidance: 1,
       hasImage: true, capabilities: caps)
   }
+
+  /// ERNIE Image, 1024×1024, 30 steps, guidance 4 (CFG on): the app shows 13 150.
+  @Test func ernieImage1024With30StepsAndCFG() {
+    reading(13150, family: "ernie_image", file: "ernie_image_f16.ckpt", width: 1024, height: 1024, steps: 30, guidance: 4)
+  }
 }
