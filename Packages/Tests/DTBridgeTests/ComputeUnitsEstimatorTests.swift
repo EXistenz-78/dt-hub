@@ -104,4 +104,21 @@ struct ComputeUnitsEstimatorTests {
     #expect(none > 0)
     #expect(none == some)
   }
+
+  @Test(arguments: ["sd3", "sd3_large", "pixart", "auraflow", "hidream_i1", "hidream_o1"])
+  func theLastGroupOfFamiliesHasAnEstimate(family: String) {
+    #expect(estimate(inputs(family, steps: 20, guidance: 4)) > 0)
+  }
+
+  @Test func sd3DualAttentionLayersRaiseTheEstimate() {
+    func caps(_ layers: [Int]) -> ModelCapabilities {
+      ModelCapabilities(
+        guidanceEmbed: false, teaCache: false, clipL: false, openClipG: false, t5: false, optionalT5: false,
+        clipSkip: false, nativeSize: nil, dualAttentionLayers: layers)
+    }
+    let none = estimate(inputs("sd3", capabilities: caps([])))
+    let some = estimate(inputs("sd3", capabilities: caps([0, 1, 2])))
+    #expect(none > 0)
+    #expect(some > none)
+  }
 }
