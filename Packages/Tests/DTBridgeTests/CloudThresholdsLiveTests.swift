@@ -10,7 +10,7 @@ struct CloudThresholdsLiveTests {
   static let enabled = ProcessInfo.processInfo.environment["DTHUB_LIVE_CLOUD"] == "1"
 
   @Test(.enabled(if: enabled))
-  func echoOfTheCloudCarriesThePlusThreshold() async throws {
+  func echoOfTheCloudHasThresholdsOnlyWithAnActivePolicy() async throws {
     let service = DrawThingsService(
       endpoint: CloudCatalog.server,
       options: ConnectionOptions(
@@ -20,6 +20,7 @@ struct CloudThresholdsLiveTests {
     print(
       "CLOUD-THRESHOLDS hasThresholds=\(reply.hasThresholds) plus=\(reply.thresholds.plus) community=\(reply.thresholds.community) expireAt=\(reply.thresholds.expireAt)"
     )
-    #expect(reply.thresholds.plus > 0)
+    // The server fills `thresholds` only while a temporary compute-unit policy is active (15 Oct 2026: none was).
+    #expect(!reply.hasThresholds || reply.thresholds.plus > 0)
   }
 }
