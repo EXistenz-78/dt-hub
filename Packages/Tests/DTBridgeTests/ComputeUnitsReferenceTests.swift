@@ -44,8 +44,7 @@ struct ComputeUnitsReferenceTests {
       hasImage: true, capabilities: Self.flux2Dev)
   }
 
-  /// The same with batch 1: the port gives 41 892. The user's reading was written "44892"; 41 892 is what the batch-2
-  /// reading implies (a transposed digit), so this stays open until the user confirms the digit.
+  /// The same with batch 1: the app shows 41 892 (the user confirmed: the first note said "44892" by a slip).
   @Test func flux2DevBatchOfOneWithTheCanvasImage() {
     reading(
       41892, family: "flux2", file: "flux_2_dev_f16.ckpt", width: 1024, height: 1024, steps: 28, guidance: 4.5,
@@ -97,5 +96,12 @@ struct ComputeUnitsReferenceTests {
   /// ERNIE Image, 1024×1024, 30 steps, guidance 4 (CFG on): the app shows 13 150.
   @Test func ernieImage1024With30StepsAndCFG() {
     reading(13150, family: "ernie_image", file: "ernie_image_f16.ckpt", width: 1024, height: 1024, steps: 30, guidance: 4)
+  }
+
+  /// FLUX.2 dev, 26 steps: the app shows 38 900, just under the 40 000 limit (97 %: amber on the meter).
+  @Test func flux2Dev1024With26Steps() {
+    reading(
+      38900, family: "flux2", file: "flux_2_dev_f16.ckpt", width: 1024, height: 1024, steps: 26, guidance: 4.5,
+      capabilities: Self.flux2Dev)
   }
 }
