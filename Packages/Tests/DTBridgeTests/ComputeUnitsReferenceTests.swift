@@ -14,7 +14,8 @@ struct ComputeUnitsReferenceTests {
   func reading(
     _ expected: Int, family: String, file: String, width: Int, height: Int, steps: Int, guidance: Double,
     batch: Int = 1, strength: Double = 1, hasImage: Bool = false, references: Int = 0,
-    capabilities: ModelCapabilities = ComputeUnitsReferenceTests.plain, sourceLocation: SourceLocation = #_sourceLocation
+    capabilities: ModelCapabilities = ComputeUnitsReferenceTests.plain, tolerance: Int? = nil,
+    sourceLocation: SourceLocation = #_sourceLocation
   ) {
     let inputs = CUInputs(
       family: family, modelFile: file, capabilities: capabilities, width: width, height: height, steps: steps,
@@ -22,9 +23,9 @@ struct ComputeUnitsReferenceTests {
     let estimate = ComputeUnitsEstimator.estimate(inputs)
     #expect(estimate != nil, sourceLocation: sourceLocation)
     guard let estimate else { return }
-    let tolerance = max(1, expected / 100)
+    let allowed = tolerance ?? max(1, expected / 100)
     #expect(
-      abs(estimate - expected) <= tolerance, "\(family): estimate \(estimate), the app shows \(expected)",
+      abs(estimate - expected) <= allowed, "\(family): estimate \(estimate), the app shows \(expected)",
       sourceLocation: sourceLocation)
   }
 
@@ -103,5 +104,14 @@ struct ComputeUnitsReferenceTests {
     reading(
       38900, family: "flux2", file: "flux_2_dev_f16.ckpt", width: 1024, height: 1024, steps: 26, guidance: 4.5,
       capabilities: Self.flux2Dev)
+  }
+
+  /// FLUX.2 dev, 26 steps, only the strength varied (the user's readings): the strength scales the cost, with a
+  /// floor of 5 % (strength 0 shows 1 946). The cost differs by one at most (rounding up).
+  @Test(arguments: [(1.0, 38900), (0.7, 27230), (0.5, 19450), (0.3, 11670), (0.0, 1946)])
+  func flux2DevStrength(strength: Double, expected: Int) {
+    reading(
+      expected, family: "flux2", file: "flux_2_dev_f16.ckpt", width: 1024, height: 1024, steps: 26, guidance: 4.5,
+      strength: strength, capabilities: Self.flux2Dev, tolerance: 1)
   }
 }
