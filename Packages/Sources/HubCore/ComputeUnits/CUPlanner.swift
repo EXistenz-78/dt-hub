@@ -31,9 +31,12 @@ public struct CUControlSummary: Equatable, Sendable {
 /// `GenerationController.runPipeline` with the same functions, without running anything.
 @MainActor
 public enum CUPlanner {
+  /// - Parameter strengthOfPass: what `GenerationController.runPipeline` sends as the strength of a pass: the step, whether
+  ///   the pass replaces the tab's start image, whether its model is an edit model, and the pass's size (for the margins).
   public static func passes(
     fields: GenerationFields, model: CatalogModel?, control: CUControlSummary, pipeline: PluginPipeline?,
-    presets: [String: Preset], catalog: ModelCatalog, headerModel: String?
+    presets: [String: Preset], catalog: ModelCatalog, headerModel: String?,
+    strengthOfPass: (_ step: PipelineStep, _ replacesStart: Bool, _ editModel: Bool, _ width: Int, _ height: Int) -> Double
   ) -> [CUPass] {
     guard let pipeline else {
       return [
@@ -57,17 +60,30 @@ public enum CUPlanner {
       let file = PipelinePresets.model(for: step, presets: presets, header: headerModel)
       let passModel = file.flatMap { catalog.model(forFile: $0) }
       let presetMissing = !step.preset.isEmpty && presets[step.preset] == nil
-      let hasImage = control.hasImage || step.startImage != nil || (step.useOutputAsStart && index > 0)
+      let replacesStart = step.startImage != nil || (step.useOutputAsStart && index > 0)
+      let hasImage = control.hasImage || replacesStart
+      let strength = strengthOfPass(
+        step, replacesStart, passModel?.capabilities.isEditModel ?? false, used.parameters.width, used.parameters.height)
       result.append(
         CUPass(
           title: step.title,
           inputs: presetMissing
             ? nil
             : inputs(
-              used.parameters, model: passModel, hasImage: hasImage, strength: step.strength ?? control.strength,
+              used.parameters, model: passModel, hasImage: hasImage, strength: strength,
               references: step.moodboard?.count ?? control.moodboardCount)))
     }
     return result
+  }
+
+  /// The presets the pipeline names that can be read, one by one: a missing or unreadable one does not take the
+  /// others with it (`PipelinePresets.load` is all or nothing, which is right for a RUN but not for an estimate).
+  public static func availablePresets(for pipeline: PluginPipeline, from store: PresetStore) -> [String: Preset] {
+    var loaded: [String: Preset] = [:]
+    for step in pipeline.steps where !step.preset.isEmpty && loaded[step.preset] == nil {
+      if let preset = try? store.load(named: step.preset) { loaded[step.preset] = preset }
+    }
+    return loaded
   }
 
   static func inputs(

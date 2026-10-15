@@ -15,8 +15,6 @@ struct CUMeterView: View {
     var passes: [CUPass]
     var readings: [CUPassReading]
     var presentation: CUMeterPresentation
-    /// The heaviest estimate with no Moodboard picture, when pictures count for it.
-    var withoutMoodboard: Int?
   }
 
   private func snapshot() -> Snapshot {
@@ -29,18 +27,7 @@ struct CUMeterView: View {
         reading: pass.inputs.flatMap { provider.estimate($0) }.map { CUReading(cu: $0, limits: limits) })
     }
     let presentation = CUMeterPresentation(passes: readings, locale: locale)
-    var withoutMoodboard: Int?
-    if let heaviest = presentation.heaviest?.reading,
-      passes.contains(where: { ($0.inputs?.referenceImages ?? 0) > 0 })
-    {
-      let bare = passes.compactMap { pass -> Int? in
-        guard var inputs = pass.inputs else { return nil }
-        inputs.referenceImages = 0
-        return provider.estimate(inputs)
-      }.max()
-      if let bare, bare != heaviest.cu { withoutMoodboard = bare }
-    }
-    return Snapshot(passes: passes, readings: readings, presentation: presentation, withoutMoodboard: withoutMoodboard)
+    return Snapshot(passes: passes, readings: readings, presentation: presentation)
   }
 
   private func color(for state: CUState?) -> Color {
@@ -80,6 +67,21 @@ struct CUMeterView: View {
     .task { await connection.refreshCULimits() }
   }
 
+  /// The heaviest estimate with no Moodboard picture, when pictures count for it; worked out only when the details
+  /// are open.
+  private func withoutMoodboard(_ shot: Snapshot) -> Int? {
+    guard let heaviest = shot.presentation.heaviest?.reading,
+      shot.passes.contains(where: { ($0.inputs?.referenceImages ?? 0) > 0 })
+    else { return nil }
+    let bare = shot.passes.compactMap { pass -> Int? in
+      guard var inputs = pass.inputs else { return nil }
+      inputs.referenceImages = 0
+      return connection.computeUnits.estimate(inputs)
+    }.max()
+    guard let bare, bare != heaviest.cu else { return nil }
+    return bare
+  }
+
   private func number(_ value: Int) -> String {
     value.formatted(.number.locale(locale))
   }
@@ -96,7 +98,7 @@ struct CUMeterView: View {
         if shot.passes.count > 1, !heaviest.title.isEmpty {
           Text(String(format: String(localized: "header.cu.heaviest"), heaviest.title))
         }
-        if let bare = shot.withoutMoodboard {
+        if let bare = withoutMoodboard(shot) {
           Text(String(format: String(localized: "header.cu.withoutMoodboard"), number(bare)))
         }
         switch reading.state {

@@ -46,4 +46,9 @@ struct CUMeterPresentationTests {
   @Test func theFractionIsTheShareOfTheLimit() {
     #expect(CUMeterPresentation(passes: [pass("", 20_000)], locale: english).fraction == 0.5)
   }
+
+  @Test func belowTheLimitTheValueIsTruncatedAndOverItIsRoundedUp() {
+    #expect(CUMeterPresentation(passes: [pass("", 39_972)], locale: italian).compact == "39,9k / 40k")
+    #expect(CUMeterPresentation(passes: [pass("", 40_001)], locale: italian).compact == "40,1k / 40k")
+  }
 }

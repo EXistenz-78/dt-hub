@@ -34,19 +34,21 @@ public struct CUMeterPresentation: Equatable, Sendable {
       state = nil
       return
     }
-    compact = "\(Self.thousands(reading.cu, locale: locale)) / \(Self.thousands(reading.limit, locale: locale))"
+    // Below the limit the value is cut, over it rounded up, so 39 972 never reads as the limit and 40 001 never as within it.
+    let value = Self.thousands(reading.cu, locale: locale, rule: reading.state == .over ? .up : .down)
+    compact = "\(value) / \(Self.thousands(reading.limit, locale: locale, rule: .halfUp))"
     fraction = min(Double(reading.cu) / Double(max(1, reading.limit)), 1.25)
     state = reading.state
   }
 
   /// 32 400 → "32,4k" (locale `it`), 40 000 → "40k": one decimal, none when it is zero.
-  static func thousands(_ value: Int, locale: Locale) -> String {
+  static func thousands(_ value: Int, locale: Locale, rule: NumberFormatter.RoundingMode) -> String {
     let formatter = NumberFormatter()
     formatter.locale = locale
     formatter.numberStyle = .decimal
     formatter.minimumFractionDigits = 0
     formatter.maximumFractionDigits = 1
-    formatter.roundingMode = .halfUp
+    formatter.roundingMode = rule
     return (formatter.string(from: NSNumber(value: Double(value) / 1000)) ?? "\(value / 1000)") + "k"
   }
 }

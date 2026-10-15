@@ -60,6 +60,10 @@ enum ComputeUnitsEstimator {
   static let ceiling = 100_000_000
   /// Pixels × images above which the estimate is the ceiling (8192 × 8192 × 8).
   static let sizeGuard = 8192.0 * 8192.0 * 8.0
+  /// Images in the batch × (image tokens + reference tokens)² above which the estimate is the ceiling. Attention
+  /// grows with the square of the sequence and the heaviest model has about 8·10⁵ instructions per unit of it, so
+  /// `Int` overflows near 10¹³; this stays well under.
+  static let attentionGuard = 5e12
 
   /// nil when the family is not covered or the numbers make no sense (spec §6).
   static func estimate(_ inputs: CUInputs) -> Int? {
@@ -86,7 +90,10 @@ enum ComputeUnitsEstimator {
     let startWidth = max(1, inputs.width / 64) * startFactor(family)
     let startHeight = max(1, inputs.height / 64) * startFactor(family)
     let references = referenceImageCount(modifier: modifier, hasImage: inputs.hasImage, extra: inputs.referenceImages)
-    let referenceLength = max(1, (startHeight / 2) * (startWidth / 2)) * references
+    let imageTokens = max(1, (startHeight / 2) * (startWidth / 2))
+    let referenceLength = imageTokens * references
+    let sequence = Double(imageTokens) + Double(referenceLength)
+    if Double(imageBatch) * sequence * sequence > attentionGuard { return ceiling }
 
     let counts: (main: Int, fixed: Int)
     switch family {

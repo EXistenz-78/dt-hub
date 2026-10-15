@@ -64,4 +64,14 @@ struct CloudCatalogLimitsTests {
     #expect(await offline.limits().limit == 20_000)
     #expect(await offline.limits(now: Date().addingTimeInterval(7200)) == .standard)
   }
+
+  @Test func aNonsensicalPolicyIsIgnoredInsteadOfTrapping() async {
+    let expiry = Int64(Date().addingTimeInterval(3600).timeIntervalSince1970)
+    for plus in [Double.infinity, 1e20, Double.nan] {
+      let cloud = catalog(cache: cache()) {
+        CloudEcho(files: ["a.ckpt"], plus: plus, community: 5_000, expireAt: expiry)
+      }
+      #expect(await cloud.limits() == .standard)
+    }
+  }
 }
