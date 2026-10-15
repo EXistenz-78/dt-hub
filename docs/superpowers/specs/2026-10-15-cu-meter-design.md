@@ -85,5 +85,7 @@ Famiglie video e UNet (SD 1.5 / SDXL / Kandinsky / Wurstchen); stima del tempo e
 
 ## 11. Punti aperti
 
+- **Esito della fase 1 (15 ott 2026, 11:05):** l'echo a `compute.drawthings.ai:443` senza account risponde **senza soglie** (`hasThresholds = false`, `plus = 0`, `community = 0`, `expireAt = 0`). La fonte delle soglie va riconsiderata (vedi §2, decisione sulle soglie); l'implementazione si ferma al Task 1 finché l'utente non decide.
+
 - Il margine del 90 % per l'ambra è una stima; le letture dell'utente possono dire di cambiarlo.
 - Se la lettura dell'echo non basta (fase 1), serve un altro modo di ottenere la soglia: da rivedere con l'utente.
