@@ -36,8 +36,8 @@ struct ComputeUnitsReferenceTests {
     guidanceEmbed: true, teaCache: false, clipL: false, openClipG: false, t5: false, optionalT5: false,
     clipSkip: false, nativeSize: nil, modifier: "kontext")
 
-  /// FLUX.2 dev (guidance embed, modifier `kontext`), 1024×1024, 28 steps, guidance 4.5, batch 2, with the image of
-  /// the app's canvas as the Kontext reference: the app shows 83 783, which is exactly 2 × 41 891.4 (the port rounds up).
+  /// FLUX.2 dev (guidance embed, modifier `kontext`), 1024×1024, 28 steps, guidance 4.5, batch 2, with the base reference the app
+  /// counts for a Kontext model (the start image moves nothing there): the app shows 83 783, which is exactly 2 × 41 891.4 (the port rounds up).
   @Test func flux2DevBatchOfTwoWithTheCanvasImage() {
     reading(
       83783, family: "flux2", file: "flux_2_dev_f16.ckpt", width: 1024, height: 1024, steps: 28, guidance: 4.5, batch: 2,
@@ -63,7 +63,7 @@ struct ComputeUnitsReferenceTests {
       hasImage: true, capabilities: caps)
   }
 
-  /// The same model and parameters with two Moodboard pictures besides the canvas image: the app shows 59 331 (exact).
+  /// The same model and parameters with two Moodboard pictures besides the base reference: the app shows 59 331 (exact).
   @Test func flux2Klein9BBaseWithTwoMoodboardPictures() {
     let caps = ModelCapabilities(
       guidanceEmbed: false, teaCache: false, clipL: false, openClipG: false, t5: false, optionalT5: false,
@@ -83,8 +83,8 @@ struct ComputeUnitsReferenceTests {
     reading(2451, family: "krea_2", file: "krea_2_turbo_q8p.ckpt", width: 1024, height: 1024, steps: 8, guidance: 1)
   }
 
-  /// Qwen Image 2.1 (modifier `kontext`), 1536×1536, 40 steps, guidance 1, with the canvas image as the reference:
-  /// the app shows 20 446 (exact). Without the image the port gives 18 200.
+  /// Qwen Image 2.1 (modifier `kontext`), 1536×1536, 40 steps, guidance 1, with the base reference the app
+  /// always counts for this model (the start image moves nothing there): the app shows 20 446 (exact).
   @Test func qwenImage2_1At1536With40StepsAndTheCanvasImage() {
     let caps = ModelCapabilities(
       guidanceEmbed: false, teaCache: false, clipL: false, openClipG: false, t5: false, optionalT5: false,
