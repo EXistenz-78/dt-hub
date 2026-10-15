@@ -72,4 +72,9 @@ struct ComputeUnitsReferenceTests {
       59331, family: "flux2_9b", file: "flux_2_klein_base_9b_f16.ckpt", width: 1024, height: 1024, steps: 30, guidance: 4,
       hasImage: true, references: 2, capabilities: caps)
   }
+
+  /// Ideogram 4 fast, 1024×1024, 20 steps, guidance 1: the app shows 4 790.
+  @Test func ideogram4Fast1024With20Steps() {
+    reading(4790, family: "ideogram_4", file: "ideogram_4_fast_q8p.ckpt", width: 1024, height: 1024, steps: 20, guidance: 1)
+  }
 }
