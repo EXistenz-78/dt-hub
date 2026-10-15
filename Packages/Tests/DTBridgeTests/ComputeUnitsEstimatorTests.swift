@@ -121,4 +121,31 @@ struct ComputeUnitsEstimatorTests {
     #expect(none > 0)
     #expect(some > none)
   }
+
+  @Test func manyReferencePicturesOnAHugeCanvasAreCappedWithoutTrapping() throws {
+    // Attention grows with the square of the sequence, and the pictures add to it: this overflowed Int.
+    let qwenEdit = try #require(
+      ComputeUnitsEstimator.estimate(
+        inputs(
+          "qwen_image", width: 8192, height: 8192, guidance: 4, batch: 4, hasImage: true, references: 5,
+          capabilities: edit("qwenimage_edit_plus"))))
+    #expect(qwenEdit == ComputeUnitsEstimator.ceiling)
+    let kontext = try #require(
+      ComputeUnitsEstimator.estimate(
+        inputs(
+          "flux2", width: 8192, height: 8192, guidance: 4, batch: 4, hasImage: true, references: 11,
+          capabilities: edit("kontext"))))
+    #expect(kontext == ComputeUnitsEstimator.ceiling)
+  }
+
+  /// A regression pin of the port as written on 15 Oct 2026 (1024×1024, 20 steps, guidance 4): a change to a count
+  /// shows here. The independent check is the user's readings of the Draw Things CU bar.
+  @Test(arguments: [
+    ("z_image", 6402), ("flux1", 7678), ("flux2_9b", 7775), ("krea_2", 12244), ("qwen_image_2.1", 6963),
+    ("ideogram_4", 9580),
+  ])
+  func theEstimatesAreStable(family: String, expected: Int) {
+    let value = estimate(inputs(family, steps: 20, guidance: 4))
+    #expect(value == expected, "\(family) -> \(value)")
+  }
 }

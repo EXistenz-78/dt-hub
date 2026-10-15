@@ -51,13 +51,16 @@ public actor CloudCatalog {
   /// The compute-unit limits: Draw Things' defaults, unless the server announced a policy (Plus above 0) that has
   /// not expired by `now` (spec §2). Without an answer or a saved copy, the defaults.
   public func limits(now: Date = Date()) async -> CULimits {
-    guard let echo = await currentEcho(), echo.plus > 0, echo.expireAt > 0 else { return .standard }
+    guard let echo = await currentEcho(), Self.isSane(echo.plus), echo.expireAt > 0 else { return .standard }
     let expiry = Date(timeIntervalSince1970: TimeInterval(echo.expireAt))
     guard now < expiry else { return .standard }
     return CULimits(
-      plus: Int(echo.plus), community: echo.community > 0 ? Int(echo.community) : CULimits.standard.community,
+      plus: Int(echo.plus), community: Self.isSane(echo.community) ? Int(echo.community) : CULimits.standard.community,
       expiresAt: expiry)
   }
+
+  /// A limit the server could have sent: finite, positive and not absurd (a trap on `Int(_:)` otherwise).
+  private static func isSane(_ value: Double) -> Bool { value.isFinite && value > 0 && value < 1e9 }
 
   private func currentEcho() async -> CloudEcho? {
     guard let data = await fileList.data() else { return nil }

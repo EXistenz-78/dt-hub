@@ -1,3 +1,4 @@
+import Foundation
 import HubKit
 import Testing
 
@@ -23,7 +24,8 @@ struct CUPlannerTests {
   ) -> [CUPass] {
     CUPlanner.passes(
       fields: fields ?? self.fields(), model: model ?? zimage, control: control ?? self.control, pipeline: pipeline,
-      presets: presets, catalog: catalog, headerModel: (model ?? zimage).file)
+      presets: presets, catalog: catalog, headerModel: (model ?? zimage).file,
+      strengthOfPass: { _, _, _, _, _ in 0.7 })
   }
 
   @Test func aSingleRunIsOnePass() throws {
@@ -90,5 +92,50 @@ struct CUPlannerTests {
     #expect(try #require(result[0].inputs).width == 832)
     let second = try #require(result[1].inputs)
     #expect(second.width == 1280 && second.height == 1856)
+  }
+
+  @Test func thePassStrengthIsWhatTheRunWouldSend() throws {
+    struct Call: Equatable {
+      var title: String
+      var replacesStart: Bool
+      var editModel: Bool
+      var width: Int
+      var height: Int
+    }
+    let editor = CatalogModel(
+      file: "edit.ckpt", name: "Edit", family: "flux2_9b",
+      capabilities: ModelCapabilities(
+        guidanceEmbed: false, teaCache: false, clipL: false, openClipG: false, t5: false, optionalT5: false,
+        clipSkip: false, nativeSize: nil, modifier: "kontext"))
+    let withEditor = ModelCatalog(models: [flux, zimage, editor], loras: [], fileCount: 3, upscalers: [])
+    let preset = Preset(name: "edit", model: "edit.ckpt")
+    let pipeline = PluginPipeline(steps: [
+      PipelineStep(title: "a"),
+      PipelineStep(title: "b", preset: "edit", useOutputAsStart: true, usesPresetModel: true, scale: 1.5),
+    ])
+    nonisolated(unsafe) var calls: [Call] = []
+    let result = CUPlanner.passes(
+      fields: fields(width: 832, height: 1216), model: zimage, control: control, pipeline: pipeline,
+      presets: ["edit": preset], catalog: withEditor, headerModel: zimage.file,
+      strengthOfPass: { step, replacesStart, editModel, width, height in
+        calls.append(Call(title: step.title, replacesStart: replacesStart, editModel: editModel, width: width, height: height))
+        return 0.42
+      })
+    #expect(calls == [
+      Call(title: "a", replacesStart: false, editModel: false, width: 832, height: 1216),
+      Call(title: "b", replacesStart: true, editModel: true, width: 1280, height: 1856),
+    ])
+    // The first pass has no start image (strength 1); the second has one, with the caller's strength.
+    #expect(try #require(result[0].inputs).strength == 1)
+    #expect(try #require(result[1].inputs).strength == 0.42)
+  }
+
+  @Test func presetsThatLoadAreKeptWhenAnotherIsMissing() throws {
+    let folder = FileManager.default.temporaryDirectory.appendingPathComponent("cu-presets-\(UUID())")
+    let store = PresetStore(folder: folder)
+    try store.save(Preset(name: "good", model: "z.ckpt"))
+    let pipeline = PluginPipeline(steps: [PipelineStep(title: "a", preset: "good"), PipelineStep(title: "b", preset: "gone")])
+    let loaded = CUPlanner.availablePresets(for: pipeline, from: store)
+    #expect(Set(loaded.keys) == ["good"])
   }
 }
