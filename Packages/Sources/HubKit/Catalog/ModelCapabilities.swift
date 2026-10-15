@@ -22,6 +22,8 @@ public struct ModelCapabilities: Equatable, Sendable {
   public var paddedTextEncodingLength: Int
   /// The spec's `is_consistency_model`: such models run without CFG.
   public var isConsistencyModel: Bool
+  /// The spec's `mmdit.dual_attention_layers` (SD3 medium 3.5); empty when there are none.
+  public var dualAttentionLayers: [Int]
 
   /// An inpainting model (SD inpainting, FLUX Fill...): Draw Things wants its inpaint control for
   /// the mask. The other models take a mask without it (measured on SD 1.5 and FLUX.2 klein).
@@ -37,7 +39,7 @@ public struct ModelCapabilities: Equatable, Sendable {
   public init(
     guidanceEmbed: Bool, teaCache: Bool, clipL: Bool, openClipG: Bool, t5: Bool,
     optionalT5: Bool, clipSkip: Bool, nativeSize: Int?, modifier: String? = nil,
-    paddedTextEncodingLength: Int = 0, isConsistencyModel: Bool = false
+    paddedTextEncodingLength: Int = 0, isConsistencyModel: Bool = false, dualAttentionLayers: [Int] = []
   ) {
     self.guidanceEmbed = guidanceEmbed
     self.teaCache = teaCache
@@ -50,6 +52,7 @@ public struct ModelCapabilities: Equatable, Sendable {
     self.modifier = modifier
     self.paddedTextEncodingLength = paddedTextEncodingLength
     self.isConsistencyModel = isConsistencyModel
+    self.dualAttentionLayers = dualAttentionLayers
   }
 
   /// A model without a specification: everything may apply.

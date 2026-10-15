@@ -153,6 +153,7 @@ enum CatalogBuilder {
       nativeSize: (spec["default_scale"] as? Int).map { $0 * 64 },
       modifier: spec["modifier"] as? String,
       paddedTextEncodingLength: spec["padded_text_encoding_length"] as? Int ?? 0,
-      isConsistencyModel: spec["is_consistency_model"] as? Bool ?? false)
+      isConsistencyModel: spec["is_consistency_model"] as? Bool ?? false,
+      dualAttentionLayers: (spec["mmdit"] as? [String: Any])?["dual_attention_layers"] as? [Int] ?? [])
   }
 }

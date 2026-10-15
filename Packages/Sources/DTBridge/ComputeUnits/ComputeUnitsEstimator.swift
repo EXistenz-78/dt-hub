@@ -20,6 +20,12 @@ enum CUFamily: String {
   case flux2_9b = "flux2_9b"
   case flux2_4b = "flux2_4b"
   case krea2 = "krea_2"
+  case sd3 = "sd3"
+  case sd3Large = "sd3_large"
+  case pixart = "pixart"
+  case auraflow = "auraflow"
+  case hiDreamI1 = "hidream_i1"
+  case hiDreamO1 = "hidream_o1"
 }
 
 /// The spec's `modifier` of a model (Draw Things' `SamplerModifier`).
@@ -162,6 +168,42 @@ enum ComputeUnitsEstimator {
       let textFusion = Krea2TextFusionAdapterInstructionCount(batchSize: 1, textLength: fixedTextLength)
       let fixed = Krea2FixedInstructionCount(batchSize: 1, timesteps: 1, textLength: totalFixedTextLength)
       counts = (main * imageBatch, textFusion + fixed * imageBatch)
+    case .sd3, .sd3Large:
+      let large = family == .sd3Large
+      let dual = large ? [] : capabilities.dualAttentionLayers
+      let main = MMDiTInstructionCount(
+        batchSize: 1, t: baseTokenLength, height: startHeight, width: startWidth,
+        channels: large ? 2432 : 1536, layers: large ? 38 : 24, dualAttentionLayers: dual)
+      let fixed = MMDiTFixedInstructionCount(
+        batchSize: 1, contextLength: baseTokenLength, channels: large ? 2432 : 1536, layers: large ? 38 : 24,
+        dualAttentionLayers: dual)
+      counts = (main * imageBatch, fixed * imageBatch)
+    case .pixart:
+      let lengths = (baseTokenLength, baseTokenLength)
+      let main = PixArtInstructionCount(
+        batchSize: 1, height: startHeight, width: startWidth, channels: 1152, layers: 28, tokenLength: lengths)
+      let fixed = PixArtFixedInstructionCount(batchSize: 1, channels: 1152, layers: 28, tokenLength: lengths)
+      counts = (main * imageBatch, fixed * imageBatch)
+    case .auraflow:
+      let length = max(256, baseTokenLength)
+      let main = AuraFlowInstructionCount(
+        batchSize: 1, tokenLength: length, height: startHeight, width: startWidth, channels: 3072, layers: (4, 32))
+      let fixed = AuraFlowFixedInstructionCount(
+        batchSize: (1, 1), tokenLength: length, channels: 3072, layers: (4, 32))
+      counts = (main * imageBatch, fixed * imageBatch)
+    case .hiDreamI1:
+      let width = modifier == .editing ? startWidth * 2 : startWidth
+      let main = HiDreamInstructionCount(
+        batchSize: 1, height: startHeight, width: width, textLength: (baseTokenLength, baseTokenLength),
+        layers: (16, 32))
+      let fixed = HiDreamFixedInstructionCount(
+        timesteps: 1, layers: (16, 32), t5TextLength: baseTokenLength, llamaTextLength: baseTokenLength)
+      counts = (main * imageBatch, fixed * imageBatch)
+    case .hiDreamO1:
+      let main = HiDreamO1InstructionCount(
+        batchSize: 1, height: startHeight, width: startWidth, textLength: baseTokenLength)
+      let fixed = HiDreamO1FixedInstructionCount(batchSize: 1, textLength: baseTokenLength)
+      counts = (main * imageBatch, fixed * imageBatch)
     case .seedvr2_3b, .seedvr2_7b:
       // SeedVR2's DiT configurations (SeedVR2DiTConfiguration._3B / ._7B) go through the ERNIE count.
       let is7B = family == .seedvr2_7b
@@ -186,6 +228,7 @@ enum ComputeUnitsEstimator {
   static func startFactor(_ family: CUFamily) -> Int {
     switch family {
     case .qwenImage2_1: return 4
+    case .hiDreamO1: return 2
     default: return 8
     }
   }
@@ -197,6 +240,8 @@ enum ComputeUnitsEstimator {
     case .zImage, .qwenImage, .qwenImage2_1, .ernieImage, .ideogram4, .flux1, .flux2, .flux2_9b, .flux2_4b:
       return 512
     case .krea2: return 256
+    case .hiDreamI1: return 128
+    case .sd3, .sd3Large, .pixart, .auraflow, .hiDreamO1: return 77
     case .seedvr2_3b, .seedvr2_7b: return 77
     }
   }

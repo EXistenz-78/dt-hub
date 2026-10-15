@@ -103,4 +103,11 @@ struct CatalogBuilderTests {
     #expect(plain.capabilities.paddedTextEncodingLength == 0)
     #expect(!plain.capabilities.isConsistencyModel)
   }
+
+  @Test func specInfoReadsTheDualAttentionLayersOfAnMMDiT() {
+    let json = Data(#"{"file":"a.ckpt","version":"sd3","mmdit":{"qk_norm":true,"dual_attention_layers":[0,1,2]}}"#.utf8)
+    #expect(CatalogBuilder.specInfo(json: json, file: "a.ckpt").capabilities.dualAttentionLayers == [0, 1, 2])
+    let plain = CatalogBuilder.specInfo(json: Data(#"{"file":"b.ckpt","version":"sd3"}"#.utf8), file: "b.ckpt")
+    #expect(plain.capabilities.dualAttentionLayers.isEmpty)
+  }
 }
