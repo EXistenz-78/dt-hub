@@ -77,4 +77,9 @@ struct ComputeUnitsReferenceTests {
   @Test func ideogram4Fast1024With20Steps() {
     reading(4790, family: "ideogram_4", file: "ideogram_4_fast_q8p.ckpt", width: 1024, height: 1024, steps: 20, guidance: 1)
   }
+
+  /// Krea 2 turbo, 1024×1024, 8 steps, guidance 1: the app shows 2 451.
+  @Test func krea2Turbo1024With8Steps() {
+    reading(2451, family: "krea_2", file: "krea_2_turbo_q8p.ckpt", width: 1024, height: 1024, steps: 8, guidance: 1)
+  }
 }
