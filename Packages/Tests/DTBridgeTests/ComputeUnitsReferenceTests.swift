@@ -62,4 +62,14 @@ struct ComputeUnitsReferenceTests {
       24782, family: "flux2_9b", file: "flux_2_klein_base_9b_f16.ckpt", width: 1024, height: 1024, steps: 30, guidance: 4,
       hasImage: true, capabilities: caps)
   }
+
+  /// The same model and parameters with two Moodboard pictures besides the canvas image: the app shows 59 331 (exact).
+  @Test func flux2Klein9BBaseWithTwoMoodboardPictures() {
+    let caps = ModelCapabilities(
+      guidanceEmbed: false, teaCache: false, clipL: false, openClipG: false, t5: false, optionalT5: false,
+      clipSkip: false, nativeSize: nil, modifier: "kontext", paddedTextEncodingLength: 512)
+    reading(
+      59331, family: "flux2_9b", file: "flux_2_klein_base_9b_f16.ckpt", width: 1024, height: 1024, steps: 30, guidance: 4,
+      hasImage: true, references: 2, capabilities: caps)
+  }
 }
