@@ -143,7 +143,7 @@ struct CloudCatalogTests {
     let cache = FileManager.default.temporaryDirectory.appendingPathComponent("dtplus-\(UUID()).json")
     let cloud = CloudCatalog(
       filesCache: cache, lorasCache: cache.appendingPathExtension("loras"),
-      echo: { ["a.ckpt", "b_lora_f16.ckpt"] },
+      echo: { CloudEcho(files: ["a.ckpt", "b_lora_f16.ckpt"]) },
       download: { _ in Data(#"[{"file":"b_lora_f16.ckpt","name":"B","version":"flux1","prefix":" bb "}]"#.utf8) })
     #expect(await cloud.files() == ["a.ckpt", "b_lora_f16.ckpt"])
     let loras = await cloud.loras()
