@@ -9,6 +9,12 @@ import HubKit
 /// The families the estimate covers (the keys are Draw Things' model versions). A family not listed has no estimate.
 enum CUFamily: String {
   case zImage = "z_image"
+  case qwenImage = "qwen_image"
+  case qwenImage2_1 = "qwen_image_2.1"
+  case ernieImage = "ernie_image"
+  case ideogram4 = "ideogram_4"
+  case seedvr2_3b = "seedvr2_3b"
+  case seedvr2_7b = "seedvr2_7b"
 }
 
 /// The spec's `modifier` of a model (Draw Things' `SamplerModifier`).
@@ -79,6 +85,45 @@ enum ComputeUnitsEstimator {
       let fixed = ZImageFixedInstructionCount(
         batchSize: 1, timesteps: 1, tokenLength: (baseTokenLength, baseTokenLength), channels: 3840, layers: 30)
       counts = (main * imageBatch, fixed * imageBatch)
+    case .qwenImage2_1:
+      // The text goes before the image blocks (4096 tokens each); the prefix work is shared across the batch.
+      let segments: [(length: Int, image: Bool)] =
+        [(baseTokenLength, false)] + Array(repeating: (4096, true), count: references)
+      counts = (
+        QwenImage2_1InstructionCount(
+          batchSize: imageBatch, height: startHeight, width: startWidth,
+          prefixLength: baseTokenLength + 4096 * references),
+        QwenImage2_1FixedInstructionCount(batchSize: cfg, timesteps: max(1, inputs.steps), segments: segments)
+      )
+    case .qwenImage:
+      let main = QwenImageInstructionCount(
+        batchSize: 1, height: startHeight, width: startWidth, textLength: baseTokenLength,
+        referenceSequenceLength: referenceLength, channels: 3072, layers: 60,
+        isQwenImageLayered: modifier == .qwenimageLayered)
+      let fixed = QwenImageFixedInstructionCount(
+        timesteps: 1, batchSize: 1, textLength: baseTokenLength, channels: 3072, layers: 60,
+        referenceSequenceLength: referenceLength)
+      counts = (main * imageBatch, fixed * imageBatch)
+    case .ernieImage:
+      let main = ErnieImageInstructionCount(
+        batchSize: 1, height: startHeight, width: startWidth, textLength: baseTokenLength,
+        channels: 4_096, layers: 36, intermediateSize: 12_288)
+      let fixed = ErnieImageFixedInstructionCount(batchSize: 1, textLength: baseTokenLength, channels: 4_096)
+      counts = (main * imageBatch, fixed * imageBatch)
+    case .ideogram4:
+      let main = Ideogram4InstructionCount(
+        batchSize: 1, height: startHeight, width: startWidth, textLength: baseTokenLength,
+        channels: 4_608, layers: 34, intermediateSize: 12_288)
+      let fixed = Ideogram4FixedInstructionCount(
+        timesteps: 1, batchSize: 1, textLength: baseTokenLength, channels: 4_608, layers: 34)
+      counts = (main * imageBatch, fixed * imageBatch)
+    case .seedvr2_3b, .seedvr2_7b:
+      // SeedVR2's DiT configurations (SeedVR2DiTConfiguration._3B / ._7B) go through the ERNIE count.
+      let is7B = family == .seedvr2_7b
+      let main = ErnieImageInstructionCount(
+        batchSize: 1, height: startHeight, width: startWidth, textLength: baseTokenLength,
+        channels: is7B ? 3_072 : 2_560, layers: is7B ? 36 : 32, intermediateSize: is7B ? 12_288 : 6_912)
+      counts = (main * imageBatch, 0)
     }
 
     let strength = Double(max(Float(inputs.strength), 0.05))
@@ -93,13 +138,19 @@ enum ComputeUnitsEstimator {
   static func usageBias(_ family: CUFamily) -> Double { 1.0 }
 
   /// The factor between the size in units of 64 pixels and the model's start size (`modelStartSizeFromConfiguration`).
-  static func startFactor(_ family: CUFamily) -> Int { 8 }
+  static func startFactor(_ family: CUFamily) -> Int {
+    switch family {
+    case .qwenImage2_1: return 4
+    default: return 8
+    }
+  }
 
   /// The padded text length of the model's spec, or the family's default (`defaultTokenLength`).
   static func tokenLength(family: CUFamily, padded: Int) -> Int {
     if padded > 0 { return padded }
     switch family {
-    case .zImage: return 512
+    case .zImage, .qwenImage, .qwenImage2_1, .ernieImage, .ideogram4: return 512
+    case .seedvr2_3b, .seedvr2_7b: return 77
     }
   }
 
