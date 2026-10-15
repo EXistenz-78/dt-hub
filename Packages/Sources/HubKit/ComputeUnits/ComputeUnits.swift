@@ -15,13 +15,15 @@ public struct CUInputs: Equatable, Sendable {
   public var imageGuidanceScale: Double
   public var batchSize: Int
   public var hasImage: Bool
+  /// Advanced › guidance embed shortcut (on by default): a guidance-embed model then runs without CFG.
+  public var speedUpWithGuidanceEmbed: Bool
   /// Moodboard (and edit-model) pictures that go with the request.
   public var referenceImages: Int
 
   public init(
     family: String, modelFile: String, capabilities: ModelCapabilities, width: Int, height: Int, steps: Int,
     strength: Double = 1, guidanceScale: Double = 1, imageGuidanceScale: Double = 1.5, batchSize: Int = 1,
-    hasImage: Bool = false, referenceImages: Int = 0
+    hasImage: Bool = false, speedUpWithGuidanceEmbed: Bool = true, referenceImages: Int = 0
   ) {
     self.family = family
     self.modelFile = modelFile
@@ -34,6 +36,7 @@ public struct CUInputs: Equatable, Sendable {
     self.imageGuidanceScale = imageGuidanceScale
     self.batchSize = batchSize
     self.hasImage = hasImage
+    self.speedUpWithGuidanceEmbed = speedUpWithGuidanceEmbed
     self.referenceImages = referenceImages
   }
 }

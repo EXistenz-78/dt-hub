@@ -1,0 +1,136 @@
+import Foundation
+import HubKit
+
+// The compute-unit (CU) estimate of one request, ported from Draw Things (GPL-3.0):
+// Libraries/ModelZoo/Sources/ComputeUnits.swift and the CFG helpers of Libraries/SwiftDiffusion/Sources/Samplers/Sampler.swift,
+// at drawthingsai/draw-things-community commit 3338389349ad7771e1b626e60913bf8c4fff3a26. The formula and the per-family
+// calls are the original's; the input is DT Hub's `CUInputs` instead of Draw Things' `GenerationConfiguration`.
+
+/// The families the estimate covers (the keys are Draw Things' model versions). A family not listed has no estimate.
+enum CUFamily: String {
+  case zImage = "z_image"
+}
+
+/// The spec's `modifier` of a model (Draw Things' `SamplerModifier`).
+enum CUModifier {
+  case none, editing, inpainting, depth, canny, double
+  case kontext, kontextKv, qwenimageEditPlus, qwenimageEdit2511, fl2va, ref2va, qwenimageLayered
+
+  init(key: String?) {
+    switch key {
+    case "editing": self = .editing
+    case "inpainting": self = .inpainting
+    case "depth": self = .depth
+    case "canny": self = .canny
+    case "double": self = .double
+    case "kontext": self = .kontext
+    case "kontext_kv": self = .kontextKv
+    case "qwenimage_edit_plus": self = .qwenimageEditPlus
+    case "qwenimage_edit_2511": self = .qwenimageEdit2511
+    case "fl2va": self = .fl2va
+    case "ref2va": self = .ref2va
+    case "qwenimage_layered": self = .qwenimageLayered
+    default: self = .none
+    }
+  }
+}
+
+enum ComputeUnitsEstimator {
+  /// Single global calibration scalar from instruction counts to compute units (the original's).
+  static let calibrationScale = 5.14816e-12
+  /// No estimate is reported above this: a request this big is far past any limit, and the instruction counts
+  /// would overflow `Int` long before.
+  static let ceiling = 100_000_000
+  /// Pixels × images above which the estimate is the ceiling (8192 × 8192 × 8).
+  static let sizeGuard = 8192.0 * 8192.0 * 8.0
+
+  /// nil when the family is not covered or the numbers make no sense (spec §6).
+  static func estimate(_ inputs: CUInputs) -> Int? {
+    guard let family = CUFamily(rawValue: inputs.family), inputs.steps >= 1, inputs.width >= 64, inputs.height >= 64,
+      inputs.batchSize >= 1, inputs.strength.isFinite, inputs.guidanceScale.isFinite,
+      inputs.imageGuidanceScale.isFinite
+    else { return nil }
+    let batch = min(inputs.batchSize, 64)
+    if Double(inputs.width) * Double(inputs.height) * Double(batch) > sizeGuard { return ceiling }
+
+    let capabilities = inputs.capabilities
+    let modifier = CUModifier(key: capabilities.modifier)
+    let isGuidanceEmbedEnabled = capabilities.guidanceEmbed && inputs.speedUpWithGuidanceEmbed
+    let cfgEnabled =
+      !capabilities.isConsistencyModel && !isGuidanceEmbedEnabled
+      && isCfgEnabled(
+        text: Float(inputs.guidanceScale), image: Float(inputs.imageGuidanceScale), modifier: modifier)
+    let cfg = cfgChannels(
+      cfgEnabled: cfgEnabled, text: Float(inputs.guidanceScale), image: Float(inputs.imageGuidanceScale),
+      modifier: modifier)
+    let imageBatch = batch * cfg
+    let baseTokenLength = max(1, tokenLength(family: family, padded: capabilities.paddedTextEncodingLength))
+    // Draw Things' configuration holds the size in units of 64 pixels; the model starts from `unit × factor`.
+    let startWidth = max(1, inputs.width / 64) * startFactor(family)
+    let startHeight = max(1, inputs.height / 64) * startFactor(family)
+    let references = referenceImageCount(modifier: modifier, hasImage: inputs.hasImage, extra: inputs.referenceImages)
+    let referenceLength = max(1, (startHeight / 2) * (startWidth / 2)) * references
+
+    let counts: (main: Int, fixed: Int)
+    switch family {
+    case .zImage:
+      let main = ZImageInstructionCount(
+        batchSize: 1, height: startHeight, width: startWidth, textLength: baseTokenLength, channels: 3840, layers: 30)
+      let fixed = ZImageFixedInstructionCount(
+        batchSize: 1, timesteps: 1, tokenLength: (baseTokenLength, baseTokenLength), channels: 3840, layers: 30)
+      counts = (main * imageBatch, fixed * imageBatch)
+    }
+
+    let strength = Double(max(Float(inputs.strength), 0.05))
+    let main = Double(counts.main) * calibrationScale * Double(inputs.steps) * strength
+    let fixed = Double(counts.fixed) * calibrationScale
+    let total = (main + fixed) * usageBias(family)
+    guard total.isFinite, total > 0 else { return nil }
+    return Int(min(Double(ceiling), total.rounded(.up)))
+  }
+
+  /// The multiplier that steers usage toward preferred models: 1 for every family covered here.
+  static func usageBias(_ family: CUFamily) -> Double { 1.0 }
+
+  /// The factor between the size in units of 64 pixels and the model's start size (`modelStartSizeFromConfiguration`).
+  static func startFactor(_ family: CUFamily) -> Int { 8 }
+
+  /// The padded text length of the model's spec, or the family's default (`defaultTokenLength`).
+  static func tokenLength(family: CUFamily, padded: Int) -> Int {
+    if padded > 0 { return padded }
+    switch family {
+    case .zImage: return 512
+    }
+  }
+
+  /// `referenceImageCount` of the original: pictures that go with the request through the model's modifier.
+  static func referenceImageCount(modifier: CUModifier, hasImage: Bool, extra: Int) -> Int {
+    let base = hasImage ? 1 : 0
+    let more = max(0, extra)
+    switch modifier {
+    case .qwenimageLayered: return base
+    case .kontext, .kontextKv, .qwenimageEditPlus, .qwenimageEdit2511, .ref2va: return base + more
+    case .fl2va: return hasImage ? 1 + min(more, 1) : 0
+    default: return 0
+    }
+  }
+
+  // MARK: CFG (Sampler.swift)
+
+  static func isCfgEnabled(text: Float, image: Float, modifier: CUModifier) -> Bool {
+    if modifier == .editing {
+      return !((text - 1).magnitude <= 1e-3 && (image - 1).magnitude <= 1e-3)
+    }
+    return (text - 1).magnitude > 1e-3
+  }
+
+  static func cfgChannels(cfgEnabled: Bool, text: Float, image: Float, modifier: CUModifier) -> Int {
+    switch modifier {
+    case .editing:
+      guard cfgEnabled else { return 1 }
+      return (text - image).magnitude <= 1e-3 ? 2 : 3
+    default:
+      return cfgEnabled ? 2 : 1
+    }
+  }
+}
