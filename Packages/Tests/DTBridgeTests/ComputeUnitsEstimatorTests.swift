@@ -46,7 +46,8 @@ struct ComputeUnitsEstimatorTests {
   }
 
   @Test func anUncoveredFamilyHasNoEstimate() {
-    #expect(ComputeUnitsEstimator.estimate(inputs("sdxl_base_v0.9")) == nil)
+    #expect(ComputeUnitsEstimator.estimate(inputs("wurstchen_v3.0_stage_c")) == nil)
+    #expect(ComputeUnitsEstimator.estimate(inputs("kandinsky2.1")) == nil)
     #expect(ComputeUnitsEstimator.estimate(inputs("wan_v2.1_14b")) == nil)
   }
 
@@ -166,5 +167,24 @@ struct ComputeUnitsEstimatorTests {
     let none = estimate(inputs("flux2_9b", references: 0, capabilities: caps))
     let two = estimate(inputs("flux2_9b", references: 2, capabilities: caps))
     #expect(two > none)
+  }
+
+  @Test(arguments: ["v1", "v2", "sdxl_base_v0.9", "sdxl_refiner_v0.9", "ssd_1b", "cosmos2.5_2b"])
+  func theOldImageFamiliesAndCosmosHaveAnEstimate(family: String) {
+    #expect(estimate(inputs(family, width: 512, height: 512, steps: 20, guidance: 7.5)) > 0)
+  }
+
+  @Test func sdxlGrowsWithTheSizeTheStepsAndTheBatch() {
+    let base = estimate(inputs("sdxl_base_v0.9", width: 1024, height: 1024, steps: 20, guidance: 7.5))
+    #expect(estimate(inputs("sdxl_base_v0.9", width: 1024, height: 1024, steps: 40, guidance: 7.5)) > base)
+    #expect(estimate(inputs("sdxl_base_v0.9", width: 1536, height: 1536, steps: 20, guidance: 7.5)) > base)
+    let two = estimate(inputs("sdxl_base_v0.9", width: 1024, height: 1024, steps: 20, guidance: 7.5, batch: 2))
+    #expect(abs(Double(two) / Double(base) - 2) < 0.1)
+  }
+
+  @Test func theOldFamiliesCarryTheUsageBias() {
+    // SD 1.x/2.x and SDXL count 2.5 times their instruction cost; Cosmos and the modern families count 1.
+    #expect(ComputeUnitsEstimator.usageBias(.sd15) == 2.5 && ComputeUnitsEstimator.usageBias(.sdxlBase) == 2.5)
+    #expect(ComputeUnitsEstimator.usageBias(.cosmos2_5_2b) == 1.0 && ComputeUnitsEstimator.usageBias(.zImage) == 1.0)
   }
 }

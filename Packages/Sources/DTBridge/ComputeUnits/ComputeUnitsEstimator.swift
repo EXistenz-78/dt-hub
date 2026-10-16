@@ -20,6 +20,12 @@ enum CUFamily: String {
   case flux2_9b = "flux2_9b"
   case flux2_4b = "flux2_4b"
   case krea2 = "krea_2"
+  case sd15 = "v1"
+  case sd2 = "v2"
+  case sdxlBase = "sdxl_base_v0.9"
+  case sdxlRefiner = "sdxl_refiner_v0.9"
+  case ssd1b = "ssd_1b"
+  case cosmos2_5_2b = "cosmos2.5_2b"
   case sd3 = "sd3"
   case sd3Large = "sd3_large"
   case pixart = "pixart"
@@ -178,6 +184,53 @@ enum ComputeUnitsEstimator {
       let textFusion = Krea2TextFusionAdapterInstructionCount(batchSize: 1, textLength: fixedTextLength)
       let fixed = Krea2FixedInstructionCount(batchSize: 1, timesteps: 1, textLength: totalFixedTextLength)
       counts = (main * imageBatch, textFusion + fixed * imageBatch)
+    case .sd15:
+      let main = UNetInstructionCount(
+        batchSize: 1, embeddingLength: (baseTokenLength, baseTokenLength), startWidth: startWidth,
+        startHeight: startHeight, injectIPAdapterLengths: [], injectAttentionKV: false)
+      counts = (main * imageBatch, 0)
+    case .sd2:
+      let main = UNetv2InstructionCount(
+        batchSize: 1, embeddingLength: (baseTokenLength, baseTokenLength), startWidth: startWidth,
+        startHeight: startHeight)
+      counts = (main * imageBatch, 0)
+    case .sdxlBase:
+      let main = UNetXLInstructionCount(
+        batchSize: 1, startHeight: startHeight, startWidth: startWidth, channels: [320, 640, 1280],
+        inputAttentionRes: [2: [2, 2], 4: [10, 10]], middleAttentionBlocks: 10,
+        outputAttentionRes: [2: [2, 2, 2], 4: [10, 10, 10]], embeddingLength: (baseTokenLength, baseTokenLength),
+        injectIPAdapterLengths: [], isTemporalMixEnabled: false)
+      let fixed = UNetXLFixedInstructionCount(
+        batchSize: 1, startHeight: startHeight, startWidth: startWidth, channels: [320, 640, 1280],
+        embeddingLength: (baseTokenLength, baseTokenLength), inputAttentionRes: [2: [2, 2], 4: [10, 10]],
+        middleAttentionBlocks: 10, outputAttentionRes: [2: [2, 2, 2], 4: [10, 10, 10]], isTemporalMixEnabled: false)
+      counts = (main * imageBatch, fixed * imageBatch)
+    case .sdxlRefiner:
+      let main = UNetXLInstructionCount(
+        batchSize: 1, startHeight: startHeight, startWidth: startWidth, channels: [384, 768, 1536, 1536],
+        inputAttentionRes: [2: [4, 4], 4: [4, 4]], middleAttentionBlocks: 4,
+        outputAttentionRes: [2: [4, 4, 4], 4: [4, 4, 4]], embeddingLength: (baseTokenLength, baseTokenLength),
+        injectIPAdapterLengths: [], isTemporalMixEnabled: false)
+      let fixed = UNetXLFixedInstructionCount(
+        batchSize: 1, startHeight: startHeight, startWidth: startWidth, channels: [384, 768, 1536, 1536],
+        embeddingLength: (baseTokenLength, baseTokenLength), inputAttentionRes: [2: [4, 4], 4: [4, 4]],
+        middleAttentionBlocks: 4, outputAttentionRes: [2: [4, 4, 4], 4: [4, 4, 4]], isTemporalMixEnabled: false)
+      counts = (main * imageBatch, fixed * imageBatch)
+    case .ssd1b:
+      let main = UNetXLInstructionCount(
+        batchSize: 1, startHeight: startHeight, startWidth: startWidth, channels: [320, 640, 1280],
+        inputAttentionRes: [2: [2, 2], 4: [4, 4]], middleAttentionBlocks: 0,
+        outputAttentionRes: [2: [2, 1, 1], 4: [4, 4, 10]], embeddingLength: (baseTokenLength, baseTokenLength),
+        injectIPAdapterLengths: [], isTemporalMixEnabled: false)
+      let fixed = UNetXLFixedInstructionCount(
+        batchSize: 1, startHeight: startHeight, startWidth: startWidth, channels: [320, 640, 1280],
+        embeddingLength: (baseTokenLength, baseTokenLength), inputAttentionRes: [2: [2, 2], 4: [4, 4]],
+        middleAttentionBlocks: 0, outputAttentionRes: [2: [2, 1, 1], 4: [4, 4, 10]], isTemporalMixEnabled: false)
+      counts = (main * imageBatch, fixed * imageBatch)
+    case .cosmos2_5_2b:
+      let main = ZImageInstructionCount(
+        batchSize: 1, height: startHeight, width: startWidth, textLength: baseTokenLength, channels: 2048, layers: 28)
+      counts = (main * imageBatch, 0)
     case .sd3, .sd3Large:
       let large = family == .sd3Large
       let dual = large ? [] : capabilities.dualAttentionLayers
@@ -231,8 +284,14 @@ enum ComputeUnitsEstimator {
     return Int(min(Double(ceiling), total.rounded(.up)))
   }
 
-  /// The multiplier that steers usage toward preferred models: 1 for every family covered here.
-  static func usageBias(_ family: CUFamily) -> Double { 1.0 }
+  /// The multiplier that steers usage toward preferred models: 2.5 for the old families (SD 1.x/2.x, SDXL), 1 for the
+  /// rest (the original's `modelUsageBiasMultiplier`).
+  static func usageBias(_ family: CUFamily) -> Double {
+    switch family {
+    case .sd15, .sd2, .sdxlBase, .sdxlRefiner, .ssd1b: 2.5
+    default: 1.0
+    }
+  }
 
   /// The factor between the size in units of 64 pixels and the model's start size (`modelStartSizeFromConfiguration`).
   static func startFactor(_ family: CUFamily) -> Int {
@@ -251,7 +310,9 @@ enum ComputeUnitsEstimator {
       return 512
     case .krea2: return 256
     case .hiDreamI1: return 128
-    case .sd3, .sd3Large, .pixart, .auraflow, .hiDreamO1: return 77
+    case .sd3, .sd3Large, .pixart, .auraflow, .hiDreamO1, .sd15, .sd2, .sdxlBase, .sdxlRefiner, .ssd1b,
+      .cosmos2_5_2b:
+      return 77
     case .seedvr2_3b, .seedvr2_7b: return 77
     }
   }
