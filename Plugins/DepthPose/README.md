@@ -1,6 +1,6 @@
 # Depth & Pose
 
-A plug-in for DT Hub that makes a **depth map** and/or an **OpenPose skeleton** from one picture, in a moment, and puts them in the Moodboard (or on your Desktop), so an edit or in-context model can take them as a reference. **Works with: edit and in-context models, whatever their family** (FLUX.2 [klein] and dev, Qwen Image 2.1, Qwen Image Edit, FLUX.1 Kontext, HiDream E1…). With any other model the plug-in is switched off and its tab is hidden; that needs a DT Hub version that knows the plug-in manifest's `requiresEditModel` key, an older one shows the tab with every model.
+A plug-in for DT Hub that makes a **depth map** and/or a **DWPose-style skeleton** (body, face and hands) from one picture, in a moment, and puts them in the Moodboard (or on your Desktop), so an edit or in-context model can take them as a reference. **Works with: edit and in-context models, whatever their family** (FLUX.2 [klein] and dev, Qwen Image 2.1, Qwen Image Edit, FLUX.1 Kontext, HiDream E1…). With any other model the plug-in is switched off and its tab is hidden; that needs a DT Hub version that knows the plug-in manifest's `requiresEditModel` key, an older one shows the tab with every model.
 
 The maps come from small dedicated models, in about a second, instead of a generation with a LoRA.
 
@@ -21,28 +21,39 @@ The first map of each orientation takes up to half a minute, while Core ML prepa
 
 ## Pose
 
-Apple's Vision framework finds the people (2D body pose, every person in the picture) and the plug-in draws them as an **OpenPose** picture: the 18 points and 17 bones with OpenPose's colours on a black background. A joint Vision is not sure of (confidence below 0.3) is left out, and so is a bone with a missing end; if nobody is found, the plug-in says so and sends nothing for the pose.
+With the **full-pose model** (a button appears until you download it, see below) the pose is a **DWPose** picture: for every person the **body** (the 18 OpenPose points and 17 bones, in OpenPose's colours), the **face** (about 70 white dots) and **both hands** (21 points each, edges coloured by hue, blue points), on a black background. It is [DWPose-L](https://github.com/IDEA-Research/DWPose), converted to Core ML: about 15 ms for each person, and it copes much better than Vision with limbs that are hidden.
 
-Limits: body only (no hands and no face), and Vision often cannot tell where a limb is when it is hidden. A better pose model is planned.
+How it works: Apple's Vision framework finds the person boxes (when it finds nobody, as in an illustration, the whole picture is tried as one box); each person is cropped to 288×384 and goes to the model; a figure whose body points score too low on average (below 0.35) is not a person, so a landscape gives no skeleton. A point the model is not sure of (confidence below 0.3) is left out, and so is a bone with a missing end. At most the 12 biggest people are drawn. If nobody is found, the plug-in says so and sends nothing for the pose.
 
-## The depth model
+**Without the full-pose model** the pose is the one from Vision's own body pose: body only, no face and no hands, and Vision often cannot tell where a hidden limb is. If the full-pose model on disk stops working, the plug-in falls back to Vision, says so, and the download button comes back.
 
-The **Download the model (200 MB)** button appears **only when the plug-in does not find the model**. Until it is there the Depth box is off; the pose works without it. The download checks the size and the SHA-256 of every file, compiles the model and only then puts it in place: a failed or cancelled download leaves nothing behind. The model lives in `~/Library/Application Support/DT Hub/Data/DepthPose/`: `DepthAnythingV2BaseF16.mlpackage` (the three files) and `DepthAnythingV2BaseF16.mlmodelc` (compiled). If you put the package there by hand (for example one you downloaded from the [release](https://github.com/EXistenz-78/dt-hub/releases/tag/depth-anything-v2-base-coreml)), the plug-in checks and compiles it at the next launch.
+## The models
 
-**Licence.** The original weights are by Lihe Yang et al. ([Depth Anything V2](https://github.com/DepthAnything/Depth-Anything-V2)) under **CC BY-NC 4.0**: the converted files carry it too, so use and share them for non-commercial purposes, with attribution, and do not sell them or include them in a commercial product. Changes made: converted to Core ML (float16, fixed shapes, functions merged, output normalised). DT Hub and this plug-in are free and under their own licence; the model keeps its own. The conversion script is in `Scripts/convert_depth_model.py` (`requirements-convert.txt`; `python convert_depth_model.py OUT_DIR [base|large]`).
+Two models, each with its **own download button that appears only when the plug-in does not find that model**; the two downloads are independent.
+
+- **Depth model** (about 200 MB), Depth Anything V2 Base. Until it is there the Depth box is greyed out.
+- **Full-pose model** (about 64 MB), DWPose-L. Without it the pose works with Vision (body only).
+
+A download checks the size and the SHA-256 of every file, compiles the model and only then puts it in place: a failed or cancelled download leaves nothing behind. The models live in `~/Library/Application Support/DT Hub/Data/DepthPose/`: for each, a `.mlpackage` (the three files) and a `.mlmodelc` (compiled). If you put a package there by hand (for example one you downloaded from the releases), the plug-in checks and compiles it at the next launch. The releases: [depth](https://github.com/EXistenz-78/dt-hub/releases/tag/depth-anything-v2-base-coreml), [full pose](https://github.com/EXistenz-78/dt-hub/releases/tag/dwpose-l-coreml).
+
+**Licences.**
+- **Depth Anything V2 Base**, by Lihe Yang et al. ([Depth Anything V2](https://github.com/DepthAnything/Depth-Anything-V2)), is **CC BY-NC 4.0**: the converted files carry it too, so use and share them for non-commercial purposes, with attribution, and do not sell them or include them in a commercial product. Changes made: converted to Core ML (float16, fixed shapes, functions merged, output normalised).
+- **DWPose-L**, by IDEA-Research (Zhendong Yang et al., [DWPose](https://github.com/IDEA-Research/DWPose); weights `yzd-v/DWPose`), is **Apache-2.0**, with no limit on commercial use; keep its licence and attribution. Changes made: converted to Core ML (float16, fixed 288×384 input, normalisation included).
+
+DT Hub and this plug-in are free and under their own licence; each model keeps its own. The conversion scripts are in `Scripts/` (`convert_depth_model.py [base|large]` and `convert_pose_model.py PATH.onnx OUT.mlpackage`, with `requirements-convert.txt`).
 
 ## Network
 
-This is one of two plug-ins of DT Hub that use the network (the other is LoRA Advisor), and only when you press **Download the model**:
+This is one of two plug-ins of DT Hub that use the network (the other is LoRA Advisor), and only when you press one of the **Download…** buttons:
 
-- It downloads three files from the GitHub release of this repository, `github.com` and the servers GitHub serves release files from (`githubusercontent.com`); a redirect anywhere else is refused.
+- It downloads three files per model from the GitHub releases of this repository, `github.com` and the servers GitHub serves release files from (`githubusercontent.com`); a redirect anywhere else is refused.
 - Requests are `GET` over https, with no cookies and no credentials. Nothing of yours leaves your Mac: no picture, no prompt, no account. The depth and the pose are computed on your Mac.
 
 ## Good to know
 
 - The picture and the maps are not kept: reopening a project starts the tab empty, with your Depth and Pose boxes as you left them.
 - The maps go to the picture folder the app lends the plug-in (they are copied into the Moodboard) and are overwritten by the next send.
-- The Depth box is greyed out, and **Create** with only Depth ticked is disabled, until the model is on the disk.
+- The Depth box is greyed out, and **Create** with only Depth ticked is disabled, until the depth model is on the disk.
 
 ## Build
 
