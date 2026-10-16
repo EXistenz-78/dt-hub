@@ -7,6 +7,7 @@ import UniformTypeIdentifiers
 struct DPViewActions {
   var create: () -> Void = {}
   var send: () -> Void = {}
+  var saveToDesktop: () -> Void = {}
   var download: () -> Void = {}
   var cancel: () -> Void = {}
   static var none: DPViewActions { DPViewActions() }
@@ -35,11 +36,13 @@ struct DPView: View {
       dropZone
       Button(state.text(.open)) { chooseFile() }.buttonStyle(DSPillButtonStyle())
       DSGroupHeader(title: state.text(.mode))
-      Toggle(state.text(.depth), isOn: $state.wantsDepth)
-        .toggleStyle(DSCheckboxToggleStyle())
-        .disabled(!state.depthAvailable)
-        .opacity(state.depthAvailable ? 1 : 0.5)
-      Toggle(state.text(.pose), isOn: $state.wantsPose).toggleStyle(DSCheckboxToggleStyle())
+      HStack(spacing: DS.groupGap) {
+        Toggle(state.text(.depth), isOn: $state.wantsDepth)
+          .toggleStyle(DSCheckboxToggleStyle())
+          .disabled(!state.depthAvailable)
+          .opacity(state.depthAvailable ? 1 : 0.5)
+        Toggle(state.text(.pose), isOn: $state.wantsPose).toggleStyle(DSCheckboxToggleStyle())
+      }
       modelSection
       Button(action: actions.create) {
         if state.isWorking {
@@ -122,14 +125,24 @@ struct DPView: View {
           }
           .frame(maxHeight: .infinity)
         }
-        Button(action: actions.send) {
-          HStack(spacing: DS.pillIconGap) {
-            Image(systemName: "square.and.arrow.up")
-            Text(state.text(.sendToMoodboard))
+        HStack(spacing: DS.controlGap) {
+          Button(action: actions.send) {
+            HStack(spacing: DS.pillIconGap) {
+              Image(systemName: "square.and.arrow.up")
+              Text(state.text(.sendToMoodboard))
+            }
           }
+          .buttonStyle(DSPillButtonStyle(prominent: true))
+          .disabled(!state.canSend)
+          Button(action: actions.saveToDesktop) {
+            HStack(spacing: DS.pillIconGap) {
+              Image(systemName: "desktopcomputer")
+              Text(state.text(.saveToDesktop))
+            }
+          }
+          .buttonStyle(DSPillButtonStyle())
+          .disabled(!state.canSave)
         }
-        .buttonStyle(DSPillButtonStyle(prominent: true))
-        .disabled(!state.canSend)
       }
       .padding(DS.panelPadding)
     }

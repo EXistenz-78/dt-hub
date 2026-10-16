@@ -76,6 +76,8 @@ final class DPState: ObservableObject {
   var canCreate: Bool {
     image != nil && !isWorking && (wantsDepth || wantsPose) && !(wantsDepth && !wantsPose && !depthAvailable)
   }
+  /// A copy on the Desktop needs a map, not the plug-in being on for the job.
+  var canSave: Bool { !isWorking && (chosenMaps.depth != nil || chosenMaps.pose != nil) }
   var canSend: Bool { active && !isWorking && (chosenMaps.depth != nil || chosenMaps.pose != nil) }
 
   /// The maps the checkboxes ask for, among the ones made.
@@ -198,6 +200,28 @@ final class DPState: ObservableObject {
     }
     let answer = await contribute(["moodboard": DPMessages.moodboard(depthPath: depthPath, posePath: posePath)])
     status = describe(answer)
+  }
+
+  /// Saves the chosen maps on the Desktop as "Depth NNN.png" and "Pose NNN.png".
+  func saveToDesktop(in folder: URL = DPDesktopSaver.desktopFolder) {
+    let (depth, pose) = chosenMaps
+    guard depth != nil || pose != nil else {
+      status = text(.noMapsToSend)
+      return
+    }
+    var saved: [String] = []
+    do {
+      if let depth, let png = DPPoseRenderer.pngData(depth) {
+        saved.append(try DPDesktopSaver.save(png, prefix: "Depth ", in: folder).lastPathComponent)
+      }
+      if let pose, let png = DPPoseRenderer.pngData(pose) {
+        saved.append(try DPDesktopSaver.save(png, prefix: "Pose ", in: folder).lastPathComponent)
+      }
+    } catch {
+      status = text(.saveFailed)
+      return
+    }
+    status = L.format(.savedDesktop, saved.joined(separator: ", "), italian: italian)
   }
 
   private func describe(_ answer: [String: Any]?) -> String {

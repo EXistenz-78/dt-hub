@@ -216,6 +216,69 @@ struct DPStateTests {
     #expect(await send(nil) == L.text(.notAnswered, italian: false))
   }
 
+  private func desktop() throws -> URL {
+    let url = FileManager.default.temporaryDirectory.appendingPathComponent("dpst-desk-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+    return url
+  }
+
+  private func names(_ folder: URL) -> [String] {
+    ((try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []).sorted()
+  }
+
+  @Test func saveToDesktopWritesTheChosenMapsWithTheFirstFreeNumbers() async throws {
+    let r = try await rig(modelReady: true)
+    let desk = try desktop()
+    defer { try? FileManager.default.removeItem(at: desk) }
+    r.state.select(depth: true, pose: true)
+    r.state.setImage(data: picture(), name: "a.png")
+    await r.state.create()
+    r.state.saveToDesktop(in: desk)
+    #expect(names(desk) == ["Depth 001.png", "Pose 001.png"])
+    #expect(r.state.status == L.format(.savedDesktop, "Depth 001.png, Pose 001.png", italian: false))
+    r.state.saveToDesktop(in: desk)
+    #expect(names(desk) == ["Depth 001.png", "Depth 002.png", "Pose 001.png", "Pose 002.png"])
+  }
+
+  @Test func onlyTheChosenMapsAreSavedToTheDesktop() async throws {
+    let r = try await rig(modelReady: true)
+    let desk = try desktop()
+    defer { try? FileManager.default.removeItem(at: desk) }
+    r.state.select(depth: true, pose: true)
+    r.state.setImage(data: picture(), name: "a.png")
+    await r.state.create()
+    r.state.select(depth: false, pose: true)
+    r.state.saveToDesktop(in: desk)
+    #expect(names(desk) == ["Pose 001.png"])
+  }
+
+  @Test func savingBeforeThereIsAMapSaysSoAndWritesNothing() async throws {
+    let r = try await rig(modelReady: true)
+    let desk = try desktop()
+    defer { try? FileManager.default.removeItem(at: desk) }
+    #expect(!r.state.canSave)
+    r.state.saveToDesktop(in: desk)
+    #expect(names(desk).isEmpty)
+    #expect(r.state.status == L.text(.noMapsToSend, italian: false))
+  }
+
+  @Test func savingToAFolderThatIsNotThereSaysSo() async throws {
+    let r = try await rig(modelReady: true)
+    r.state.setImage(data: picture(), name: "a.png")
+    await r.state.create()
+    r.state.saveToDesktop(in: r.temp.appendingPathComponent("nowhere"))
+    #expect(r.state.status == L.text(.saveFailed, italian: false))
+  }
+
+  @Test func theDesktopCopyDoesNotNeedThePluginOnTheJob() async throws {
+    let r = try await rig(modelReady: true)
+    r.state.setImage(data: picture(), name: "a.png")
+    await r.state.create()
+    #expect(r.state.canSave && r.state.canSend)
+    r.state.active = false
+    #expect(r.state.canSave && !r.state.canSend)
+  }
+
   @Test func sendIsDisabledUntilThereIsSomethingToSendAndThePluginIsOn() async throws {
     let r = try await rig(modelReady: true)
     #expect(!r.state.canSend)
