@@ -82,7 +82,7 @@ struct DPStateTests {
 
   @Test func createWithBothMakesBothMaps() async throws {
     let r = try await rig(modelReady: true)
-    r.state.mode = .both
+    r.state.select(depth: true, pose: true)
     r.state.setImage(data: picture(), name: "a.png")
     await r.state.create()
     #expect(r.state.depthImage?.width == 80 && r.state.poseImage?.width == 80)
@@ -92,7 +92,7 @@ struct DPStateTests {
 
   @Test func createWithDepthOnlyDoesNotRunVision() async throws {
     let r = try await rig(modelReady: true)
-    r.state.mode = .depth
+    r.state.select(depth: true, pose: false)
     r.state.setImage(data: picture(), name: "a.png")
     await r.state.create()
     #expect(r.state.depthImage != nil && r.state.poseImage == nil)
@@ -101,7 +101,7 @@ struct DPStateTests {
 
   @Test func createWithPoseOnlyWorksWithoutTheModel() async throws {
     let r = try await rig(modelReady: false)
-    r.state.mode = .pose
+    r.state.select(depth: false, pose: true)
     r.state.setImage(data: picture(), name: "a.png")
     await r.state.create()
     #expect(r.state.poseImage != nil && r.state.depthImage == nil)
@@ -109,7 +109,7 @@ struct DPStateTests {
 
   @Test func bothWithoutTheModelMakesOnlyThePoseAndSaysSo() async throws {
     let r = try await rig(modelReady: false)
-    r.state.mode = .both
+    r.state.select(depth: true, pose: true)
     r.state.setImage(data: picture(), name: "a.png")
     await r.state.create()
     #expect(r.state.poseImage != nil && r.state.depthImage == nil)
@@ -118,7 +118,7 @@ struct DPStateTests {
 
   @Test func depthOnlyWithoutTheModelAsksToDownload() async throws {
     let r = try await rig(modelReady: false)
-    r.state.mode = .depth
+    r.state.select(depth: true, pose: false)
     r.state.setImage(data: picture(), name: "a.png")
     #expect(!r.state.canCreate)
     await r.state.create()
@@ -128,7 +128,7 @@ struct DPStateTests {
 
   @Test func noPersonSaysSoAndKeepsTheDepth() async throws {
     let r = try await rig(modelReady: true, people: [])
-    r.state.mode = .both
+    r.state.select(depth: true, pose: true)
     r.state.setImage(data: picture(), name: "a.png")
     await r.state.create()
     #expect(r.state.depthImage != nil && r.state.poseImage == nil)
@@ -156,7 +156,7 @@ struct DPStateTests {
     let r = try await rig(modelReady: true)
     let gate = AsyncGate()
     r.detector.gate = gate
-    r.state.mode = .pose
+    r.state.select(depth: false, pose: true)
     r.state.setImage(data: picture(), name: "a.png")
     let work = Task { await r.state.create() }
     while r.detector.calls == 0 { try await Task.sleep(for: .milliseconds(5)) }
@@ -169,10 +169,10 @@ struct DPStateTests {
 
   @Test func sendWritesThePNGsAndContributesOnlyTheChosenMaps() async throws {
     let r = try await rig(modelReady: true)
-    r.state.mode = .both
+    r.state.select(depth: true, pose: true)
     r.state.setImage(data: picture(), name: "a.png")
     await r.state.create()
-    r.state.mode = .pose  // the maps exist, only the pose is wanted
+    r.state.select(depth: false, pose: true)  // the maps exist, only the pose is wanted
     await r.state.send { [spy = r.spy] in spy.contributions.append($0); return spy.answer }
     let sent = try #require(r.spy.contributions.first?["moodboard"] as? [[String: Any]])
     #expect(sent.map { $0["name"] as? String } == ["Pose"])
@@ -184,7 +184,7 @@ struct DPStateTests {
 
   @Test func sendWithBothSendsDepthThenPose() async throws {
     let r = try await rig(modelReady: true)
-    r.state.mode = .both
+    r.state.select(depth: true, pose: true)
     r.state.setImage(data: picture(), name: "a.png")
     await r.state.create()
     await r.state.send { [spy = r.spy] in spy.contributions.append($0); return spy.answer }
@@ -226,7 +226,7 @@ struct DPStateTests {
     r.state.active = false
     #expect(!r.state.canSend)
     r.state.active = true
-    r.state.mode = .depth
+    r.state.select(depth: true, pose: false)
     r.state.setImage(data: picture(), name: "b.png")
     #expect(!r.state.canSend)
   }
@@ -273,25 +273,44 @@ struct DPStateTests {
     let r = try await rig(modelReady: true)
     let project = r.temp.appendingPathComponent("project")
     r.state.switchProject(folder: project, adoptLegacy: false)
-    r.state.mode = .pose
+    r.state.select(depth: false, pose: true)
     r.state.setImage(data: picture(), name: "a.png")
     await r.state.create()
     r.state.switchProject(folder: project, adoptLegacy: false)
-    #expect(r.state.mode == .pose)
+    #expect(!r.state.wantsDepth && r.state.wantsPose)
     #expect(r.state.image == nil && r.state.poseImage == nil && r.state.imageName.isEmpty)
   }
 
   @Test func theFirstProjectAdoptsTheModeOfBeforeProjects() async throws {
     let r = try await rig(modelReady: true)
-    r.state.mode = .depth  // saved in the defaults: there is no project yet
+    r.state.select(depth: true, pose: false)  // saved in the defaults: there is no project yet
     r.state.switchProject(folder: r.temp.appendingPathComponent("first"), adoptLegacy: true)
-    #expect(r.state.mode == .depth)
+    #expect(r.state.wantsDepth && !r.state.wantsPose)
   }
 
   @Test func theContextSetsTheTempFolder() async throws {
     let r = try await rig(modelReady: true)
     r.state.apply(context: Data(#"{"type":"context","tempFolder":"/tmp/xyz"}"#.utf8))
     #expect(r.state.tempFolder == "/tmp/xyz")
+  }
+
+  @Test func withNoMapChosenThereIsNothingToCreate() async throws {
+    let r = try await rig(modelReady: true)
+    r.state.setImage(data: picture(), name: "a.png")
+    #expect(r.state.canCreate)
+    r.state.select(depth: false, pose: false)
+    #expect(!r.state.canCreate)
+    r.state.select(depth: false, pose: true)
+    #expect(r.state.canCreate)
+  }
+
+  @Test func theTwoChoicesAreIndependent() async throws {
+    let r = try await rig(modelReady: true)
+    r.state.wantsDepth = false
+    #expect(!r.state.wantsDepth && r.state.wantsPose)
+    r.state.wantsPose = false
+    r.state.wantsDepth = true
+    #expect(r.state.wantsDepth && !r.state.wantsPose)
   }
 
   @Test func createIsDisabledWithoutAnImage() async throws {
