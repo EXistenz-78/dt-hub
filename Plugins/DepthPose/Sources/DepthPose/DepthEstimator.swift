@@ -14,7 +14,7 @@ protocol DPDepthModel: Sendable {
 
 /// Turns a picture into its depth map: near is bright, far is dark, 0–255 over the whole picture, at the size of the
 /// picture.
-struct DepthEstimator {
+struct DepthEstimator: Sendable {
   var model: any DPDepthModel
   /// Set when the model gives far as bright (the live test decides; Depth Anything gives near as bright).
   var invertsModelOutput = false
