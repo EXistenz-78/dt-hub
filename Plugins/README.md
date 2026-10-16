@@ -1,7 +1,7 @@
 # DT Hub plug-ins
 
-Eight plug-ins ship in this repository. Each is a Swift package of its own, with its own tests and its own README. Prompt Master, Prompt Master I4, Sphere Light, Batch plus, AI Assistant and Qwen 2.1 Inpainting keep their state per project.
-A plug-in only works with the model families it was made for: on any other family it is **switched off and its tab is hidden**,
+Nine plug-ins ship in this repository. Each is a Swift package of its own, with its own tests and its own README. Prompt Master, Prompt Master I4, Sphere Light, Batch plus, AI Assistant, Qwen 2.1 Inpainting and Depth & Pose keep their state per project.
+A plug-in only works with the model families it was made for (Depth & Pose, with edit and in-context models): on any other model it is **switched off and its tab is hidden**,
 so the tab bar only ever shows what can be used with the model you picked.
 
 | Plug-in | Works with | What it does |
@@ -13,7 +13,8 @@ so the tab bar only ever shows what can be used with the model you picked.
 | **[Batch plus](BatchPlus/README.md)** | **All families** | Prepares a series of consecutive RUNs and sends it as a pipeline: either numeric parameters that grow by an increment (steps, guidance, shift, CFG-Zero\* initial steps, seed, LoRA weights, varying together) or a bulleted list of prompts, one pass each. |
 | **[AI Assistant](AIAssistant/README.md)** | **All families** | Chat with a local LLM about the prompt and the settings; it can describe the start image and the Moodboard pictures. With the `<DO IT>` command it writes the prompt, the parameters, the strength or a pipeline into the Generation tab (you always press Run yourself). Chats are kept per project. Needs DT Hub 0.1.6 or later. |
 | **[Qwen 2.1 Inpainting](QwenInpainting/README.md)** | **Qwen Image 2.1** only | Draw boxes, circles, arrows and sketches in nine colours on the start image and write what to change for each colour and tool; it sends the drawing to the Brush layer and writes the prompt, directly or through Qwen's PE I2I. Needs DT Hub 0.1.7 or later. |
-| **[LoRA Advisor](LoRAAdvisor/README.md)** | **All families** (DT Hub 0.2.2 or later) | A visual list of your LoRAs with a thumbnail and notes each, filled in from the LoRA's page on Civitai or Hugging Face (found by name, chosen among candidates, or from a link you paste) and summarised by the local LLM; and the LLM's advice on which LoRAs of the current model's family suit a prompt or a request. The only plug-in that uses the network, and only when you press its buttons. |
+| **[LoRA Advisor](LoRAAdvisor/README.md)** | **All families** (DT Hub 0.2.2 or later) | A visual list of your LoRAs with a thumbnail and notes each, filled in from the LoRA's page on Civitai or Hugging Face (found by name, chosen among candidates, or from a link you paste) and summarised by the local LLM; and the LLM's advice on which LoRAs of the current model's family suit a prompt or a request. It uses the network, only when you press its buttons. |
+| **[Depth & Pose](DepthPose/README.md)** | **Edit and in-context models** (FLUX.2, Qwen Image 2.1, Qwen Image Edit, FLUX.1 Kontext…) | A depth map ([Depth Anything V2](https://github.com/DepthAnything/Depth-Anything-V2) Base, Core ML) and/or an OpenPose skeleton (Apple Vision) from one picture, in about a second, sent to the Moodboard as a reference or saved on your Desktop. The depth model (about 200 MB, CC BY-NC 4.0) is downloaded once, when you press a button, from this repository's releases; that is its only use of the network. |
 
 <p>
   <img src="../docs/images/prompt-master.png" alt="Prompt Master" width="32%">
@@ -23,7 +24,7 @@ so the tab bar only ever shows what can be used with the model you picked.
 
 ## Install
 
-Every [release](https://github.com/EXistenz-78/dt-hub/releases/latest) carries the eight plug-ins. Download the one you want, unzip it (you get a `.dthubplugin` bundle):
+Every [release](https://github.com/EXistenz-78/dt-hub/releases/latest) carries the nine plug-ins. Download the one you want, unzip it (you get a `.dthubplugin` bundle):
 
 - [Prompt Master](https://github.com/EXistenz-78/dt-hub/releases/latest/download/PromptMaster.dthubplugin.zip)
 - [Prompt Master I4](https://github.com/EXistenz-78/dt-hub/releases/latest/download/PromptMasterI4.dthubplugin.zip)
@@ -33,6 +34,7 @@ Every [release](https://github.com/EXistenz-78/dt-hub/releases/latest) carries t
 - [AI Assistant](https://github.com/EXistenz-78/dt-hub/releases/latest/download/AIAssistant.dthubplugin.zip)
 - [Qwen 2.1 Inpainting](https://github.com/EXistenz-78/dt-hub/releases/latest/download/QwenInpainting.dthubplugin.zip)
 - [LoRA Advisor](https://github.com/EXistenz-78/dt-hub/releases/latest/download/LoRAAdvisor.dthubplugin.zip)
+- [Depth & Pose](https://github.com/EXistenz-78/dt-hub/releases/latest/download/DepthPose.dthubplugin.zip)
 
 Then, in DT Hub, open **Preferences › Plug-ins**, press **Add…**, pick the `.dthubplugin` bundle and restart the app (turning a
 plug-in on or off, or removing it, takes effect at the next launch). Each plug-in then appears as a tab, and can be switched on and off
