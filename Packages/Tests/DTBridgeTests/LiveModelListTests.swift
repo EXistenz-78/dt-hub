@@ -107,4 +107,59 @@ struct LiveModelListTests {
     let specs = DrawThingsBackend.specs(toRegisterFor: ["a.ckpt", "other.ckpt", "bad.ckpt"], live: live)
     #expect(specs.map(\.file) == ["a.ckpt"] && specs.first?.version == "flux1")
   }
+
+  // MARK: The Official list (camelCase, with a `deprecated` flag)
+
+  static let official = #"[{"file":"a.ckpt","name":"A","version":"flux1","defaultScale":16,"textEncoder":"t5.ckpt","deprecated":true,"prefix":""},{"file":"b.ckpt","name":"B","version":"flux1","default_scale":8},{"name":"no file","defaultScale":1}]"#
+
+  func officialList() -> LiveModelList {
+    let download = download
+    let clock = clock
+    return LiveModelList(
+      cacheURL: cache, address: LiveModelList.officialAddress, download: { try await download.get($0) },
+      now: { clock.now }, parser: LiveModelList.parseOfficial)
+  }
+
+  func object(_ spec: Data?) -> [String: Any] {
+    spec.flatMap { (try? JSONSerialization.jsonObject(with: $0)) as? [String: Any] } ?? [:]
+  }
+
+  @Test func officialEntriesBecomeSpecsInSnakeCase() async {
+    download.set(Self.official)
+    let a = object(await officialList().specs()["a.ckpt"])
+    #expect(a["default_scale"] as? Int == 16)
+    #expect(a["text_encoder"] as? String == "t5.ckpt")
+    #expect(a["version"] as? String == "flux1" && a["name"] as? String == "A")
+    #expect(a["deprecated"] == nil && a["defaultScale"] == nil)
+  }
+
+  @Test func snakeCaseKeysAreLeftAlone() async {
+    download.set(Self.official)
+    #expect(object(await officialList().specs()["b.ckpt"])["default_scale"] as? Int == 8)
+  }
+
+  @Test func officialEntriesWithoutAFileAreSkipped() async {
+    download.set(Self.official)
+    #expect(Set(await officialList().specs().keys) == ["a.ckpt", "b.ckpt"])
+  }
+
+  @Test func theDeprecatedFilesAreListedApart() async {
+    download.set(Self.official)
+    #expect(await officialList().deprecated() == ["a.ckpt"])
+  }
+
+  @Test func withoutTheNetworkTheSavedOfficialListIsUsed() async {
+    download.set(Self.official)
+    _ = await officialList().specs()
+    download.fail()
+    let offline = officialList()
+    #expect(Set(await offline.specs().keys) == ["a.ckpt", "b.ckpt"])
+    #expect(await offline.deprecated() == ["a.ckpt"])
+  }
+
+  @Test func theThreeListsHaveTheirOwnAddresses() {
+    #expect(LiveModelList.officialAddress.absoluteString == "https://kcjerrell.github.io/dt-models/official_models.json")
+    #expect(LiveModelList.address.absoluteString == "https://models.drawthings.ai/models.json")
+    #expect(LiveModelList.uncuratedAddress.absoluteString == "https://models.drawthings.ai/uncurated_models.json")
+  }
 }

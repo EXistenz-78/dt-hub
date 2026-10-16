@@ -10,6 +10,9 @@ struct HeaderBar: View {
   let plugins: PluginRegistry
   let projects: ProjectManager
   @State private var showNewProject = false
+  /// DT+ model picker: open or not, and what is open inside (kept while the app runs).
+  @State private var showModelPicker = false
+  @State private var modelTree = ModelTreeState()
   @Environment(\.openWindow) private var openWindow
   @Environment(\.openSettings) private var openSettings
 
@@ -129,13 +132,47 @@ struct HeaderBar: View {
     .dsMenuPill()
   }
 
-  private var modelMenu: some View {
-    Menu {
-      modelMenuContent
+  /// With DT+ on, the models are many: a panel with a search field and the lists as groups that open and close. With DT+
+  /// off, the menu of the models installed on the server, as always.
+  @ViewBuilder private var modelMenu: some View {
+    if connection.dtPlus && connection.canUseDTPlus {
+      modelPickerButton
+    } else {
+      Menu {
+        modelMenuContent
+      } label: {
+        DSMenuLabel(modelTitle, detail: modelDetail, systemImage: "cube")
+      }
+      .dsMenuPill()
+    }
+  }
+
+  private var modelPickerButton: some View {
+    Button {
+      showModelPicker.toggle()
     } label: {
       DSMenuLabel(modelTitle, detail: modelDetail, systemImage: "cube")
     }
-    .dsMenuPill()
+    .buttonStyle(.plain)
+    .font(.system(size: 13, weight: .semibold))
+    .padding(.horizontal, DS.pillHPadding)
+    .frame(height: DS.pillHeight)
+    .dsGlass(Capsule(style: .continuous))
+    .fixedSize()
+    .popover(isPresented: $showModelPicker, arrowEdge: .bottom) {
+      ModelPickerView(
+        catalog: monitor.catalog, selectedFile: selection.selectedFile, message: modelPickerMessage, state: $modelTree
+      ) { model in
+        generation.chooseModel(model.file, in: connection)
+      }
+    }
+  }
+
+  /// Why the picker has nothing to show, as the menu says it; nil when there are models.
+  private var modelPickerMessage: String? {
+    if monitor.status != .connected { return String(localized: "header.model.unavailable") }
+    if monitor.catalog.isModelBrowsingDisabled { return connection.noModelsText }
+    return nil
   }
 
   /// Models grouped by family, the selected one checked (spec §5, §7).
