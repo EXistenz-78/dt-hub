@@ -29,7 +29,7 @@ Con DT+ acceso il menu dei modelli è lunghissimo (605 voci) e **non mostra i mo
 - **Origine di un modello:** dal nome del file; se è in più liste vince Official, poi Community, poi Uncurated.
 - **`CatalogBuilder.cloudCatalog`** (DT+ acceso, elenco del cloud noto): modelli = quelli **locali presenti nel cloud e in almeno una lista** (tengono la descrizione del server, ricevono l'origine) più i **remoti** (in una lista, nel cloud, non installati; segnati `isRemote`). Esclusi: i locali fuori lista e gli Official `deprecated` non installati. Senza l'elenco del cloud (mai ottenuto) resta il ripiego di oggi (tutti i modelli delle liste), ora con l'origine.
 - **Raggruppamento:** `ModelCatalog.modelsBySource` → `[ModelSourceGroup]` (origine, conteggio, `[ModelFamilyGroup]`), accanto a `modelsByFamily` che resta invariato (lo usa il menu con DT+ spento).
-- **La richiesta di generazione** di un modello remoto Official registra la sua specifica come oggi (`registerRemoteSpec` cerca nelle liste); va esteso a Official. **Da verificare nella fase 1** che il cloud esegua un Official dal solo elenco.
+- **La richiesta di generazione** di un modello remoto Official registra la sua specifica come oggi (`registerRemoteSpec` cerca nelle liste); va esteso a Official. **Da verificare nella fase 2** (prova dell'utente) che il cloud esegua un Official dal solo elenco.
 
 ## 5. Interfaccia (solo con DT+ acceso)
 
@@ -61,15 +61,15 @@ Con DT+ acceso il menu dei modelli è lunghissimo (605 voci) e **non mostra i mo
 
 ## 8. Fasi
 
-1. **Prova (richiede l'utente):** un modello Official non scaricato, per esempio FLUX.1 schnell, gira con DT+ dal solo elenco? Se no, si decide con l'utente come completare i suoi dati prima di mostrarlo.
-2. Origine, terza lista, nomi corretti, catalogo DT+ (HubKit, DTBridge) con i test.
+1. Origine, terza lista, nomi corretti, catalogo DT+ (HubKit, DTBridge) con i test: gli Official non scaricati compaiono nell'elenco di DT+ (nel menu di oggi, senza ancora l'albero).
+2. **Prova dell'utente (non si può fare prima della fase 1: i modelli Official non sono ancora nell'elenco):** con DT+ acceso e una build di quel ramo, un Official non scaricato (per esempio FLUX.1 schnell) gira dal solo elenco? In Draw Things sì (è il senso di DT+); resta da vedere in DT Hub, dove la richiesta porta una specifica ridotta. Se no, si decide con l'utente come completare i dati di quel modello prima di proseguire.
 3. `ModelTree` in HubCore con i test.
 4. Pannello, collegamento nell'header, testi in italiano e inglese.
 5. Revisione dell'intero ramo, README, prove a mano, backlog e briefing.
 
 ## 9. Rischi
 
-- **Official non eseguibili dal solo elenco:** metadati meno completi (nessun modificatore e altro) e libreria che non li conosce. La fase 1 lo chiude prima del resto.
+- **Official non eseguibili dal solo elenco:** metadati meno completi (nessun modificatore e altro) e libreria che non li conosce. Lo chiude la prova della fase 2, subito dopo la fase 1 e prima dell'albero. In Draw Things l'uso senza scaricare è proprio il senso di DT+.
 - **Conflitti con `feat/cu-meter`:** entrambi toccano `HeaderBar`, `CatalogBuilder` e `CloudCatalog`, in punti diversi; il secondo ramo a essere unito risolve i conflitti.
 - **Cosa il cloud esegue davvero:** i file Uncurated ci sono (381 di 384) ma un utente di Discord ha avuto «accesso solo a modelli locali e community» con LTX; non si sa se il cloud li esegua tutti.
 - **Dati di terzi:** `kcjerrell.github.io/dt-models` non è di Draw Things; se sparisce, l'Official resta quello salvato in cache.
