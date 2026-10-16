@@ -34,6 +34,45 @@ enum DPWholeBody {
       rightHand: peaks[112..<133].map(point))
   }
 
+  /// A hand is drawn only when at least this many of its 21 points score `minHandPointScore` or more.
+  static let minSureHandPoints = 15
+  static let minHandPointScore = 0.5
+  /// The biggest side of a hand, as a share of the width of the shoulders.
+  static let maxHandSize = 0.8
+  /// The farthest the wrist of a hand may be from the wrist of the body, as a share of the width of the shoulders.
+  static let maxWristGap = 0.5
+
+  /// The model also "finds" hands that are not in the picture. This empties a hand that is not plausible: too few
+  /// sure points, or (when the shoulders and the wrist of that arm are sure) too big for the body or too far from the
+  /// wrist. Body and face are left as they are.
+  static func droppingImplausibleHands(_ figure: DPFigure, imageWidth: Int, imageHeight: Int) -> DPFigure {
+    guard imageWidth > 0, imageHeight > 0 else { return figure }
+    let w = Double(imageWidth), h = Double(imageHeight)
+    var shoulders: Double?
+    if let l = figure.body[.leftShoulder], let r = figure.body[.rightShoulder],
+      l.confidence >= DPSkeleton.minConfidence, r.confidence >= DPSkeleton.minConfidence
+    {
+      shoulders = hypot((l.x - r.x) * w, (l.y - r.y) * h)
+    }
+    func plausible(_ hand: [DPPoint], wrist: DPPoint?) -> Bool {
+      guard hand.count == 21 else { return false }
+      guard hand.filter({ $0.confidence >= minHandPointScore }).count >= minSureHandPoints else { return false }
+      guard let shoulders, shoulders > 0 else { return true }
+      let xs = hand.map { $0.x * w }, ys = hand.map { $0.y * h }
+      let size = max(xs.max()! - xs.min()!, ys.max()! - ys.min()!)
+      if size > maxHandSize * shoulders { return false }
+      if let wrist, wrist.confidence >= DPSkeleton.minConfidence {
+        let gap = hypot((hand[0].x - wrist.x) * w, (hand[0].y - wrist.y) * h)
+        if gap > maxWristGap * shoulders { return false }
+      }
+      return true
+    }
+    var result = figure
+    if !plausible(figure.leftHand, wrist: figure.body[.leftWrist]) { result.leftHand = [] }
+    if !plausible(figure.rightHand, wrist: figure.body[.rightWrist]) { result.rightHand = [] }
+    return result
+  }
+
   /// The mean score of the 17 body keypoints.
   static func bodyScore(of peaks: [DPSimCCPeak]) -> Float {
     let body = peaks.prefix(17)

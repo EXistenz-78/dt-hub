@@ -61,7 +61,8 @@ struct DWPoseDetector: DPFullPoseDetecting {
       let peaks = DPSimCC.decode(x: vectors.x, y: vectors.y)
       // The mean of 17 floats can land a hair under the threshold it equals: a tolerance of 1e-5.
       guard DPWholeBody.bodyScore(of: peaks) + 1e-5 >= DPWholeBody.minBodyScore else { continue }
-      figures.append(DPWholeBody.figure(peaks: peaks, crop: crop, imageWidth: image.width, imageHeight: image.height))
+      let figure = DPWholeBody.figure(peaks: peaks, crop: crop, imageWidth: image.width, imageHeight: image.height)
+      figures.append(DPWholeBody.droppingImplausibleHands(figure, imageWidth: image.width, imageHeight: image.height))
     }
     return figures
   }
