@@ -1,10 +1,5 @@
 import Foundation
 
-/// Which maps the plug-in makes and sends.
-enum DPMode: String, Codable, CaseIterable, Sendable {
-  case depth, pose, both
-}
-
 /// The JSON the plug-in sends to DT Hub. Pure, so it can be tested.
 enum DPMessages {
   /// The names of the maps in the Moodboard.

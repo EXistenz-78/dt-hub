@@ -33,7 +33,7 @@ struct RenderTests {
     if withImage {
       let photo = Pictures.image(width: 480, height: 640, red: 90)
       state.setImage(data: Pictures.data(photo), name: "ritratto.png")
-      state.mode = modelReady ? .both : .pose
+      state.select(depth: modelReady, pose: true)
       await state.create()
     }
     if downloading {

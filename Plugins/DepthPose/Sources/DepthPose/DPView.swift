@@ -33,40 +33,31 @@ struct DPView: View {
     VStack(alignment: .leading, spacing: DS.rowGap) {
       DSGroupHeader(title: state.text(.image), prominent: true)
       dropZone
-      HStack(spacing: DS.controlGap) {
-        Button(state.text(.open)) { chooseFile() }.buttonStyle(DSPillButtonStyle())
-        Button(action: actions.create) {
-          if state.isWorking {
-            ProgressView().controlSize(.small)
-          } else {
-            HStack(spacing: DS.pillIconGap) {
-              Image(systemName: "sparkles")
-              Text(state.text(.create))
-            }
+      Button(state.text(.open)) { chooseFile() }.buttonStyle(DSPillButtonStyle())
+      DSGroupHeader(title: state.text(.mode))
+      Toggle(state.text(.depth), isOn: $state.wantsDepth)
+        .toggleStyle(DSCheckboxToggleStyle())
+        .disabled(!state.depthAvailable)
+        .opacity(state.depthAvailable ? 1 : 0.5)
+      Toggle(state.text(.pose), isOn: $state.wantsPose).toggleStyle(DSCheckboxToggleStyle())
+      modelSection
+      Button(action: actions.create) {
+        if state.isWorking {
+          ProgressView().controlSize(.small)
+        } else {
+          HStack(spacing: DS.pillIconGap) {
+            Image(systemName: "sparkles")
+            Text(state.text(.create))
           }
         }
-        .buttonStyle(DSPillButtonStyle(prominent: true))
-        .disabled(!state.canCreate)
       }
-      DSGroupHeader(title: state.text(.mode))
-      HStack(spacing: 4) {
-        modeButton(.depth, label: .depth, enabled: state.depthAvailable)
-        modeButton(.pose, label: .pose, enabled: true)
-        modeButton(.both, label: .both, enabled: true)
-      }
-      modelSection
+      .buttonStyle(DSPillButtonStyle(prominent: true))
+      .disabled(!state.canCreate)
       if !state.status.isEmpty {
         Text(state.status).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
       }
       Spacer(minLength: 0)
     }
-  }
-
-  private func modeButton(_ mode: DPMode, label: L.Key, enabled: Bool) -> some View {
-    Button(state.text(label)) { state.mode = mode }
-      .buttonStyle(DSTabButtonStyle(isSelected: state.mode == mode))
-      .disabled(!enabled)
-      .opacity(enabled ? 1 : 0.4)
   }
 
   private var dropZone: some View {

@@ -10,8 +10,12 @@ final class DPState: ObservableObject {
     case missing, downloading(Double), ready, damaged
   }
 
-  @Published var mode: DPMode {
-    didSet { if !loadingMode { store.save(mode) } }
+  /// The two checkboxes of the tab.
+  @Published var wantsDepth: Bool {
+    didSet { if !loadingChoice { store.save(DPSelection(depth: wantsDepth, pose: wantsPose)) } }
+  }
+  @Published var wantsPose: Bool {
+    didSet { if !loadingChoice { store.save(DPSelection(depth: wantsDepth, pose: wantsPose)) } }
   }
   @Published private(set) var image: CGImage?
   @Published private(set) var imageName = ""
@@ -30,7 +34,7 @@ final class DPState: ObservableObject {
   private let detector: any DPPoseDetecting
   private let makeDepth: @Sendable (URL) throws -> DepthEstimator
   private let italian: Bool
-  private var loadingMode = false
+  private var loadingChoice = false
   private var generation = 0
   private var installTask: Task<Void, any Error>?
 
@@ -43,7 +47,18 @@ final class DPState: ObservableObject {
     self.detector = detector
     self.makeDepth = makeDepth
     self.italian = italian
-    self.mode = store.load()
+    let selection = store.load()
+    self.wantsDepth = selection.depth
+    self.wantsPose = selection.pose
+  }
+
+  /// Sets both checkboxes at once (one save).
+  func select(depth: Bool, pose: Bool) {
+    loadingChoice = true
+    wantsDepth = depth
+    wantsPose = pose
+    loadingChoice = false
+    store.save(DPSelection(depth: depth, pose: pose))
   }
 
   /// A word of the tab in the language of the state.
@@ -58,12 +73,14 @@ final class DPState: ObservableObject {
 
   var depthAvailable: Bool { modelState == .ready }
   var showsDownloadButton: Bool { modelState == .missing || modelState == .damaged }
-  var canCreate: Bool { image != nil && !isWorking && !(mode == .depth && !depthAvailable) }
+  var canCreate: Bool {
+    image != nil && !isWorking && (wantsDepth || wantsPose) && !(wantsDepth && !wantsPose && !depthAvailable)
+  }
   var canSend: Bool { active && !isWorking && (chosenMaps.depth != nil || chosenMaps.pose != nil) }
 
-  /// The maps the selector asks for, among the ones made.
+  /// The maps the checkboxes ask for, among the ones made.
   private var chosenMaps: (depth: CGImage?, pose: CGImage?) {
-    (mode != .pose ? depthImage : nil, mode != .depth ? poseImage : nil)
+    (wantsDepth ? depthImage : nil, wantsPose ? poseImage : nil)
   }
 
   // MARK: The picture
@@ -102,11 +119,12 @@ final class DPState: ObservableObject {
   func create() async {
     guard let image, !isWorking else { return }
     let token = generation
-    var wantDepth = mode != .pose
-    let wantPose = mode != .depth
+    var wantDepth = wantsDepth
+    let wantPose = wantsPose
+    guard wantDepth || wantPose else { return }
     var notes: [String] = []
     if wantDepth && !depthAvailable {
-      if mode == .depth {
+      if !wantPose {
         status = text(.depthMissing)
         return
       }
@@ -263,9 +281,11 @@ final class DPState: ObservableObject {
   func switchProject(folder: URL, adoptLegacy: Bool) {
     store.folder = folder
     if adoptLegacy { store.adoptLegacy() }
-    loadingMode = true
-    mode = store.load()
-    loadingMode = false
+    let selection = store.load()
+    loadingChoice = true
+    wantsDepth = selection.depth
+    wantsPose = selection.pose
+    loadingChoice = false
     generation += 1
     isWorking = false
     image = nil
