@@ -21,7 +21,7 @@ Objective-C selectors and JSON messages (see `docs/superpowers/specs/2026-10-03-
    The arguments are the library, the bundle to make, the identifier (it must equal `manifest.id`), the name, the
    version, the principal class and, optionally, the contract version (default 1).
 
-The manifest also says which models the plug-in is for: `families` (model families; nil = all) and, since DT Hub 0.2.4,
+The manifest also says which models the plug-in is for: `families` (model families; nil = all) and, since DT Hub 0.3.0,
 `requiresEditModel: true` for a plug-in that only makes sense with an edit or in-context model (one that takes pictures as
 references: FLUX.2 [klein], Qwen Image Edit, Kontext…). With any other model DT Hub switches the plug-in off and hides its
 tab. An older DT Hub ignores the key and keeps the plug-in on.

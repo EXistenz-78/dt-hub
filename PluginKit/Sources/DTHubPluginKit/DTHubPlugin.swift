@@ -14,7 +14,7 @@ public struct DTHubManifest: Codable, Sendable {
   public var families: [String]?
   /// True when the plug-in only makes sense with an edit or in-context model (one that takes pictures as references,
   /// like FLUX.2 [klein], Qwen Image Edit or Kontext): DT Hub switches it off with any other model. nil = any model.
-  /// An app older than 0.2.4 ignores it and keeps the plug-in on.
+  /// An app older than 0.3.0 ignores it and keeps the plug-in on.
   public var requiresEditModel: Bool?
 
   public init(
