@@ -6,3 +6,6 @@ transformers
 numpy<2
 pillow
 safetensors
+# For convert_pose_model.py (the ONNX route):
+onnx
+onnx2torch

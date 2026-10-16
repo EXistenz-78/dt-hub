@@ -132,4 +132,118 @@ struct LiveTests {
     print("LIVE Vision on a stick figure: \(people.count) person(s)")
     #expect(people.count >= 0)  // the answer can be empty: the point is that it comes without an error
   }
+
+  // MARK: The whole-body pose model
+
+  private var poseFolder: URL {
+    FileManager.default.temporaryDirectory.appendingPathComponent("dthub-depthpose-live-pose", isDirectory: true)
+  }
+
+  private func environment(_ name: String) -> String? { ProcessInfo.processInfo.environment[name] }
+
+  /// The pose model in its live folder: from a package on disk when `DP_LIVE_POSE_DIR` says where, else downloaded.
+  private func readyPoseStore() async throws -> DPModelStore {
+    let store = DPModelStore(
+      folder: poseFolder, files: DPModelManifest.dwposeLF16, packageName: DPModelManifest.dwposeLPackageName,
+      baseURL: DPModelManifest.dwposeLBaseURL)
+    store.cleanUpLeftovers()
+    if !store.isPresent() {
+      let started = Date()
+      if let dir = environment("DP_LIVE_POSE_DIR") {
+        try await store.installLocalPackage(from: URL(fileURLWithPath: dir))
+      } else {
+        try await store.install { _ in }
+      }
+      print("LIVE pose install+compile: \(Date().timeIntervalSince(started)) s")
+    }
+    return store
+  }
+
+  private func photo() throws -> CGImage? {
+    guard let path = environment("DP_LIVE_POSE_PHOTO") else {
+      print("LIVE: DP_LIVE_POSE_PHOTO not set, the photo probes are skipped")
+      return nil
+    }
+    guard let image = DPImage.load(file: URL(fileURLWithPath: path)) else {
+      Issue.record("the photo at DP_LIVE_POSE_PHOTO cannot be read")
+      return nil
+    }
+    return image
+  }
+
+  private func detector(_ store: DPModelStore) throws -> DWPoseDetector {
+    DWPoseDetector(network: try CoreMLPoseNetwork(compiledModel: store.compiledURL), boxFinder: VisionPersonBoxFinder())
+  }
+
+  @Test func thePosePackageMatchesTheManifestCompilesAndOpens() async throws {
+    let store = try await readyPoseStore()
+    #expect(store.isPresent())
+    #expect(FileManager.default.fileExists(atPath: store.compiledURL.path))
+  }
+
+  @Test func visionFindsThePersonBoxesInAPhoto() async throws {
+    guard let image = try photo() else { return }
+    let boxes = try await VisionPersonBoxFinder().boxes(in: image)
+    print("LIVE Vision boxes: \(boxes.map { "\(Int($0.minX)),\(Int($0.minY)) \(Int($0.width))x\(Int($0.height))" })")
+    #expect(!boxes.isEmpty)
+  }
+
+  @Test func thePoseModelFindsAWholeBodyInAPhoto() async throws {
+    guard let image = try photo() else { return }
+    let detector = try detector(try await readyPoseStore())
+    _ = try await detector.figures(in: image)  // the first run prepares the Neural Engine
+    let started = Date()
+    let figures = try await detector.figures(in: image)
+    print("LIVE pose: \(figures.count) figure(s) in \(Int(Date().timeIntervalSince(started) * 1000)) ms")
+    #expect(!figures.isEmpty)
+    for figure in figures {
+      #expect(figure.face.count == 68 && figure.leftHand.count == 21 && figure.rightHand.count == 21)
+      let face = figure.face.map(\.confidence).reduce(0, +) / 68
+      let body = figure.body.values.map(\.confidence).reduce(0, +) / Double(max(1, figure.body.count))
+      print("LIVE figure: body \(body) face \(face)")
+      #expect(face > 0.5 && body > 0.4)
+    }
+    if let image = DPPoseRenderer.render(figures, width: image.width, height: image.height) { save(image, as: "live-pose.png") }
+  }
+
+  @Test func aSceneWithoutPeopleGivesNoFigure() async throws {
+    let detector = try detector(try await readyPoseStore())
+    let figures = try await detector.figures(in: floorScene())
+    #expect(figures.isEmpty)
+  }
+
+  /// The points of the model agree with ONNX Runtime's (the same boxes, rtmlib's pre-processing), within a few pixels.
+  @Test func thePoseModelAgreesWithOnnxRuntime() async throws {
+    guard let image = try photo(), let goldenPath = environment("DP_LIVE_POSE_GOLDEN") else {
+      print("LIVE: DP_LIVE_POSE_GOLDEN not set, the comparison is skipped")
+      return
+    }
+    struct Golden: Decodable {
+      var boxes: [[Double]]
+      var keypoints: [[[Double]]]
+    }
+    let golden = try JSONDecoder().decode(Golden.self, from: Data(contentsOf: URL(fileURLWithPath: goldenPath)))
+    let boxes = golden.boxes.map { CGRect(x: $0[0], y: $0[1], width: $0[2], height: $0[3]) }
+    let detector = try detector(try await readyPoseStore())
+    let figures = try detector.figures(in: image, boxes: boxes)
+    // The figures come biggest box first: put the golden people in the same order.
+    let order = boxes.indices.sorted { boxes[$0].width * boxes[$0].height > boxes[$1].width * boxes[$1].height }
+    #expect(figures.count == order.count)
+    let compared: [(DPJoint, Int)] = [
+      (.nose, 0), (.leftShoulder, 5), (.rightShoulder, 6), (.leftElbow, 7), (.rightElbow, 8), (.leftWrist, 9),
+      (.rightWrist, 10), (.leftHip, 11), (.rightHip, 12),
+    ]
+    var worst = 0.0, count = 0
+    for (figure, index) in zip(figures, order) {
+      for (joint, coco) in compared {
+        let reference = golden.keypoints[index][coco]
+        guard reference[2] > 0.5, let point = figure.body[joint] else { continue }
+        let distance = hypot(point.x * Double(image.width) - reference[0], point.y * Double(image.height) - reference[1])
+        worst = max(worst, distance)
+        count += 1
+      }
+    }
+    print("LIVE agreement with ONNX Runtime: \(count) joints, worst \(worst) px")
+    #expect(count > 10 && worst < 6)
+  }
 }
