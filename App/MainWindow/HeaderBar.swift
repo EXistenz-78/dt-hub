@@ -3,7 +3,7 @@ import HubCore
 import HubKit
 import SwiftUI
 
-/// [Project ▾] [Plug-ins ▾] [Model ▾ · family] … ● DT [⚙︎] [▶ Run] (spec §7).
+/// [Project ▾] [Model ▾ · family] [DT+] [CU] … ● [⚙︎] [▶ Run] (spec §7); the plug-in menu is in the tab bar and the Results button beside the header.
 struct HeaderBar: View {
   let connection: DrawThingsConnection
   let generation: GenerationController
@@ -14,7 +14,6 @@ struct HeaderBar: View {
   @State private var showModelPicker = false
   @State private var modelTree = ModelTreeState()
   @Environment(\.openWindow) private var openWindow
-  @Environment(\.openSettings) private var openSettings
 
   private var monitor: ConnectionMonitor { connection.monitor }
   private var selection: ModelSelection { connection.selection }
@@ -25,7 +24,6 @@ struct HeaderBar: View {
   var body: some View {
     HStack(spacing: DS.controlGap) {
       projectMenu
-      pluginsMenu
       modelMenu
       dtPlusButton
       if connection.dtPlus && connection.canUseDTPlus {
@@ -113,28 +111,6 @@ struct HeaderBar: View {
     .sheet(isPresented: $showNewProject) { NewProjectSheet(projects: projects) }
   }
 
-  private var pluginsMenu: some View {
-    Menu {
-      let loaded = plugins.entries.filter { $0.state == .loaded }
-      if loaded.isEmpty {
-        Text("header.plugins.none")
-      }
-      ForEach(loaded) { entry in
-        Toggle(
-          entry.name,
-          isOn: Binding(get: { entry.isActive }, set: { plugins.setActive(entry.id, $0) })
-        )
-        .disabled(!plugins.isCompatible(entry))
-        .help(plugins.isCompatible(entry) ? "" : String(localized: "header.plugins.incompatible"))
-      }
-      Divider()
-      Button("header.plugins.manage") { openSettings() }
-    } label: {
-      DSMenuLabel(String(localized: "header.plugins"), systemImage: "puzzlepiece.extension")
-    }
-    .dsMenuPill()
-  }
-
   /// With DT+ on, the models are many: a panel with a search field and the lists as groups that open and close. With DT+
   /// off, the menu of the models installed on the server, as always.
   @ViewBuilder private var modelMenu: some View {
@@ -159,6 +135,7 @@ struct HeaderBar: View {
     .buttonStyle(.plain)
     .font(.system(size: 13, weight: .semibold))
     .padding(.horizontal, DS.pillHPadding)
+    .frame(maxWidth: 320)
     .frame(height: DS.pillHeight)
     .dsGlass(Capsule(style: .continuous))
     .fixedSize()
