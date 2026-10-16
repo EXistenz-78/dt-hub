@@ -4,7 +4,7 @@ import Foundation
 /// `.strings` files: the table is here.
 enum L {
   enum Key: CaseIterable {
-    case dropHere, open, mode, depth, pose, both
+    case dropHere, open, image, mode, depth, pose, both, mapsPlaceholder
     case create, sendToMoodboard, downloadModel, redownload, cancel, downloading
     case depthMissing, creating, created, sent, sentWithConflicts, sentWithProblems
     case noFolder, notAnswered, unreadableImage, noPerson, poseOnlyBecauseNoModel
@@ -29,7 +29,8 @@ enum L {
   }
 
   private static let en: [Key: String] = [
-    .dropHere: "Drop an image here", .open: "Open…", .mode: "Maps",
+    .dropHere: "Drop an image here", .open: "Open…", .image: "Image", .mode: "Maps",
+    .mapsPlaceholder: "The maps appear here.",
     .depth: "Depth", .pose: "Pose", .both: "Both",
     .create: "Create", .sendToMoodboard: "Send to the Moodboard",
     .downloadModel: "Download the model (50 MB)", .redownload: "Download the model again", .cancel: "Cancel",
@@ -51,7 +52,8 @@ enum L {
   ]
 
   private static let it: [Key: String] = [
-    .dropHere: "Trascina qui un'immagine", .open: "Apri…", .mode: "Mappe",
+    .dropHere: "Trascina qui un'immagine", .open: "Apri…", .image: "Immagine", .mode: "Mappe",
+    .mapsPlaceholder: "Le mappe compaiono qui.",
     .depth: "Depth", .pose: "Posa", .both: "Entrambe",
     .create: "Crea", .sendToMoodboard: "Manda al Moodboard",
     .downloadModel: "Scarica il modello (50 MB)", .redownload: "Scarica di nuovo il modello", .cancel: "Annulla",

@@ -46,9 +46,15 @@ final class DPState: ObservableObject {
     self.mode = store.load()
   }
 
-  private func text(_ key: L.Key) -> String { L.text(key, italian: italian) }
+  /// A word of the tab in the language of the state.
+  func text(_ key: L.Key) -> String { L.text(key, italian: italian) }
 
   // MARK: What the buttons may do
+
+  /// «Downloading… 42%» in the language of the state.
+  func downloadingText(_ fraction: Double) -> String {
+    L.format(.downloading, Int((fraction * 100).rounded()), italian: italian)
+  }
 
   var depthAvailable: Bool { modelState == .ready }
   var showsDownloadButton: Bool { modelState == .missing || modelState == .damaged }
@@ -77,6 +83,9 @@ final class DPState: ObservableObject {
     }
     replaceImage(loaded, name: file.lastPathComponent)
   }
+
+  /// Something was dropped that is not a picture (an address, text).
+  func dropHadNoPicture() { status = text(.unreadableImage) }
 
   private func replaceImage(_ loaded: CGImage, name: String) {
     generation += 1
@@ -184,6 +193,12 @@ final class DPState: ObservableObject {
   }
 
   // MARK: The model
+
+  /// At launch: forgets what an install cut short left behind, then looks at the disk.
+  func prepare() async {
+    models.cleanUpLeftovers()
+    await refreshModelState()
+  }
 
   /// Looks at the disk again (off the main actor: opening the model takes a moment).
   func refreshModelState() async {
