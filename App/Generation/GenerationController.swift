@@ -66,6 +66,8 @@ final class GenerationController {
   }
   /// What the plug-ins contributed (teal fields, conflicts, the pipeline); set by `attach`.
   @ObservationIgnored private(set) var contributions: ContributionStore?
+  /// The presets of the held pipeline, for the CU meter (see `cuPasses`).
+  @ObservationIgnored private var cuPresetCache: (pipeline: PluginPipeline, names: [String], presets: [String: Preset])?
 
   /// Where a RUN saves: the folder of the open project; nil while no project is open (the RUN is refused then).
   @ObservationIgnored private let projectFolderBox = ProjectFolderBox()
@@ -235,6 +237,38 @@ final class GenerationController {
   /// The chosen model as the server describes it; nil while the catalog is not loaded.
   func selectedModel(in connection: DrawThingsConnection) -> CatalogModel? {
     connection.selection.selectedModel(in: connection.monitor.catalog)
+  }
+
+  /// The requests the next RUN would make, for the CU meter: one, or one per pass of the held pipeline. It runs on
+  /// every update of the header, so it reads no file but the presets of a newly held pipeline (kept until the
+  /// pipeline or the list of presets changes; the pipeline is the held one, which the app keeps in step with the file).
+  func cuPasses(in connection: DrawThingsConnection) -> [CUPass] {
+    let hasMargins = control.hasMargins(canvasWidth: parameters.width, canvasHeight: parameters.height)
+    let summary = CUControlSummary(
+      hasImage: control.inputs.image != nil, moodboardCount: control.moodboardURLs.count,
+      strength: control.inputs.effectiveStrength(editModel: isEditModel(in: connection), hasMargins: hasMargins))
+    var pipeline: PluginPipeline?
+    var loaded: [String: Preset] = [:]
+    if let held = contributions?.pipeline {
+      pipeline = held.pipeline
+      let names = presets.names
+      if let cache = cuPresetCache, cache.pipeline == held.pipeline, cache.names == names {
+        loaded = cache.presets
+      } else {
+        // A preset that cannot be read leaves only its own pass without an estimate.
+        loaded = CUPlanner.availablePresets(for: held.pipeline, from: presets)
+        cuPresetCache = (held.pipeline, names, loaded)
+      }
+    }
+    return CUPlanner.passes(
+      fields: fields, model: selectedModel(in: connection), control: summary, pipeline: pipeline, presets: loaded,
+      catalog: connection.monitor.catalog, headerModel: connection.selection.selectedFile,
+      strengthOfPass: { [control] step, replacesStart, editModel, width, height in
+        // As `runPipeline` sends it.
+        PipelineInputs.strength(
+          tab: control.inputs, replacesStart: replacesStart, editModel: editModel,
+          hasMargins: control.hasMargins(canvasWidth: width, canvasHeight: height), step: step.strength)
+      })
   }
 
   /// The family of the chosen model, nil when unknown or while the catalog is not loaded.

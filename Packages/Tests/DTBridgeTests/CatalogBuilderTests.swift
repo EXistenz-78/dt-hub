@@ -92,4 +92,22 @@ struct CatalogBuilderTests {
     #expect(named.name == "Z Image" && named.family == "z_image")
     #expect(unnamed.name == "z.ckpt" && unnamed.family == nil)
   }
+
+  @Test func specInfoReadsTheTextLengthAndTheConsistencyFlag() {
+    let json = Data(
+      #"{"file":"a.ckpt","name":"A","version":"z_image","padded_text_encoding_length":512,"is_consistency_model":true}"#.utf8)
+    let info = CatalogBuilder.specInfo(json: json, file: "a.ckpt")
+    #expect(info.capabilities.paddedTextEncodingLength == 512)
+    #expect(info.capabilities.isConsistencyModel)
+    let plain = CatalogBuilder.specInfo(json: Data(#"{"file":"b.ckpt","version":"z_image"}"#.utf8), file: "b.ckpt")
+    #expect(plain.capabilities.paddedTextEncodingLength == 0)
+    #expect(!plain.capabilities.isConsistencyModel)
+  }
+
+  @Test func specInfoReadsTheDualAttentionLayersOfAnMMDiT() {
+    let json = Data(#"{"file":"a.ckpt","version":"sd3","mmdit":{"qk_norm":true,"dual_attention_layers":[0,1,2]}}"#.utf8)
+    #expect(CatalogBuilder.specInfo(json: json, file: "a.ckpt").capabilities.dualAttentionLayers == [0, 1, 2])
+    let plain = CatalogBuilder.specInfo(json: Data(#"{"file":"b.ckpt","version":"sd3"}"#.utf8), file: "b.ckpt")
+    #expect(plain.capabilities.dualAttentionLayers.isEmpty)
+  }
 }

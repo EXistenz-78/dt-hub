@@ -18,6 +18,12 @@ public struct ModelCapabilities: Equatable, Sendable {
   /// The spec's `modifier`: `kontext`, `kontext_kv`, `qwenimage_edit_plus`, `editing` (Edit models),
   /// `inpainting`, `depth`… nil when the spec has none.
   public var modifier: String?
+  /// The spec's `padded_text_encoding_length` (the CU estimate's text length); 0 when the spec has none.
+  public var paddedTextEncodingLength: Int
+  /// The spec's `is_consistency_model`: such models run without CFG.
+  public var isConsistencyModel: Bool
+  /// The spec's `mmdit.dual_attention_layers` (SD3 medium 3.5); empty when there are none.
+  public var dualAttentionLayers: [Int]
 
   /// An inpainting model (SD inpainting, FLUX Fill...): Draw Things wants its inpaint control for
   /// the mask. The other models take a mask without it (measured on SD 1.5 and FLUX.2 klein).
@@ -32,7 +38,8 @@ public struct ModelCapabilities: Equatable, Sendable {
 
   public init(
     guidanceEmbed: Bool, teaCache: Bool, clipL: Bool, openClipG: Bool, t5: Bool,
-    optionalT5: Bool, clipSkip: Bool, nativeSize: Int?, modifier: String? = nil
+    optionalT5: Bool, clipSkip: Bool, nativeSize: Int?, modifier: String? = nil,
+    paddedTextEncodingLength: Int = 0, isConsistencyModel: Bool = false, dualAttentionLayers: [Int] = []
   ) {
     self.guidanceEmbed = guidanceEmbed
     self.teaCache = teaCache
@@ -43,6 +50,9 @@ public struct ModelCapabilities: Equatable, Sendable {
     self.clipSkip = clipSkip
     self.nativeSize = nativeSize
     self.modifier = modifier
+    self.paddedTextEncodingLength = paddedTextEncodingLength
+    self.isConsistencyModel = isConsistencyModel
+    self.dualAttentionLayers = dualAttentionLayers
   }
 
   /// A model without a specification: everything may apply.
