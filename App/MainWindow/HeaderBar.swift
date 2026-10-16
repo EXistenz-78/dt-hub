@@ -28,6 +28,9 @@ struct HeaderBar: View {
       pluginsMenu
       modelMenu
       dtPlusButton
+      if connection.dtPlus && connection.canUseDTPlus {
+        CUMeterView(connection: connection, generation: generation)
+      }
       Spacer(minLength: DS.groupGap)
       DSStatusDot(status: connection.indicator)
         .padding(.horizontal, 6)
