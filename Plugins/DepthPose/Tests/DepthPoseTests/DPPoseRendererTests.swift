@@ -90,7 +90,7 @@ struct DPPoseRendererTests {
 
   @Test func aPersonWithoutABoneIsNotDrawn() {
     #expect(DPPoseRenderer.render([[.nose: point(0.5, 0.5)]], width: 100, height: 100) == nil)
-    #expect(DPPoseRenderer.render([], width: 100, height: 100) == nil)
+    #expect(DPPoseRenderer.render([DPPerson](), width: 100, height: 100) == nil)
   }
 
   @Test func thicknessIsProportionalWithAMinimum() {
