@@ -25,8 +25,8 @@ public actor DrawThingsBackend: GenerationBackend {
   ///   - sharedSecret: sent with every request when the server requires one.
   public init(host: String, port: Int, useTLS: Bool, sharedSecret: String?, includeRemoteModels: Bool = false) {
     self.init(
-      host: host, port: port, useTLS: useTLS, sharedSecret: sharedSecret, liveModels: .shared,
-      includeRemoteModels: includeRemoteModels, communityModels: .community, cloud: .shared) {}
+      host: host, port: port, useTLS: useTLS, sharedSecret: sharedSecret, liveModels: .community,
+      includeRemoteModels: includeRemoteModels, communityModels: .uncurated, cloud: .shared) {}
   }
 
   /// The ceiling of a request or reply: 1 GiB. The default (256 MiB) stops an image-to-image or an
