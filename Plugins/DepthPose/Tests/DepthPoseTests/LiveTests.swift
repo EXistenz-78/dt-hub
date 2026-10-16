@@ -4,19 +4,19 @@ import Testing
 
 @testable import DepthPose
 
-/// Probes with the real model and the real Vision. They go to the network (Hugging Face, once) and need the sandbox
-/// off, so they run only with `DTHUB_LIVE_DEPTH=1`:
+/// Probes with the real model and the real Vision; they run only with `DTHUB_LIVE_DEPTH=1`:
 ///
-///     DTHUB_LIVE_DEPTH=1 swift test --filter LiveTests
+///     DTHUB_LIVE_DEPTH=1 DP_LIVE_MODEL_DIR=<folder with DepthAnythingV2BaseF16.mlpackage> swift test --filter LiveTests
 ///
-/// With `DP_LIVE_OUT=<folder>` the pictures they make are written there.
+/// Without `DP_LIVE_MODEL_DIR` the model is downloaded from the release (needs the sandbox off and the release
+/// published; set `DP_LIVE_DOWNLOAD=1` to say so). With `DP_LIVE_OUT=<folder>` the pictures they make are written there.
 @Suite(
   "Live probes", .serialized,
   .enabled(if: ProcessInfo.processInfo.environment["DTHUB_LIVE_DEPTH"] == "1"))
 struct LiveTests {
   /// One folder for the model, so the three probes download it once (and a second run, never).
   private var modelFolder: URL {
-    FileManager.default.temporaryDirectory.appendingPathComponent("dthub-depthpose-live-model", isDirectory: true)
+    FileManager.default.temporaryDirectory.appendingPathComponent("dthub-depthpose-live-base", isDirectory: true)
   }
 
   private func save(_ image: CGImage, as name: String) {
@@ -62,29 +62,48 @@ struct LiveTests {
     return total / count
   }
 
-  @Test func theRealModelDownloadsMatchesTheManifestAndOpens() async throws {
+  /// The model in the live folder: from a package on disk when `DP_LIVE_MODEL_DIR` says where, else downloaded.
+  private func readyStore() async throws -> DPModelStore {
     let store = DPModelStore(folder: modelFolder)
     store.cleanUpLeftovers()
     if !store.isPresent() {
       let started = Date()
-      try await store.install { _ in }
-      print("LIVE download+compile: \(Date().timeIntervalSince(started)) s")
+      if let dir = ProcessInfo.processInfo.environment["DP_LIVE_MODEL_DIR"] {
+        try await store.installLocalPackage(from: URL(fileURLWithPath: dir))
+      } else {
+        try await store.install { _ in }
+      }
+      print("LIVE install+compile: \(Date().timeIntervalSince(started)) s")
     }
+    return store
+  }
+
+  @Test func theRealPackageMatchesTheManifestCompilesAndOpens() async throws {
+    let store = try await readyStore()
     #expect(store.isPresent())
     #expect(FileManager.default.fileExists(atPath: store.compiledURL.path))
   }
 
-  @Test func theRealModelSeesTheBottomOfAFloorAsNearer() async throws {
-    let store = DPModelStore(folder: modelFolder)
-    if !store.isPresent() { try await store.install { _ in } }
+  @Test(.enabled(if: ProcessInfo.processInfo.environment["DP_LIVE_DOWNLOAD"] == "1"))
+  func theReleaseDownloadsAndMatchesTheManifest() async throws {
+    let folder = FileManager.default.temporaryDirectory.appendingPathComponent("dthub-depthpose-live-download-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: folder) }
+    let store = DPModelStore(folder: folder)
+    try await store.install { _ in }
+    #expect(store.isPresent())
+  }
+
+  @Test(arguments: [(640, 480, "landscape"), (480, 640, "portrait"), (512, 512, "square")])
+  func theRealModelSeesTheBottomOfAFloorAsNearer(shape: (Int, Int, String)) async throws {
+    let store = try await readyStore()
     let estimator = DepthEstimator(model: try CoreMLDepthModel(compiledModel: store.compiledURL))
-    let scene = floorScene()
+    let scene = floorScene(width: shape.0, height: shape.1)
     _ = try estimator.depthMap(for: scene)  // the first run compiles for the Neural Engine
     let started = Date()
     let map = try estimator.depthMap(for: scene)
-    print("LIVE depth map: \(Int(Date().timeIntervalSince(started) * 1000)) ms for \(scene.width)x\(scene.height)")
-    save(scene, as: "live-scene.png")
-    save(map, as: "live-depth.png")
+    print("LIVE depth map \(shape.2): \(Int(Date().timeIntervalSince(started) * 1000)) ms for \(scene.width)x\(scene.height)")
+    save(scene, as: "live-scene-\(shape.2).png")
+    save(map, as: "live-depth-\(shape.2).png")
     #expect(map.width == scene.width && map.height == scene.height)
     let near = meanGrey(map, rows: (scene.height - 40)..<scene.height)
     let far = meanGrey(map, rows: (scene.height / 3 + 5)..<(scene.height / 3 + 45))

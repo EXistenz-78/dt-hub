@@ -10,7 +10,8 @@ final class FakeDepthModel: DPDepthModel, @unchecked Sendable {
   private let lock = NSLock()
   private var _received: [(Int, Int)] = []
   var received: [(Int, Int)] { lock.withLock { _received } }
-  let inputSize: (width: Int, height: Int)
+  let landscapeInput: (width: Int, height: Int)
+  let portraitInput: (width: Int, height: Int)
   let outputSize: (Int, Int)?
   let low: UInt8
   let high: UInt8
@@ -18,11 +19,19 @@ final class FakeDepthModel: DPDepthModel, @unchecked Sendable {
   var content: DepthEstimator.Fit?
   var failure: (any Error)?
 
-  init(inputSize: (width: Int, height: Int) = (518, 392), outputSize: (Int, Int)? = nil, low: UInt8 = 10, high: UInt8 = 40) {
-    self.inputSize = inputSize
+  init(
+    landscapeInput: (width: Int, height: Int) = (1036, 784), portraitInput: (width: Int, height: Int) = (784, 1036),
+    outputSize: (Int, Int)? = nil, low: UInt8 = 10, high: UInt8 = 40
+  ) {
+    self.landscapeInput = landscapeInput
+    self.portraitInput = portraitInput
     self.outputSize = outputSize
     self.low = low
     self.high = high
+  }
+
+  func inputSize(forWidth width: Int, height: Int) -> (width: Int, height: Int) {
+    width >= height ? landscapeInput : portraitInput
   }
 
   func predict(_ image: CGImage) throws -> CGImage {
@@ -75,8 +84,14 @@ struct DepthEstimatorTests {
   @Test func theModelGetsExactlyItsInputSize() throws {
     let model = FakeDepthModel()
     _ = try DepthEstimator(model: model).depthMap(for: Pictures.image(width: 200, height: 100))
+    #expect(model.received.count == 1 && model.received[0] == (1036, 784))
+  }
+
+  @Test func aPortraitPictureGoesToThePortraitInput() throws {
+    let model = FakeDepthModel()
     _ = try DepthEstimator(model: model).depthMap(for: Pictures.image(width: 100, height: 300))
-    #expect(model.received.count == 2 && model.received.allSatisfy { $0 == (518, 392) })
+    _ = try DepthEstimator(model: model).depthMap(for: Pictures.image(width: 100, height: 100))  // square: landscape
+    #expect(model.received.count == 2 && model.received[0] == (784, 1036) && model.received[1] == (1036, 784))
   }
 
   @Test func theOutputGoesBackToTheSizeOfTheImage() throws {
@@ -92,7 +107,7 @@ struct DepthEstimatorTests {
   @Test func thePaddingIsCroppedOutOfTheAnswer() throws {
     // A portrait picture leaves bands at the sides of the model input; the fake paints them 255.
     let model = FakeDepthModel()
-    model.content = DepthEstimator.fit(width: 100, height: 200, into: (width: 518, height: 392))
+    model.content = DepthEstimator.fit(width: 100, height: 200, into: model.portraitInput)
     let map = try DepthEstimator(model: model).depthMap(for: Pictures.image(width: 100, height: 200))
     #expect(map.width == 100 && map.height == 200)
     #expect(Pictures.pixel(map, 0, 100)[0] <= 6)  // the left edge of the content, not the white band

@@ -7,9 +7,11 @@ enum DPDepthError: Error, Equatable {
   case unsupportedOutput(UInt32)
 }
 
-/// A depth model: a picture of exactly `inputSize` in, a grey picture (any size) out. Higher is nearer.
+/// A depth model: a picture of exactly the size it asks for in, a grey picture (any size) out. Higher is nearer. A model
+/// may ask for one size for landscape pictures and another for portrait ones.
 protocol DPDepthModel: Sendable {
-  var inputSize: (width: Int, height: Int) { get }
+  /// The input size for a picture of that shape.
+  func inputSize(forWidth width: Int, height: Int) -> (width: Int, height: Int)
   func predict(_ image: CGImage) throws -> CGImage
 }
 
@@ -48,7 +50,7 @@ struct DepthEstimator: Sendable {
       else { throw DPDepthError.cannotResize }
       source = reduced
     }
-    let input = model.inputSize
+    let input = model.inputSize(forWidth: source.width, height: source.height)
     let place = Self.fit(width: source.width, height: source.height, into: input)
     guard let padded = Self.padded(source, into: input, at: place) else { throw DPDepthError.cannotResize }
     let output = try model.predict(padded)

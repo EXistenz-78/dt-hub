@@ -212,9 +212,14 @@ final class DPState: ObservableObject {
 
   // MARK: The model
 
-  /// At launch: forgets what an install cut short left behind, then looks at the disk.
+  /// At launch: forgets what an install cut short left behind; a package someone put in the model folder by hand
+  /// (no compiled model yet) is checked and compiled; then looks at the disk.
   func prepare() async {
-    models.cleanUpLeftovers()
+    let models = models
+    await Task.detached {
+      models.cleanUpLeftovers()
+      if !models.isPresent(), models.hasPackageOnDisk() { try? await models.installLocalPackage(from: models.folder) }
+    }.value
     await refreshModelState()
   }
 

@@ -50,57 +50,57 @@ struct DPDownloaderTests {
     FileManager.default.temporaryDirectory.appendingPathComponent("dpd-\(UUID().uuidString)")
   }
 
-  @Test func theAllowListIsHuggingFaceAndItsSubdomainsOverHTTPS() {
+  @Test func theAllowListIsGitHubAndItsAssetHostsOverHTTPS() {
     for good in [
-      "https://huggingface.co/a", "https://cdn-lfs.huggingface.co/x", "https://cas-bridge.xethub.hf.co/y",
-      "https://hf.co/z",
+      "https://github.com/EXistenz-78/dt-hub/releases/download/x/y", "https://release-assets.githubusercontent.com/z",
+      "https://objects.githubusercontent.com/w",
     ] { #expect(DPHosts.isAllowed(URL(string: good)!), "\(good)") }
     for bad in [
-      "https://evilhuggingface.co/a", "https://huggingface.co.evil.com/a", "http://huggingface.co/a",
-      "https://example.com", "file:///etc/passwd",
+      "https://evilgithub.com/a", "https://github.com.evil.com/a", "http://github.com/a", "https://huggingface.co/a",
+      "https://notgithubusercontent.com/a", "https://example.com", "file:///etc/passwd",
     ] { #expect(!DPHosts.isAllowed(URL(string: bad)!), "\(bad)") }
   }
 
   @Test func aFileIsWrittenAndProgressReachesItsSize() async throws {
-    FakeHTTP.set(["https://huggingface.co/f": .body(Data(repeating: 7, count: 1000), status: 200)])
+    FakeHTTP.set(["https://github.com/f": .body(Data(repeating: 7, count: 1000), status: 200)])
     let file = target()
     defer { try? FileManager.default.removeItem(at: file) }
     let last = LockedValue<Int64>(0)
-    try await downloader().download(URL(string: "https://huggingface.co/f")!, to: file) { last.set($0) }
+    try await downloader().download(URL(string: "https://github.com/f")!, to: file) { last.set($0) }
     #expect(try Data(contentsOf: file).count == 1000)
     #expect(last.value == 1000)
   }
 
-  @Test func aRedirectToAHuggingFaceSubdomainIsFollowed() async throws {
+  @Test func aRedirectToAGitHubAssetHostIsFollowed() async throws {
     FakeHTTP.set([
-      "https://huggingface.co/f": .redirect("https://cdn-lfs.huggingface.co/real"),
-      "https://cdn-lfs.huggingface.co/real": .body(Data("hello".utf8), status: 200),
+      "https://github.com/f": .redirect("https://objects.githubusercontent.com/real"),
+      "https://objects.githubusercontent.com/real": .body(Data("hello".utf8), status: 200),
     ])
     let file = target()
     defer { try? FileManager.default.removeItem(at: file) }
-    try await downloader().download(URL(string: "https://huggingface.co/f")!, to: file) { _ in }
+    try await downloader().download(URL(string: "https://github.com/f")!, to: file) { _ in }
     #expect(try String(contentsOf: file, encoding: .utf8) == "hello")
   }
 
   @Test func aRedirectToAnotherHostIsRefused() async {
     FakeHTTP.set([
-      "https://huggingface.co/f": .redirect("https://evil.example.com/real"),
+      "https://github.com/f": .redirect("https://evil.example.com/real"),
       "https://evil.example.com/real": .body(Data("x".utf8), status: 200),
     ])
     let file = target()
     defer { try? FileManager.default.removeItem(at: file) }
     await #expect(throws: DPModelError.notAllowed) {
-      try await downloader().download(URL(string: "https://huggingface.co/f")!, to: file) { _ in }
+      try await downloader().download(URL(string: "https://github.com/f")!, to: file) { _ in }
     }
     #expect(!FileManager.default.fileExists(atPath: file.path))
   }
 
   @Test func anHTTPErrorFails() async {
-    FakeHTTP.set(["https://huggingface.co/f": .body(Data("nope".utf8), status: 404)])
+    FakeHTTP.set(["https://github.com/f": .body(Data("nope".utf8), status: 404)])
     let file = target()
     defer { try? FileManager.default.removeItem(at: file) }
     await #expect(throws: DPModelError.network("HTTP 404")) {
-      try await downloader().download(URL(string: "https://huggingface.co/f")!, to: file) { _ in }
+      try await downloader().download(URL(string: "https://github.com/f")!, to: file) { _ in }
     }
     #expect(!FileManager.default.fileExists(atPath: file.path))
   }
@@ -108,7 +108,7 @@ struct DPDownloaderTests {
   @Test func anAddressOutsideTheAllowListIsRefusedBeforeAnyRequest() async {
     FakeHTTP.set([:])
     await #expect(throws: DPModelError.notAllowed) {
-      try await downloader().download(URL(string: "http://huggingface.co/f")!, to: target()) { _ in }
+      try await downloader().download(URL(string: "http://github.com/f")!, to: target()) { _ in }
     }
   }
 }

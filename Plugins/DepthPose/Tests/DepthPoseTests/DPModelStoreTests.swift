@@ -212,12 +212,66 @@ struct DPModelStoreTests {
     #expect(FileManager.default.fileExists(atPath: keep.path))
   }
 
-  @Test func theRealManifestIsTheOneOfTheSpec() {
-    let all = DPModelManifest.depthAnythingSmallF16
-    #expect(all.map(\.size) == [617, 399_433, 49_419_072])
-    #expect(all.last?.sha256 == "fa60d9b6a155734f59029ebb882fd54e549bfaee3539c1a9cbd2cbbab64a0fed")
-    #expect(all.allSatisfy { $0.path.hasPrefix("DepthAnythingV2SmallF16.mlpackage/") })
-    #expect(DPModelManifest.baseURL.absoluteString == "https://huggingface.co/apple/coreml-depth-anything-v2-small/resolve/main/")
-    #expect(DPHosts.isAllowed(DPModelManifest.baseURL))
+  /// A folder with the package as it would be on disk after a download (a model someone made by hand).
+  private func localSource(weightData override: Data? = nil, skipWeight: Bool = false) throws -> URL {
+    let root = try folder()
+    let package = root.appendingPathComponent("M.mlpackage")
+    try FileManager.default.createDirectory(at: package.appendingPathComponent("Data"), withIntermediateDirectories: true)
+    try manifestData.write(to: package.appendingPathComponent("Manifest.json"))
+    if !skipWeight { try (override ?? weightData).write(to: package.appendingPathComponent("Data/weight.bin")) }
+    return root
+  }
+
+  @Test func aLocalPackageIsCheckedCompiledAndCopiedAndTheOriginalStays() async throws {
+    let target = try folder(), source = try localSource()
+    defer { for url in [target, source] { try? FileManager.default.removeItem(at: url) } }
+    let store = store(target, files: files(), downloader: downloader())
+    try await store.installLocalPackage(from: source)
+    #expect(store.isPresent())
+    #expect(FileManager.default.fileExists(atPath: source.appendingPathComponent("M.mlpackage/Manifest.json").path))
+    #expect(leftovers(target).isEmpty)
+  }
+
+  @Test func aLocalPackageWithAMissingFileFailsAndLeavesNothing() async throws {
+    let target = try folder(), source = try localSource(skipWeight: true)
+    defer { for url in [target, source] { try? FileManager.default.removeItem(at: url) } }
+    let store = store(target, files: files(), downloader: downloader())
+    await #expect(throws: DPModelError.wrongSize("M.mlpackage/Data/weight.bin")) {
+      try await store.installLocalPackage(from: source)
+    }
+    #expect(!store.isPresent() && leftovers(target).isEmpty)
+  }
+
+  @Test func aLocalPackageWithAWrongChecksumIsRefused() async throws {
+    let target = try folder(), source = try localSource(weightData: Data(repeating: 1, count: 5000))
+    defer { for url in [target, source] { try? FileManager.default.removeItem(at: url) } }
+    let store = store(target, files: files(), downloader: downloader())
+    await #expect(throws: DPModelError.wrongChecksum("M.mlpackage/Data/weight.bin")) {
+      try await store.installLocalPackage(from: source)
+    }
+    #expect(!store.isPresent() && leftovers(target).isEmpty)
+  }
+
+  @Test func theAssetNameIsWhatIsAskedForWhenItDiffersFromThePath() async throws {
+    let target = try folder()
+    defer { try? FileManager.default.removeItem(at: target) }
+    let d = downloader()
+    d.contents = ["Flat-Manifest.json": manifestData]
+    let flat = [DPModelFile(path: "M.mlpackage/Manifest.json", asset: "Flat-Manifest.json", size: Int64(manifestData.count), sha256: nil)]
+    try await store(target, files: flat, downloader: d).install { _ in }
+    #expect(d.calls == ["Flat-Manifest.json"])
+  }
+
+  @Test func theRealManifestIsTheOneOfTheConvertedModel() {
+    let all = DPModelManifest.depthAnythingBaseF16
+    #expect(all.map(\.size) == [617, 411_200, 204_996_928])
+    #expect(all.allSatisfy { $0.sha256?.count == 64 })
+    #expect(all.last?.sha256 == "f4a5f30746786b06e46a1a13bac7eee33ea0b64bb8d80461cae3a3e61893524d")
+    #expect(all.allSatisfy { $0.path.hasPrefix("DepthAnythingV2BaseF16.mlpackage/") })
+    #expect(all.map(\.asset) == [
+      "DepthAnythingV2BaseF16-Manifest.json", "DepthAnythingV2BaseF16-model.mlmodel", "DepthAnythingV2BaseF16-weight.bin",
+    ])
+    #expect(DPModelManifest.baseURL.absoluteString == "https://github.com/EXistenz-78/dt-hub/releases/download/depth-anything-v2-base-coreml/")
+    for file in all { #expect(DPHosts.isAllowed(DPModelManifest.baseURL.appendingPathComponent(file.asset ?? file.path))) }
   }
 }
