@@ -62,6 +62,27 @@ struct CatalogBuilderTests {
     #expect(catalog.faceRestorers == ["restoreformer_v1.0_f16.ckpt"])
   }
 
+  /// The Official list (DT+) writes the modifiers in camelCase (`qwenimageEditPlus`), the older lists and the server in
+  /// snake_case (`qwenimage_edit_plus`): one spelling inside the app, or Qwen Image Edit 2509 and 2511 of the Official
+  /// list were not edit models.
+  @Test func bothSpellingsOfTheModifierAreTheSameModel() {
+    let expected: [(String, String, Bool)] = [
+      ("qwenimageEditPlus", "qwenimage_edit_plus", true), ("qwenimage_edit_plus", "qwenimage_edit_plus", true),
+      ("qwenimageEdit2511", "qwenimage_edit_2511", true), ("qwenimage_edit_2511", "qwenimage_edit_2511", true),
+      ("kontextKv", "kontext_kv", true), ("kontext_kv", "kontext_kv", true), ("kontext", "kontext", true),
+      ("editing", "editing", true), ("qwenimageLayered", "qwenimage_layered", false),
+      ("inpainting", "inpainting", false), ("fl2va", "fl2va", false), ("ref2va", "ref2va", false),
+    ]
+    for (spelled, key, isEdit) in expected {
+      let capabilities = CatalogBuilder.capabilities(["modifier": spelled])
+      #expect(capabilities.modifier == key, "\(spelled)")
+      #expect(capabilities.isEditModel == isEdit, "\(spelled)")
+    }
+    #expect(CatalogBuilder.capabilities([:]).modifier == nil)
+    #expect(CatalogBuilder.capabilities(["modifier": "None"]).modifier == "none", "the Official list's None")
+    #expect(!CatalogBuilder.capabilities(["modifier": "None"]).isEditModel)
+  }
+
   @Test func capabilitiesComeFromTheSpec() {
     let flux1 = CatalogBuilder.capabilities([
       "guidance_embed": true, "tea_cache_coefficients": [1.0], "clip_encoder": "clip_vit_l14_f16.ckpt",

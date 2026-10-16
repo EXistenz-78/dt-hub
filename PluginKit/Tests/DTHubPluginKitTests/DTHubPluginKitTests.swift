@@ -9,6 +9,15 @@ struct DTHubPluginKitTests {
     #expect(DTHubContract.current == 1)
   }
 
+  @Test func theManifestSaysWhetherThePluginNeedsAnEditModelOnlyWhenItDoes() throws {
+    func keys(_ manifest: DTHubManifest) throws -> [String: Any] {
+      try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(manifest)) as? [String: Any])
+    }
+    #expect(try keys(DTHubManifest(id: "a", name: "A"))["requiresEditModel"] == nil, "an older app is not told")
+    #expect(try keys(DTHubManifest(id: "a", name: "A", requiresEditModel: true))["requiresEditModel"] as? Bool == true)
+    #expect(DTHubManifest(id: "a", name: "A").requiresEditModel == nil)
+  }
+
   @Test func aBareMessageIsAnObjectWithItsType() {
     #expect(DTHubMessage.type(of: DTHubMessage.bare("ok")) == "ok")
   }
