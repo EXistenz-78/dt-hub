@@ -114,4 +114,16 @@ struct ComputeUnitsReferenceTests {
       expected, family: "flux2", file: "flux_2_dev_f16.ckpt", width: 1024, height: 1024, steps: 26, guidance: 4.5,
       strength: strength, capabilities: Self.flux2Dev, tolerance: 1)
   }
+
+  /// The old families and Cosmos, confirmed by the user against the Draw Things app on 16 Oct 2026 ("i conti tornano"):
+  /// SD 1.5 512×512, 20 steps, guidance 7.5 = 209; SDXL 1024×1024, 20 steps, guidance 7.5 = 1 736; Cosmos 2.5
+  /// 1024×1024, 30 steps, guidance 4 = 3 749.
+  @Test(arguments: [
+    ("v1", 512, 20, 7.5, 209), ("sdxl_base_v0.9", 1024, 20, 7.5, 1736), ("cosmos2.5_2b", 1024, 30, 4.0, 3749),
+  ])
+  func theOldFamiliesAndCosmosMatchTheApp(family: String, side: Int, steps: Int, guidance: Double, expected: Int) {
+    reading(
+      expected, family: family, file: "\(family).ckpt", width: side, height: side, steps: steps, guidance: guidance,
+      tolerance: 1)
+  }
 }
