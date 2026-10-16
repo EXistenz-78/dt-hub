@@ -58,6 +58,8 @@ public final class PluginRegistry: PluginHosting {
   /// A change (a plug-in turned on or off, installed, replaced or removed while loaded) waits for a restart.
   public private(set) var needsRestart = false
   public private(set) var family: String?
+  /// Whether the chosen model is an edit or in-context one; nil when it is not known.
+  public private(set) var isEditModel: Bool?
   public private(set) var model: String?
 
   /// What the active plug-ins contributed (teal fields, conflicts, the pipeline); the app sets its `target`.
@@ -255,8 +257,11 @@ public final class PluginRegistry: PluginHosting {
     if isActive { sendContext(to: identifier) }
   }
 
-  /// A plug-in works with the chosen model's family (the header menu greys it out otherwise).
-  public func isCompatible(_ entry: PluginEntry) -> Bool { entry.manifest?.supports(family: family) ?? false }
+  /// A plug-in works with the chosen model's family and, when it asks for an edit model, with the chosen model (the
+  /// header menu greys it out otherwise).
+  public func isCompatible(_ entry: PluginEntry) -> Bool {
+    entry.manifest?.supports(family: family, isEditModel: isEditModel) ?? false
+  }
 
   /// The tabs of the plug-ins that are loaded, active and compatible with the model's family.
   public var activeTabs: [WorkspaceTab] {
@@ -275,9 +280,13 @@ public final class PluginRegistry: PluginHosting {
   // MARK: Messages
 
   /// The model or its parameters changed: active plug-ins hear about it.
-  public func updateContext(model: String?, family: String?, parameters: GenerationParameters) {
+  /// `isEditModel` is nil while the model is unknown.
+  public func updateContext(
+    model: String?, family: String?, isEditModel: Bool? = nil, parameters: GenerationParameters
+  ) {
     self.model = model
     self.family = family
+    self.isEditModel = isEditModel
     latestParameters = parameters
     for entry in entries where entry.state == .loaded && entry.isActive { sendContext(to: entry.id) }
   }

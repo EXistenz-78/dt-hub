@@ -13,6 +13,7 @@ struct PluginTests {
     #expect(manifest.name == "Depth & Pose")
     #expect(manifest.version == "1.0")
     #expect(manifest.families == nil)
+    #expect(manifest.requiresEditModel == true, "the maps are references: only edit and in-context models read them")
   }
 
   @Test func anUnknownMessageIsUnsupported() async {

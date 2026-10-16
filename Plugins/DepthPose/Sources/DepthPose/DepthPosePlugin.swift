@@ -4,9 +4,11 @@ import SwiftUI
 
 @MainActor
 final class DepthPosePlugin: DTHubPlugin {
-  /// All the families: the maps are plain pictures any model can take as a reference.
+  /// Any family, but only with a model that takes pictures as references (an edit or in-context model): for the
+  /// others the Moodboard maps are of no use, so DT Hub switches the plug-in off and hides its tab.
   let manifest = DTHubManifest(
-    id: "com.exiztenz.dthub.depthpose", name: "Depth & Pose", version: "1.0", symbol: "figure.stand", families: nil)
+    id: "com.exiztenz.dthub.depthpose", name: "Depth & Pose", version: "1.0", symbol: "figure.stand", families: nil,
+    requiresEditModel: true)
   private let state = DPState(
     store: DPStore(), models: DPModelStore(), detector: VisionPoseDetector(),
     makeDepth: { url in DepthEstimator(model: try CoreMLDepthModel(compiledModel: url)) })
