@@ -26,6 +26,7 @@ final class FakeLoadedPlugin: LoadedPlugin {
 final class FakeLoader: PluginLoading {
   var failures: [String: PluginError] = [:]
   var families: [String: [String]] = [:]
+  var requiresEditModel: [String: Bool] = [:]
   private(set) var loadedIDs: [String] = []
   private(set) var plugins: [String: FakeLoadedPlugin] = [:]
   private(set) var host: (any PluginHosting)?
@@ -36,7 +37,8 @@ final class FakeLoader: PluginLoading {
     loadedIDs.append(info.identifier)
     let plugin = FakeLoadedPlugin(
       manifest: PluginManifest(
-        id: info.identifier, name: info.name, version: info.version, symbol: "star", families: families[info.identifier]))
+        id: info.identifier, name: info.name, version: info.version, symbol: "star", families: families[info.identifier],
+        requiresEditModel: requiresEditModel[info.identifier]))
     plugins[info.identifier] = plugin
     return plugin
   }
@@ -267,6 +269,29 @@ struct PluginRegistryTests {
     #expect(registry.entries.first.map(registry.isCompatible) == false)
     registry.updateContext(model: nil, family: nil, parameters: GenerationParameters())
     #expect(registry.activeTabs.map(\.title) == ["A"], "an unknown family: everything applies")
+  }
+
+  @Test func aPluginThatNeedsAnEditModelHasNoTabWithAnotherModel() throws {
+    try PluginFixture.bundle(in: root, id: "a", name: "A")
+    let loader = FakeLoader()
+    loader.requiresEditModel["a"] = true
+    let registry = registry(loader: loader, enabled: ["a"])
+    registry.start()
+    registry.updateContext(model: "klein.ckpt", family: "flux2_9b", isEditModel: true, parameters: GenerationParameters())
+    #expect(registry.activeTabs.map(\.title) == ["A"])
+    registry.updateContext(model: "flux1.ckpt", family: "flux1", isEditModel: false, parameters: GenerationParameters())
+    #expect(registry.activeTabs.isEmpty)
+    #expect(registry.entries.first.map(registry.isCompatible) == false)
+    registry.updateContext(model: nil, family: nil, isEditModel: nil, parameters: GenerationParameters())
+    #expect(registry.activeTabs.map(\.title) == ["A"], "an unknown model: everything applies")
+  }
+
+  @Test func aPluginThatDoesNotAskForAnEditModelKeepsItsTabOnAnyModel() throws {
+    try PluginFixture.bundle(in: root, id: "a", name: "A")
+    let registry = registry(loader: FakeLoader(), enabled: ["a"])
+    registry.start()
+    registry.updateContext(model: "flux1.ckpt", family: "flux1", isEditModel: false, parameters: GenerationParameters())
+    #expect(registry.activeTabs.map(\.title) == ["A"])
   }
 
   @Test func theTabsViewControllerIsTheLoadedPluginsOne() throws {

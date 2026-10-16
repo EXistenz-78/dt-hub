@@ -4,15 +4,21 @@
 public struct PluginContextKey: Equatable, Sendable {
   public var model: String?
   public var family: String?
+  /// Whether the model is an edit or in-context one (nil: unknown).
+  public var isEditModel: Bool?
   public var startImageID: String?
   /// The ids of the Moodboard pictures that are on, in order, joined by commas.
   public var moodboardIDs: String
   public var width: Int
   public var height: Int
 
-  public init(model: String?, family: String?, startImageID: String?, moodboardIDs: String, width: Int, height: Int) {
+  public init(
+    model: String?, family: String?, isEditModel: Bool? = nil, startImageID: String?, moodboardIDs: String, width: Int,
+    height: Int
+  ) {
     self.model = model
     self.family = family
+    self.isEditModel = isEditModel
     self.startImageID = startImageID
     self.moodboardIDs = moodboardIDs
     self.width = width

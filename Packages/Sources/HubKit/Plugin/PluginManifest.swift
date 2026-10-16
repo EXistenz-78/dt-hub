@@ -22,10 +22,14 @@ public struct PluginManifest: Codable, Equatable, Sendable {
   public var symbol: String
   /// Model families it works with; nil or empty = all.
   public var families: [String]?
+  /// True for a plug-in that only makes sense with an edit or in-context model (the ones that take pictures as
+  /// references: Kontext, Qwen Edit, FLUX.2, Qwen Image 2.1...). The app switches it off with any other model. nil or
+  /// false = any model. An addition to contract 1: an app that does not know it keeps the plug-in on.
+  public var requiresEditModel: Bool?
 
   public init(
     id: String, name: String, version: String = "0", contract: Int = PluginContract.current,
-    symbol: String = "puzzlepiece.extension", families: [String]? = nil
+    symbol: String = "puzzlepiece.extension", families: [String]? = nil, requiresEditModel: Bool? = nil
   ) {
     self.id = id
     self.name = name
@@ -33,6 +37,7 @@ public struct PluginManifest: Codable, Equatable, Sendable {
     self.contract = contract
     self.symbol = symbol
     self.families = families
+    self.requiresEditModel = requiresEditModel
   }
 
   /// Lenient: only the identifier, the name and the contract version are needed.
@@ -44,10 +49,13 @@ public struct PluginManifest: Codable, Equatable, Sendable {
     version = (try? container.decodeIfPresent(String.self, forKey: .version)) ?? "0"
     symbol = (try? container.decodeIfPresent(String.self, forKey: .symbol)) ?? "puzzlepiece.extension"
     families = try? container.decodeIfPresent([String].self, forKey: .families)
+    requiresEditModel = try? container.decodeIfPresent(Bool.self, forKey: .requiresEditModel)
   }
 
-  /// Whether it works with a model family (nil = unknown family: everything applies).
-  public func supports(family: String?) -> Bool {
+  /// Whether it works with a model family (nil = unknown family: everything applies) and, for a plug-in that asks for
+  /// an edit model, with this model (`isEditModel`: nil = unknown model: everything applies).
+  public func supports(family: String?, isEditModel: Bool? = nil) -> Bool {
+    if requiresEditModel == true, isEditModel == false { return false }
     guard let family, let families, !families.isEmpty else { return true }
     return families.contains(family)
   }
