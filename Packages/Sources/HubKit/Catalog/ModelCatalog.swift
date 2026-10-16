@@ -9,15 +9,24 @@ public struct CatalogModel: Identifiable, Equatable, Sendable {
   public let capabilities: ModelCapabilities
   /// In Draw Things' lists but not in the server's folder: only DT+ (the cloud, through Bridge Mode) can run it.
   public let isRemote: Bool
+  /// The Draw Things list the model comes from; nil outside DT+ (the menu does not group by it there).
+  public let source: ModelSource?
 
   public init(
-    file: String, name: String, family: String?, capabilities: ModelCapabilities = .unknown, isRemote: Bool = false
+    file: String, name: String, family: String?, capabilities: ModelCapabilities = .unknown, isRemote: Bool = false,
+    source: ModelSource? = nil
   ) {
     self.isRemote = isRemote
+    self.source = source
     self.file = file
     self.name = name
     self.family = family
     self.capabilities = capabilities
+  }
+
+  /// The same model with its list and cloud mark set (DT+).
+  public func with(source: ModelSource?, isRemote: Bool) -> CatalogModel {
+    CatalogModel(file: file, name: name, family: family, capabilities: capabilities, isRemote: isRemote, source: source)
   }
 }
 
@@ -48,6 +57,14 @@ public struct ModelFamilyGroup: Identifiable, Equatable, Sendable {
   /// nil groups the models whose family is unknown.
   public let family: String?
   public let models: [CatalogModel]
+}
+
+/// The models of one list, by family (the DT+ picker).
+public struct ModelSourceGroup: Identifiable, Equatable, Sendable {
+  public var id: ModelSource { source }
+  public let source: ModelSource
+  public let families: [ModelFamilyGroup]
+  public var count: Int { families.reduce(0) { $0 + $1.models.count } }
 }
 
 /// What the Draw Things server has installed, as DT Hub needs it.
@@ -82,7 +99,18 @@ public struct ModelCatalog: Equatable, Sendable {
 
   /// Models grouped by family: families in alphabetical order, the unknown family last,
   /// models by name inside each group.
-  public var modelsByFamily: [ModelFamilyGroup] {
+  public var modelsByFamily: [ModelFamilyGroup] { Self.groupedByFamily(models) }
+
+  /// The models by list, then by family inside each (the DT+ picker): one group for each list that has models, in
+  /// the order of `ModelSource.allCases`. A model without a list is not in any group.
+  public var modelsBySource: [ModelSourceGroup] {
+    ModelSource.allCases.compactMap { source in
+      let ofSource = models.filter { $0.source == source }
+      return ofSource.isEmpty ? nil : ModelSourceGroup(source: source, families: Self.groupedByFamily(ofSource))
+    }
+  }
+
+  private static func groupedByFamily(_ models: [CatalogModel]) -> [ModelFamilyGroup] {
     let grouped = Dictionary(grouping: models, by: \.family)
     let families = grouped.keys.sorted { lhs, rhs in
       switch (lhs, rhs) {
