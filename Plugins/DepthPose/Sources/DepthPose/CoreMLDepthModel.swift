@@ -5,11 +5,16 @@ import CoreVideo
 /// Depth Anything V2 (Small, F16) as Apple converted it: input `image`, output `depth`, a grey picture.
 struct CoreMLDepthModel: DPDepthModel, @unchecked Sendable {
   private let model: MLModel
+  /// The one size the model takes (518×392 for Depth Anything V2 Small as Apple converted it: its card says
+  /// "shorter side 518", but the model refuses anything else than this size).
+  let inputSize: (width: Int, height: Int)
 
   init(compiledModel: URL) throws {
     let configuration = MLModelConfiguration()
     configuration.computeUnits = .all
     model = try MLModel(contentsOf: compiledModel, configuration: configuration)
+    let constraint = model.modelDescription.inputDescriptionsByName["image"]?.imageConstraint
+    inputSize = (constraint?.pixelsWide ?? 518, constraint?.pixelsHigh ?? 392)
   }
 
   func predict(_ image: CGImage) throws -> CGImage {
