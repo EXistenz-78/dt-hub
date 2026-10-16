@@ -13,10 +13,12 @@ public actor DrawThingsBackend: GenerationBackend {
   /// so a fresh one per check keeps reconnection within one check interval (spec §10).
   private var service: DrawThingsService?
   /// The models Draw Things published after the snapshot this app carries; nil in the tests.
-  private let liveModels: LiveModelList?
+  private let communityModels: LiveModelList?
+  /// The Official list (the models of the Draw Things app) and the Uncurated one: with DT+ the cloud runs them too.
+  private let officialModels: LiveModelList?
   /// DT+ is on: the models of Draw Things' lists that are not on the server are listed too, for the cloud.
   private let includeRemoteModels: Bool
-  private let communityModels: LiveModelList?
+  private let uncuratedModels: LiveModelList?
   /// What the cloud has: with DT+ the menu lists only its models, and its LoRAs join the local ones.
   private let cloud: CloudCatalog?
 
@@ -25,8 +27,8 @@ public actor DrawThingsBackend: GenerationBackend {
   ///   - sharedSecret: sent with every request when the server requires one.
   public init(host: String, port: Int, useTLS: Bool, sharedSecret: String?, includeRemoteModels: Bool = false) {
     self.init(
-      host: host, port: port, useTLS: useTLS, sharedSecret: sharedSecret, liveModels: .community,
-      includeRemoteModels: includeRemoteModels, communityModels: .uncurated, cloud: .shared) {}
+      host: host, port: port, useTLS: useTLS, sharedSecret: sharedSecret, communityModels: .community,
+      includeRemoteModels: includeRemoteModels, uncuratedModels: .uncurated, officialModels: .official, cloud: .shared) {}
   }
 
   /// The ceiling of a request or reply: 1 GiB. The default (256 MiB) stops an image-to-image or an
@@ -34,13 +36,15 @@ public actor DrawThingsBackend: GenerationBackend {
   static let maxMessageBytes = 1024 * 1024 * 1024
 
   init(
-    host: String, port: Int, useTLS: Bool, sharedSecret: String?, liveModels: LiveModelList? = nil,
-    includeRemoteModels: Bool = false, communityModels: LiveModelList? = nil, cloud: CloudCatalog? = nil,
+    host: String, port: Int, useTLS: Bool, sharedSecret: String?, communityModels: LiveModelList? = nil,
+    includeRemoteModels: Bool = false, uncuratedModels: LiveModelList? = nil, officialModels: LiveModelList? = nil,
+    cloud: CloudCatalog? = nil,
     onNewClient: @escaping @Sendable () -> Void
   ) {
-    self.liveModels = liveModels
-    self.includeRemoteModels = includeRemoteModels
     self.communityModels = communityModels
+    self.includeRemoteModels = includeRemoteModels
+    self.uncuratedModels = uncuratedModels
+    self.officialModels = officialModels
     self.cloud = cloud
     endpoint = ServerEndpoint(host: host, port: port)
     options = ConnectionOptions(
@@ -67,7 +71,7 @@ public actor DrawThingsBackend: GenerationBackend {
     }
     // The models released after the bundled snapshot: registered, they are listed and their requests carry the
     // right specification.
-    let live: [String: Data] = await liveModels?.specs() ?? [:]
+    let live: [String: Data] = await communityModels?.specs() ?? [:]
     if !live.isEmpty {
       await service.modelSpecs.register(Self.specs(toRegisterFor: reply.files, live: live))
     }
@@ -79,22 +83,27 @@ public actor DrawThingsBackend: GenerationBackend {
     }
     let catalog = CatalogBuilder.build(files: reply.files, modelSpecs: specs, loraMetadata: reply.override.loras)
     guard includeRemoteModels else { return catalog }
-    // The official list first: a file in both lists keeps its official description.
-    let community: [String: Data] = await communityModels?.specs() ?? [:]
-    let remote = community.merging(live) { _, official in official }
+    // Official first, then Community (`live`), then Uncurated: a file in two lists keeps the description of the first.
+    let official: [String: Data] = await officialModels?.specs() ?? [:]
+    let uncurated: [String: Data] = await uncuratedModels?.specs() ?? [:]
+    let remote = uncurated.merging(live) { _, community in community }.merging(official) { _, official in official }
+    let sources = CatalogBuilder.sources(official: official, community: live, uncurated: uncurated)
     // The cloud's own list: only what it can run. Without it (never reached, nothing saved) every model of the lists.
     if let cloudFiles = await cloud?.files() {
       let cloudLoRAs = await cloud?.loras() ?? []
-      return CatalogBuilder.cloudCatalog(local: catalog, specs: remote, cloudFiles: cloudFiles, cloudLoRAs: cloudLoRAs)
+      return CatalogBuilder.cloudCatalog(
+        local: catalog, specs: remote, sources: sources, deprecated: await officialModels?.deprecated() ?? [],
+        cloudFiles: cloudFiles, cloudLoRAs: cloudLoRAs)
     }
-    return CatalogBuilder.addingRemoteModels(to: catalog, live: remote)
+    return CatalogBuilder.addingRemoteModels(to: catalog, live: remote, sources: sources)
   }
 
   /// A model the server's folder does not have (DT+): its specification goes with the request, so the cloud knows it.
   private func registerRemoteSpec(for file: String, loras lorasFiles: [String], on service: DrawThingsService) async {
     guard includeRemoteModels else { return }
-    var json = (await liveModels?.specs() ?? [:])[file]
+    var json = (await officialModels?.specs() ?? [:])[file]
     if json == nil { json = (await communityModels?.specs() ?? [:])[file] }
+    if json == nil { json = (await uncuratedModels?.specs() ?? [:])[file] }
     var specs = [json.flatMap { ModelSpec(json: $0) }].compactMap { $0 }
     // The cloud's LoRAs with their official description (otherwise the override would carry a minimal one).
     if !lorasFiles.isEmpty, let cloudLoRAs = await cloud?.loraSpecs() {
