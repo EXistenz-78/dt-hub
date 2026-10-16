@@ -25,6 +25,32 @@ struct PluginContractTests {
     #expect(manifest.supports(family: "flux2_9b"), "an empty list means all")
   }
 
+  @Test func aPluginThatNeedsAnEditModelWorksOnlyWithOne() {
+    var manifest = PluginManifest(id: "a", name: "A", requiresEditModel: true)
+    #expect(manifest.supports(family: "flux2_9b", isEditModel: true))
+    #expect(!manifest.supports(family: "flux2_9b", isEditModel: false))
+    #expect(manifest.supports(family: nil, isEditModel: nil), "an unknown model: everything applies")
+    #expect(manifest.supports(family: "flux2_9b"), "without a capability to judge by, it applies")
+    manifest.families = ["qwen21"]
+    #expect(!manifest.supports(family: "flux2_9b", isEditModel: true), "the families still count")
+    #expect(manifest.supports(family: "qwen21", isEditModel: true))
+    #expect(!manifest.supports(family: "qwen21", isEditModel: false))
+    let plain = PluginManifest(id: "b", name: "B")
+    #expect(plain.supports(family: "flux2_9b", isEditModel: false), "a plug-in that does not ask works with any model")
+    let explicitNo = PluginManifest(id: "c", name: "C", requiresEditModel: false)
+    #expect(explicitNo.supports(family: "flux2_9b", isEditModel: false))
+  }
+
+  @Test func theEditModelRequirementIsReadLeniently() throws {
+    func decode(_ extra: String) throws -> PluginManifest {
+      try JSONDecoder().decode(
+        PluginManifest.self, from: Data(#"{"id":"a","name":"A","contract":1\#(extra)}"#.utf8))
+    }
+    #expect(try decode(#","requiresEditModel":true"#).requiresEditModel == true)
+    #expect(try decode("").requiresEditModel == nil, "an older plug-in does not say")
+    #expect(try decode(#","requiresEditModel":"yes""#).requiresEditModel == nil, "a wrong type is left out, not an error")
+  }
+
   @Test func versionsAreComparedNumberByNumber() {
     #expect(PluginVersion("1.10") > PluginVersion("1.9"))
     #expect(PluginVersion("2") > PluginVersion("1.9.9"))

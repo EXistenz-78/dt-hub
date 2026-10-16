@@ -16,7 +16,7 @@ struct MainWindowView: View {
     let model = connection.selection.selectedModel(in: connection.monitor.catalog)
     let moodboard = generation.control.inputs.moodboard.filter(\.isOn).map { $0.id.uuidString }.joined(separator: ",")
     return PluginContextKey(
-      model: model?.file, family: model?.family, startImageID: generation.control.inputs.image?.id.uuidString,
+      model: model?.file, family: model?.family, isEditModel: model?.capabilities.isEditModel, startImageID: generation.control.inputs.image?.id.uuidString,
       moodboardIDs: moodboard, width: generation.parameters.width, height: generation.parameters.height)
   }
 
@@ -59,7 +59,9 @@ struct MainWindowView: View {
       ContributionConflictSheet(plugins: plugins)
     }
     .task(id: contextKey) {
-      plugins.updateContext(model: contextKey.model, family: contextKey.family, parameters: generation.parameters)
+      plugins.updateContext(
+        model: contextKey.model, family: contextKey.family, isEditModel: contextKey.isEditModel,
+        parameters: generation.parameters)
       workspace.setPluginTabs(plugins.activeTabs)
     }
     .onChange(of: plugins.activeTabs) { workspace.setPluginTabs(plugins.activeTabs) }
