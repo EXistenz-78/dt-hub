@@ -22,10 +22,15 @@ struct MainWindowView: View {
 
   var body: some View {
     VStack(spacing: DS.panelPadding) {
-      HeaderBar(connection: connection, generation: generation, plugins: plugins, projects: projects)
+      // The header and, beside it, the Results button as tall as the header.
+      HStack(alignment: .top, spacing: DS.controlGap) {
+        HeaderBar(connection: connection, generation: generation, plugins: plugins, projects: projects)
+        ResultsEdgeButton(generation: generation)
+      }
+      .fixedSize(horizontal: false, vertical: true)
       ManagedServerBanner(connection: connection)
       DSTabFrame {
-        WorkspaceTabBar(workspace: workspace)
+        WorkspaceTabBar(workspace: workspace, plugins: plugins)
       } content: {
         tabContent
       }
