@@ -11,7 +11,13 @@ final class DepthPosePlugin: DTHubPlugin {
     requiresEditModel: true)
   private let state = DPState(
     store: DPStore(), models: DPModelStore(), detector: VisionPoseDetector(),
-    makeDepth: { url in DepthEstimator(model: try CoreMLDepthModel(compiledModel: url)) })
+    makeDepth: { url in DepthEstimator(model: try CoreMLDepthModel(compiledModel: url)) },
+    poseModels: DPModelStore(
+      files: DPModelManifest.dwposeLF16, packageName: DPModelManifest.dwposeLPackageName,
+      baseURL: DPModelManifest.dwposeLBaseURL),
+    makeFullPose: { url in
+      DWPoseDetector(network: try CoreMLPoseNetwork(compiledModel: url), boxFinder: VisionPersonBoxFinder())
+    })
   private var host: DTHubHost?
 
   func makeViewController() -> NSViewController {
@@ -22,11 +28,11 @@ final class DepthPosePlugin: DTHubPlugin {
       },
       send: { [weak self] in self?.send() },
       saveToDesktop: { [weak self] in self?.state.saveToDesktop() },
-      download: { [weak self] in
+      download: { [weak self] kind in
         guard let self else { return }
-        Task { await self.state.downloadModel() }
+        Task { await self.state.downloadModel(kind) }
       },
-      cancel: { [weak self] in self?.state.cancelDownload() })
+      cancel: { [weak self] kind in self?.state.cancelDownload(kind) })
     return NSHostingController(rootView: DPView(state: state, actions: actions))
   }
 

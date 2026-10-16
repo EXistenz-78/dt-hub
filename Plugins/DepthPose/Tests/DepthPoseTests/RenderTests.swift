@@ -10,7 +10,11 @@ import Testing
 @MainActor
 @Suite("The tab on screen")
 struct RenderTests {
-  private func state(italian: Bool, modelReady: Bool, withImage: Bool, downloading: Bool = false) async throws -> DPState {
+  enum PoseModelCase { case none, missing, ready, downloading }
+
+  private func state(
+    italian: Bool, modelReady: Bool, withImage: Bool, downloading: Bool = false, pose: PoseModelCase = .none
+  ) async throws -> DPState {
     let root = FileManager.default.temporaryDirectory.appendingPathComponent("dp-render-\(UUID().uuidString)")
     let downloader = FakeDownloader()
     downloader.contents = ["Manifest.json": Data("{}".utf8)]
@@ -23,10 +27,22 @@ struct RenderTests {
         return out
       }, validate: { _ in true })
     if modelReady { try await models.install { _ in } }
+    let poseDownloader = FakeDownloader()
+    poseDownloader.contents = ["Manifest.json": Data("{}".utf8)]
+    let poseStore = DPModelStore(
+      folder: root.appendingPathComponent("pose"), files: [DPModelFile(path: "P.mlpackage/Manifest.json", size: 2, sha256: nil)],
+      packageName: "P.mlpackage", downloader: poseDownloader,
+      compile: { package in
+        let out = FileManager.default.temporaryDirectory.appendingPathComponent("c-\(UUID().uuidString).mlmodelc")
+        try FileManager.default.copyItem(at: package, to: out)
+        return out
+      }, validate: { _ in true })
+    if pose == .ready { try await poseStore.install { _ in } }
+    let makeFull: (@Sendable (URL) throws -> any DPFullPoseDetecting)? = pose == .none ? nil : { @Sendable _ in FakeFullDetector() }
     let state = DPState(
       store: DPStore(defaults: UserDefaults(suiteName: "dp-render-\(UUID().uuidString)")!), models: models,
       detector: FakeDetector(people: [standingPerson]), makeDepth: { _ in DepthEstimator(model: FakeDepthModel()) },
-      italian: italian)
+      poseModels: pose == .none ? nil : poseStore, makeFullPose: makeFull, italian: italian)
     state.active = true
     state.tempFolder = root.path
     await state.refreshModelState()
@@ -41,6 +57,12 @@ struct RenderTests {
       downloader.gate = gate
       Task { await state.downloadModel() }
       while downloader.calls.isEmpty { try await Task.sleep(for: .milliseconds(5)) }
+    }
+    if pose == .downloading {
+      let gate = AsyncGate()
+      poseDownloader.gate = gate
+      Task { await state.downloadModel(.pose) }
+      while poseDownloader.calls.isEmpty { try await Task.sleep(for: .milliseconds(5)) }
     }
     return state
   }
@@ -105,5 +127,27 @@ struct RenderTests {
     let state = try await state(italian: false, modelReady: false, withImage: false, downloading: true)
     let rep = try render(state, dark: true, name: "downloading-dark.png")
     #expect(distinctColors(rep) > 3)
+  }
+
+  @Test func theTabWithBothModelsMissingShowsTwoDownloadRows() async throws {
+    let state = try await state(italian: false, modelReady: false, withImage: false, pose: .missing)
+    #expect(state.showsDownloadButton && state.showsPoseDownloadButton)
+    let rep = try render(state, dark: false, name: "both-missing-light.png")
+    #expect(distinctColors(rep) > 3)
+  }
+
+  @Test func theTabWithTheDepthReadyAndThePoseComingIsDrawn() async throws {
+    let state = try await state(italian: true, modelReady: true, withImage: false, pose: .downloading)
+    if case .downloading = state.poseModelState {} else { Issue.record("not downloading: \(state.poseModelState)") }
+    #expect(!state.showsDownloadButton)
+    let rep = try render(state, dark: true, name: "pose-downloading-dark.png")
+    #expect(distinctColors(rep) > 3)
+  }
+
+  @Test func theTabWithBothModelsReadyHasNoDownloadRow() async throws {
+    let state = try await state(italian: false, modelReady: true, withImage: true, pose: .ready)
+    #expect(!state.showsDownloadButton && !state.showsPoseDownloadButton)
+    let rep = try render(state, dark: true, name: "both-ready-dark.png")
+    #expect(distinctColors(rep) > 20)
   }
 }

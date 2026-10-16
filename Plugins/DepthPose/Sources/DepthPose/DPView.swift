@@ -8,8 +8,8 @@ struct DPViewActions {
   var create: () -> Void = {}
   var send: () -> Void = {}
   var saveToDesktop: () -> Void = {}
-  var download: () -> Void = {}
-  var cancel: () -> Void = {}
+  var download: (DPModelKind) -> Void = { _ in }
+  var cancel: (DPModelKind) -> Void = { _ in }
   static var none: DPViewActions { DPViewActions() }
 }
 
@@ -86,23 +86,37 @@ struct DPView: View {
     .onDrop(of: [.image, .fileURL, .url], isTargeted: $dropTargeted, perform: drop)
   }
 
-  /// The tasto «Scarica il modello» only when the model is not found; while it comes, a bar and «Annulla».
-  @ViewBuilder private var modelSection: some View {
-    if case .downloading(let value) = state.modelState {
+  /// One row for each model that is not there yet: a button (only then); while it comes, a bar and «Annulla».
+  private var modelSection: some View {
+    VStack(alignment: .leading, spacing: DS.controlGap) {
+      modelRow(.depth)
+      modelRow(.pose)
+    }
+  }
+
+  @ViewBuilder private func modelRow(_ kind: DPModelKind) -> some View {
+    let modelState = kind == .depth ? state.modelState : state.poseModelState
+    let shows = kind == .depth ? state.showsDownloadButton : state.showsPoseDownloadButton
+    if case .downloading(let value) = modelState {
       VStack(alignment: .leading, spacing: 6) {
         ProgressView(value: value).tint(DS.accent)
         HStack {
-          Text(state.downloadingText(value))
-            .font(.caption).foregroundStyle(.secondary)
+          Text(state.downloadingText(value)).font(.caption).foregroundStyle(.secondary)
           Spacer()
-          Button(state.text(.cancel), action: actions.cancel).buttonStyle(DSPillButtonStyle())
+          Button(state.text(.cancel)) { actions.cancel(kind) }.buttonStyle(DSPillButtonStyle())
         }
       }
-    } else if state.showsDownloadButton {
-      Button(action: actions.download) {
+    } else if shows {
+      let damaged = modelState == .damaged
+      let label: L.Key =
+        kind == .depth
+        ? (damaged ? .redownload : .downloadModel) : (damaged ? .redownloadPoseModel : .downloadPoseModel)
+      Button {
+        actions.download(kind)
+      } label: {
         HStack(spacing: DS.pillIconGap) {
           Image(systemName: "arrow.down.circle")
-          Text(state.text(state.modelState == .damaged ? .redownload : .downloadModel))
+          Text(state.text(label))
         }
       }
       .buttonStyle(DSPillButtonStyle())
