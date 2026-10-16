@@ -43,7 +43,7 @@ Un solo tab, larghezza come Sphere Light.
 - **Due checkbox «Depth» e «Posa»** (predefinito: tutte e due; la scelta si ricorda per progetto). La checkbox «Depth» è disattivata finché il modello manca.
 - **«Crea»** (l'ultimo controllo della colonna di sinistra, sotto le checkbox): calcola le mappe scelte e le mostra affiancate in anteprima (etichette «Depth», «Pose»). Disattivato senza immagine, senza nessuna checkbox spuntata, o con solo «Depth» e modello assente (con tutte e due e modello assente crea solo la posa e lo dice).
 - **«Manda al Moodboard»**: attivo quando c'è almeno una mappa. Manda in **un solo** messaggio `contribute.moodboard` le mappe del selettore; un nuovo invio sostituisce quelle mandate prima (comportamento del contratto). La risposta dell'app (`conflicts`, `problems`) si mostra come nota.
-- **«Scarica il modello (50 MB)»**: compare **solo se il modello non è sul disco** (o è danneggiato: «Riscarica»). Durante lo scaricamento sparisce il tasto e compare una barra di avanzamento con «Annulla». A fine scaricamento il tasto sparisce e «Depth» si attiva da sola.
+- **«Scarica il modello (200 MB)»**: compare **solo se il modello non è sul disco** (o è danneggiato: «Riscarica»). Durante lo scaricamento sparisce il tasto e compare una barra di avanzamento con «Annulla». A fine scaricamento il tasto sparisce e «Depth» si attiva da sola.
 - Finché il modello manca, **la posa funziona comunque**.
 - Testi in italiano e inglese; ogni testo sta nella tabella `L`; un test controlla che esistano in tutte e due le lingue.
 
