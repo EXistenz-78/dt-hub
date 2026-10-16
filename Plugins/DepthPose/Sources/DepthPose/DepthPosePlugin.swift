@@ -21,6 +21,7 @@ final class DepthPosePlugin: DTHubPlugin {
         Task { await self.state.create() }
       },
       send: { [weak self] in self?.send() },
+      saveToDesktop: { [weak self] in self?.state.saveToDesktop() },
       download: { [weak self] in
         guard let self else { return }
         Task { await self.state.downloadModel() }

@@ -8,7 +8,8 @@ enum L {
     case create, sendToMoodboard, downloadModel, redownload, cancel, downloading
     case depthMissing, creating, created, sent, sentWithConflicts, sentWithProblems
     case noFolder, notAnswered, unreadableImage, noPerson, poseOnlyBecauseNoModel
-    case downloadFailed, modelDamaged, noMapsToSend, writeFailed, active, inactive
+    case downloadFailed, modelDamaged, noMapsToSend, writeFailed, saveToDesktop, savedDesktop, saveFailed
+    case active, inactive
   }
 
   static var systemIsItalian: Bool {
@@ -48,6 +49,8 @@ enum L {
     .modelDamaged: "The depth model on disk does not open: download it again.",
     .noMapsToSend: "Nothing to send yet: press Create first.",
     .writeFailed: "The pictures could not be written to the picture folder.",
+    .saveToDesktop: "Save to Desktop", .savedDesktop: "Saved to Desktop as %@.",
+    .saveFailed: "Could not save to Desktop.",
     .active: "active", .inactive: "not active",
   ]
 
@@ -71,6 +74,8 @@ enum L {
     .modelDamaged: "Il modello della depth su disco non si apre: scaricalo di nuovo.",
     .noMapsToSend: "Non c'è ancora niente da mandare: prima premi Crea.",
     .writeFailed: "Non si sono potute scrivere le immagini nella cartella delle immagini.",
+    .saveToDesktop: "Salva sulla Scrivania", .savedDesktop: "Salvate sulla Scrivania come %@.",
+    .saveFailed: "Non si è potuto salvare sulla Scrivania.",
     .active: "attivo", .inactive: "non attivo",
   ]
 }

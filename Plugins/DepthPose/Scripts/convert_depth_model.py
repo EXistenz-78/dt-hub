@@ -3,9 +3,9 @@
 
     uv venv --python 3.12 env && source env/bin/activate
     uv pip install -r requirements-convert.txt
-    python convert_depth_model.py OUT_DIR
+    python convert_depth_model.py OUT_DIR [base|large]
 
-Writes OUT_DIR/DepthAnythingV2BaseF16.mlpackage: two functions with shared weights, `landscape` (input 1036x784) and
+Writes OUT_DIR/DepthAnythingV2<Base|Large>F16.mlpackage: two functions with shared weights, `landscape` (input 1036x784) and
 `portrait` (784x1036), input `image` (RGB), output `depth` (a grey picture, 0..1 stretched per picture, near is bright).
 Then prints the size and SHA-256 of the three files (the weights come out byte-for-byte the same on every run; the two
 small files carry fresh identifiers each time, so the release uses the files that `DPModelManifest` has the hashes of), which `DPModelManifest` (Sources/DepthPose/DPModelStore.swift)
@@ -31,8 +31,10 @@ import torch
 from coremltools.models.utils import MultiFunctionDescriptor, save_multifunction
 from transformers import AutoModelForDepthEstimation
 
-REPO = "depth-anything/Depth-Anything-V2-Base-hf"
-NAME = "DepthAnythingV2BaseF16"
+SIZES = {"base": "Base", "large": "Large"}
+SIZE = SIZES[sys.argv[2] if len(sys.argv) > 2 else "base"]
+REPO = f"depth-anything/Depth-Anything-V2-{SIZE}-hf"
+NAME = f"DepthAnythingV2{SIZE}F16"
 SHAPES = {"landscape": (784, 1036), "portrait": (1036, 784)}  # (height, width), multiples of 14
 
 
