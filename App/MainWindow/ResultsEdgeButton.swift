@@ -15,17 +15,18 @@ struct ResultsEdgeButton: View {
 
   init(generation: GenerationController) {
     self.generation = generation
-    _attention = State(initialValue: ResultsAttention(lastSeen: generation.session.results.first?.id))
+    _attention = State(initialValue: ResultsAttention())
   }
 
-  private var newestID: UUID? { generation.session.results.first?.id }
+  /// The newest image this session made (the ones read back from disk do not count).
+  private var newestDate: Date? { ResultsAttention.newestDate(in: generation.session.results) }
 
   private var isBusy: Bool {
     generation.session.isRunning || generation.isPreparing || generation.isPipelineRunning
   }
 
   private var state: ResultsAttentionState {
-    attention.state(isBusy: isBusy, newestResultID: newestID, windowVisible: window.isVisible)
+    attention.state(isBusy: isBusy, newestDate: newestDate, windowVisible: window.isVisible)
   }
 
   var body: some View {
@@ -45,9 +46,9 @@ struct ResultsEdgeButton: View {
     .help(String(localized: "header.results.help"))
     .accessibilityLabel(String(localized: "header.results.help"))
     .accessibilityValue(accessibilityValue(for: state))
-    .onChange(of: newestID) { attention.update(newestResultID: newestID, windowVisible: window.isVisible) }
-    .onChange(of: window.isVisible) { attention.update(newestResultID: newestID, windowVisible: window.isVisible) }
-    .onAppear { attention.update(newestResultID: newestID, windowVisible: window.isVisible) }
+    .onChange(of: newestDate) { attention.update(newestDate: newestDate, windowVisible: window.isVisible) }
+    .onChange(of: window.isVisible) { attention.update(newestDate: newestDate, windowVisible: window.isVisible) }
+    .onAppear { attention.update(newestDate: newestDate, windowVisible: window.isVisible) }
     .task(id: state == .working) { animate(working: state == .working) }
   }
 
