@@ -15,8 +15,8 @@ public struct ModelCapabilities: Equatable, Sendable {
   public var clipSkip: Bool
   /// Native size in pixels (`default_scale` × 64); the Hires fix starts here. nil when unknown.
   public var nativeSize: Int?
-  /// The spec's `modifier`: `kontext`, `kontext_kv`, `qwenimage_edit_plus`, `editing` (Edit models),
-  /// `inpainting`, `depth`… nil when the spec has none.
+  /// The spec's `modifier`: `kontext`, `kontext_kv`, `qwenimage_edit_plus`, `qwenimage_edit_2511`, `editing` (Edit
+  /// models), `inpainting`, `depth`… always in snake_case (see `normalizedModifier`); nil when the spec has none.
   public var modifier: String?
   /// The spec's `padded_text_encoding_length` (the CU estimate's text length); 0 when the spec has none.
   public var paddedTextEncodingLength: Int
@@ -33,7 +33,7 @@ public struct ModelCapabilities: Equatable, Sendable {
   /// brings extra references (tab Control spec §2).
   public var isEditModel: Bool {
     guard let modifier else { return false }
-    return ["kontext", "kontext_kv", "qwenimage_edit_plus", "editing"].contains(modifier)
+    return ["kontext", "kontext_kv", "qwenimage_edit_plus", "qwenimage_edit_2511", "editing"].contains(modifier)
   }
 
   public init(
@@ -49,10 +49,30 @@ public struct ModelCapabilities: Equatable, Sendable {
     self.optionalT5 = optionalT5
     self.clipSkip = clipSkip
     self.nativeSize = nativeSize
-    self.modifier = modifier
+    self.modifier = Self.normalizedModifier(modifier)
     self.paddedTextEncodingLength = paddedTextEncodingLength
     self.isConsistencyModel = isConsistencyModel
     self.dualAttentionLayers = dualAttentionLayers
+  }
+
+  /// The Official list of Draw Things writes the modifiers in camelCase (`qwenimageEditPlus`, `qwenimageEdit2511`,
+  /// `kontextKv`), the older lists and the server in snake_case (`qwenimage_edit_plus`): the app keeps the snake_case
+  /// one. A key without capitals is already in it (`kontext`, `fl2va`, `none`).
+  public static func normalizedModifier(_ key: String?) -> String? {
+    guard let key, key.contains(where: \.isUppercase) else { return key }
+    var result = ""
+    var previous: Character?
+    for character in key {
+      if character.isUppercase {
+        if previous != nil { result.append("_") }
+        result.append(contentsOf: character.lowercased())
+      } else {
+        if character.isNumber, let previous, previous.isLetter { result.append("_") }
+        result.append(character)
+      }
+      previous = character
+    }
+    return result
   }
 
   /// A model without a specification: everything may apply.
