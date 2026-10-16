@@ -81,4 +81,4 @@ Il menu con DT+ spento; raggruppare le quantizzazioni; ricordare lo stato aperto
 ## 11. Punti aperti
 
 - Il nome dei gruppi in italiano: «Official», «Community», «Uncurated» restano in inglese (sono i nomi delle liste in Draw Things).
-- Se la fase 1 mostra che un Official richiede più dati, la spec va rivista per quel punto.
+- Se la prova della fase 2 mostra che un Official richiede più dati, la spec va rivista per quel punto.
