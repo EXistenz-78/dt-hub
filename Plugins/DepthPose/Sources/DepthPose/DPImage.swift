@@ -49,4 +49,17 @@ enum DPImage {
     context.draw(image, in: rect)
     return context.makeImage()
   }
+
+  /// The picture at another size, 8-bit RGB, smoothly.
+  static func resized(_ image: CGImage, width: Int, height: Int) -> CGImage? {
+    guard width > 0, height > 0,
+      let context = CGContext(
+        data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+        space: CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB(),
+        bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)
+    else { return nil }
+    context.interpolationQuality = .high
+    context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+    return context.makeImage()
+  }
 }
