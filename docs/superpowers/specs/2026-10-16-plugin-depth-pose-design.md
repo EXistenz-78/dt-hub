@@ -1,7 +1,7 @@
 # Plug-in Depth & Pose — Design
 
 Data: 16 ottobre 2026. Stato: disegno approvato in chat dall'utente, sezione per sezione; da rivedere per iscritto prima del piano.
-Base: `main` **0.2.3** (`12cfd1b`).
+Base: `main` (`167db50`, app **0.2.3**). Controllato il 16 ottobre: i commit di `main` dopo la 0.2.3 (misuratore CU, selettore dei modelli, intestazione compatta) non toccano `PluginKit`, `Plugins/` né il contratto dei plug-in.
 
 ## 1. Obiettivo
 
