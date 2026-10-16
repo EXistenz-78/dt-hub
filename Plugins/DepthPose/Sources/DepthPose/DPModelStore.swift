@@ -2,24 +2,40 @@ import CoreML
 import CryptoKit
 import Foundation
 
-/// One file of the model: where it is on the server (below `DPModelManifest.baseURL`), how big, and its SHA-256 when
-/// the server states one (the large file does).
+/// One file of the model: where it goes inside the model folder (`path`), what it is called on the server below
+/// `DPModelManifest.baseURL` (`asset`; a release has a flat list of files, so it can differ from `path`), how big it
+/// is, and its SHA-256.
 struct DPModelFile: Sendable, Equatable {
   let path: String
+  let asset: String?
   let size: Int64
   let sha256: String?
+
+  init(path: String, asset: String? = nil, size: Int64, sha256: String?) {
+    self.path = path
+    self.asset = asset
+    self.size = size
+    self.sha256 = sha256
+  }
 }
 
+/// Depth Anything V2 Base, converted to Core ML for this plug-in (see `Scripts/convert_depth_model.py`): fp16, one
+/// function for landscape pictures (1036×784) and one for portrait ones (784×1036), output already a 0–1 grey picture.
+/// The original weights are CC BY-NC 4.0 (Lihe Yang et al.): the converted files carry that licence.
 enum DPModelManifest {
-  static let baseURL = URL(string: "https://huggingface.co/apple/coreml-depth-anything-v2-small/resolve/main/")!
-  static let packageName = "DepthAnythingV2SmallF16.mlpackage"
-  /// Checked against Hugging Face's API on 16 October 2026.
-  static let depthAnythingSmallF16: [DPModelFile] = [
-    DPModelFile(path: "\(packageName)/Manifest.json", size: 617, sha256: nil),
-    DPModelFile(path: "\(packageName)/Data/com.apple.CoreML/model.mlmodel", size: 399_433, sha256: nil),
+  static let baseURL = URL(
+    string: "https://github.com/EXistenz-78/dt-hub/releases/download/depth-anything-v2-base-coreml/")!
+  static let packageName = "DepthAnythingV2BaseF16.mlpackage"
+  static let depthAnythingBaseF16: [DPModelFile] = [
     DPModelFile(
-      path: "\(packageName)/Data/com.apple.CoreML/weights/weight.bin", size: 49_419_072,
-      sha256: "fa60d9b6a155734f59029ebb882fd54e549bfaee3539c1a9cbd2cbbab64a0fed"),
+      path: "\(packageName)/Manifest.json", asset: "DepthAnythingV2BaseF16-Manifest.json", size: 617,
+      sha256: "173102fdb3d61ff6a3135377fff5f613a91536d35e9c0fe143154854f3b7a519"),
+    DPModelFile(
+      path: "\(packageName)/Data/com.apple.CoreML/model.mlmodel", asset: "DepthAnythingV2BaseF16-model.mlmodel",
+      size: 411_200, sha256: "90484372e75ffabc60b93b9a4cf40fecc58f32e53a227399501a9e683ddf58d5"),
+    DPModelFile(
+      path: "\(packageName)/Data/com.apple.CoreML/weights/weight.bin", asset: "DepthAnythingV2BaseF16-weight.bin",
+      size: 204_996_928, sha256: "f4a5f30746786b06e46a1a13bac7eee33ea0b64bb8d80461cae3a3e61893524d"),
   ]
 }
 
@@ -49,7 +65,7 @@ struct DPModelStore: Sendable {
   private let busy = DPBusyFlag()
 
   init(
-    folder: URL = DPModelStore.defaultFolder, files: [DPModelFile] = DPModelManifest.depthAnythingSmallF16,
+    folder: URL = DPModelStore.defaultFolder, files: [DPModelFile] = DPModelManifest.depthAnythingBaseF16,
     packageName: String = DPModelManifest.packageName, downloader: any DPFileDownloading = DPDownloader(),
     compile: @escaping @Sendable (URL) throws -> URL = { try MLModel.compileModel(at: $0) },
     validate: @escaping @Sendable (URL) -> Bool = { (try? MLModel(contentsOf: $0)) != nil }
@@ -78,6 +94,11 @@ struct DPModelStore: Sendable {
     FileManager.default.fileExists(atPath: compiledURL.path) && validate(compiledURL)
   }
 
+  /// Every file of the model is in the folder, under its path (a package someone put there by hand).
+  func hasPackageOnDisk() -> Bool {
+    files.allSatisfy { FileManager.default.fileExists(atPath: folder.appendingPathComponent($0.path).path) }
+  }
+
   /// Removes what an install that was cut short (the app quit) left behind.
   func cleanUpLeftovers() {
     let manager = FileManager.default
@@ -88,6 +109,46 @@ struct DPModelStore: Sendable {
 
   /// Downloads, checks, compiles and moves the model into place. `progress` goes from 0 to 1.
   func install(progress: @escaping @Sendable (Double) -> Void) async throws {
+    try await perform(progress: progress) { temp in
+      let total = max(1, files.reduce(0) { $0 + $1.size })
+      var done: Int64 = 0
+      progress(0)
+      for file in files {
+        try Task.checkCancellation()
+        let destination = temp.appendingPathComponent(file.path)
+        try FileManager.default.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let before = done
+        let url = DPModelManifest.baseURL.appendingPathComponent(file.asset ?? file.path)
+        try await downloader.download(url, to: destination) { progress(min(1, Double(before + $0) / Double(total))) }
+        try Self.verify(file, at: destination)
+        done += file.size
+        progress(min(1, Double(done) / Double(total)))
+      }
+    }
+  }
+
+  /// Takes a package that is already on disk (`directory` holds the package under the paths of `files`, as after a
+  /// download): checks it like a download, compiles it and copies it into place. The original stays where it is.
+  func installLocalPackage(from directory: URL) async throws {
+    try await perform(progress: { _ in }) { temp in
+      let manager = FileManager.default
+      for file in files {
+        try Task.checkCancellation()
+        let source = directory.appendingPathComponent(file.path)
+        guard manager.fileExists(atPath: source.path) else { throw DPModelError.wrongSize(file.path) }
+        let destination = temp.appendingPathComponent(file.path)
+        try manager.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try manager.copyItem(at: source, to: destination)
+        try Self.verify(file, at: destination)
+      }
+    }
+  }
+
+  /// The shared frame of both installs: a temporary folder `fill` puts the checked files in, then compile, move,
+  /// validate. Whatever happens, no temporary folder stays.
+  private func perform(
+    progress: @escaping @Sendable (Double) -> Void, fill: (URL) async throws -> Void
+  ) async throws {
     guard busy.tryAcquire() else { throw DPModelError.busy }
     defer { busy.release() }
     let manager = FileManager.default
@@ -99,21 +160,7 @@ struct DPModelStore: Sendable {
     }
     do {
       try manager.createDirectory(at: temp, withIntermediateDirectories: true)
-      let total = max(1, files.reduce(0) { $0 + $1.size })
-      var done: Int64 = 0
-      progress(0)
-      for file in files {
-        try Task.checkCancellation()
-        let destination = temp.appendingPathComponent(file.path)
-        try manager.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
-        let before = done
-        try await downloader.download(DPModelManifest.baseURL.appendingPathComponent(file.path), to: destination) {
-          progress(min(1, Double(before + $0) / Double(total)))
-        }
-        try Self.verify(file, at: destination)
-        done += file.size
-        progress(min(1, Double(done) / Double(total)))
-      }
+      try await fill(temp)
       try Task.checkCancellation()
       do {
         compiled = try compile(temp.appendingPathComponent(packageName))

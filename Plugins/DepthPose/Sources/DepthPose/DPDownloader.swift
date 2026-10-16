@@ -10,11 +10,12 @@ enum DPModelError: Error, Equatable {
   case network(String)
 }
 
-/// The only addresses the plug-in contacts: Hugging Face, over HTTPS (the files themselves come from a subdomain of it).
+/// The only addresses the plug-in contacts: GitHub over HTTPS (a release's files are served from a subdomain of
+/// `githubusercontent.com`).
 enum DPHosts {
   static func isAllowed(_ url: URL) -> Bool {
     guard url.scheme == "https", let host = url.host?.lowercased() else { return false }
-    return ["huggingface.co", "hf.co"].contains { host == $0 || host.hasSuffix("." + $0) }
+    return host == "github.com" || host == "githubusercontent.com" || host.hasSuffix(".githubusercontent.com")
   }
 }
 

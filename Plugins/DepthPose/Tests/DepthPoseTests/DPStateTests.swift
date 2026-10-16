@@ -288,6 +288,24 @@ struct DPStateTests {
     #expect(r.state.wantsDepth && !r.state.wantsPose)
   }
 
+  @Test func aPackageFoundInTheModelFolderIsCompiledAtLaunch() async throws {
+    let r = try await rig(modelReady: false)
+    #expect(r.state.modelState == .missing)
+    // Someone put the package where the plug-in keeps it (no download): `prepare` takes it.
+    let package = r.models.packageURL
+    try FileManager.default.createDirectory(at: package, withIntermediateDirectories: true)
+    try Data("{}".utf8).write(to: package.appendingPathComponent("Manifest.json"))
+    await r.state.prepare()
+    #expect(r.state.modelState == .ready)
+  }
+
+  @Test func prepareLeavesAnIncompletePackageAlone() async throws {
+    let r = try await rig(modelReady: false)
+    try FileManager.default.createDirectory(at: r.models.packageURL, withIntermediateDirectories: true)
+    await r.state.prepare()  // the package has none of its files
+    #expect(r.state.modelState == .missing)
+  }
+
   @Test func theContextSetsTheTempFolder() async throws {
     let r = try await rig(modelReady: true)
     r.state.apply(context: Data(#"{"type":"context","tempFolder":"/tmp/xyz"}"#.utf8))

@@ -2,19 +2,35 @@ import CoreGraphics
 import CoreML
 import CoreVideo
 
-/// Depth Anything V2 (Small, F16) as Apple converted it: input `image`, output `depth`, a grey picture.
+/// Depth Anything V2 as a Core ML model with one function for landscape pictures and one for portrait ones
+/// (`landscape` and `portrait`: the model takes one fixed size each). A model without those functions (one made by
+/// Apple, with a single size) is used for both shapes. The input is called `image`, the output `depth`.
 struct CoreMLDepthModel: DPDepthModel, @unchecked Sendable {
-  private let model: MLModel
-  /// The one size the model takes (518×392 for Depth Anything V2 Small as Apple converted it: its card says
-  /// "shorter side 518", but the model refuses anything else than this size).
-  let inputSize: (width: Int, height: Int)
+  private let landscape: MLModel
+  private let portrait: MLModel
 
   init(compiledModel: URL) throws {
-    let configuration = MLModelConfiguration()
-    configuration.computeUnits = .all
-    model = try MLModel(contentsOf: compiledModel, configuration: configuration)
-    let constraint = model.modelDescription.inputDescriptionsByName["image"]?.imageConstraint
-    inputSize = (constraint?.pixelsWide ?? 518, constraint?.pixelsHigh ?? 392)
+    func load(_ function: String?) throws -> MLModel {
+      let configuration = MLModelConfiguration()
+      configuration.computeUnits = .all
+      configuration.functionName = function
+      return try MLModel(contentsOf: compiledModel, configuration: configuration)
+    }
+    if let land = try? load("landscape"), let port = try? load("portrait") {
+      landscape = land
+      portrait = port
+    } else {
+      let single = try load(nil)
+      landscape = single
+      portrait = single
+    }
+  }
+
+  private func model(forWidth width: Int, height: Int) -> MLModel { width >= height ? landscape : portrait }
+
+  func inputSize(forWidth width: Int, height: Int) -> (width: Int, height: Int) {
+    let constraint = model(forWidth: width, height: height).modelDescription.inputDescriptionsByName["image"]?.imageConstraint
+    return (constraint?.pixelsWide ?? 518, constraint?.pixelsHigh ?? 392)
   }
 
   func predict(_ image: CGImage) throws -> CGImage {
@@ -32,7 +48,7 @@ struct CoreMLDepthModel: DPDepthModel, @unchecked Sendable {
     CVPixelBufferUnlockBaseAddress(buffer, [])
 
     let features = try MLDictionaryFeatureProvider(dictionary: ["image": MLFeatureValue(pixelBuffer: buffer)])
-    let result = try model.prediction(from: features)
+    let result = try model(forWidth: image.width, height: image.height).prediction(from: features)
     guard let depth = result.featureValue(for: "depth")?.imageBufferValue else { throw DPDepthError.noDepthOutput }
     return try Self.grey(depth)
   }
