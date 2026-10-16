@@ -8,6 +8,7 @@ enum L {
     case create, sendToMoodboard, downloadModel, redownload, cancel, downloading
     case depthMissing, creating, created, sent, sentWithConflicts, sentWithProblems
     case noFolder, notAnswered, unreadableImage, noPerson, poseOnlyBecauseNoModel
+    case downloadPoseModel, redownloadPoseModel, poseModelDamaged
     case downloadFailed, modelDamaged, noMapsToSend, writeFailed, saveToDesktop, savedDesktop, saveFailed
     case active, inactive
   }
@@ -45,6 +46,9 @@ enum L {
     .unreadableImage: "This image could not be read.",
     .noPerson: "No person found in the image: no pose.",
     .poseOnlyBecauseNoModel: "The depth model is missing: only the pose was created.",
+    .downloadPoseModel: "Download the full-pose model (64 MB)",
+    .redownloadPoseModel: "Download the full-pose model again",
+    .poseModelDamaged: "The full-pose model on disk does not work: the pose was made with Vision (body only). Download it again.",
     .downloadFailed: "The download failed: %@",
     .modelDamaged: "The depth model on disk does not open: download it again.",
     .noMapsToSend: "Nothing to send yet: press Create first.",
@@ -70,6 +74,9 @@ enum L {
     .unreadableImage: "Non si è potuta leggere questa immagine.",
     .noPerson: "Nessuna persona trovata nell'immagine: niente posa.",
     .poseOnlyBecauseNoModel: "Manca il modello della depth: è stata creata solo la posa.",
+    .downloadPoseModel: "Scarica il modello della posa completa (64 MB)",
+    .redownloadPoseModel: "Scarica di nuovo il modello della posa completa",
+    .poseModelDamaged: "Il modello della posa completa su disco non funziona: la posa è stata fatta con Vision (solo corpo). Scaricalo di nuovo.",
     .downloadFailed: "Il download non è riuscito: %@",
     .modelDamaged: "Il modello della depth su disco non si apre: scaricalo di nuovo.",
     .noMapsToSend: "Non c'è ancora niente da mandare: prima premi Crea.",
