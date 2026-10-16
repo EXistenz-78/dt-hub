@@ -39,6 +39,26 @@ enum DPModelManifest {
   ]
 }
 
+/// DWPose-L (`dw-ll_ucoco_384`), converted to Core ML for this plug-in (see `Scripts/convert_pose_model.py`): float16,
+/// input a 288×384 RGB crop of a person (the normalisation is inside), output the two SimCC vectors of the 133
+/// keypoints of COCO-WholeBody. DWPose is Apache-2.0 (IDEA-Research, Zhendong Yang et al.; weights `yzd-v/DWPose`).
+extension DPModelManifest {
+  static let dwposeLBaseURL = URL(
+    string: "https://github.com/EXistenz-78/dt-hub/releases/download/dwpose-l-coreml/")!
+  static let dwposeLPackageName = "DWPoseL384F16.mlpackage"
+  static let dwposeLF16: [DPModelFile] = [
+    DPModelFile(
+      path: "\(dwposeLPackageName)/Manifest.json", asset: "DWPoseL384F16-Manifest.json", size: 617,
+      sha256: "65bf603ed9d11c56f9d3209178a6032bff2eeb385a4cb938135d2fefff5ba4be"),
+    DPModelFile(
+      path: "\(dwposeLPackageName)/Data/com.apple.CoreML/model.mlmodel", asset: "DWPoseL384F16-model.mlmodel",
+      size: 139_633, sha256: "f9d97464e6b77682de65fe3bfaba34fab7562d0ac0494c2bde33c9a461c8a7a5"),
+    DPModelFile(
+      path: "\(dwposeLPackageName)/Data/com.apple.CoreML/weights/weight.bin", asset: "DWPoseL384F16-weight.bin",
+      size: 67_199_424, sha256: "64691178575c974d0e5ccb59051a385546a54b78f3d42d63786ccca067d15810"),
+  ]
+}
+
 /// A flag one install at a time can take.
 final class DPBusyFlag: @unchecked Sendable {
   private let lock = NSLock()
@@ -59,6 +79,8 @@ struct DPModelStore: Sendable {
   let folder: URL
   let files: [DPModelFile]
   let packageName: String
+  /// The release the files are asked from (`DPModelManifest.baseURL` for the depth model).
+  let baseURL: URL
   let downloader: any DPFileDownloading
   let compile: @Sendable (URL) throws -> URL
   let validate: @Sendable (URL) -> Bool
@@ -66,13 +88,15 @@ struct DPModelStore: Sendable {
 
   init(
     folder: URL = DPModelStore.defaultFolder, files: [DPModelFile] = DPModelManifest.depthAnythingBaseF16,
-    packageName: String = DPModelManifest.packageName, downloader: any DPFileDownloading = DPDownloader(),
+    packageName: String = DPModelManifest.packageName, baseURL: URL = DPModelManifest.baseURL,
+    downloader: any DPFileDownloading = DPDownloader(),
     compile: @escaping @Sendable (URL) throws -> URL = { try MLModel.compileModel(at: $0) },
     validate: @escaping @Sendable (URL) -> Bool = { (try? MLModel(contentsOf: $0)) != nil }
   ) {
     self.folder = folder
     self.files = files
     self.packageName = packageName
+    self.baseURL = baseURL
     self.downloader = downloader
     self.compile = compile
     self.validate = validate
@@ -118,7 +142,7 @@ struct DPModelStore: Sendable {
         let destination = temp.appendingPathComponent(file.path)
         try FileManager.default.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
         let before = done
-        let url = DPModelManifest.baseURL.appendingPathComponent(file.asset ?? file.path)
+        let url = baseURL.appendingPathComponent(file.asset ?? file.path)
         try await downloader.download(url, to: destination) { progress(min(1, Double(before + $0) / Double(total))) }
         try Self.verify(file, at: destination)
         done += file.size
