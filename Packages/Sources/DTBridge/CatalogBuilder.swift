@@ -38,35 +38,64 @@ enum CatalogBuilder {
       upscalers: others.filter(isUpscaler).sorted(), faceRestorers: others.filter(isFaceRestorer).sorted())
   }
 
-  /// The catalog with the models of Draw Things' lists (official and community) that are not in the server's folder,
+  /// The catalog with the models of Draw Things' lists (Official, Community, Uncurated) that are not in the server's folder,
   /// marked as remote: with DT+ (Bridge Mode) the cloud runs them. Nothing else changes.
-  static func addingRemoteModels(to catalog: ModelCatalog, live: [String: Data]) -> ModelCatalog {
+  static func addingRemoteModels(
+    to catalog: ModelCatalog, live: [String: Data], sources: [String: ModelSource] = [:]
+  ) -> ModelCatalog {
     let installed = Set(catalog.models.map(\.file))
     let remote = live.keys.sorted().filter { !installed.contains($0) }.compactMap { file -> CatalogModel? in
       guard let json = live[file] else { return nil }
       let info = specInfo(json: json, file: file)
-      return CatalogModel(file: file, name: info.name, family: info.family, capabilities: info.capabilities, isRemote: true)
+      return CatalogModel(
+        file: file, name: info.name, family: info.family, capabilities: info.capabilities, isRemote: true,
+        source: sources[file])
     }
-    guard !remote.isEmpty else { return catalog }
+    guard !remote.isEmpty || !sources.isEmpty else { return catalog }
+    // The installed models that are in a list say so too.
+    let local = catalog.models.map { model in
+      sources[model.file].map { model.with(source: $0, isRemote: model.isRemote) } ?? model
+    }
     return ModelCatalog(
-      models: catalog.models + remote, loras: catalog.loras, fileCount: catalog.fileCount, upscalers: catalog.upscalers,
+      models: local + remote, loras: catalog.loras, fileCount: catalog.fileCount, upscalers: catalog.upscalers,
       faceRestorers: catalog.faceRestorers)
   }
 
-  /// The catalog while DT+ is on and the cloud's list is known: the models are only those the cloud has (the
-  /// downloaded ones keep the server's description, the others come from `specs` and are marked as remote); the
+  /// The list a file comes from: Official, then Community, then Uncurated (the first one that has it).
+  static func sources(
+    official: [String: Data], community: [String: Data], uncurated: [String: Data]
+  ) -> [String: ModelSource] {
+    var result: [String: ModelSource] = [:]
+    for file in uncurated.keys { result[file] = .uncurated }
+    for file in community.keys { result[file] = .community }
+    for file in official.keys { result[file] = .official }
+    return result
+  }
+
+  /// The catalog while DT+ is on and the cloud's list is known: the models are only those the cloud has (the installed
+  /// ones keep the server's description, the others come from `specs` and are marked as remote), minus a deprecated
+  /// Official model that is not installed. Each model carries the list it comes from (`sources`); an installed one that
+  /// no list has stays in the catalog with no source: the picker does not show it (spec §2) but, if it is the chosen
+  /// one, RUN still finds it. The
   /// LoRAs are the local ones plus the cloud's (`cloudLoRAs`, from Draw Things' `loras.json`, or by name when it does
   /// not list them). The LoRA card keeps showing only the family of the current model.
   static func cloudCatalog(
-    local: ModelCatalog, specs: [String: Data], cloudFiles: Set<String>, cloudLoRAs: [CatalogLoRA]
+    local: ModelCatalog, specs: [String: Data], sources: [String: ModelSource], deprecated: Set<String>,
+    cloudFiles: Set<String>, cloudLoRAs: [CatalogLoRA]
   ) -> ModelCatalog {
-    let localModels = local.models.filter { cloudFiles.contains($0.file) }
+    let localModels = local.models.compactMap { model -> CatalogModel? in
+      guard cloudFiles.contains(model.file) else { return nil }
+      return model.with(source: sources[model.file], isRemote: false)
+    }
     let localFiles = Set(local.models.map(\.file))
-    let remote = specs.keys.sorted().filter { cloudFiles.contains($0) && !localFiles.contains($0) }.compactMap {
-      file -> CatalogModel? in
+    let remote = specs.keys.sorted().filter {
+      cloudFiles.contains($0) && !localFiles.contains($0) && !deprecated.contains($0)
+    }.compactMap { file -> CatalogModel? in
       guard let json = specs[file] else { return nil }
       let info = specInfo(json: json, file: file)
-      return CatalogModel(file: file, name: info.name, family: info.family, capabilities: info.capabilities, isRemote: true)
+      return CatalogModel(
+        file: file, name: info.name, family: info.family, capabilities: info.capabilities, isRemote: true,
+        source: sources[file])
     }
 
     var known = Set(local.loras.map(\.file))
