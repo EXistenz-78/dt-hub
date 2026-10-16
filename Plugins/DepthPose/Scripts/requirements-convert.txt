@@ -1,0 +1,8 @@
+# For convert_depth_model.py (Python 3.12). NumPy 2 breaks coremltools' torch frontend; torch is pinned to a version
+# coremltools 9 supports.
+torch==2.7.0
+coremltools>=9.0
+transformers
+numpy<2
+pillow
+safetensors
