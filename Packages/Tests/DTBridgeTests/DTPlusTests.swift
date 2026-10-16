@@ -66,8 +66,8 @@ struct RemoteModelsTests {
     #expect(!RunAvailabilityProbe.blocked(model: "qwen_image_2.1_q8p.ckpt", in: catalog))
   }
 
-  @Test func theCommunityListHasItsOwnAddress() {
-    #expect(LiveModelList.communityAddress.absoluteString == "https://models.drawthings.ai/uncurated_models.json")
+  @Test func theUncuratedListHasItsOwnAddress() {
+    #expect(LiveModelList.uncuratedAddress.absoluteString == "https://models.drawthings.ai/uncurated_models.json")
   }
 }
 
