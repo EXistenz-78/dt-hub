@@ -130,12 +130,12 @@ struct HeaderBar: View {
     Button {
       showModelPicker.toggle()
     } label: {
-      DSMenuLabel(modelTitle, detail: modelDetail, systemImage: "cube")
+      // A long model name or family is cut with "…" past 320 pt, so Run is not pushed out of a narrow window.
+      CappedWidth(maxWidth: 320) { DSMenuLabel(modelTitle, detail: modelDetail, systemImage: "cube") }
     }
     .buttonStyle(.plain)
     .font(.system(size: 13, weight: .semibold))
     .padding(.horizontal, DS.pillHPadding)
-    .frame(maxWidth: 320)
     .frame(height: DS.pillHeight)
     .dsGlass(Capsule(style: .continuous))
     .fixedSize()

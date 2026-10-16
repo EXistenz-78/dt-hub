@@ -17,6 +17,7 @@ final class ResultsWindowMonitor {
       NSWindow.didResignMainNotification, NSWindow.didMiniaturizeNotification, NSWindow.didDeminiaturizeNotification,
       NSWindow.didChangeOcclusionStateNotification, NSWindow.willCloseNotification,
     ]
+    // The observers live as long as the app does (this is a singleton): their tokens are not kept.
     for name in names {
       NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
         let closing = note.name == NSWindow.willCloseNotification ? note.object as? NSWindow : nil
@@ -25,10 +26,15 @@ final class ResultsWindowMonitor {
     }
   }
 
+  /// The Results window is found by its scene identifier (SwiftUI gives the window "results…") or, failing that, by its
+  /// title; every match counts, because SwiftUI can keep a closed window of the same scene in `NSApp.windows`.
   private func refresh(closing: NSWindow? = nil) {
     let title = String(localized: "results.title")
-    let window = NSApp.windows.first { $0.title == title && $0 !== closing }
-    let visible = window.map { $0.isVisible && !$0.isMiniaturized && $0.occlusionState.contains(.visible) } ?? false
+    let visible = NSApp.windows.contains { window in
+      window !== closing
+        && (window.identifier?.rawValue.hasPrefix(ResultsWindow.id) == true || window.title == title)
+        && window.isVisible && !window.isMiniaturized && window.occlusionState.contains(.visible)
+    }
     if visible != isVisible { isVisible = visible }
   }
 }
