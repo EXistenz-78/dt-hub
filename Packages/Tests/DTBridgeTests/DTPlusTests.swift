@@ -54,6 +54,15 @@ struct RemoteModelsTests {
     #expect(catalog.model(forFile: "krea_2_raw_q6p.ckpt")?.family == "krea_2")
   }
 
+  @Test func addingRemoteModelsSetsTheSourceWhenGiven() {
+    let withSources = CatalogBuilder.addingRemoteModels(
+      to: installed, live: live, sources: ["krea_2_raw_q6p.ckpt": .uncurated, "qwen_image_2.1_q8p.ckpt": .community])
+    #expect(withSources.model(forFile: "krea_2_raw_q6p.ckpt")?.source == .uncurated)
+    #expect(withSources.model(forFile: "qwen_image_2.1_q8p.ckpt")?.source == .community)
+    // Without sources, as before.
+    #expect(CatalogBuilder.addingRemoteModels(to: installed, live: live).model(forFile: "krea_2_raw_q6p.ckpt")?.source == nil)
+  }
+
   @Test func everythingElseOfTheCatalogStays() {
     let catalog = CatalogBuilder.addingRemoteModels(to: installed, live: live)
     #expect(catalog.loras == installed.loras && catalog.upscalers == installed.upscalers && catalog.fileCount == 3)
@@ -66,8 +75,8 @@ struct RemoteModelsTests {
     #expect(!RunAvailabilityProbe.blocked(model: "qwen_image_2.1_q8p.ckpt", in: catalog))
   }
 
-  @Test func theCommunityListHasItsOwnAddress() {
-    #expect(LiveModelList.communityAddress.absoluteString == "https://models.drawthings.ai/uncurated_models.json")
+  @Test func theUncuratedListHasItsOwnAddress() {
+    #expect(LiveModelList.uncuratedAddress.absoluteString == "https://models.drawthings.ai/uncurated_models.json")
   }
 }
 
@@ -103,8 +112,79 @@ struct CloudCatalogTests {
     CatalogLoRA(file: "gone_lora_f16.ckpt", name: "Not in the cloud", family: "flux1"),
   ]
 
+  let sources: [String: ModelSource] = [
+    "qwen_image_2.1_q8p.ckpt": .community, "flux_2_klein_9b_f16.ckpt": .community, "not_in_cloud_f16.ckpt": .uncurated,
+  ]
+
   var catalog: ModelCatalog {
-    CatalogBuilder.cloudCatalog(local: local, specs: specs, cloudFiles: cloudFiles, cloudLoRAs: cloudLoRAs)
+    CatalogBuilder.cloudCatalog(
+      local: local, specs: specs, sources: sources, deprecated: [], cloudFiles: cloudFiles, cloudLoRAs: cloudLoRAs)
+  }
+
+  func build(
+    local: [CatalogModel], specs: [String: Data] = [:], sources: [String: ModelSource], deprecated: Set<String> = [],
+    cloudFiles: Set<String>
+  ) -> ModelCatalog {
+    CatalogBuilder.cloudCatalog(
+      local: ModelCatalog(models: local, loras: [], fileCount: 1), specs: specs, sources: sources, deprecated: deprecated,
+      cloudFiles: cloudFiles, cloudLoRAs: [])
+  }
+
+  func spec(_ file: String, _ name: String = "N", version: String = "flux1") -> Data {
+    Data(#"{"file":"\#(file)","name":"\#(name)","version":"\#(version)"}"#.utf8)
+  }
+
+  @Test func theOriginOfAModelIsTheFirstListThatHasIt() {
+    let both = CatalogBuilder.sources(
+      official: ["a.ckpt": Data(), "b.ckpt": Data()], community: ["a.ckpt": Data(), "c.ckpt": Data()],
+      uncurated: ["a.ckpt": Data(), "c.ckpt": Data(), "d.ckpt": Data()])
+    #expect(both == ["a.ckpt": .official, "b.ckpt": .official, "c.ckpt": .community, "d.ckpt": .uncurated])
+  }
+
+  @Test func anInstalledModelNotInAnyListStaysInTheCatalogButNotInTheTree() {
+    // Hidden from the picker (spec §2), not from the catalog: a model that is chosen must still be runnable.
+    let mine = CatalogModel(file: "mine.ckpt", name: "Mine", family: "flux1")
+    let listed = CatalogModel(file: "listed.ckpt", name: "Listed", family: "flux1")
+    let result = build(
+      local: [mine, listed], sources: ["listed.ckpt": .community], cloudFiles: ["mine.ckpt", "listed.ckpt"])
+    #expect(result.model(forFile: "mine.ckpt")?.source == nil)
+    #expect(result.model(forFile: "mine.ckpt")?.name == "Mine")
+    #expect(result.modelsBySource.flatMap(\.families).flatMap(\.models).map(\.file) == ["listed.ckpt"])
+  }
+
+  @Test func anInstalledListedModelKeepsTheServerDescriptionAndGetsItsSource() {
+    let installed = CatalogModel(file: "listed.ckpt", name: "My name", family: "flux1")
+    let result = build(local: [installed], sources: ["listed.ckpt": .official], cloudFiles: ["listed.ckpt"])
+    let model = result.model(forFile: "listed.ckpt")
+    #expect(model?.name == "My name" && model?.source == .official && model?.isRemote == false)
+  }
+
+  @Test func theRemoteModelsGetTheirSource() {
+    let result = build(
+      local: [], specs: ["r.ckpt": spec("r.ckpt")], sources: ["r.ckpt": .uncurated], cloudFiles: ["r.ckpt"])
+    #expect(result.model(forFile: "r.ckpt")?.source == .uncurated && result.model(forFile: "r.ckpt")?.isRemote == true)
+  }
+
+  @Test func aDeprecatedOfficialModelIsHiddenUnlessInstalled() {
+    let installed = CatalogModel(file: "old_local.ckpt", name: "Old", family: "flux1")
+    let result = build(
+      local: [installed], specs: ["old_local.ckpt": spec("old_local.ckpt"), "old_remote.ckpt": spec("old_remote.ckpt")],
+      sources: ["old_local.ckpt": .official, "old_remote.ckpt": .official],
+      deprecated: ["old_local.ckpt", "old_remote.ckpt"], cloudFiles: ["old_local.ckpt", "old_remote.ckpt"])
+    #expect(result.models.map(\.file) == ["old_local.ckpt"])
+  }
+
+  @Test func withoutAnyListTheInstalledModelsStayAndTheTreeIsEmpty() {
+    // Review focus 1: no list was ever obtained; the catalog still builds and an installed model still runs.
+    let installed = CatalogModel(file: "a.ckpt", name: "A", family: "flux1")
+    let result = build(local: [installed], sources: [:], cloudFiles: ["a.ckpt"])
+    #expect(result.models.map(\.file) == ["a.ckpt"])
+    #expect(result.modelsBySource.isEmpty)
+  }
+
+  @Test func aRemoteSpecIsRegisteredOnlyForAModelTheServerDoesNotHave() {
+    #expect(DrawThingsBackend.shouldRegisterRemoteSpec(for: "remote.ckpt", installed: ["a.ckpt"]))
+    #expect(!DrawThingsBackend.shouldRegisterRemoteSpec(for: "a.ckpt", installed: ["a.ckpt"]))
   }
 
   @Test func onlyTheModelsOfTheCloudAreListed() {
