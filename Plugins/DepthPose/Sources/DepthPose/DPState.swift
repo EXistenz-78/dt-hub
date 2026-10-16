@@ -2,7 +2,12 @@ import CoreGraphics
 import DTHubPluginKit
 import Foundation
 
-/// The tab: the picture, the maps, the model, and what the buttons may do. The work runs off the main actor; a result
+/// The two models the plug-in can download: the depth model and the whole-body pose model.
+enum DPModelKind: Hashable, Sendable {
+  case depth, pose
+}
+
+/// The tab: the picture, the maps, the models, and what the buttons may do. The work runs off the main actor; a result
 /// that comes back after the picture (or the project) changed is thrown away.
 @MainActor
 final class DPState: ObservableObject {
@@ -22,7 +27,8 @@ final class DPState: ObservableObject {
   @Published private(set) var depthImage: CGImage?
   @Published private(set) var poseImage: CGImage?
   @Published private(set) var status = ""
-  @Published private(set) var modelState: ModelState = .missing
+  /// The state of each model; `modelState` (the depth model) and `poseModelState` read from it.
+  @Published private(set) var modelStates: [DPModelKind: ModelState] = [.depth: .missing, .pose: .missing]
   @Published private(set) var isWorking = false
   /// Whether the plug-in is on for the job (header menu).
   @Published var active = false
@@ -31,21 +37,27 @@ final class DPState: ObservableObject {
 
   private var store: DPStore
   private let models: DPModelStore
+  private let poseModels: DPModelStore?
   private let detector: any DPPoseDetecting
   private let makeDepth: @Sendable (URL) throws -> DepthEstimator
+  private let makeFullPose: (@Sendable (URL) throws -> any DPFullPoseDetecting)?
   private let italian: Bool
   private var loadingChoice = false
   private var generation = 0
-  private var installTask: Task<Void, any Error>?
+  private var installTasks: [DPModelKind: Task<Void, any Error>] = [:]
 
+  /// `poseModels` and `makeFullPose` bring the whole-body pose (face and hands); without them the pose is Vision's.
   init(
     store: DPStore, models: DPModelStore, detector: any DPPoseDetecting,
-    makeDepth: @escaping @Sendable (URL) throws -> DepthEstimator, italian: Bool = L.systemIsItalian
+    makeDepth: @escaping @Sendable (URL) throws -> DepthEstimator, poseModels: DPModelStore? = nil,
+    makeFullPose: (@Sendable (URL) throws -> any DPFullPoseDetecting)? = nil, italian: Bool = L.systemIsItalian
   ) {
     self.store = store
     self.models = models
+    self.poseModels = poseModels
     self.detector = detector
     self.makeDepth = makeDepth
+    self.makeFullPose = makeFullPose
     self.italian = italian
     let selection = store.load()
     self.wantsDepth = selection.depth
@@ -71,8 +83,16 @@ final class DPState: ObservableObject {
     L.format(.downloading, Int((fraction * 100).rounded()), italian: italian)
   }
 
+  /// The state of the depth model.
+  var modelState: ModelState { modelStates[.depth] ?? .missing }
+  /// The state of the whole-body pose model.
+  var poseModelState: ModelState { modelStates[.pose] ?? .missing }
   var depthAvailable: Bool { modelState == .ready }
   var showsDownloadButton: Bool { modelState == .missing || modelState == .damaged }
+  /// The pose model can be downloaded (the plug-in has a place for it) and is not there.
+  var showsPoseDownloadButton: Bool {
+    poseModels != nil && (poseModelState == .missing || poseModelState == .damaged)
+  }
   var canCreate: Bool {
     image != nil && !isWorking && (wantsDepth || wantsPose) && !(wantsDepth && !wantsPose && !depthAvailable)
   }
@@ -137,9 +157,12 @@ final class DPState: ObservableObject {
     status = text(.creating)
 
     let (models, makeDepth, detector) = (models, makeDepth, detector)
+    let fullPose: (store: DPModelStore, make: @Sendable (URL) throws -> any DPFullPoseDetecting)? =
+      (poseModelState == .ready) ? poseModels.flatMap { store in makeFullPose.map { (store, $0) } } : nil
     var depth: CGImage?
     var pose: CGImage?
     var damaged = false
+    var poseDamaged = false
     if wantDepth {
       do {
         depth = try await Task.detached(priority: .userInitiated) {
@@ -151,8 +174,20 @@ final class DPState: ObservableObject {
     }
     if wantPose {
       do {
-        let people = try await detector.people(in: image)
-        pose = DPPoseRenderer.render(people, width: image.width, height: image.height)
+        var figures: [DPFigure]?
+        if let fullPose {
+          do {
+            figures = try await Task.detached(priority: .userInitiated) {
+              try await fullPose.make(fullPose.store.compiledURL).figures(in: image)
+            }.value
+          } catch {
+            poseDamaged = true  // the model does not open or fails: Vision takes over
+          }
+        }
+        if figures == nil {
+          figures = try await detector.people(in: image).map { DPFigure(body: $0) }
+        }
+        pose = DPPoseRenderer.render(figures ?? [], width: image.width, height: image.height)
         if pose == nil { notes.append(text(.noPerson)) }
       } catch {
         notes.append(text(.unreadableImage))
@@ -163,8 +198,12 @@ final class DPState: ObservableObject {
     depthImage = depth
     poseImage = pose
     if damaged {
-      modelState = .damaged
+      modelStates[.depth] = .damaged
       notes.append(text(.modelDamaged))
+    }
+    if poseDamaged {
+      modelStates[.pose] = .damaged
+      notes.append(text(.poseModelDamaged))
     }
     status = notes.isEmpty ? text(.created) : notes.joined(separator: " ")
   }
@@ -234,62 +273,72 @@ final class DPState: ObservableObject {
     return conflicts > 0 ? L.format(.sentWithConflicts, conflicts, italian: italian) : text(.sent)
   }
 
-  // MARK: The model
+  // MARK: The models
 
-  /// At launch: forgets what an install cut short left behind; a package someone put in the model folder by hand
+  private func store(for kind: DPModelKind) -> DPModelStore? { kind == .depth ? models : poseModels }
+
+  private var kinds: [DPModelKind] { poseModels == nil ? [.depth] : [.depth, .pose] }
+
+  private func isDownloading(_ kind: DPModelKind) -> Bool {
+    if case .downloading = modelStates[kind] ?? .missing { return true }
+    return false
+  }
+
+  /// At launch: forgets what an install cut short left behind; a package someone put in a model folder by hand
   /// (no compiled model yet) is checked and compiled; then looks at the disk.
   func prepare() async {
-    let models = models
-    await Task.detached {
-      models.cleanUpLeftovers()
-      if !models.isPresent(), models.hasPackageOnDisk() { try? await models.installLocalPackage(from: models.folder) }
-    }.value
+    for kind in kinds {
+      guard let store = store(for: kind) else { continue }
+      await Task.detached {
+        store.cleanUpLeftovers()
+        if !store.isPresent(), store.hasPackageOnDisk() { try? await store.installLocalPackage(from: store.folder) }
+      }.value
+    }
     await refreshModelState()
   }
 
-  /// Looks at the disk again (off the main actor: opening the model takes a moment).
+  /// Looks at the disk again (off the main actor: opening a model takes a moment).
   func refreshModelState() async {
-    if case .downloading = modelState { return }
-    let models = models
-    let found = await Task.detached { () -> ModelState in
-      if models.isPresent() { return .ready }
-      return FileManager.default.fileExists(atPath: models.compiledURL.path) ? .damaged : .missing
-    }.value
-    if case .downloading = modelState { return }
-    modelState = found
+    for kind in kinds {
+      guard !isDownloading(kind), let store = store(for: kind) else { continue }
+      let found = await Task.detached { () -> ModelState in
+        if store.isPresent() { return .ready }
+        return FileManager.default.fileExists(atPath: store.compiledURL.path) ? .damaged : .missing
+      }.value
+      if !isDownloading(kind) { modelStates[kind] = found }
+    }
   }
 
-  func downloadModel() async {
-    if case .downloading = modelState { return }
-    modelState = .downloading(0)
+  func downloadModel(_ kind: DPModelKind = .depth) async {
+    guard let store = store(for: kind), !isDownloading(kind) else { return }
+    modelStates[kind] = .downloading(0)
     status = ""
-    let models = models
     let owner = WeakState(self)
     let task = Task<Void, any Error> {
-      try await models.install { progress in
-        Task { @MainActor in owner.value?.downloadProgress(progress) }
+      try await store.install { progress in
+        Task { @MainActor in owner.value?.downloadProgress(kind, progress) }
       }
     }
-    installTask = task
+    installTasks[kind] = task
     do {
       try await task.value
-      installTask = nil
-      modelState = .missing
+      installTasks[kind] = nil
+      modelStates[kind] = .missing
       await refreshModelState()
     } catch {
-      installTask = nil
-      modelState = .missing
+      installTasks[kind] = nil
+      modelStates[kind] = .missing
       if let error = error as? DPModelError, error == .cancelled { return }
       status = L.format(.downloadFailed, Self.reason(for: error), italian: italian)
       await refreshModelState()
     }
   }
 
-  func cancelDownload() { installTask?.cancel() }
+  func cancelDownload(_ kind: DPModelKind = .depth) { installTasks[kind]?.cancel() }
 
-  private func downloadProgress(_ value: Double) {
-    guard installTask != nil, case .downloading = modelState else { return }
-    modelState = .downloading(value)
+  private func downloadProgress(_ kind: DPModelKind, _ value: Double) {
+    guard installTasks[kind] != nil, isDownloading(kind) else { return }
+    modelStates[kind] = .downloading(value)
   }
 
   private static func reason(for error: any Error) -> String {
