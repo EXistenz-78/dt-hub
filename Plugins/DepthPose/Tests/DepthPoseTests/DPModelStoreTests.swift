@@ -11,10 +11,16 @@ final class FakeDownloader: DPFileDownloading, @unchecked Sendable {
   var gate: AsyncGate?
   private let lock = NSLock()
   private var _calls: [String] = []
+  private var _urls: [URL] = []
   var calls: [String] { lock.withLock { _calls } }
+  /// The whole address of each file asked for.
+  var urls: [URL] { lock.withLock { _urls } }
 
   func download(_ url: URL, to file: URL, progress: @Sendable (Int64) -> Void) async throws {
-    lock.withLock { _calls.append(url.lastPathComponent) }
+    lock.withLock {
+      _calls.append(url.lastPathComponent)
+      _urls.append(url)
+    }
     if let gate { await gate.wait() }
     try Task.checkCancellation()
     if failOn == url.lastPathComponent { throw DPModelError.network("boom") }
@@ -273,5 +279,53 @@ struct DPModelStoreTests {
     ])
     #expect(DPModelManifest.baseURL.absoluteString == "https://github.com/EXistenz-78/dt-hub/releases/download/depth-anything-v2-base-coreml/")
     for file in all { #expect(DPHosts.isAllowed(DPModelManifest.baseURL.appendingPathComponent(file.asset ?? file.path))) }
+  }
+
+  @Test func theDWPoseManifestIsTheOneOfTheConvertedModel() {
+    let all = DPModelManifest.dwposeLF16
+    #expect(all.map(\.size) == [617, 139_633, 67_199_424])
+    #expect(all.allSatisfy { $0.sha256?.count == 64 })
+    #expect(all.last?.sha256 == "64691178575c974d0e5ccb59051a385546a54b78f3d42d63786ccca067d15810")
+    #expect(all.first?.sha256 == "65bf603ed9d11c56f9d3209178a6032bff2eeb385a4cb938135d2fefff5ba4be")
+    #expect(all[1].sha256 == "f9d97464e6b77682de65fe3bfaba34fab7562d0ac0494c2bde33c9a461c8a7a5")
+    #expect(DPModelManifest.dwposeLPackageName == "DWPoseL384F16.mlpackage")
+    #expect(all.allSatisfy { $0.path.hasPrefix("DWPoseL384F16.mlpackage/") })
+    #expect(all.map(\.path) == [
+      "DWPoseL384F16.mlpackage/Manifest.json", "DWPoseL384F16.mlpackage/Data/com.apple.CoreML/model.mlmodel",
+      "DWPoseL384F16.mlpackage/Data/com.apple.CoreML/weights/weight.bin",
+    ])
+    #expect(all.map(\.asset) == ["DWPoseL384F16-Manifest.json", "DWPoseL384F16-model.mlmodel", "DWPoseL384F16-weight.bin"])
+    #expect(DPModelManifest.dwposeLBaseURL.absoluteString == "https://github.com/EXistenz-78/dt-hub/releases/download/dwpose-l-coreml/")
+    for file in all { #expect(DPHosts.isAllowed(DPModelManifest.dwposeLBaseURL.appendingPathComponent(file.asset ?? file.path))) }
+  }
+
+  @Test func aStoreAsksForTheFilesUnderItsOwnBaseURL() async throws {
+    let folder = try folder()
+    defer { try? FileManager.default.removeItem(at: folder) }
+    let own = URL(string: "https://github.com/EXistenz-78/dt-hub/releases/download/some-other-tag/")!
+    let d = downloader()
+    d.contents = ["Flat-Manifest.json": manifestData]
+    let flat = [DPModelFile(path: "M.mlpackage/Manifest.json", asset: "Flat-Manifest.json", size: Int64(manifestData.count), sha256: nil)]
+    let withBase = DPModelStore(
+      folder: folder, files: flat, packageName: "M.mlpackage", baseURL: own, downloader: d,
+      compile: { package in
+        let out = FileManager.default.temporaryDirectory.appendingPathComponent("c-\(UUID().uuidString).mlmodelc")
+        try FileManager.default.copyItem(at: package, to: out)
+        return out
+      }, validate: { _ in true })
+    try await withBase.install { _ in }
+    #expect(d.urls.map(\.absoluteString) == [own.absoluteString + "Flat-Manifest.json"])
+    // Without a base address of its own, a store asks the depth model's release (the older tests rely on it).
+    let other = downloader()
+    other.contents = ["Flat-Manifest.json": manifestData]
+    let defaults = DPModelStore(
+      folder: try self.folder(), files: flat, packageName: "M.mlpackage", downloader: other,
+      compile: { package in
+        let out = FileManager.default.temporaryDirectory.appendingPathComponent("c-\(UUID().uuidString).mlmodelc")
+        try FileManager.default.copyItem(at: package, to: out)
+        return out
+      }, validate: { _ in true })
+    try await defaults.install { _ in }
+    #expect(other.urls.first?.absoluteString.hasPrefix(DPModelManifest.baseURL.absoluteString) == true)
   }
 }
