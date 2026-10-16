@@ -72,10 +72,11 @@ enum CatalogBuilder {
     return result
   }
 
-  /// The catalog while DT+ is on and the cloud's list is known: the models are only those the cloud has and a list
-  /// of Draw Things describes (the installed ones keep the server's description, the others come from `specs` and are
-  /// marked as remote); an installed model that no list has is not offered (the cloud cannot know it), and neither is
-  /// a deprecated Official model that is not installed. Each model carries the list it comes from (`sources`). The
+  /// The catalog while DT+ is on and the cloud's list is known: the models are only those the cloud has (the installed
+  /// ones keep the server's description, the others come from `specs` and are marked as remote), minus a deprecated
+  /// Official model that is not installed. Each model carries the list it comes from (`sources`); an installed one that
+  /// no list has stays in the catalog with no source: the picker does not show it (spec §2) but, if it is the chosen
+  /// one, RUN still finds it. The
   /// LoRAs are the local ones plus the cloud's (`cloudLoRAs`, from Draw Things' `loras.json`, or by name when it does
   /// not list them). The LoRA card keeps showing only the family of the current model.
   static func cloudCatalog(
@@ -83,8 +84,8 @@ enum CatalogBuilder {
     cloudFiles: Set<String>, cloudLoRAs: [CatalogLoRA]
   ) -> ModelCatalog {
     let localModels = local.models.compactMap { model -> CatalogModel? in
-      guard cloudFiles.contains(model.file), let source = sources[model.file] else { return nil }
-      return model.with(source: source, isRemote: false)
+      guard cloudFiles.contains(model.file) else { return nil }
+      return model.with(source: sources[model.file], isRemote: false)
     }
     let localFiles = Set(local.models.map(\.file))
     let remote = specs.keys.sorted().filter {

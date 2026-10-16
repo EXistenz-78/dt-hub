@@ -12,7 +12,7 @@ Con DT+ acceso il menu dei modelli è lunghissimo (605 voci) e **non mostra i mo
 - **Tre liste**, come in Draw Things: **Official** (nel codice dell'app; 129 voci, 16 segnate `deprecated`), **Community** (`models.json`, 253 voci), **Uncurated** (`uncurated_models.json`, 384 voci). Le pubblica insieme `https://kcjerrell.github.io/dt-models/` (`official_models.json`, `community_models.json`, `uncurated_models.json`); su `models.drawthings.ai` ci sono solo le ultime due.
 - **Con DT+ spento non cambia niente:** il menu di oggi, con i modelli installati raggruppati per famiglia, indipendentemente dalle liste.
 - **Con DT+ acceso:** pannello con campo di ricerca in cima e albero a due livelli collassabili (livello 1: origine; livello 2: famiglia). **Aperto solo Official**; Community, Uncurated e tutte le famiglie chiusi.
-- **Modelli locali con DT+ acceso:** se sono in una lista compaiono nella lista (li distingue solo l'assenza della nuvola); se **non** sono in nessuna lista, **sono nascosti**.
+- **Modelli locali con DT+ acceso:** se sono in una lista compaiono nella lista (li distingue solo l'assenza della nuvola); se **non** sono in nessuna lista, **sono nascosti dal pannello**; restano nel catalogo (senza origine), così se uno è il modello scelto RUN lo trova e il pulsante ne mostra il nome (revisione del 16 ott: toglierli dal catalogo bloccava RUN).
 - **Due scelte dell'assistente** (approvate con la sezione): lo stato aperto/chiuso resta finché l'app è in esecuzione e riparte dallo stato iniziale a ogni avvio; all'apertura il cursore è nel campo di ricerca, Esc chiude il pannello.
 
 ## 3. Fonti
@@ -27,9 +27,9 @@ Con DT+ acceso il menu dei modelli è lunghissimo (605 voci) e **non mostra i mo
 - **Terza lista:** `LiveModelList.official` (stessa `CachedDownload`, cache `…/DT Hub/official-models-list.json`, un download per avvio, nuovo tentativo dopo 10 minuti). Il suo lettore converte ogni voce nel JSON di specifica che il resto del codice già capisce (`defaultScale` → `default_scale`, `textEncoder` → `text_encoder`; `file`, `name`, `version`, `prefix`, `autoencoder` invariati) e restituisce a parte l'insieme dei file `deprecated`.
 - **Nomi corretti nel codice:** oggi `LiveModelList.shared` è `models.json` (chiamata «official» nei commenti) e `LiveModelList.community` è `uncurated_models.json`. Diventano `LiveModelList.community` e `LiveModelList.uncurated`; i commenti, il briefing e la nota Obsidian si correggono. I **nomi dei file di cache restano** (`models-list.json`, `community-models-list.json`), perché non si perdano le copie già salvate.
 - **Origine di un modello:** dal nome del file; se è in più liste vince Official, poi Community, poi Uncurated.
-- **`CatalogBuilder.cloudCatalog`** (DT+ acceso, elenco del cloud noto): modelli = quelli **locali presenti nel cloud e in almeno una lista** (tengono la descrizione del server, ricevono l'origine) più i **remoti** (in una lista, nel cloud, non installati; segnati `isRemote`). Esclusi: i locali fuori lista e gli Official `deprecated` non installati. Senza l'elenco del cloud (mai ottenuto) resta il ripiego di oggi (tutti i modelli delle liste), ora con l'origine.
+- **`CatalogBuilder.cloudCatalog`** (DT+ acceso, elenco del cloud noto): modelli = quelli **locali presenti nel cloud e in almeno una lista** (tengono la descrizione del server, ricevono l'origine) più i **remoti** (in una lista, nel cloud, non installati; segnati `isRemote`). Esclusi dal catalogo: gli Official `deprecated` non installati. I locali fuori lista restano nel catalogo con `source == nil` e `ModelCatalog.modelsBySource` non li elenca (nascosti dal pannello). Senza l'elenco del cloud (mai ottenuto) resta il ripiego di oggi (tutti i modelli delle liste), ora con l'origine.
 - **Raggruppamento:** `ModelCatalog.modelsBySource` → `[ModelSourceGroup]` (origine, conteggio, `[ModelFamilyGroup]`), accanto a `modelsByFamily` che resta invariato (lo usa il menu con DT+ spento).
-- **La richiesta di generazione** di un modello remoto Official registra la sua specifica come oggi (`registerRemoteSpec` cerca nelle liste); va esteso a Official. **Da verificare nella fase 2** (prova dell'utente) che il cloud esegua un Official dal solo elenco.
+- **La richiesta di generazione** di un modello **non installato** registra la sua specifica dalle liste (`registerRemoteSpec` cerca in Official, Community, Uncurated); per un modello installato non si registra niente: vale la specifica del server (quella più scarna degli Official non deve sostituirla). **Da verificare nella fase 2** (prova dell'utente) che il cloud esegua un Official dal solo elenco.
 
 ## 5. Interfaccia (solo con DT+ acceso)
 
@@ -46,7 +46,7 @@ Con DT+ acceso il menu dei modelli è lunghissimo (605 voci) e **non mostra i mo
 
 ## 6. Errori e casi limite
 
-- Elenco Official non scaricabile e mai salvato: con DT+ acceso i modelli Official non scaricati mancano e quelli installati senza lista restano nascosti; è lo stato di partenza senza rete, in cui anche DT+ non funziona.
+- Elenco Official non scaricabile e mai salvato (per esempio il sito di dt-models non risponde): con DT+ acceso mancano nel pannello gli Official non scaricati e quelli installati, ma il catalogo si costruisce lo stesso e un modello installato scelto continua a girare.
 - Il modello scelto non è nelle liste (per esempio un locale fuori lista con DT+ appena acceso): il pulsante continua a mostrarne il nome; il pannello non lo elenca.
 - Famiglia sconosciuta (nil): gruppo «—» in coda, come oggi.
 - Il numero di voci è alto (600+): le viste dell'albero si costruiscono pigramente (solo i gruppi aperti), e il filtro lavora su dati già in memoria.

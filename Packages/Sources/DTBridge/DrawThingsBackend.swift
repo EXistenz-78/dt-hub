@@ -16,6 +16,8 @@ public actor DrawThingsBackend: GenerationBackend {
   private let communityModels: LiveModelList?
   /// The Official list (the models of the Draw Things app) and the Uncurated one: with DT+ the cloud runs them too.
   private let officialModels: LiveModelList?
+  /// The files the server has (from the last echo): their specification is the server's, not one of the lists'.
+  private var installedFiles: Set<String> = []
   /// DT+ is on: the models of Draw Things' lists that are not on the server are listed too, for the cloud.
   private let includeRemoteModels: Bool
   private let uncuratedModels: LiveModelList?
@@ -71,6 +73,7 @@ public actor DrawThingsBackend: GenerationBackend {
     }
     // The models released after the bundled snapshot: registered, they are listed and their requests carry the
     // right specification.
+    installedFiles = Set(reply.files)
     let live: [String: Data] = await communityModels?.specs() ?? [:]
     if !live.isEmpty {
       await service.modelSpecs.register(Self.specs(toRegisterFor: reply.files, live: live))
@@ -101,9 +104,14 @@ public actor DrawThingsBackend: GenerationBackend {
   /// A model the server's folder does not have (DT+): its specification goes with the request, so the cloud knows it.
   private func registerRemoteSpec(for file: String, loras lorasFiles: [String], on service: DrawThingsService) async {
     guard includeRemoteModels else { return }
-    var json = (await officialModels?.specs() ?? [:])[file]
-    if json == nil { json = (await communityModels?.specs() ?? [:])[file] }
-    if json == nil { json = (await uncuratedModels?.specs() ?? [:])[file] }
+    // A model the server has is described by the server (its echo): the lists' specifications, thinner for the
+    // Official ones, must not replace it.
+    var json: Data?
+    if Self.shouldRegisterRemoteSpec(for: file, installed: installedFiles) {
+      json = (await officialModels?.specs() ?? [:])[file]
+      if json == nil { json = (await communityModels?.specs() ?? [:])[file] }
+      if json == nil { json = (await uncuratedModels?.specs() ?? [:])[file] }
+    }
     var specs = [json.flatMap { ModelSpec(json: $0) }].compactMap { $0 }
     // The cloud's LoRAs with their official description (otherwise the override would carry a minimal one).
     if !lorasFiles.isEmpty, let cloudLoRAs = await cloud?.loraSpecs() {
@@ -111,6 +119,9 @@ public actor DrawThingsBackend: GenerationBackend {
     }
     if !specs.isEmpty { await service.modelSpecs.register(specs) }
   }
+
+  /// Only a model the server does not have (it runs in the cloud) carries its specification from a list.
+  static func shouldRegisterRemoteSpec(for file: String, installed: Set<String>) -> Bool { !installed.contains(file) }
 
   /// The specifications of the live list for the files the server has.
   static func specs(toRegisterFor files: [String], live: [String: Data]) -> [ModelSpec] {

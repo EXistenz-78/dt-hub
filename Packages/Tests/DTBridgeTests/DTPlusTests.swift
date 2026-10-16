@@ -141,12 +141,15 @@ struct CloudCatalogTests {
     #expect(both == ["a.ckpt": .official, "b.ckpt": .official, "c.ckpt": .community, "d.ckpt": .uncurated])
   }
 
-  @Test func anInstalledModelNotInAnyListIsHidden() {
+  @Test func anInstalledModelNotInAnyListStaysInTheCatalogButNotInTheTree() {
+    // Hidden from the picker (spec §2), not from the catalog: a model that is chosen must still be runnable.
     let mine = CatalogModel(file: "mine.ckpt", name: "Mine", family: "flux1")
     let listed = CatalogModel(file: "listed.ckpt", name: "Listed", family: "flux1")
     let result = build(
       local: [mine, listed], sources: ["listed.ckpt": .community], cloudFiles: ["mine.ckpt", "listed.ckpt"])
-    #expect(result.models.map(\.file) == ["listed.ckpt"])
+    #expect(result.model(forFile: "mine.ckpt")?.source == nil)
+    #expect(result.model(forFile: "mine.ckpt")?.name == "Mine")
+    #expect(result.modelsBySource.flatMap(\.families).flatMap(\.models).map(\.file) == ["listed.ckpt"])
   }
 
   @Test func anInstalledListedModelKeepsTheServerDescriptionAndGetsItsSource() {
@@ -171,11 +174,17 @@ struct CloudCatalogTests {
     #expect(result.models.map(\.file) == ["old_local.ckpt"])
   }
 
-  @Test func withoutAnyListEverythingLocalIsHidden() {
-    // Review focus 1: no list was ever obtained; the catalog still builds.
+  @Test func withoutAnyListTheInstalledModelsStayAndTheTreeIsEmpty() {
+    // Review focus 1: no list was ever obtained; the catalog still builds and an installed model still runs.
     let installed = CatalogModel(file: "a.ckpt", name: "A", family: "flux1")
     let result = build(local: [installed], sources: [:], cloudFiles: ["a.ckpt"])
-    #expect(result.models.isEmpty)
+    #expect(result.models.map(\.file) == ["a.ckpt"])
+    #expect(result.modelsBySource.isEmpty)
+  }
+
+  @Test func aRemoteSpecIsRegisteredOnlyForAModelTheServerDoesNotHave() {
+    #expect(DrawThingsBackend.shouldRegisterRemoteSpec(for: "remote.ckpt", installed: ["a.ckpt"]))
+    #expect(!DrawThingsBackend.shouldRegisterRemoteSpec(for: "a.ckpt", installed: ["a.ckpt"]))
   }
 
   @Test func onlyTheModelsOfTheCloudAreListed() {
