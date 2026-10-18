@@ -76,8 +76,34 @@ language models of the app's models folder (`family`: the family the user assign
     added at the end. A step with neither preset, `fields` nor `loras` runs the tab as it is. Then the Moodboard for the
     pass (replaces the tab's), a start image, and whether the picture the previous pass made becomes the start image. RUN
     then runs the passes one after the other; if a preset is not in the menu it says so and runs nothing.
+  - `pipeline` **guided by the plug-in** (needs DT Hub 0.3.2 or later): `{"name", "guided": true, "passes": n,
+    "estimate": {…one pass…}}`, with no `steps`. `passes` (≥ 1) is how many passes the plug-in will hand over;
+    `estimate` is a pass like the biggest one, so the CU meter can measure `n` of them. The user sees it on the Run
+    button ("Run · n passes") and presses RUN as for any pipeline; the app then **asks the plug-in for each pass in
+    turn** (see *Guided pipeline* below). While it runs, no other pipeline and no RUN can start.
   The fields a plug-in filled turn teal; the user can always change them. If two plug-ins fill the same field, or
   both propose a start image or a pipeline, the user chooses in a pop-up.
+- **Guided pipeline** (app → plug-in, answered by the plug-in), for a plug-in that has to compose or choose between
+  one pass and the next (Tiled Upscale cuts a tile out of a picture that already holds the result of the one before):
+  - `{"type":"session.next","index":3,"count":12,"previous":{"path","width","height"}}`: the pass wanted (1-based),
+    the total, and the picture the previous pass made, a PNG in the `tempFolder` (absent at the first pass). The plug-in
+    answers within 60 seconds with **one self-contained pass**:
+    `{"title","startImage":{"path","name"},"mask":{"path","name"},"maskSettings":{"blur","outset","preserveOriginal"},
+    "size":{"width","height"},"preset","fields","loras","strength"}`, or `{"done":true}` to end before `count` (not an error).
+    `startImage` is a PNG of exactly `size` (a multiple of 64, at most the model's size limit): the app sends it as it is,
+    never reframed or resampled. `mask` is an optional grey PNG of the same size, **255 where the model regenerates**, 0
+    where the picture is kept (it needs no multiple of 64 for its inner edge); without a mask the whole picture is
+    regenerated. `maskSettings` is how Draw Things treats the mask (blur 0–30, outset 0–100, keep the original outside it);
+    without it the Control tab's are used. `preset`, `fields` (a size in them is ignored: `size` rules), `loras` and
+    `strength` (0–1, default 1) work as in a step of `pipeline`. The model is always the header's, and the Control tab (its
+    picture, mask and Moodboard) is not used. An answer that does not fit (no `startImage` or `size`, a size not multiple
+    of 64 or too big, a file that cannot be read or a mask of another size, no answer in time) ends the pipeline.
+  - `{"type":"session.end","reason":"finished"|"stopped"|"failed"|"closed"}`: sent once when the pipeline is over (all
+    passes done or `done`; Stop; a pass failed; the plug-in did not answer or the model was changed meanwhile). The plug-in
+    frees its memory and files. Its answer is ignored.
+  The pictures of the passes are **not results**: they are written to files of their own (in a folder the app makes inside the `tempFolder`, named in
+  `previous`), and go neither to the Results strip nor to the project's output folder. What the plug-in makes of them (a
+  picture it composes) is up to it: save it, or send it back with `contribute.startImage`.
 - `presets` — `{"presets": [{"name", "fields", "loras"}]}`: presets for the Preset menu. Each is a
   file in the app's Presets folder, named after the preset. **Name them with your own acronym** (2–4 letters), a
   middle dot and the name — `SMP · Overcast`, `SLR · Match the sun` — because that is the only sign of where a
