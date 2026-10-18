@@ -66,6 +66,8 @@ final class GenerationController {
   }
   /// The model of the pipeline the plug-in is guiding, while it runs: the finished picture it hands over is filed under it.
   @ObservationIgnored private var guidedModelFile: String?
+  /// When the passes of that pipeline began: the picture it hands over carries the time the whole pipeline took.
+  @ObservationIgnored private var guidedBegan: ContinuousClock.Instant?
   /// How a pipeline the plug-in guides talks to the plug-in; set by the app next to `attach`.
   @ObservationIgnored var guidedChannel: GuidedPluginChannel?
   /// What the plug-ins contributed (teal fields, conflicts, the pipeline); set by `attach`.
@@ -578,8 +580,10 @@ final class GenerationController {
     defer { channel.removeSessionFolder(folder) }
     let startModel = connection.selection.selectedFile
     guidedModelFile = startModel
+    guidedBegan = .now
     defer {
       guidedModelFile = nil
+      guidedBegan = nil
       // The session is over, whatever the reason: the pipeline goes from the Run button.
       contributions?.finishedGuidedPipeline()
     }
@@ -856,7 +860,11 @@ extension GenerationController: ContributionTarget {
     shown.batchSize = 1
     shown.batchCount = 1
     let job = GenerationJob(prompt: description, model: model, parameters: shown)
-    Task { _ = await session.adopt(fileAt: url, job: job) }
+    let elapsed = guidedBegan.map { start -> TimeInterval in
+      let took = start.duration(to: .now)
+      return Double(took.components.seconds) + Double(took.components.attoseconds) / 1e18
+    }
+    Task { _ = await session.adopt(fileAt: url, job: job, elapsed: elapsed) }
   }
 
   func setStartImage(_ image: PluginImageRef, from pluginID: String) throws -> UUID {

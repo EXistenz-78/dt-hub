@@ -62,12 +62,14 @@ struct GenerationSessionIntermediateTests {
     CGImageDestinationAddImage(destination, image, nil)
     CGImageDestinationFinalize(destination)
     try (data as Data).write(to: url)
-    let adopted = await session.adopt(fileAt: url, job: job)
+    let adopted = await session.adopt(fileAt: url, job: job, elapsed: 123.5)
     #expect(adopted)
+    #expect(session.results.first?.elapsed == 123.5, "the whole pipeline's time shows in the side panel")
+    #expect(store.elapsedTimes == [123.5], "and in the file's metadata")
     #expect(session.results.count == 1 && store.count == 1)
     #expect(session.results.first?.job.prompt == "p")
     #expect(session.results.first?.fileURL != nil)
-    #expect(!(await session.adopt(fileAt: url.appendingPathExtension("missing"), job: job)), "an unreadable file adds nothing")
+    #expect(!(await session.adopt(fileAt: url.appendingPathExtension("missing"), job: job, elapsed: nil)), "an unreadable file adds nothing")
     #expect(session.results.count == 1)
   }
 }
