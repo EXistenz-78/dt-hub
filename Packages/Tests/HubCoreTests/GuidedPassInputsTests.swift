@@ -100,6 +100,19 @@ struct GuidedPassInputsTests {
       ).failure == .maskUnreadable)
   }
 
+  @Test func aPassStartsFromTheTabWithoutItsLoRAsAndWithOneImage() {
+    var tab = GenerationFields(prompt: "tab prompt")
+    tab.parameters.loras = [LoRASelection(file: "user.ckpt", weight: 0.5)]
+    tab.parameters.batchSize = 4
+    tab.parameters.batchCount = 3
+    tab.parameters.steps = 20
+    let base = GuidedPassInputs.baseFields(from: tab, size: PipelineSize(width: 512, height: 768))
+    #expect(base.parameters.loras.isEmpty, "the tab's LoRAs are not in a tile")
+    #expect(base.parameters.batchSize == 1 && base.parameters.batchCount == 1, "one picture per tile")
+    #expect(base.parameters.width == 512 && base.parameters.height == 768)
+    #expect(base.parameters.steps == 20 && base.prompt == "tab prompt", "the rest stays the tab's")
+  }
+
   @Test func aStepWithoutAStartImageOrSizeFails() {
     #expect(GuidedPassInputs.inputs(for: PipelineStep(), enableInpainting: false).failure == .imageUnreadable)
   }
