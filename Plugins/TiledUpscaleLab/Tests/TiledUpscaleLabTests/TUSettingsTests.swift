@@ -9,6 +9,7 @@ struct TUSettingsTests {
 
   @Test func theDefaultsAreTheOnesOfTheSpec() {
     #expect(TUSettings.standard == TUSettings(free: 200, blur: 30, outset: 30, fade: 48))
+    #expect(TUSettings.standard.tile == 1024)
   }
 
   @Test func theFadeNeverReachesIntoTheFreePart() {
@@ -17,6 +18,37 @@ struct TUSettingsTests {
     #expect(TUSettings(free: 240, blur: 30, outset: 30, fade: 48).clamped(overlap: .standard).fade == 16)
     #expect(TUSettings(free: 300, blur: 99, outset: 500, fade: 5).clamped(overlap: .standard) == TUSettings(free: 256, blur: 30, outset: 100, fade: 0))
     #expect(TUSettings(free: -5, blur: -1, outset: -1, fade: -3).clamped(overlap: .standard) == TUSettings(free: 0, blur: 0, outset: 0, fade: 0))
+  }
+
+  @Test func theTileSizeIsAMultipleOf64Between1024And2048() {
+    func tile(_ value: Int) -> Int { TUSettings(free: 200, blur: 30, outset: 30, fade: 48, tile: value).clamped(overlap: .standard).tile }
+    #expect(tile(3000) == 2048 && tile(900) == 1024 && tile(1100) == 1088 && tile(1536) == 1536 && tile(2048) == 2048)
+  }
+
+  @Test func aSettingsFileWithoutTheTileKeepsItsOtherValues() throws {
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    try Data(#"{"factor":2,"overlap":256,"loraWeight":1,"settings":{"free":100,"blur":10,"outset":20,"fade":30}}"#.utf8)
+      .write(to: folder.appendingPathComponent("state.json"))
+    let choice = TUStore(folder: folder).load()
+    #expect(choice.settings == TUSettings(free: 100, blur: 10, outset: 20, fade: 30, tile: 1024))
+  }
+
+  @Test func theTileSizeOfTheStateChangesThePassesAndIsKept() {
+    let s = TUState(store: TUStore(folder: nil), italian: false)
+    s.setImage(TestImages.solid(1000, 1000, (1, 2, 3)), name: "a")
+    s.factor = 4
+    #expect(s.tileSize == 1024 && s.summary?.passes == 25)
+    s.tileSize = 2048
+    #expect(s.summary?.passes == 9 && s.plan?.count == 9)
+    s.tileSize = 1000
+    #expect(s.tileSize == 1024)
+    let one = folder.appendingPathComponent("tile")
+    s.switchProject(folder: one)
+    s.tileSize = 1536
+    s.switchProject(folder: folder.appendingPathComponent("other"))
+    #expect(s.tileSize == 1024)
+    s.switchProject(folder: one)
+    #expect(s.tileSize == 1536)
   }
 
   @Test func theSlidersOfTheStateKeepTheRules() {

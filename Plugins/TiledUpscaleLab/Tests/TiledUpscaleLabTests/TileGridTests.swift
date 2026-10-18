@@ -80,4 +80,30 @@ struct TileGridTests {
     #expect(TileGrid.plan(width: 8192, height: 8192, overlap: .standard).count == 121)
     #expect(TileGrid.plan(width: 8192, height: 8192, overlap: .wide).count == 144)
   }
+
+  @Test func aBiggerTileMeansFewerTiles() {
+    let big = TileGrid.plan(width: 4096, height: 1024, overlap: .standard, tile: 2048)
+    #expect(big.tiles.map(\.rect.x) == [0, 1792, 3584])
+    #expect(big.tiles.map(\.rect.width) == [2048, 2048, 512], "the last tile is what is left of the side, wider than the overlap")
+    let mid = TileGrid.plan(width: 4096, height: 1024, overlap: .standard, tile: 1536)
+    #expect(mid.tiles.map(\.rect.x) == [0, 1280, 2560])
+    #expect(mid.tiles.last?.rect.width == 1536)
+    #expect(TileGrid.plan(width: 3968, height: 3968, overlap: .standard, tile: 1024).count == 25)
+    #expect(TileGrid.plan(width: 3968, height: 3968, overlap: .standard, tile: 2048).count == 9)
+  }
+
+  @Test func everyTileSizeKeepsTheTilesAMultipleOf64AndInsideTheSize() {
+    for tile in stride(from: 1024, through: 2048, by: 64) {
+      for overlap in TileOverlap.allCases {
+        for side in [2560, 3968, 4096, 8192] {
+          let plan = TileGrid.plan(width: side, height: 1024, overlap: overlap, tile: tile)
+          for t in plan.tiles {
+            #expect(t.rect.width % 64 == 0 && t.rect.width <= tile, "tile \(tile) overlap \(overlap.rawValue) side \(side)")
+          }
+          let last = plan.tiles.last!.rect
+          #expect(last.x + last.width == side && last.width > overlap.rawValue)
+        }
+      }
+    }
+  }
 }

@@ -9,8 +9,30 @@ struct TUSettings: Codable, Equatable, Sendable {
   var blur: Double
   var outset: Int
   var fade: Int
+  /// The longest side of a tile, in pixels: a multiple of 64 from 1024 to 2048. A bigger tile means fewer tiles and more of
+  /// the picture in each, so the model has more to go on (a 4× enlargement goes from 25 passes at 1024 to 9 at 2048).
+  var tile: Int
+
+  init(free: Int, blur: Double, outset: Int, fade: Int, tile: Int = TileConstants.tile) {
+    self.free = free
+    self.blur = blur
+    self.outset = outset
+    self.fade = fade
+    self.tile = tile
+  }
+
+  /// A file from before the tile size has none: 1024.
+  init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    free = try container.decode(Int.self, forKey: .free)
+    blur = try container.decode(Double.self, forKey: .blur)
+    outset = try container.decode(Int.self, forKey: .outset)
+    fade = try container.decode(Int.self, forKey: .fade)
+    tile = (try? container.decodeIfPresent(Int.self, forKey: .tile)) ?? TileConstants.tile
+  }
 
   static let standard = TUSettings(free: 200, blur: 30, outset: 30, fade: 48)
+  static let tileRange = 1024...2048
   static let blurRange = 0.0...30.0
   static let outsetRange = 0...100
 
@@ -24,7 +46,8 @@ struct TUSettings: Codable, Equatable, Sendable {
     return TUSettings(
       free: free, blur: min(max(blur, Self.blurRange.lowerBound), Self.blurRange.upperBound),
       outset: min(max(outset, Self.outsetRange.lowerBound), Self.outsetRange.upperBound),
-      fade: min(max(fade, 0), overlap.rawValue - free))
+      fade: min(max(fade, 0), overlap.rawValue - free),
+      tile: min(max(tile, Self.tileRange.lowerBound), Self.tileRange.upperBound) / 64 * 64)
   }
 }
 

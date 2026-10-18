@@ -38,7 +38,7 @@ final class TUSession: @unchecked Sendable {
     self.source = source
     self.factor = factor
     self.scaled = TileGrid.scaledSize(width: source.width, height: source.height, factor: factor)
-    self.plan = TileGrid.plan(width: scaled.width, height: scaled.height, overlap: overlap, free: self.settings.free)
+    self.plan = TileGrid.plan(width: scaled.width, height: scaled.height, overlap: overlap, free: self.settings.free, tile: self.settings.tile)
     let shown = TUPreview.size(width: scaled.width, height: scaled.height)
     self.previewScale = Double(shown.width) / Double(scaled.width)
     self.previewCanvas = TUCanvas(width: shown.width, height: shown.height)

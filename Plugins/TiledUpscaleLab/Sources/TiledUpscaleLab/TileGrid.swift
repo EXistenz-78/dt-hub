@@ -11,8 +11,8 @@ enum TileOverlap: Int, CaseIterable, Sendable {
   case standard = 256
   case wide = 320
 
-  /// Distance between the starts of two neighbouring tiles.
-  var step: Int { TileConstants.tile - rawValue }
+  /// Distance between the starts of two neighbouring tiles of the given size.
+  func step(tile: Int) -> Int { tile - rawValue }
 }
 
 struct TileRect: Equatable, Sendable {
@@ -65,15 +65,15 @@ enum TileGrid {
 
   /// The tiles of a picture already cut to multiples of 64, row by row from the top left.
   /// `free` is how many pixels of the overlap the masks leave free (the rest is regenerated); `TUSettings.defaultFree` when nil.
-  static func plan(width: Int, height: Int, overlap: TileOverlap, free: Int? = nil) -> TilePlan {
+  static func plan(width: Int, height: Int, overlap: TileOverlap, free: Int? = nil, tile: Int = TileConstants.tile) -> TilePlan {
     let free = min(max(free ?? TUSettings.defaultFree(for: overlap), 0), overlap.rawValue)
-    let columns = spans(for: width, step: overlap.step)
-    let rows = spans(for: height, step: overlap.step)
+    let columns = spans(for: width, step: overlap.step(tile: tile), tile: tile)
+    let rows = spans(for: height, step: overlap.step(tile: tile), tile: tile)
     var tiles: [Tile] = []
     for (row, y) in rows.enumerated() {
       for (column, x) in columns.enumerated() {
         let rect = TileRect(
-          x: x, y: y, width: min(TileConstants.tile, width - x), height: min(TileConstants.tile, height - y))
+          x: x, y: y, width: min(tile, width - x), height: min(tile, height - y))
         tiles.append(
           Tile(
             index: tiles.count, row: row, column: column, rect: rect,
@@ -85,9 +85,9 @@ enum TileGrid {
   }
 
   /// The starts of the tiles along one side: one tile when the side fits, else as many steps as it takes to reach the end.
-  private static func spans(for side: Int, step: Int) -> [Int] {
-    guard side > TileConstants.tile else { return [0] }
-    let count = (side - TileConstants.tile + step - 1) / step + 1
+  private static func spans(for side: Int, step: Int, tile: Int) -> [Int] {
+    guard side > tile else { return [0] }
+    let count = (side - tile + step - 1) / step + 1
     return (0..<count).map { $0 * step }
   }
 

@@ -191,4 +191,16 @@ struct TUSessionTests {
     let mask = try #require(load(answer, "mask"))
     #expect(TestImages.pixel(mask, 119, 5)[0] == 0 && TestImages.pixel(mask, 120, 5)[0] == 255)
   }
+
+  @Test func aBiggerTileGivesBiggerPasses() throws {
+    let source = TestImages.solid(2300, 2100, (10, 20, 30))
+    let s = TUSession(
+      source: source, factor: 1, overlap: .standard, settings: TUSettings(free: 200, blur: 30, outset: 30, fade: 0, tile: 2048),
+      loraWeight: 1, trigger: "", preset: preset, tempFolder: folder)
+    #expect(s.plan.count == 2, "2300 × 2100 is cut to 2240 × 2048: two tiles of 2048 along, one across")
+    let answer = object(s.next(request(1, count: 2)))
+    #expect(size(answer) == (2048, 2048))
+    let tile = try #require(load(answer, "startImage"))
+    #expect(tile.width == 2048 && tile.height == 2048)
+  }
 }

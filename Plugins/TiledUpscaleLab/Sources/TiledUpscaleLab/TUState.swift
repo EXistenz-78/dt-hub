@@ -10,15 +10,21 @@ struct TUSummary: Equatable, Sendable {
   let rows: Int
   let passes: Int
   let verdict: TileLimits.Verdict
+  /// What the model will make in all, in megapixels: the area of every tile, the overlaps counted each time. A rough measure of the
+  /// time (it grows faster than this with the size of a tile): the number to compare between two tile sizes.
+  let generatedMegapixels: Double
   /// True when the enlarged picture is cut a little to make its sides multiples of 64.
   let cropped: Bool
 
-  static func make(sourceWidth: Int, sourceHeight: Int, factor: Int, overlap: TileOverlap) -> TUSummary {
+  static func make(
+    sourceWidth: Int, sourceHeight: Int, factor: Int, overlap: TileOverlap, tile: Int = TileConstants.tile
+  ) -> TUSummary {
     let scaled = TileGrid.scaledSize(width: sourceWidth, height: sourceHeight, factor: factor)
-    let plan = TileGrid.plan(width: scaled.width, height: scaled.height, overlap: overlap)
+    let plan = TileGrid.plan(width: scaled.width, height: scaled.height, overlap: overlap, tile: tile)
     return TUSummary(
       width: scaled.width, height: scaled.height, columns: plan.columns, rows: plan.rows, passes: plan.count,
       verdict: TileLimits.verdict(width: scaled.width, height: scaled.height, passes: plan.count),
+      generatedMegapixels: Double(plan.tiles.reduce(0) { $0 + $1.rect.width * $1.rect.height }) / 1_000_000,
       cropped: scaled.width != sourceWidth * factor || scaled.height != sourceHeight * factor)
   }
 }
@@ -71,6 +77,10 @@ final class TUState: ObservableObject {
     get { settings.outset }
     set { change { $0.outset = newValue } }
   }
+  var tileSize: Int {
+    get { settings.tile }
+    set { change { $0.tile = newValue } }
+  }
   var junctionFade: Int {
     get { settings.fade }
     set { change { $0.fade = newValue } }
@@ -112,13 +122,14 @@ final class TUState: ObservableObject {
 
   var summary: TUSummary? {
     guard let image else { return nil }
-    return TUSummary.make(sourceWidth: image.width, sourceHeight: image.height, factor: factor, overlap: overlap)
+    return TUSummary.make(
+      sourceWidth: image.width, sourceHeight: image.height, factor: factor, overlap: overlap, tile: settings.tile)
   }
 
   /// The tiles of the picture as it is now, for the grid of the preview.
   var plan: TilePlan? {
     guard let summary else { return nil }
-    return TileGrid.plan(width: summary.width, height: summary.height, overlap: overlap, free: settings.free)
+    return TileGrid.plan(width: summary.width, height: summary.height, overlap: overlap, free: settings.free, tile: settings.tile)
   }
 
   var canPrepare: Bool { preset != nil && image != nil && summary?.verdict != .refuse }
@@ -247,7 +258,7 @@ final class TUState: ObservableObject {
     let estimate: [String: Any] = [
       "preset": preset.name, "fields": fields, "loras": loras,
       "size": [
-        "width": min(TileConstants.tile, summary.width), "height": min(TileConstants.tile, summary.height),
+        "width": min(settings.tile, summary.width), "height": min(settings.tile, summary.height),
       ],
     ]
     let pipeline: [String: Any] = ["name": "Tiled Upscale Lab", "guided": true, "passes": summary.passes, "estimate": estimate]
@@ -311,8 +322,8 @@ final class TUState: ObservableObject {
       return
     }
     let description = format(
-      .resultDescription, factor, summary.columns, summary.rows, loraWeight, settings.free, Int(settings.blur.rounded()),
-      settings.outset, settings.fade)
+      .resultDescription, factor, summary.columns, summary.rows, loraWeight, settings.tile, settings.free,
+      Int(settings.blur.rounded()), settings.outset, settings.fade)
     let message: [String: Any] = ["result": ["path": url.path, "name": "Tiled Upscale Lab", "description": description]]
     guard let answer = await contribute?(message) else {
       notice = text(.notAnswered)
