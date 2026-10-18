@@ -109,6 +109,11 @@ enum TUImage {
     return CGImageDestinationFinalize(destination) ? data as Data : nil
   }
 
+  /// A picture from data (a drop); nil when it cannot be read.
+  static func load(data: Data) -> CGImage? {
+    CGImageSourceCreateWithData(data as CFData, nil).flatMap { CGImageSourceCreateImageAtIndex($0, 0, nil) }
+  }
+
   /// The picture in a file, at its own size; nil when it cannot be read.
   static func load(_ url: URL) -> CGImage? {
     CGImageSourceCreateWithURL(url as CFURL, nil).flatMap { CGImageSourceCreateImageAtIndex($0, 0, nil) }

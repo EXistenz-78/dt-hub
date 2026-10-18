@@ -1,0 +1,147 @@
+import CoreGraphics
+import Foundation
+import Testing
+
+@testable import TiledUpscale
+
+@MainActor
+struct TUStateTests {
+  let folder = TestImages.temporaryFolder()
+
+  private func state(family: String? = "flux2_9b") -> TUState {
+    let state = TUState(store: TUStore(folder: nil), italian: false)
+    state.family = family
+    state.tempFolder = folder.path
+    return state
+  }
+
+  private func photo(_ width: Int, _ height: Int) -> CGImage { TestImages.solid(width, height, (1, 2, 3)) }
+
+  @Test func summaryShowsTheFinalSizeTilesAndPasses() {
+    let summary = TUSummary.make(sourceWidth: 1000, sourceHeight: 1000, factor: 2, overlap: .standard)
+    #expect(summary.width == 1984 && summary.height == 1984)
+    #expect(summary.columns == 3 && summary.rows == 3 && summary.passes == 9)
+    #expect(summary.cropped)
+    #expect(summary.verdict == .ok)
+    let exact = TUSummary.make(sourceWidth: 512, sourceHeight: 512, factor: 2, overlap: .standard)
+    #expect(exact.width == 1024 && exact.passes == 1 && !exact.cropped)
+  }
+
+  @Test func theSummaryFollowsTheChoices() {
+    let s = state()
+    s.setImage(photo(1000, 1000), name: "a")
+    #expect(s.summary?.passes == 9)
+    s.overlap = .wide
+    #expect(s.summary?.passes == 9)
+    s.factor = 4
+    #expect(s.summary?.width == 3968)
+    #expect(s.summary?.passes == TileGrid.plan(width: 3968, height: 3968, overlap: .wide).count)
+  }
+
+  @Test func prepareIsOffWithoutAnImageOrWithAnUnsupportedModel() {
+    let s = state()
+    #expect(!s.canPrepare)
+    s.setImage(photo(512, 512), name: "a")
+    #expect(s.canPrepare)
+    let qwen = state(family: "qwen_image_2.1")
+    qwen.setImage(photo(512, 512), name: "a")
+    #expect(!qwen.canPrepare)
+    #expect(qwen.status == TUState.text(.unsupportedModel, italian: false))
+  }
+
+  @Test func prepareRefusesAboveTheLimits() async {
+    let s = state()
+    s.setImage(photo(2100, 2100), name: "big")
+    s.factor = 8
+    #expect(s.summary?.verdict == .refuse)
+    #expect(!s.canPrepare)
+    var contributed = 0
+    await s.prepare(confirmed: true, contribute: { _ in contributed += 1; return nil }, registerPreset: { _ in nil })
+    #expect(contributed == 0)
+  }
+
+  @Test func aBigJobNeedsConfirmation() async {
+    let s = state()
+    s.setImage(photo(3000, 3000), name: "big")
+    s.factor = 4
+    #expect(s.summary?.verdict == .warn)
+    #expect(s.needsConfirmation)
+    var contributed = 0
+    await s.prepare(confirmed: false, contribute: { _ in contributed += 1; return nil }, registerPreset: { _ in nil })
+    #expect(contributed == 0)
+  }
+
+  @Test func theFirstPressOnABigJobOnlyAsksAndTheChoicesClearTheQuestion() async {
+    let s = state()
+    s.setImage(photo(3000, 3000), name: "big")
+    s.factor = 4
+    #expect(!s.awaitingConfirmation, "nothing asked yet: the first press is not a confirmation")
+    await s.prepare(confirmed: s.awaitingConfirmation, contribute: { _ in ["type": "ok"] }, registerPreset: { _ in nil })
+    #expect(s.awaitingConfirmation && !s.isPrepared)
+    var contributed = 0
+    await s.prepare(confirmed: s.awaitingConfirmation, contribute: { _ in contributed += 1; return ["type": "ok"] }, registerPreset: { _ in nil })
+    #expect(contributed == 1 && s.isPrepared && !s.awaitingConfirmation)
+    s.factor = 2
+    #expect(!s.awaitingConfirmation)
+  }
+
+  @Test func prepareSendsAGuidedPipeline() async throws {
+    let s = state()
+    s.setImage(photo(1000, 1000), name: "a")
+    var sent: [String: Any] = [:]
+    var registered: [String: Any] = [:]
+    await s.prepare(
+      confirmed: true, contribute: { sent = $0; return ["type": "ok"] }, registerPreset: { registered = $0; return ["type": "ok"] })
+    let pipeline = try #require(sent["pipeline"] as? [String: Any])
+    #expect(pipeline["guided"] as? Bool == true)
+    #expect(pipeline["passes"] as? Int == 9)
+    let estimate = try #require(pipeline["estimate"] as? [String: Any])
+    let size = try #require(estimate["size"] as? [String: Int])
+    #expect(size["width"] == 1024 && size["height"] == 1024)
+    #expect(estimate["preset"] as? String == "TUP · FLUX.2 klein 9B")
+    #expect(registered["name"] as? String == "TUP · FLUX.2 klein 9B")
+    #expect(s.isPrepared)
+  }
+
+  @Test func theTriggerWordComesFromTheLoRACatalog() throws {
+    let s = state()
+    s.loraTriggers = ["f2_ultra_real_v5_pro_lora_f16.ckpt": "ULTRA"]
+    s.setImage(photo(512, 512), name: "a")
+    let session = try #require(s.makeSession())
+    let answer = try #require(
+      JSONSerialization.jsonObject(with: session.next(TUNextRequest(index: 1, count: 1, previous: nil))) as? [String: Any])
+    #expect((answer["fields"] as? [String: Any])?["prompt"] as? String == TUPrompt.text(trigger: "ULTRA"))
+  }
+
+  @Test func theChoicesAreKeptPerProject() {
+    let one = folder.appendingPathComponent("one")
+    let two = folder.appendingPathComponent("two")
+    let s = TUState(store: TUStore(folder: nil), italian: false)
+    s.switchProject(folder: one)
+    s.factor = 8
+    s.overlap = .wide
+    s.loraWeight = 0.7
+    s.switchProject(folder: two)
+    #expect(s.factor == 2 && s.overlap == .standard && s.loraWeight == 1)
+    s.switchProject(folder: one)
+    #expect(s.factor == 8 && s.overlap == .wide && s.loraWeight == 0.7)
+  }
+
+  @Test func finishingSavesTheComposedPictureWithTheFirstFreeNumber() async throws {
+    let desktop = TestImages.temporaryFolder()
+    let s = state()
+    s.desktopFolder = desktop
+    s.setImage(photo(512, 512), name: "a")
+    await s.prepare(confirmed: true, contribute: { _ in ["type": "ok"] }, registerPreset: { _ in nil })
+    _ = await s.sessionNext(Data(#"{"type":"session.next","index":1,"count":1}"#.utf8))
+    let previous = TestImages.write(TestImages.solid(1024, 1024, (9, 9, 9)), in: folder, name: "p.png")
+    let done = await s.sessionNext(
+      Data(#"{"type":"session.next","index":2,"count":1,"previous":{"path":"\#(previous.path)","width":1024,"height":1024}}"#.utf8))
+    #expect(String(decoding: done, as: UTF8.self).contains("done"))
+    await s.sessionEnded(reason: "finished")
+    let saved = try #require(s.resultURL)
+    #expect(saved.lastPathComponent == "Tiled Upscale 001.png")
+    #expect(TUImage.load(saved)?.width == 1024)
+    #expect(!s.isPrepared)
+  }
+}
