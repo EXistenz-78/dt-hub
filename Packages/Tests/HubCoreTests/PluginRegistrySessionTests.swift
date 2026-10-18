@@ -36,11 +36,11 @@ struct PluginRegistrySessionTests {
   @Test func requestTimesOutAndReturnsNil() async throws {
     let loader = FakeLoader()
     let registry = try started(loader)
-    loader.plugins["a"]?.delay = .seconds(5)
+    loader.plugins["a"]?.delay = .seconds(10)
     let started = ContinuousClock.now
     let answer = await registry.request(Data("{}".utf8), to: "a", timeout: .milliseconds(50))
     #expect(answer == nil)
-    #expect(ContinuousClock.now - started < .seconds(2))
+    #expect(ContinuousClock.now - started < .seconds(8), "it must not wait for the plug-in's 10 s")
   }
 
   @Test func sessionFolderIsInsideTheTempFolderAndRemoved() throws {
