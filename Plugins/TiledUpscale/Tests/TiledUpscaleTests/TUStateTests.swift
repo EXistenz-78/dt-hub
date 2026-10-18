@@ -144,4 +144,43 @@ struct TUStateTests {
     #expect(TUImage.load(saved)?.width == 1024)
     #expect(!s.isPrepared)
   }
+
+  @Test func thePreviewBaseFollowsThePictureAndTheChoices() throws {
+    let s = state()
+    #expect(s.previewBase == nil && s.plan == nil)
+    s.setImage(photo(1000, 1000), name: "a")
+    let base = try #require(s.previewBase)
+    #expect(base.width == base.height, "1984 × 1984 is square")
+    #expect(s.plan?.count == s.summary?.passes)
+    s.setImage(photo(1000, 500), name: "b")
+    let wide = try #require(s.previewBase)
+    #expect(wide.width > wide.height)
+    s.factor = 4
+    #expect(s.plan?.width == s.summary?.width)
+  }
+
+  @Test func theProgressGrowsWithTheTilesAndResetsWithTheChoices() async throws {
+    let s = state()
+    s.setImage(photo(1000, 1000), name: "a")
+    await s.prepare(confirmed: true, contribute: { _ in ["type": "ok"] }, registerPreset: { _ in nil })
+    #expect(s.tilesDone == 0 && s.previewProgress == nil)
+    _ = await s.sessionNext(Data(#"{"type":"session.next","index":1,"count":9}"#.utf8))
+    let tile = TestImages.write(TestImages.solid(1024, 1024, (9, 9, 9)), in: folder, name: "t.png")
+    _ = await s.sessionNext(
+      Data(#"{"type":"session.next","index":2,"count":9,"previous":{"path":"\#(tile.path)","width":1024,"height":1024}}"#.utf8))
+    #expect(s.tilesDone == 1)
+    #expect(s.previewProgress != nil)
+    s.overlap = .wide
+    #expect(s.tilesDone == 0 && s.previewProgress == nil)
+  }
+
+  @Test func changingTheLoRAStrengthKeepsThePreview() throws {
+    let s = state()
+    s.setImage(photo(1000, 1000), name: "a")
+    let base = try #require(s.previewBase)
+    s.loraWeight = 0.6
+    #expect(s.previewBase === base, "the strength does not change the picture: nothing is drawn again")
+    s.factor = 4
+    #expect(s.previewBase !== base)
+  }
 }

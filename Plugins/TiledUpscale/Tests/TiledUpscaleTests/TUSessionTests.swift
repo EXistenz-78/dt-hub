@@ -137,4 +137,25 @@ struct TUSessionTests {
     #expect(read.previous?.path == "/t/p.png" && read.previous?.width == 1024)
     #expect(TUMessages.parseNext(Data(#"{"type":"context"}"#.utf8)) == nil)
   }
+
+  @Test func thePreviewFillsAsTilesComeBack() throws {
+    let s = session()
+    let empty = try #require(s.previewImage())
+    #expect(empty.width == 1200 && empty.height == 960, "the picture's ratio, 1200 px on the long side")
+    #expect(TestImages.pixel(empty, 10, 10)[3] == 0, "nothing is shown before a tile is back")
+    #expect(s.completedTiles == 0)
+    _ = s.next(request(1))
+    _ = s.next(request(2, previous: previousFile("p1.png", 1024, 1024, (200, 0, 0))))
+    let first = try #require(s.previewImage())
+    #expect(s.completedTiles == 1)
+    #expect(TestImages.pixel(first, 100, 100) == [200, 0, 0, 255], "tile 1A is on, at full opacity")
+    #expect(TestImages.pixel(first, 1100, 100)[3] == 0, "tile 1B is not back yet")
+    _ = s.next(request(3, previous: previousFile("p2.png", 512, 1024, (0, 0, 200))))
+    let both = try #require(s.previewImage())
+    #expect(s.completedTiles == 2)
+    #expect(TestImages.pixel(both, 1100, 100) == [0, 0, 200, 255])
+    // The overlap (768…1024 → 720…960 in the preview) belongs to the later tile, as in the real picture.
+    #expect(TestImages.pixel(both, 800, 100) == [0, 0, 200, 255])
+    #expect(TestImages.pixel(both, 100, 100) == [200, 0, 0, 255])
+  }
 }

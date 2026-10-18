@@ -57,6 +57,15 @@ final class TUCanvas {
     }
   }
 
+  /// Draws `image` stretched into `rect` (top left origin, in pixels of this canvas), replacing what was there.
+  func draw(_ image: CGImage, in rect: CGRect) {
+    context.interpolationQuality = .high
+    context.setBlendMode(.copy)
+    context.draw(
+      image, in: CGRect(x: rect.minX, y: CGFloat(height) - rect.maxY, width: rect.width, height: rect.height))
+    context.setBlendMode(.normal)
+  }
+
   /// A copy of the part at `rect`.
   func crop(_ rect: TileRect) -> CGImage? {
     guard rect.width > 0, rect.height > 0, rect.x >= 0, rect.y >= 0, rect.x + rect.width <= width,
@@ -117,5 +126,44 @@ enum TUImage {
   /// The picture in a file, at its own size; nil when it cannot be read.
   static func load(_ url: URL) -> CGImage? {
     CGImageSourceCreateWithURL(url as CFURL, nil).flatMap { CGImageSourceCreateImageAtIndex($0, 0, nil) }
+  }
+}
+
+/// The small picture the tab shows while a job runs: the enlarged picture and the tiles that are back, at most `maxSide`
+/// pixels on the long side (the real picture can be 8192 px: it is never copied for the screen).
+enum TUPreview {
+  static let maxSide = 1200
+
+  /// How much a picture is reduced to fit `maxSide`; 1 when it already fits (it is never enlarged).
+  static func scale(width: Int, height: Int, maxSide: Int = maxSide) -> Double {
+    min(1, Double(maxSide) / Double(max(width, height, 1)))
+  }
+
+  static func size(width: Int, height: Int, maxSide: Int = maxSide) -> (width: Int, height: Int) {
+    let factor = scale(width: width, height: height, maxSide: maxSide)
+    return (max(1, Int((Double(width) * factor).rounded())), max(1, Int((Double(height) * factor).rounded())))
+  }
+
+  /// A tile's place in the small picture. The edges are rounded, not the sizes, so two tiles that touch in the real
+  /// picture touch in the small one, with no gap and no overlap of their own.
+  static func rect(of tile: TileRect, scale: Double) -> CGRect {
+    let x0 = (Double(tile.x) * scale).rounded()
+    let y0 = (Double(tile.y) * scale).rounded()
+    let x1 = (Double(tile.x + tile.width) * scale).rounded()
+    let y1 = (Double(tile.y + tile.height) * scale).rounded()
+    return CGRect(x: x0, y: y0, width: x1 - x0, height: y1 - y0)
+  }
+
+  /// The enlarged picture as it will be (enlarged, then cut as `size` says), reduced for the screen.
+  static func base(of source: CGImage, factor: Int, size: ScaledSize, maxSide: Int = maxSide) -> CGImage? {
+    let shown = Self.size(width: size.width, height: size.height, maxSide: maxSide)
+    guard let canvas = TUCanvas(width: shown.width, height: shown.height) else { return nil }
+    let s = Double(shown.width) / Double(size.width)
+    canvas.draw(
+      source,
+      in: CGRect(
+        x: -Double(size.cropLeft) * s, y: -Double(size.cropTop) * s, width: Double(source.width * factor) * s,
+        height: Double(source.height * factor) * s))
+    return canvas.image()
   }
 }

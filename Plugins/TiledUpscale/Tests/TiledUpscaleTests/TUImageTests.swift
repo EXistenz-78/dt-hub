@@ -95,4 +95,31 @@ struct TUImageTests {
     let back = try #require(decode(data))
     #expect(pixel(back, 5, 3) == pixel(original, 5, 3))
   }
+
+  @Test func previewScaleAndSizeKeepTheRatio() {
+    #expect(TUPreview.scale(width: 2400, height: 1200, maxSide: 1200) == 0.5)
+    #expect(TUPreview.scale(width: 800, height: 600, maxSide: 1200) == 1, "a small picture is not enlarged")
+    let size = TUPreview.size(width: 1280, height: 1024, maxSide: 1200)
+    #expect(size.width == 1200 && size.height == 960)
+  }
+
+  @Test func previewTileRectsMeetWithNoGap() {
+    // Two tiles that touch at x = 768: at any scale the first ends where the second starts.
+    for scale in [0.3, 0.5, 0.9375] {
+      let first = TUPreview.rect(of: TileRect(x: 0, y: 0, width: 768, height: 100), scale: scale)
+      let second = TUPreview.rect(of: TileRect(x: 768, y: 0, width: 512, height: 100), scale: scale)
+      #expect(first.maxX == second.minX)
+    }
+  }
+
+  @Test func previewBaseHasTheRatioOfTheFinalPictureAndTheCutApplied() throws {
+    // 100 × 50 at ×2 is 200 × 100; cut by 4 on the left and right it is 192 × 100; shown at most 96 px on a side.
+    let source = image(100, 50) { x, _ in (UInt8(x * 2), 0, 0) }
+    let size = ScaledSize(width: 192, height: 100, cropLeft: 4, cropTop: 0)
+    let base = try #require(TUPreview.base(of: source, factor: 2, size: size, maxSide: 96))
+    #expect(base.width == 96 && base.height == 50)
+    // The first column is enlarged column 4 (source ≈ 2) → red ≈ 4; the last is column 195 (source ≈ 97.5) → red ≈ 195.
+    #expect(Int(pixel(base, 0, 25)[0]) < 20)
+    #expect(Int(pixel(base, 95, 25)[0]) > 170)
+  }
 }

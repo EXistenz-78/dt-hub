@@ -26,14 +26,19 @@ struct TUSummary: Equatable, Sendable {
 /// The tab: the picture, the three choices, the summary, and the enlargement from the preparation to the saved file.
 @MainActor
 final class TUState: ObservableObject {
-  @Published var factor: Int { didSet { choiceChanged() } }
-  @Published var overlap: TileOverlap { didSet { choiceChanged() } }
-  @Published var loraWeight: Double { didSet { choiceChanged() } }
+  @Published var factor: Int { didSet { choiceChanged(changesPicture: true) } }
+  @Published var overlap: TileOverlap { didSet { choiceChanged(changesPicture: true) } }
+  @Published var loraWeight: Double { didSet { choiceChanged(changesPicture: false) } }
   @Published private(set) var image: CGImage?
   @Published private(set) var imageName = ""
   @Published private(set) var notice: String?
   @Published private(set) var isPrepared = false
   @Published private(set) var resultURL: URL?
+  /// The enlarged picture, small, for the preview; nil without a picture.
+  @Published private(set) var previewBase: CGImage?
+  /// The tiles that are back, small, over a transparent picture; nil before the first one.
+  @Published private(set) var previewProgress: CGImage?
+  @Published private(set) var tilesDone = 0
   /// True after Prepare was pressed on a big job: the next press confirms it.
   @Published private(set) var awaitingConfirmation = false
   @Published var active = false
@@ -75,6 +80,12 @@ final class TUState: ObservableObject {
     return TUSummary.make(sourceWidth: image.width, sourceHeight: image.height, factor: factor, overlap: overlap)
   }
 
+  /// The tiles of the picture as it is now, for the grid of the preview.
+  var plan: TilePlan? {
+    guard let summary else { return nil }
+    return TileGrid.plan(width: summary.width, height: summary.height, overlap: overlap)
+  }
+
   var canPrepare: Bool { preset != nil && image != nil && summary?.verdict != .refuse }
   var needsConfirmation: Bool { summary?.verdict == .warn }
 
@@ -98,6 +109,19 @@ final class TUState: ObservableObject {
     isPrepared = false
     awaitingConfirmation = false
     session = nil
+    resetPreview()
+  }
+
+  /// A new base for the preview (the picture or the enlargement changed) and no tiles back.
+  private func resetPreview() {
+    tilesDone = 0
+    previewProgress = nil
+    guard let image else {
+      previewBase = nil
+      return
+    }
+    let scaled = TileGrid.scaledSize(width: image.width, height: image.height, factor: factor)
+    previewBase = TUPreview.base(of: image, factor: factor, size: scaled)
   }
 
   func setImage(data: Data, name: String) {
@@ -118,10 +142,13 @@ final class TUState: ObservableObject {
 
   func dropHadNoPicture() { notice = text(.unreadableImage) }
 
-  private func choiceChanged() {
+  /// A choice changed: what was prepared is out of date. The preview is drawn again only when the picture it shows
+  /// changes (the enlargement, the overlap), not for the strength of the LoRA.
+  private func choiceChanged(changesPicture: Bool) {
     isPrepared = false
     awaitingConfirmation = false
     notice = nil
+    if changesPicture { resetPreview() }
     guard !loadingChoice else { return }
     store.save(TUChoice(factor: factor, overlap: overlap.rawValue, loraWeight: loraWeight))
   }
@@ -141,6 +168,7 @@ final class TUState: ObservableObject {
     resultURL = nil
     awaitingConfirmation = false
     session = nil
+    resetPreview()
   }
 
   func apply(context data: Data) {
@@ -192,6 +220,8 @@ final class TUState: ObservableObject {
       return
     }
     self.session = session
+    tilesDone = 0
+    previewProgress = nil
     resultURL = nil
     notice = text(.prepared)
     awaitingConfirmation = false
@@ -201,7 +231,13 @@ final class TUState: ObservableObject {
   /// The app asks for the next pass (`session.next`). The picture work runs off the main actor.
   func sessionNext(_ message: Data) async -> Data {
     guard let session, let request = TUMessages.parseNext(message) else { return TUMessages.done }
-    return await Task.detached(priority: .userInitiated) { session.next(request) }.value
+    let answer = await Task.detached(priority: .userInitiated) { session.next(request) }.value
+    // A result that came back is on the preview now.
+    if session.completedTiles != tilesDone {
+      tilesDone = session.completedTiles
+      previewProgress = session.previewImage()
+    }
+    return answer
   }
 
   /// The pipeline is over (`session.end`): a finished one is saved on the Desktop.

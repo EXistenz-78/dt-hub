@@ -87,16 +87,23 @@ struct TUView: View {
     .onDrop(of: [.image, .fileURL, .url], isTargeted: $dropTargeted, perform: drop)
   }
 
-  // MARK: Right: what the job will be
+  // MARK: Right: the picture and the tiles
 
   private var summaryPanel: some View {
     VStack(spacing: 0) {
       DSPanelHeader(icon: "square.grid.3x3", title: "Tiled Upscale")
       VStack(alignment: .leading, spacing: DS.rowGap) {
         if let summary = state.summary {
+          preview(summary)
           Text(verbatim: state.format(.finalSize, summary.width, summary.height)).font(.title3)
-          Text(verbatim: state.format(.tiles, summary.columns, summary.rows)).foregroundStyle(.secondary)
-          Text(verbatim: state.format(.passes, summary.passes)).foregroundStyle(.secondary)
+          HStack(spacing: DS.groupGap) {
+            Text(verbatim: state.format(.tiles, summary.columns, summary.rows)).foregroundStyle(.secondary)
+            Text(verbatim: state.format(.passes, summary.passes)).foregroundStyle(.secondary)
+          }
+          if state.tilesDone > 0 {
+            Text(verbatim: state.format(.tilesDone, state.tilesDone, summary.passes)).font(.callout.monospacedDigit())
+              .foregroundStyle(DS.accent)
+          }
           if summary.cropped {
             Text(state.text(.croppedNote)).font(.caption).foregroundStyle(.secondary)
           }
@@ -119,6 +126,35 @@ struct TUView: View {
       .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
     .dsPanel()
+  }
+
+  /// The enlarged picture, faded, with the grid of the tiles on it; the tiles that are back are drawn over both, at full
+  /// opacity, so they hide the grid and a join that is not clean is not masked by a line.
+  private func preview(_ summary: TUSummary) -> some View {
+    ZStack {
+      RoundedRectangle(cornerRadius: DS.boxRadius, style: .continuous).fill(Color.primary.opacity(0.06))
+      if let base = state.previewBase {
+        Image(nsImage: NSImage(cgImage: base, size: .zero)).resizable().interpolation(.high).opacity(0.35)
+      }
+      if let plan = state.plan {
+        Canvas { context, size in
+          let scaleX = size.width / CGFloat(plan.width)
+          let scaleY = size.height / CGFloat(plan.height)
+          for tile in plan.tiles {
+            let rect = CGRect(
+              x: CGFloat(tile.rect.x) * scaleX, y: CGFloat(tile.rect.y) * scaleY,
+              width: CGFloat(tile.rect.width) * scaleX, height: CGFloat(tile.rect.height) * scaleY)
+            context.stroke(Path(rect), with: .color(DS.accent.opacity(0.85)), lineWidth: 1)
+          }
+        }
+      }
+      if let progress = state.previewProgress {
+        Image(nsImage: NSImage(cgImage: progress, size: .zero)).resizable().interpolation(.high)
+      }
+    }
+    .aspectRatio(CGFloat(summary.width) / CGFloat(summary.height), contentMode: .fit)
+    .clipShape(RoundedRectangle(cornerRadius: DS.boxRadius, style: .continuous))
+    .frame(maxWidth: .infinity, maxHeight: 420)
   }
 
   // MARK: Getting a picture
