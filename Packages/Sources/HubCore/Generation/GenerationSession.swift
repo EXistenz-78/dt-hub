@@ -278,18 +278,19 @@ public final class GenerationSession {
   }
 
   /// Keeps a finished picture a plug-in made as a result: read from its file, saved in the store (the project's folder, with
-  /// the metadata of `job`) and put first in the strip. False when the file cannot be read.
-  public func adopt(fileAt url: URL, job: GenerationJob) async -> Bool {
+  /// the metadata of `job` and the `elapsed` seconds the whole job took) and put first in the strip. False when the file
+  /// cannot be read.
+  public func adopt(fileAt url: URL, job: GenerationJob, elapsed: TimeInterval? = nil) async -> Bool {
     let store = store
     let adopted: GeneratedImage? = await Task.detached(priority: .userInitiated) {
       guard let image = PNGImageStore.image(at: url, maxPixel: 16_384) else { return nil }
       let date = Date()
       let shown = Self.reduced(image, to: Self.displayPixels)
       do {
-        let saved = try store.save(image, job: job, index: 0, date: date, elapsed: nil)
-        return GeneratedImage(image: shown, job: job, date: date, fileURL: saved, saveError: nil, elapsed: nil)
+        let saved = try store.save(image, job: job, index: 0, date: date, elapsed: elapsed)
+        return GeneratedImage(image: shown, job: job, date: date, fileURL: saved, saveError: nil, elapsed: elapsed)
       } catch {
-        return GeneratedImage(image: image, job: job, date: date, fileURL: nil, saveError: String(describing: error), elapsed: nil)
+        return GeneratedImage(image: image, job: job, date: date, fileURL: nil, saveError: String(describing: error), elapsed: elapsed)
       }
     }.value
     guard let adopted else { return false }
