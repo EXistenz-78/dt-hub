@@ -76,6 +76,11 @@ enum ContributionText {
     }
     let pluginID = contribution.pluginID ?? ""
     let plugin = plugins.entries.first { $0.id == pluginID }?.name ?? pluginID
+    // A pipeline the plug-in guides has no list: its name and the passes it declared.
+    if contribution.pipeline.guided != nil {
+      let head = plugin + (contribution.pipeline.name.isEmpty ? "" : " · " + contribution.pipeline.name)
+      return [head, passes(contribution.pipeline.passCount)].joined(separator: "\n")
+    }
     let list = contribution.pipeline.steps.enumerated().map { index, step in
       var line = "\(index + 1). " + (step.title.isEmpty ? String(format: String(localized: "contribution.pass"), index + 1) : step.title)
       if !step.preset.isEmpty { line += " — " + step.preset }
