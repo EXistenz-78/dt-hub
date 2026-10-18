@@ -9,6 +9,13 @@ public protocol LoadedPlugin: AnyObject {
   var viewController: AnyObject { get }
   /// App → plug-in. nil when the plug-in did not answer in time.
   func send(_ message: Data) async -> Data?
+  /// Like `send`, waiting up to `timeout` for the answer (a plug-in that guides a pipeline may need seconds to prepare a pass).
+  func send(_ message: Data, timeout: Duration) async -> Data?
+}
+
+extension LoadedPlugin {
+  /// A plug-in that has no timeout of its own is asked as usual.
+  public func send(_ message: Data, timeout: Duration) async -> Data? { await send(message) }
 }
 
 /// What a plug-in calls into: the app side of the message channel.

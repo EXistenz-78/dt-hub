@@ -209,8 +209,8 @@ public final class ContributionStore {
       } else if let held = pipeline, let owner = held.pluginID, owner != pluginID {
         // Only another plug-in's pipeline is a conflict: the user's own is replaced (the user pressed the plug-in's button).
         addConflict(
-          subject: .pipeline, current: .init(pluginID: owner, content: .passes(held.pipeline.steps.count)),
-          proposed: .init(pluginID: pluginID, content: .passes(proposed.steps.count)), payload: .pipeline(proposed))
+          subject: .pipeline, current: .init(pluginID: owner, content: .passes(held.pipeline.passCount)),
+          proposed: .init(pluginID: pluginID, content: .passes(proposed.passCount)), payload: .pipeline(proposed))
       } else {
         pipeline = PipelineContribution(pluginID: pluginID, pipeline: proposed)
       }

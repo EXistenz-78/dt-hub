@@ -11,11 +11,14 @@ final class FakeLoadedPlugin: LoadedPlugin {
   private(set) var sent: [Data] = []
   /// What the plug-in answers (a plug-in that does not know a message answers `unsupported`).
   var answer = PluginMessageType.bare(PluginMessageType.ok)
+  /// How long the plug-in takes to answer.
+  var delay: Duration = .zero
 
   init(manifest: PluginManifest) { self.manifest = manifest }
 
   func send(_ message: Data) async -> Data? {
     sent.append(message)
+    if delay > .zero { try? await Task.sleep(for: delay) }
     return answer
   }
 
