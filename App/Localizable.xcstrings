@@ -5186,6 +5186,74 @@
         }
       }
     },
+    "prefs.folder.denied": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DT Hub does not have permission to read this folder."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DT Hub non ha il permesso di leggere questa cartella."
+          }
+        }
+      }
+    },
+    "prefs.privacy.open": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Privacy & Security"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apri Privacy e sicurezza"
+          }
+        }
+      }
+    },
+    "prefs.llm.folder.missing": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The folder does not exist: it will be created at the first download."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La cartella non esiste: verrà creata al primo scaricamento."
+          }
+        }
+      }
+    },
+    "llm.download.noWritePermission": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DT Hub cannot write to %@. Choose another models folder, or allow access in Privacy & Security."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DT Hub non può scrivere in %@. Scegli un'altra cartella dei modelli, oppure consenti l'accesso in Privacy e sicurezza."
+          }
+        }
+      }
+    },
     "prefs.llm.noModels": {
       "extractionState": "manual",
       "localizations": {

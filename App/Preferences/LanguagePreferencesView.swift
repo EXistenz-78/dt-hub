@@ -14,6 +14,7 @@ struct LanguagePreferencesView: View {
   let connection: DrawThingsConnection
 
   @State private var models: [LanguageModelDescriptor] = []
+  @State private var folderAccess: FolderAccess = .readable
   @State private var confirmingDownload = false
   /// A sample question, so the test can be tried at once.
   @State private var question = String(localized: "prefs.llm.test.sample")
@@ -61,10 +62,21 @@ struct LanguagePreferencesView: View {
         TextField("prefs.llm.folder", text: $manager.settings.folder)
           .onSubmit(refresh)
         Button("prefs.server.choose", action: chooseFolder)
+        Button("prefs.output.reveal", action: revealFolder)
       }
       if models.isEmpty {
-        Text(String(format: String(localized: "prefs.llm.noModels"), manager.settings.folder))
-          .foregroundStyle(.secondary)
+        switch folderAccess {
+        case .missing:
+          Text("prefs.llm.folder.missing")
+            .foregroundStyle(.secondary)
+        case .denied:
+          Text("prefs.folder.denied")
+            .foregroundStyle(DS.remove)
+          PrivacySettingsLink()
+        case .readable:
+          Text(String(format: String(localized: "prefs.llm.noModels"), manager.settings.folder))
+            .foregroundStyle(.secondary)
+        }
       } else {
         ForEach(models) { model in
           modelRow(model)
@@ -152,9 +164,16 @@ struct LanguagePreferencesView: View {
       }
     }
     if let failure = download.failure {
-      Text(String(format: String(localized: "prefs.llm.download.error"), LanguageModelErrorText.message(failure)))
-        .foregroundStyle(DS.remove)
-        .font(.caption)
+      if case .folderNotWritable = failure {
+        Text(String(format: String(localized: "llm.download.noWritePermission"), manager.settings.folder))
+          .foregroundStyle(DS.remove)
+          .font(.caption)
+        PrivacySettingsLink()
+      } else {
+        Text(String(format: String(localized: "prefs.llm.download.error"), LanguageModelErrorText.message(failure)))
+          .foregroundStyle(DS.remove)
+          .font(.caption)
+      }
     }
   }
 
@@ -167,6 +186,14 @@ struct LanguagePreferencesView: View {
   private func refresh() {
     manager.reconcileAssignments()
     models = manager.availableModels()
+    folderAccess = FolderAccess.access(of: manager.settings.folder)
+  }
+
+  /// Creates the models folder if needed and shows it in the Finder.
+  private func revealFolder() {
+    try? FileManager.default.createDirectory(at: folderURL, withIntermediateDirectories: true)
+    NSWorkspace.shared.open(folderURL)
+    refresh()
   }
 
   private func chooseFolder() {
@@ -321,6 +348,7 @@ enum LanguageModelErrorText {
     case .loadFailed(let detail): return String(format: String(localized: "llm.error.load"), detail)
     case .generationFailed(let detail): return String(format: String(localized: "llm.error.generation"), detail)
     case .downloadFailed(let detail): return detail
+    case .folderNotWritable(let path): return String(format: String(localized: "llm.download.noWritePermission"), path)
     }
   }
 }
