@@ -94,4 +94,14 @@ struct GuidedPipelineContractTests {
     #expect(json["type"] as? String == "session.end")
     #expect(json["reason"] as? String == "stopped")
   }
+
+  @Test func readsAResultWithItsDescription() throws {
+    let read = try #require(
+      contribution(#"{"result":{"path":"/t/r.png","name":"Tiled Upscale 001","description":"Tiled Upscale 2× · 9 tile"}}"#))
+    #expect(read.result == PluginResult(image: PluginImageRef(name: "Tiled Upscale 001", path: "/t/r.png"), description: "Tiled Upscale 2× · 9 tile"))
+    #expect(!read.isEmpty)
+    let bare = try #require(contribution(#"{"result":{"path":"/t/r.png"}}"#))
+    #expect(bare.result?.description == "" && bare.result?.image.name == "r.png")
+    #expect(contribution(#"{"result":{"name":"x"}}"#)?.result == nil, "no path, no result")
+  }
 }

@@ -113,6 +113,18 @@ public struct PipelineStep: Equatable, Sendable {
   }
 }
 
+/// A finished picture a plug-in made (a composed enlargement): the app keeps it as a result, in the project's folder and in
+/// the Results strip. `description` takes the place of the prompt in the Results window's side panel.
+public struct PluginResult: Equatable, Sendable {
+  public var image: PluginImageRef
+  public var description: String
+
+  public init(image: PluginImageRef, description: String = "") {
+    self.image = image
+    self.description = description
+  }
+}
+
 /// A list of passes that RUN executes one after the other.
 public struct PluginPipeline: Equatable, Sendable {
   public var name: String
@@ -154,12 +166,15 @@ public struct PluginContribution: Equatable, Sendable {
   public var strength: Double?
   /// A drawing (a PNG with transparency) that becomes the Brush layer of the Control tab, over the start image.
   public var paint: PluginImageRef?
+  /// A finished picture to keep as a result (a PNG in the plug-in's folder).
+  public var result: PluginResult?
 
   public init(
     fields: FieldOverlay = FieldOverlay(), loras: [LoRASelection] = [], moodboard: [PluginImageRef] = [],
     startImage: PluginImageRef? = nil, pipeline: PluginPipeline? = nil, strength: Double? = nil,
-    paint: PluginImageRef? = nil
+    paint: PluginImageRef? = nil, result: PluginResult? = nil
   ) {
+    self.result = result
     self.strength = strength
     self.paint = paint
     self.fields = fields
@@ -197,7 +212,15 @@ public struct PluginContribution: Equatable, Sendable {
     self.init(
       fields: fields, loras: Self.loras(object["loras"]) ?? [], moodboard: Self.images(object["moodboard"]) ?? [],
       startImage: PluginImageRef(object["startImage"]), pipeline: pipeline, strength: Self.strength(object["strength"]),
-      paint: PluginImageRef(object["paint"]))
+      paint: PluginImageRef(object["paint"]), result: Self.result(object["result"]))
+  }
+
+  /// `{"path","name","description"}`; nothing without a path.
+  static func result(_ value: JSONValue?) -> PluginResult? {
+    guard let image = PluginImageRef(value), case .object(let object)? = value else { return nil }
+    var description = ""
+    if case .string(let text)? = object["description"] { description = text }
+    return PluginResult(image: image, description: description)
   }
 
   /// A whole number (an integer or a double with no fraction); anything else is nothing.
@@ -221,7 +244,7 @@ public struct PluginContribution: Equatable, Sendable {
   /// True when the message carries nothing the app can use.
   public var isEmpty: Bool {
     fields.isEmpty && loras.isEmpty && moodboard.isEmpty && startImage == nil && pipeline == nil && strength == nil
-      && paint == nil
+      && paint == nil && result == nil
   }
 
   static func loras(_ value: JSONValue?) -> [LoRASelection]? {
