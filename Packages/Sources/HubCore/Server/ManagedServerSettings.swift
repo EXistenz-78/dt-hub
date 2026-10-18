@@ -14,14 +14,18 @@ public struct FileSystemProbe: Sendable {
   public var isDirectory: @Sendable (String) -> Bool
   /// Whether the folder holds at least one model file (`.ckpt`, Draw Things' format).
   public var hasModelFiles: @Sendable (String) -> Bool
+  /// Whether macOS lets DT Hub read the folder: a folder without permission looks empty to `hasModelFiles`.
+  public var folderAccess: @Sendable (String) -> FolderAccess
 
   public init(
     isExecutableFile: @escaping @Sendable (String) -> Bool, isDirectory: @escaping @Sendable (String) -> Bool,
-    hasModelFiles: @escaping @Sendable (String) -> Bool = { _ in true }
+    hasModelFiles: @escaping @Sendable (String) -> Bool = { _ in true },
+    folderAccess: @escaping @Sendable (String) -> FolderAccess = { _ in .readable }
   ) {
     self.isExecutableFile = isExecutableFile
     self.isDirectory = isDirectory
     self.hasModelFiles = hasModelFiles
+    self.folderAccess = folderAccess
   }
 
   public static let live = FileSystemProbe(
@@ -33,7 +37,8 @@ public struct FileSystemProbe: Sendable {
     hasModelFiles: { folder in
       let names = (try? FileManager.default.contentsOfDirectory(atPath: folder)) ?? []
       return names.contains { $0.hasSuffix(".ckpt") }
-    })
+    },
+    folderAccess: { FolderAccess.access(of: $0) })
 }
 
 /// The gRPCServerCLI DT Hub starts (spec §5, "Avvia gRPCServerCLI"): where the program is, the
@@ -93,12 +98,16 @@ public struct ManagedServerSettings: Equatable, Codable, Sendable {
     /// The folder exists but holds no `.ckpt` file: the server would list no models. The
     /// Draw Things app may keep its models elsewhere (an external disk, for instance).
     case noModelFiles
+    /// The folder exists but macOS does not let DT Hub read it, so it only looks empty.
+    case modelsFolderDenied
   }
 
   /// Something worth saying about settings that can be used, or nil.
   public func warning(_ files: FileSystemProbe = .live) -> Warning? {
     guard validationError(files) == nil else { return nil }
-    return files.hasModelFiles(modelsFolder.trimmingCharacters(in: .whitespacesAndNewlines)) ? nil : .noModelFiles
+    let folder = modelsFolder.trimmingCharacters(in: .whitespacesAndNewlines)
+    if files.folderAccess(folder) == .denied { return .modelsFolderDenied }
+    return files.hasModelFiles(folder) ? nil : .noModelFiles
   }
 
   /// Lenient: a missing or unreadable field takes its default.
