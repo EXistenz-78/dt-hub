@@ -33,7 +33,8 @@ final class TUState: ObservableObject {
   @Published private(set) var imageName = ""
   @Published private(set) var notice: String?
   @Published private(set) var isPrepared = false
-  @Published private(set) var resultURL: URL?
+  /// True when the enlarged picture was handed to the app as a result and is waiting there for the user.
+  @Published private(set) var resultReady = false
   /// The enlarged picture, small, for the preview; nil without a picture.
   @Published private(set) var previewBase: CGImage?
   /// The tiles that are back, small, over a transparent picture; nil before the first one.
@@ -48,8 +49,8 @@ final class TUState: ObservableObject {
   var tempFolder: String?
   /// The trigger word of each LoRA of the server, by file (`context.loraCatalog`).
   var loraTriggers: [String: String] = [:]
-  /// Where the enlarged picture is saved.
-  var desktopFolder: URL = TUDesktopSaver.desktopFolder
+  /// Sends a `contribute` message to the app (the plug-in gives it at start; a test gives its own).
+  var contribute: (([String: Any]) async -> [String: Any]?)?
 
   private var store: TUStore
   private let italian: Bool
@@ -165,7 +166,7 @@ final class TUState: ObservableObject {
     imageName = ""
     notice = nil
     isPrepared = false
-    resultURL = nil
+    resultReady = false
     awaitingConfirmation = false
     session = nil
     resetPreview()
@@ -222,7 +223,7 @@ final class TUState: ObservableObject {
     self.session = session
     tilesDone = 0
     previewProgress = nil
-    resultURL = nil
+    resultReady = false
     notice = text(.prepared)
     awaitingConfirmation = false
     isPrepared = true
@@ -252,20 +253,39 @@ final class TUState: ObservableObject {
       if let problem {
         notice = format(.failed, problem)
       } else if let composed, let png = TUImage.pngData(composed) {
-        do {
-          let url = try TUDesktopSaver.save(png, in: desktopFolder)
-          resultURL = url
-          notice = format(.savedOnDesktop, url.lastPathComponent)
-          if let tempFolder {
-            try? png.write(to: URL(fileURLWithPath: tempFolder).appendingPathComponent("tiled-upscale-result.png"))
-          }
-        } catch {
-          notice = format(.saveFailed, error.localizedDescription)
-        }
+        await handOver(png)
       }
     case "stopped": notice = text(.stopped)
     case "closed": notice = text(.closed)
     default: notice = format(.failed, problem ?? reason)
+    }
+  }
+
+  /// The composed picture goes to the app as a result: written in the plug-in's folder and described by its enlargement,
+  /// tiles and LoRA strength. The app keeps it in the project's folder and in the Results strip.
+  private func handOver(_ png: Data) async {
+    guard let tempFolder, let summary else {
+      notice = text(.noFolder)
+      return
+    }
+    let url = URL(fileURLWithPath: tempFolder).appendingPathComponent("tiled-upscale-result.png")
+    do {
+      try png.write(to: url)
+    } catch {
+      notice = format(.resultNotAdded, error.localizedDescription)
+      return
+    }
+    let description = format(.resultDescription, factor, summary.columns, summary.rows, loraWeight)
+    let message: [String: Any] = ["result": ["path": url.path, "name": "Tiled Upscale", "description": description]]
+    guard let answer = await contribute?(message) else {
+      notice = text(.notAnswered)
+      return
+    }
+    if let problems = answer["problems"] as? [String], let first = problems.first {
+      notice = format(.resultNotAdded, first)
+    } else {
+      resultReady = true
+      notice = text(.addedToResults)
     }
   }
 
@@ -277,7 +297,7 @@ final class TUState: ObservableObject {
     }
     let path = URL(fileURLWithPath: tempFolder).appendingPathComponent("tiled-upscale-result.png").path
     guard FileManager.default.fileExists(atPath: path) else { return }
-    let name = resultURL?.lastPathComponent ?? "Tiled Upscale"
+    let name = "Tiled Upscale"
     if await contribute(["startImage": ["path": path, "name": name]]) == nil { notice = text(.notAnswered) }
   }
 }

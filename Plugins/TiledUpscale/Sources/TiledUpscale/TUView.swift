@@ -111,8 +111,7 @@ struct TUView: View {
           Text(state.text(.resultPlaceholder)).font(.callout).foregroundStyle(.secondary)
         }
         Text(state.text(.tileRegenerated)).font(.caption).foregroundStyle(.secondary)
-        Spacer(minLength: 0)
-        if state.resultURL != nil {
+        if state.resultReady {
           Button(action: actions.useAsStart) {
             HStack(spacing: DS.pillIconGap) {
               Image(systemName: "photo.on.rectangle")
@@ -154,7 +153,8 @@ struct TUView: View {
     }
     .aspectRatio(CGFloat(summary.width) / CGFloat(summary.height), contentMode: .fit)
     .clipShape(RoundedRectangle(cornerRadius: DS.boxRadius, style: .continuous))
-    .frame(maxWidth: .infinity, maxHeight: 420)
+    // It takes all the room the window gives (the picture is fitted in it, centered), no more fixed height.
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
   }
 
   // MARK: Getting a picture
