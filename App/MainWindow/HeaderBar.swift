@@ -243,7 +243,7 @@ struct HeaderBar: View {
             .font(.system(size: 14, weight: .semibold))
             .accessibilityHidden(true)
           if let pipeline {
-            Text(verbatim: ContributionText.runTitle(passes: pipeline.pipeline.steps.count))
+            Text(verbatim: ContributionText.runTitle(passes: pipeline.pipeline.passCount))
           } else {
             Text("header.run")
           }

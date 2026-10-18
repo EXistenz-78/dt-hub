@@ -59,6 +59,9 @@ struct DTHubApp: App {
       tempFolder: FileManager.default.temporaryDirectory.appendingPathComponent("DTHub-plugins", isDirectory: true))
     // Contributions land on the Generation tab; a plug-in's question goes to the language model.
     generation.attach(plugins.contributions)
+    generation.guidedChannel = GuidedPluginChannel(
+      request: { await plugins.request($0, to: $1, timeout: $2) }, sessionFolder: { plugins.sessionFolder() },
+      removeSessionFolder: { plugins.removeSessionFolder($0) })
     plugins.presetStore = generation.presets
     plugins.askLanguageModel = { prompt, images, options, name, history in
       try await languageModel.respond(
