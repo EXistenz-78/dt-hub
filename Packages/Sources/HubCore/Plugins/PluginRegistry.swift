@@ -342,8 +342,13 @@ public final class PluginRegistry: PluginHosting {
     return url
   }
 
-  /// Deletes a session folder; anything that is not inside the temp folder is left alone.
+  /// For looking at the pictures of the passes (the tiles of an enlargement): the session folders are not deleted. The app sets
+  /// it from the `debug.keepGuidedSessionFiles` default; they are in the plug-ins' temp folder as `session-<UUID>`.
+  @ObservationIgnored public var keepsSessionFolders = false
+
+  /// Deletes a session folder (unless `keepsSessionFolders`); anything that is not inside the temp folder is left alone.
   public func removeSessionFolder(_ url: URL) {
+    guard !keepsSessionFolders else { return }
     let root = tempFolder.standardizedFileURL.path + "/"
     guard url.standardizedFileURL.path.hasPrefix(root) else { return }
     try? FileManager.default.removeItem(at: url)

@@ -61,4 +61,16 @@ struct PluginRegistrySessionTests {
     #expect(FileManager.default.fileExists(atPath: outside.path))
     try? FileManager.default.removeItem(at: outside)
   }
+
+  @Test func sessionFoldersCanBeKeptToLookAtTheTiles() throws {
+    let registry = try started(FakeLoader())
+    registry.keepsSessionFolders = true
+    let folder = registry.sessionFolder()
+    try Data("tile".utf8).write(to: folder.appendingPathComponent("pass-1.png"))
+    registry.removeSessionFolder(folder)
+    #expect(FileManager.default.fileExists(atPath: folder.appendingPathComponent("pass-1.png").path))
+    registry.keepsSessionFolders = false
+    registry.removeSessionFolder(folder)
+    #expect(!FileManager.default.fileExists(atPath: folder.path), "back to the normal clean-up")
+  }
 }
