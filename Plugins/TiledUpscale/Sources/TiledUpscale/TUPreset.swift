@@ -29,6 +29,9 @@ enum TUPresetTable {
   static let maskBlur = 30.0
   static let maskOutset = 30
 
+  /// The strength a LoRA can have, as in the app's LoRA card (Draw Things accepts −1,5…2,5).
+  static let loraWeightRange = -1.5...2.5
+
   /// The preset for the family the header's model belongs to (`DTHubContext.family`); nil when the plug-in does not know it.
   static func preset(forFamily family: String?) -> TUPreset? {
     switch family {
