@@ -17,6 +17,11 @@ final class TUSession: @unchecked Sendable {
   private let preset: TUPreset
   private let tempFolder: URL
   private var canvas: TUCanvas?
+  /// The small picture of the tiles that are back (spec of the preview): see `previewImage()`.
+  private var previewCanvas: TUCanvas?
+  private let previewScale: Double
+  /// How many tiles are back and composed.
+  private(set) var completedTiles = 0
   private var nextTile = 0
   private var current: Tile?
 
@@ -28,6 +33,9 @@ final class TUSession: @unchecked Sendable {
     self.factor = factor
     self.scaled = TileGrid.scaledSize(width: source.width, height: source.height, factor: factor)
     self.plan = TileGrid.plan(width: scaled.width, height: scaled.height, overlap: overlap)
+    let shown = TUPreview.size(width: scaled.width, height: scaled.height)
+    self.previewScale = Double(shown.width) / Double(scaled.width)
+    self.previewCanvas = TUCanvas(width: shown.width, height: shown.height)
     self.loraWeight = loraWeight
     self.trigger = trigger
     self.preset = preset
@@ -51,6 +59,8 @@ final class TUSession: @unchecked Sendable {
         return TUMessages.done
       }
       canvas.paste(result, at: tile.rect)
+      previewCanvas?.draw(result, in: TUPreview.rect(of: tile.rect, scale: previewScale))
+      completedTiles += 1
     }
     current = nil
     guard nextTile < plan.count else { return TUMessages.done }
@@ -88,6 +98,10 @@ final class TUSession: @unchecked Sendable {
     }
     return (try? JSONSerialization.data(withJSONObject: answer)) ?? TUMessages.done
   }
+
+  /// The tiles that are back, at full opacity and in their places, on a transparent picture of the final ratio (at most
+  /// 1200 px on the long side); where a tile is not back yet it is transparent.
+  func previewImage() -> CGImage? { previewCanvas?.image() }
 
   /// The session is over. The composed picture when it finished with no problem, else nil.
   func end(_ reason: String) -> CGImage? {

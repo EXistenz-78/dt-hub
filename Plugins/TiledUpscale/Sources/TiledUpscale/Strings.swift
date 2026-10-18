@@ -7,7 +7,7 @@ enum L {
     case dropHere, open, image, enlargement, overlap, loraStrength
     case prepare, prepared, finalSize, tiles, passes, croppedNote
     case unsupportedModel, tooBig, bigJob, notAnswered, unreadableImage, noFolder
-    case savedOnDesktop, saveFailed, useAsStart, stopped, failed, closed, resultPlaceholder, tileRegenerated
+    case savedOnDesktop, saveFailed, useAsStart, stopped, failed, closed, resultPlaceholder, tileRegenerated, tilesDone
   }
 
   static var systemIsItalian: Bool {
@@ -43,6 +43,7 @@ enum L {
     .failed: "The enlargement failed: %@", .closed: "The enlargement was closed.",
     .resultPlaceholder: "The enlarged picture is saved on the Desktop when it is done.",
     .tileRegenerated: "Each tile is regenerated with the LoRA, with the join kept by a mask.",
+    .tilesDone: "%d of %d tiles done",
   ]
 
   private static let it: [Key: String] = [
@@ -61,5 +62,6 @@ enum L {
     .failed: "L'ingrandimento non è riuscito: %@", .closed: "L'ingrandimento è stato chiuso.",
     .resultPlaceholder: "L'immagine ingrandita viene salvata sulla Scrivania a lavoro finito.",
     .tileRegenerated: "Ogni tile viene rigenerato con il LoRA, e una maschera mantiene la giunzione.",
+    .tilesDone: "%d di %d tile completati",
   ]
 }

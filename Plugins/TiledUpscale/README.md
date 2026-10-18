@@ -9,6 +9,7 @@ A plug-in for DT Hub that enlarges a picture **2×, 4× or 8×** and gives it ne
 1. Drop or open a picture, choose the enlargement and the overlap (256 px, or 320 px for a wider join) and the strength of the LoRA.
 2. The tab shows the final size, the tiles and the **number of passes**. Press **Prepare** (a very big job asks for a second press): the plug-in registers its preset and proposes a pipeline.
 3. Press **RUN** in DT Hub. The app asks the plug-in for each pass in turn; DT Hub shows "Pass k of N", Stop ends the job, and no other pipeline or RUN can start meanwhile.
+   While it runs the tab shows the **preview**: the enlarged picture faded, with the grid of the tiles on it; each tile that comes back is drawn over it at full opacity, covering the grid, so a join that is not clean shows instead of being masked by a line. The preview is small (1200 px on the long side): the real picture is never copied for the screen.
 4. When the last tile is back the picture is saved on your **Desktop** as `Tiled Upscale 001.png` (the first free number, never overwriting), and *Use as start image* sends it to the Control tab. The pictures of the single passes are not results: they do not go to the Results strip or to the project's folder.
 
 ## Multiples of 64
@@ -29,7 +30,7 @@ The first tile has no mask. Every other tile is regenerated everywhere but in th
 ## Files
 
 - `TileGrid.swift`: the geometry (enlarged size, tiles, masks). The constants 1024, 256, 320 and 25/32 live in one place.
-- `TUImage.swift`: the picture work (a canvas that cuts tiles out and puts them back row by row, so no pixel moves).
+- `TUImage.swift`: the picture work (a canvas that cuts tiles out and puts them back row by row, so no pixel moves) and `TUPreview` (the small picture of the tab).
 - `TUSession.swift`: one enlargement, from `session.next` to the composed picture.
 - `TUPreset.swift`: the preset and the prompt (the LoRA's trigger word + ` ALSO PRESERVE COLORS AND LUMINOSITY`).
 - `TUState.swift`, `TUView.swift`, `TiledUpscalePlugin.swift`: the tab and the plug-in.
