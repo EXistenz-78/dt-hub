@@ -143,7 +143,7 @@ struct TUStateTests {
     let path = try #require(result["path"] as? String)
     #expect(TUImage.load(URL(fileURLWithPath: path))?.width == 1024, "the composed picture, in the plug-in's folder")
     #expect(path.hasPrefix(folder.path))
-    #expect(result["description"] as? String == "Tiled Upscale Lab 2× · 1×1 tiles · LoRA 1.00 · free 200 · blur 30 · margin 30 · fade 48")
+    #expect(result["description"] as? String == "Tiled Upscale Lab 2× · 1×1 tiles · LoRA 1.00 · tile 1024 · free 200 · blur 30 · margin 30 · fade 48")
     #expect(result["name"] as? String == "Tiled Upscale Lab")
     #expect(s.resultReady && !s.isPrepared)
     #expect(s.status == TUState.text(.addedToResults, italian: false))
@@ -210,5 +210,32 @@ struct TUStateTests {
       try Data(#"{"factor":2,"overlap":256,"loraWeight":\#(saved)}"#.utf8).write(to: one.appendingPathComponent("state.json"))
       #expect(TUStore(folder: one).load().loraWeight == expected, "saved \(saved)")
     }
+  }
+
+  @Test func theEstimateIsTheSizeOfTheBiggestTile() async throws {
+    let s = state()
+    s.setImage(photo(1200, 1200), name: "big")
+    s.factor = 4
+    s.tileSize = 1536
+    var sent: [String: Any] = [:]
+    await s.prepare(confirmed: true, contribute: { sent = $0; return ["type": "ok"] }, registerPreset: { _ in nil })
+    let pipeline = try #require(sent["pipeline"] as? [String: Any])
+    let size = try #require((pipeline["estimate"] as? [String: Any])?["size"] as? [String: Int])
+    #expect(size["width"] == 1536 && size["height"] == 1536)
+    #expect(pipeline["passes"] as? Int == s.summary?.passes)
+  }
+
+  @Test func theSummarySaysHowManyPixelsTheModelWillMake() {
+    // 3968 × 3968: with 1024 tiles the sides are 4 × 1024 + 896 = 4992 long in total (overlaps count twice), 25 tiles.
+    let small = TUSummary.make(sourceWidth: 1000, sourceHeight: 1000, factor: 4, overlap: .standard, tile: 1024)
+    #expect(small.passes == 25)
+    #expect(abs(small.generatedMegapixels - 4992.0 * 4992.0 / 1_000_000) < 0.001)
+    // 3968 with a 1536 tile: sides of 1536 + 1536 + 1408; with a 2048 one: 2048 + 2048 + 384. Both come to 4480, 9 tiles.
+    let mid = TUSummary.make(sourceWidth: 1000, sourceHeight: 1000, factor: 4, overlap: .standard, tile: 1536)
+    let big = TUSummary.make(sourceWidth: 1000, sourceHeight: 1000, factor: 4, overlap: .standard, tile: 2048)
+    #expect(mid.passes == 9 && big.passes == 9)
+    #expect(abs(mid.generatedMegapixels - 4480.0 * 4480.0 / 1_000_000) < 0.001)
+    #expect(abs(big.generatedMegapixels - mid.generatedMegapixels) < 0.001, "the same pixels in all, in bigger tiles")
+    #expect(mid.generatedMegapixels < small.generatedMegapixels)
   }
 }

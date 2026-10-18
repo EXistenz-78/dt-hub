@@ -42,6 +42,8 @@ struct TUView: View {
         ForEach(TileOverlap.allCases, id: \.self) { Text(verbatim: "\($0.rawValue) px").tag($0) }
       }
       .pickerStyle(.segmented).labelsHidden()
+      sliderRow(state.text(.tileSize), value: Binding(get: { Double(state.tileSize) }, set: { state.tileSize = Int($0.rounded()) }),
+        range: Double(TUSettings.tileRange.lowerBound)...Double(TUSettings.tileRange.upperBound), step: 64, text: "\(state.tileSize) px")
       DSGroupHeader(title: state.text(.maskSection))
       sliderRow(state.text(.maskFree), value: Binding(get: { Double(state.maskFree) }, set: { state.maskFree = Int($0.rounded()) }),
         range: 0...Double(state.overlap.rawValue), step: 8, text: "\(state.maskFree) px")
@@ -51,6 +53,9 @@ struct TUView: View {
         range: 0...Double(TUSettings.outsetRange.upperBound), step: 1, text: "\(state.maskOutset)")
       sliderRow(state.text(.junctionFade), value: Binding(get: { Double(state.junctionFade) }, set: { state.junctionFade = Int($0.rounded()) }),
         range: 0...Double(state.fadeRange.upperBound), step: 4, text: "\(state.junctionFade) px")
+      if state.fadeRange.upperBound == 0 {
+        Text(state.text(.noRoomForFade)).font(.caption).foregroundStyle(.secondary)
+      }
       DSGroupHeader(title: state.text(.loraStrength))
       HStack {
         Slider(value: $state.loraWeight, in: TUPresetTable.loraWeightRange, step: 0.05)
@@ -124,6 +129,7 @@ struct TUView: View {
             Text(verbatim: state.format(.tiles, summary.columns, summary.rows)).foregroundStyle(.secondary)
             Text(verbatim: state.format(.passes, summary.passes)).foregroundStyle(.secondary)
           }
+          Text(verbatim: state.format(.megapixels, summary.generatedMegapixels)).foregroundStyle(.secondary)
           if state.tilesDone > 0 {
             Text(verbatim: state.format(.tilesDone, state.tilesDone, summary.passes)).font(.callout.monospacedDigit())
               .foregroundStyle(DS.accent)
