@@ -3,7 +3,7 @@ import Foundation
 
 /// The language model's folder, choice and memory behavior (spec §9, §11).
 public struct LanguageModelSettings: Equatable, Codable, Sendable {
-  /// Where the models are (spec §9: `/Volumes/LLM-VLM/MLX` unless the user chooses another).
+  /// Where the models are (spec §9); by default a folder in DT Hub's Application Support, created when first needed.
   public var folder: String
   /// The folder of the model in use; empty until one is chosen.
   public var selectedModel: String
@@ -19,7 +19,10 @@ public struct LanguageModelSettings: Equatable, Codable, Sendable {
   /// Minutes without use after which the language model is freed; 0 = never.
   public var idleMinutes: Int
 
-  public static let defaultFolder = "/Volumes/LLM-VLM/MLX"
+  public static var defaultFolder: String {
+    FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+      .appendingPathComponent("DT Hub/LLM", isDirectory: true).path
+  }
   /// Macs with at least this much memory keep both models loaded unless told otherwise.
   public static let comfortableMemory: UInt64 = 64 * 1_073_741_824
 
