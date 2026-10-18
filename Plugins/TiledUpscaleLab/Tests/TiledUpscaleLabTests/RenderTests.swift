@@ -42,3 +42,34 @@ struct RenderTests {
     
   }
 }
+
+/// The tab must draw in every state the sliders can leave it in, also when there is no room for the fade (SwiftUI stops the
+/// whole app on a slider whose step is larger than its range).
+@MainActor
+struct SliderStatesTests {
+  private func draws(_ state: TUState) -> Bool {
+    let view = TUView(state: state, actions: .none).frame(width: 900, height: 900)
+    let renderer = ImageRenderer(content: view)
+    return renderer.cgImage != nil
+  }
+
+  @Test func theTabDrawsWithNoRoomForTheFade() {
+    let state = TUState(store: TUStore(folder: nil), italian: false)
+    state.maskFree = 256
+    #expect(state.fadeRange == 0...0)
+    #expect(draws(state))
+  }
+
+  @Test func theTabDrawsAtTheExtremesOfEverySlider() {
+    for (free, blur, outset) in [(0, 0.0, 0), (256, 30.0, 100), (200, 15.0, 50), (250, 1.0, 1)] {
+      let state = TUState(store: TUStore(folder: nil), italian: false)
+      state.maskFree = free
+      state.maskBlur = blur
+      state.maskOutset = outset
+      state.junctionFade = state.fadeRange.upperBound
+      #expect(draws(state), "free \(free) blur \(blur) outset \(outset)")
+      state.overlap = .wide
+      #expect(draws(state))
+    }
+  }
+}

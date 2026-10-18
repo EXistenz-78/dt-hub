@@ -50,8 +50,7 @@ struct TUView: View {
       sliderRow(state.text(.maskOutset), value: Binding(get: { Double(state.maskOutset) }, set: { state.maskOutset = Int($0.rounded()) }),
         range: 0...Double(TUSettings.outsetRange.upperBound), step: 1, text: "\(state.maskOutset)")
       sliderRow(state.text(.junctionFade), value: Binding(get: { Double(state.junctionFade) }, set: { state.junctionFade = Int($0.rounded()) }),
-        range: 0...Double(max(state.fadeRange.upperBound, 1)), step: 4, text: "\(state.junctionFade) px")
-        .disabled(state.fadeRange.upperBound == 0)
+        range: 0...Double(state.fadeRange.upperBound), step: 4, text: "\(state.junctionFade) px")
       DSGroupHeader(title: state.text(.loraStrength))
       HStack {
         Slider(value: $state.loraWeight, in: TUPresetTable.loraWeightRange, step: 0.05)
@@ -82,7 +81,10 @@ struct TUView: View {
         Spacer()
         Text(verbatim: text).font(.caption.monospacedDigit())
       }
-      Slider(value: value, in: range, step: step)
+      // SwiftUI stops the whole app on a slider whose step is larger than its range: with no room there is only the value.
+      if range.upperBound - range.lowerBound >= step {
+        Slider(value: value, in: range, step: step)
+      }
     }
   }
 
