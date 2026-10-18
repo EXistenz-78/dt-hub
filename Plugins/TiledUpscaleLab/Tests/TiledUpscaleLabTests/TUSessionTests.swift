@@ -204,3 +204,23 @@ struct TUSessionTests {
     #expect(tile.width == 2048 && tile.height == 2048)
   }
 }
+
+extension TUSessionTests {
+  @Test func theToneOfAResultIsBroughtBackToTheSourceBeforeItIsComposed() throws {
+    let source = TestImages.solid(1280, 1024, (100, 100, 100))
+    let s = TUSession(
+      source: source, factor: 1, overlap: .standard,
+      settings: TUSettings(free: 200, blur: 30, outset: 30, fade: 0, tile: 1024, toneStrength: 100, toneRadius: 32),
+      loraWeight: 1, trigger: "", preset: preset, tempFolder: folder)
+    _ = s.next(TUNextRequest(index: 1, count: 2, previous: nil))
+    // The model made tile 1 lighter than the source: 160 against 100.
+    let lighter = TestImages.write(TestImages.solid(1024, 1024, (160, 160, 160)), in: folder, name: "light.png")
+    _ = s.next(TUNextRequest(index: 2, count: 2, previous: TUNextRequest.Previous(path: lighter.path, width: 1024, height: 1024)))
+    let darker = TestImages.write(TestImages.solid(512, 1024, (150, 150, 150)), in: folder, name: "light2.png")
+    _ = s.next(TUNextRequest(index: 3, count: 2, previous: TUNextRequest.Previous(path: darker.path, width: 512, height: 1024)))
+    let composed = try #require(s.end("finished"))
+    #expect(abs(Int(TestImages.pixel(composed, 600, 500)[0]) - 100) <= 3, "the new part is back at the source's tone")
+    #expect(TestImages.pixel(composed, 100, 500)[0] == 100 || abs(Int(TestImages.pixel(composed, 100, 500)[0]) - 100) <= 3)
+    #expect(abs(Int(TestImages.pixel(composed, 1100, 500)[0]) - 100) <= 3)
+  }
+}

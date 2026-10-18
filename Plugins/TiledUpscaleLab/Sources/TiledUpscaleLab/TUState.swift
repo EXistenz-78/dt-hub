@@ -81,6 +81,14 @@ final class TUState: ObservableObject {
     get { settings.tile }
     set { change { $0.tile = newValue } }
   }
+  var toneStrength: Int {
+    get { settings.toneStrength }
+    set { change { $0.toneStrength = newValue } }
+  }
+  var toneRadius: Int {
+    get { settings.toneRadius }
+    set { change { $0.toneRadius = newValue } }
+  }
   var junctionFade: Int {
     get { settings.fade }
     set { change { $0.fade = newValue } }
@@ -323,7 +331,7 @@ final class TUState: ObservableObject {
     }
     let description = format(
       .resultDescription, factor, summary.columns, summary.rows, loraWeight, settings.tile, settings.free,
-      Int(settings.blur.rounded()), settings.outset, settings.fade)
+      Int(settings.blur.rounded()), settings.outset, settings.fade, settings.toneStrength, settings.toneRadius)
     let message: [String: Any] = ["result": ["path": url.path, "name": "Tiled Upscale Lab", "description": description]]
     guard let answer = await contribute?(message) else {
       notice = text(.notAnswered)

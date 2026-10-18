@@ -12,8 +12,14 @@ struct TUSettings: Codable, Equatable, Sendable {
   /// The longest side of a tile, in pixels: a multiple of 64 from 1024 to 2048. A bigger tile means fewer tiles and more of
   /// the picture in each, so the model has more to go on (a 4× enlargement goes from 25 passes at 1024 to 9 at 2048).
   var tile: Int
+  /// How much of the correction of the tone is applied (0–100 %) and the radius, in pixels, of the blur that tells the slow drift
+  /// of the level (corrected) from the detail (kept): see `TUTone`.
+  var toneStrength: Int
+  var toneRadius: Int
 
-  init(free: Int, blur: Double, outset: Int, fade: Int, tile: Int = TileConstants.tile) {
+  init(free: Int, blur: Double, outset: Int, fade: Int, tile: Int = TileConstants.tile, toneStrength: Int = 0, toneRadius: Int = 64) {
+    self.toneStrength = toneStrength
+    self.toneRadius = toneRadius
     self.free = free
     self.blur = blur
     self.outset = outset
@@ -29,9 +35,13 @@ struct TUSettings: Codable, Equatable, Sendable {
     outset = try container.decode(Int.self, forKey: .outset)
     fade = try container.decode(Int.self, forKey: .fade)
     tile = (try? container.decodeIfPresent(Int.self, forKey: .tile)) ?? TileConstants.tile
+    toneStrength = (try? container.decodeIfPresent(Int.self, forKey: .toneStrength)) ?? Self.standard.toneStrength
+    toneRadius = (try? container.decodeIfPresent(Int.self, forKey: .toneRadius)) ?? Self.standard.toneRadius
   }
 
-  static let standard = TUSettings(free: 200, blur: 30, outset: 30, fade: 48)
+  static let standard = TUSettings(free: 200, blur: 30, outset: 30, fade: 48, toneStrength: 100, toneRadius: 64)
+  static let toneStrengthRange = 0...100
+  static let toneRadiusRange = 16...256
   static let tileRange = 1024...2048
   static let blurRange = 0.0...30.0
   static let outsetRange = 0...100
@@ -47,7 +57,9 @@ struct TUSettings: Codable, Equatable, Sendable {
       free: free, blur: min(max(blur, Self.blurRange.lowerBound), Self.blurRange.upperBound),
       outset: min(max(outset, Self.outsetRange.lowerBound), Self.outsetRange.upperBound),
       fade: min(max(fade, 0), overlap.rawValue - free),
-      tile: min(max(tile, Self.tileRange.lowerBound), Self.tileRange.upperBound) / 64 * 64)
+      tile: min(max(tile, Self.tileRange.lowerBound), Self.tileRange.upperBound) / 64 * 64,
+      toneStrength: min(max(toneStrength, Self.toneStrengthRange.lowerBound), Self.toneStrengthRange.upperBound),
+      toneRadius: min(max(toneRadius, Self.toneRadiusRange.lowerBound), Self.toneRadiusRange.upperBound))
   }
 }
 

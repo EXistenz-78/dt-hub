@@ -56,6 +56,10 @@ struct TUView: View {
       if state.fadeRange.upperBound == 0 {
         Text(state.text(.noRoomForFade)).font(.caption).foregroundStyle(.secondary)
       }
+      sliderRow(state.text(.toneStrength), value: Binding(get: { Double(state.toneStrength) }, set: { state.toneStrength = Int($0.rounded()) }),
+        range: 0...100, step: 5, text: "\(state.toneStrength) %")
+      sliderRow(state.text(.toneRadius), value: Binding(get: { Double(state.toneRadius) }, set: { state.toneRadius = Int($0.rounded()) }),
+        range: Double(TUSettings.toneRadiusRange.lowerBound)...Double(TUSettings.toneRadiusRange.upperBound), step: 16, text: "\(state.toneRadius) px")
       DSGroupHeader(title: state.text(.loraStrength))
       HStack {
         Slider(value: $state.loraWeight, in: TUPresetTable.loraWeightRange, step: 0.05)
