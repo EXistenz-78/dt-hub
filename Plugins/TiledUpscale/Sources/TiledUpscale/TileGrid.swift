@@ -4,8 +4,11 @@ import Foundation
 enum TileConstants {
   /// The longest side of a tile, in pixels (a multiple of 64, as Draw Things works).
   static let tile = 1024
-  /// The part of the overlap the mask leaves free, towards the tiles already made: 200 of 256, 250 of 320.
-  static let freeFactor = 25.0 / 32.0
+  /// The part of the overlap the mask leaves free, towards the tiles already made. EXPERIMENT (22 October): all of it
+  /// (256 of 256, 320 of 320) so that the step between the neighbour's result and the enlarged source, which the tile's
+  /// input has at the end of the overlap, falls on the edge of the mask and not inside the part that is regenerated. It
+  /// was 25/32 (200 of 256, 250 of 320): the seams that showed at 4× were all at the end of the overlap.
+  static let freeFactor = 1.0
 }
 
 /// How much two neighbouring tiles share. A multiple of 64, so the step between tiles is too.
