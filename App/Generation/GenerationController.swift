@@ -487,7 +487,9 @@ final class GenerationController {
     _ pass: PipelineStep, presets loaded: [String: Preset], previous: CGImage?, previousSize: Size?, intermediate: URL?,
     with connection: DrawThingsConnection
   ) async -> PassRun? {
-    var used = PipelinePresets.fields(for: pass, over: fields, presets: loaded, catalog: connection.monitor.catalog)
+    // A pass the plug-in handed over starts from the tab without its LoRAs and with one picture per run.
+    let tab = intermediate != nil ? GuidedPassInputs.baseFields(from: fields, size: pass.size) : fields
+    var used = PipelinePresets.fields(for: pass, over: tab, presets: loaded, catalog: connection.monitor.catalog)
     // A user's pipeline: from the second pass on, the size is the previous pass's, multiplied by the pass's scale.
     if pass.usesPresetModel, let previousSize {
       let size = PipelineSizes.scaled(previousSize, by: pass.scale, limit: used.parameters.sizeLimit)

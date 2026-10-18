@@ -18,6 +18,21 @@ public enum GuidedPassInputs {
   /// Longest side read back from a pass's files (a tile is at most 2048).
   static let maxPixel = 4096
 
+  /// What a guided pass starts from: the Generation tab's fields without its LoRAs (a tile gets exactly the LoRAs the pass
+  /// names) and with one picture per run (a tab set to make four would make four of every tile), at the size of the pass.
+  /// The preset and the fields of the pass go on top of this.
+  public static func baseFields(from tab: GenerationFields, size: PipelineSize?) -> GenerationFields {
+    var fields = tab
+    fields.parameters.loras = []
+    fields.parameters.batchSize = 1
+    fields.parameters.batchCount = 1
+    if let size {
+      fields.parameters.width = size.width
+      fields.parameters.height = size.height
+    }
+    return fields
+  }
+
   /// The mask file is a grey PNG the size of the pass, 255 where the model regenerates (`MaskBitmap`); what Draw Things
   /// gets is transparent where it regenerates and opaque where it keeps (`GenerationInputs.mask`). A pass with no
   /// mask regenerates the whole picture (`mask` nil).
