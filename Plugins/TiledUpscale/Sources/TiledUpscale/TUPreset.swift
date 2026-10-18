@@ -15,8 +15,13 @@ struct TUPreset: Equatable, Sendable {
   let defaultLoRAWeight: Double
 
   /// The `fields` of a `contribute` message or a pass, with the prompt.
+  /// Every value the preset fixes is named, so nothing is left to the Generation tab: with `resolutionDependentShift` on, the
+  /// shift would be worked out from the size of the tile instead of staying the preset's.
   func fields(prompt: String) -> [String: Any] {
-    ["prompt": prompt, "steps": steps, "guidanceScale": guidanceScale, "sampler": sampler, "shift": shift]
+    [
+      "prompt": prompt, "steps": steps, "guidanceScale": guidanceScale, "sampler": sampler, "shift": shift,
+      "resolutionDependentShift": false, "cfgZeroStar": false, "cfgZeroInitSteps": 0,
+    ]
   }
 
   func loras(weight: Double) -> [[String: Any]] {

@@ -29,4 +29,14 @@ struct TUPresetTests {
     #expect(TUPrompt.text(trigger: "") == "ALSO PRESERVE COLORS AND LUMINOSITY")
     #expect(TUPrompt.text(trigger: "  TRIG  ") == "TRIG ALSO PRESERVE COLORS AND LUMINOSITY")
   }
+
+  @Test func theFieldsPinEveryValueOfThePresetSoTheTabsDoNotLeakIn() throws {
+    let preset = try #require(TUPresetTable.preset(forFamily: "flux2_9b"))
+    let fields = preset.fields(prompt: "p")
+    #expect(fields["resolutionDependentShift"] as? Bool == false, "shift stays 3: it is not computed from the size")
+    #expect(fields["cfgZeroStar"] as? Bool == false)
+    #expect(fields["cfgZeroInitSteps"] as? Int == 0)
+    #expect(fields["shift"] as? Double == 3 && fields["steps"] as? Int == 4 && fields["sampler"] as? Int == 16)
+    #expect(fields["guidanceScale"] as? Double == 1)
+  }
 }
