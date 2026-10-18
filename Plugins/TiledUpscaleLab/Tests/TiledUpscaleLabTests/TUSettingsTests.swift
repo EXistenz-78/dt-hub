@@ -1,0 +1,55 @@
+import Foundation
+import Testing
+
+@testable import TiledUpscaleLab
+
+@MainActor
+struct TUSettingsTests {
+  let folder = TestImages.temporaryFolder()
+
+  @Test func theDefaultsAreTheOnesOfTheSpec() {
+    #expect(TUSettings.standard == TUSettings(free: 200, blur: 30, outset: 30, fade: 48))
+  }
+
+  @Test func theFadeNeverReachesIntoTheFreePart() {
+    let clamped = TUSettings(free: 200, blur: 30, outset: 30, fade: 100).clamped(overlap: .standard)
+    #expect(clamped.fade == 56, "256 − 200 is all that is left to fade in")
+    #expect(TUSettings(free: 240, blur: 30, outset: 30, fade: 48).clamped(overlap: .standard).fade == 16)
+    #expect(TUSettings(free: 300, blur: 99, outset: 500, fade: 5).clamped(overlap: .standard) == TUSettings(free: 256, blur: 30, outset: 100, fade: 0))
+    #expect(TUSettings(free: -5, blur: -1, outset: -1, fade: -3).clamped(overlap: .standard) == TUSettings(free: 0, blur: 0, outset: 0, fade: 0))
+  }
+
+  @Test func theSlidersOfTheStateKeepTheRules() {
+    let s = TUState(store: TUStore(folder: nil), italian: false)
+    #expect(s.maskFree == 200 && s.junctionFade == 48 && s.fadeRange == 0...56)
+    s.junctionFade = 100
+    #expect(s.junctionFade == 56)
+    s.maskFree = 240
+    #expect(s.junctionFade == 16 && s.fadeRange == 0...16)
+    s.overlap = .wide
+    #expect(s.fadeRange == 0...80, "320 − 240")
+    s.maskFree = 400
+    #expect(s.maskFree == 320)
+    s.overlap = .standard
+    #expect(s.maskFree == 256, "a smaller overlap brings the free part back inside it")
+  }
+
+  @Test func theSettingsAreKeptPerProject() {
+    let one = folder.appendingPathComponent("one")
+    let two = folder.appendingPathComponent("two")
+    let s = TUState(store: TUStore(folder: nil), italian: false)
+    s.switchProject(folder: one)
+    s.maskFree = 100; s.maskBlur = 10; s.maskOutset = 20; s.junctionFade = 64
+    s.switchProject(folder: two)
+    #expect(s.maskFree == 200 && s.maskBlur == 30 && s.maskOutset == 30 && s.junctionFade == 48)
+    s.switchProject(folder: one)
+    #expect(s.maskFree == 100 && s.maskBlur == 10 && s.maskOutset == 20 && s.junctionFade == 64)
+  }
+
+  @Test func anOldStateFileWithoutSettingsGetsTheDefaults() throws {
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    try Data(#"{"factor":4,"overlap":320,"loraWeight":0.8}"#.utf8).write(to: folder.appendingPathComponent("state.json"))
+    let choice = TUStore(folder: folder).load()
+    #expect(choice.factor == 4 && choice.settings == TUSettings.standard.clamped(overlap: .wide))
+  }
+}
