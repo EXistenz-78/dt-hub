@@ -38,6 +38,15 @@ struct ManagedServerSettingsTests {
     #expect(settings.warning(files) == nil)
   }
 
+  @Test func warnsDeniedNotEmptyWhenMacOSDoesNotLetTheFolderBeRead() {
+    let denied = FileSystemProbe(
+      isExecutableFile: { $0 == "/bin/cli" }, isDirectory: { $0 == "/models" }, hasModelFiles: { _ in false },
+      folderAccess: { _ in .denied })
+    let settings = ManagedServerSettings(mode: .managed, binaryPath: "/bin/cli", modelsFolder: "/models")
+    #expect(settings.validationError(denied) == nil)
+    #expect(settings.warning(denied) == .modelsFolderDenied)
+  }
+
   @Test func noWarningWhileSomethingElseIsWrong() {
     let empty = FileSystemProbe(isExecutableFile: { _ in false }, isDirectory: { _ in true }, hasModelFiles: { _ in false })
     #expect(ManagedServerSettings(mode: .managed, binaryPath: "/bin/cli", modelsFolder: "/models").warning(empty) == nil)

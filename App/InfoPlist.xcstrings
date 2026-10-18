@@ -1,0 +1,91 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "NSDesktopFolderUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DT Hub reads and saves models and images in the folders you choose on the Desktop."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DT Hub legge e salva modelli e immagini nelle cartelle della Scrivania che scegli."
+          }
+        }
+      }
+    },
+    "NSDocumentsFolderUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DT Hub reads and saves models and images in the folders you choose in Documents."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DT Hub legge e salva modelli e immagini nelle cartelle di Documenti che scegli."
+          }
+        }
+      }
+    },
+    "NSDownloadsFolderUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DT Hub reads and saves models and images in the folders you choose in Downloads."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DT Hub legge e salva modelli e immagini nelle cartelle di Download che scegli."
+          }
+        }
+      }
+    },
+    "NSNetworkVolumesUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DT Hub reads and saves models and images on the network disks you choose."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DT Hub legge e salva modelli e immagini sui dischi di rete che scegli."
+          }
+        }
+      }
+    },
+    "NSRemovableVolumesUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DT Hub reads and saves models and images on the external disks you choose."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DT Hub legge e salva modelli e immagini sui dischi esterni che scegli."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

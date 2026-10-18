@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 import HuggingFace
 import HubKit
@@ -25,6 +26,17 @@ public struct HubLanguageModelDownloader: LanguageModelDownloader {
     }
   }
 
+  /// A Cocoa "no permission" error, or POSIX `EACCES`/`EPERM`/`EROFS` (read-only disk), directly or underneath.
+  static func isNoPermission(_ error: any Error) -> Bool {
+    let ns = error as NSError
+    if ns.domain == NSCocoaErrorDomain,
+      ns.code == CocoaError.fileWriteNoPermission.rawValue || ns.code == CocoaError.fileReadNoPermission.rawValue
+    { return true }
+    if ns.domain == NSPOSIXErrorDomain, [Int(EACCES), Int(EPERM), Int(EROFS)].contains(ns.code) { return true }
+    if let underlying = ns.userInfo[NSUnderlyingErrorKey] as? NSError { return isNoPermission(underlying) }
+    return false
+  }
+
   static let stagingPrefix = ".dthub-download-"
 
   public func download(
@@ -39,14 +51,24 @@ public struct HubLanguageModelDownloader: LanguageModelDownloader {
     let staging = parent.appendingPathComponent("\(Self.stagingPrefix)\(UUID().uuidString)", isDirectory: true)
     defer { try? fileManager.removeItem(at: staging) }
     do {
-      try fileManager.createDirectory(at: staging, withIntermediateDirectories: true)
+      do {
+        try fileManager.createDirectory(at: staging, withIntermediateDirectories: true)
+      } catch where Self.isNoPermission(error) {
+        throw LanguageModelError.folderNotWritable(parent.path)
+      }
       _ = try await HuggingFace.HubClient().downloadSnapshot(
         of: id, to: staging, matching: patterns,
         progressHandler: { @MainActor update in progress(update.fractionCompleted) })
       if fileManager.fileExists(atPath: folder.path) { try fileManager.removeItem(at: folder) }
-      try fileManager.moveItem(at: staging, to: folder)
+      do {
+        try fileManager.moveItem(at: staging, to: folder)
+      } catch where Self.isNoPermission(error) {
+        throw LanguageModelError.folderNotWritable(parent.path)
+      }
     } catch is CancellationError {
       throw CancellationError()
+    } catch let error as LanguageModelError {
+      throw error
     } catch {
       throw LanguageModelError.downloadFailed(error.localizedDescription)
     }
