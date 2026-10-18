@@ -38,6 +38,8 @@ public enum LanguageModelError: Error, Equatable, Sendable {
   case loadFailed(String)
   case generationFailed(String)
   case downloadFailed(String)
+  /// The models folder cannot be written (no permission); carries the folder's path.
+  case folderNotWritable(String)
 }
 
 /// The language model as HubCore sees it (spec §4: HubCore reaches MLX only through this).

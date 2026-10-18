@@ -21,6 +21,8 @@ extension LanguageModelError {
       return "The language model could not answer: \(detail)"
     case .downloadFailed(let detail):
       return detail
+    case .folderNotWritable(let path):
+      return "DT Hub cannot write to \(path). Choose another models folder, or allow access in Privacy & Security."
     }
   }
 }

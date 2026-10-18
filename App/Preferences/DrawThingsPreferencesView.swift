@@ -139,6 +139,10 @@ struct DrawThingsPreferencesView: View {
         } else if managedDraft.warning() == .noModelFiles {
           Text("prefs.server.noModelFiles")
             .foregroundStyle(DS.remove)
+        } else if managedDraft.warning() == .modelsFolderDenied {
+          Text("prefs.folder.denied")
+            .foregroundStyle(DS.remove)
+          PrivacySettingsLink()
         }
         Text("prefs.server.note")
           .foregroundStyle(.secondary)
