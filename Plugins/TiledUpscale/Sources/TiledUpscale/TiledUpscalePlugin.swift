@@ -21,6 +21,7 @@ final class TiledUpscalePlugin: DTHubPlugin {
 
   func start(host: DTHubHost) {
     self.host = host
+    state.contribute = { await host.contribute($0) }
   }
 
   func handle(_ message: Data) async -> Data? {

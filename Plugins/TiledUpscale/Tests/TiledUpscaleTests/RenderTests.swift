@@ -15,8 +15,8 @@ struct RenderTests {
     state.active = true
     state.tempFolder = NSTemporaryDirectory()
     state.setImage(TestImages.solid(1300, 900, (220, 120, 60), right: (60, 120, 220), splitX: 650), name: "foto.png")
-    func render(_ name: String) throws {
-      let view = TUView(state: state, actions: .none).frame(width: 900, height: 560).background(Color(nsColor: .windowBackgroundColor))
+    func render(_ name: String, width: CGFloat = 900, height: CGFloat = 560) throws {
+      let view = TUView(state: state, actions: .none).frame(width: width, height: height).background(Color(nsColor: .windowBackgroundColor))
       let renderer = ImageRenderer(content: view)
       renderer.scale = 2
       let image = try #require(renderer.cgImage)
@@ -39,5 +39,6 @@ struct RenderTests {
     }
     _ = await state.sessionNext(Data(#"{"type":"session.next","index":4,"count":\#(plan.count),"previous":{"path":"\#(previous!)","width":\#(plan.tiles[2].rect.width),"height":\#(plan.tiles[2].rect.height)}}"#.utf8))
     try render("during.png")
+    try render("during-big.png", width: 1700, height: 1100)
   }
 }

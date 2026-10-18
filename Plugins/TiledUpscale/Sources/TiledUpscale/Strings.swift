@@ -7,7 +7,7 @@ enum L {
     case dropHere, open, image, enlargement, overlap, loraStrength
     case prepare, prepared, finalSize, tiles, passes, croppedNote
     case unsupportedModel, tooBig, bigJob, notAnswered, unreadableImage, noFolder
-    case savedOnDesktop, saveFailed, useAsStart, stopped, failed, closed, resultPlaceholder, tileRegenerated, tilesDone
+    case addedToResults, resultNotAdded, resultDescription, useAsStart, stopped, failed, closed, resultPlaceholder, tileRegenerated, tilesDone
   }
 
   static var systemIsItalian: Bool {
@@ -38,10 +38,11 @@ enum L {
     .bigJob: "A big job: it takes many passes. Press Prepare again to confirm.",
     .notAnswered: "No answer from the app.", .unreadableImage: "This image could not be read.",
     .noFolder: "No picture folder yet: switch the plug-in on first.",
-    .savedOnDesktop: "Done. Saved on the Desktop as %@.", .saveFailed: "The picture could not be saved: %@",
+    .addedToResults: "Done. The enlarged picture is in the Results.", .resultNotAdded: "The picture could not be added to the Results: %@",
+    .resultDescription: "Tiled Upscale %d× · %d×%d tiles · LoRA %.2f",
     .useAsStart: "Use as start image", .stopped: "Stopped. Nothing was saved.",
     .failed: "The enlargement failed: %@", .closed: "The enlargement was closed.",
-    .resultPlaceholder: "The enlarged picture is saved on the Desktop when it is done.",
+    .resultPlaceholder: "The enlarged picture goes to the Results when it is done.",
     .tileRegenerated: "Each tile is regenerated with the LoRA, with the join kept by a mask.",
     .tilesDone: "%d of %d tiles done",
   ]
@@ -57,10 +58,11 @@ enum L {
     .bigJob: "Un lavoro grande: richiede molti passi. Premi di nuovo Prepara per confermare.",
     .notAnswered: "Nessuna risposta dall'app.", .unreadableImage: "Impossibile leggere questa immagine.",
     .noFolder: "Ancora nessuna cartella per le immagini: accendi prima il plug-in.",
-    .savedOnDesktop: "Fatto. Salvata sulla Scrivania come %@.", .saveFailed: "Impossibile salvare l'immagine: %@",
+    .addedToResults: "Fatto. L'immagine ingrandita è nei Risultati.", .resultNotAdded: "Impossibile aggiungere l'immagine ai Risultati: %@",
+    .resultDescription: "Tiled Upscale %d× · %d×%d tile · LoRA %.2f",
     .useAsStart: "Usa come immagine di partenza", .stopped: "Fermato. Non è stato salvato nulla.",
     .failed: "L'ingrandimento non è riuscito: %@", .closed: "L'ingrandimento è stato chiuso.",
-    .resultPlaceholder: "L'immagine ingrandita viene salvata sulla Scrivania a lavoro finito.",
+    .resultPlaceholder: "L'immagine ingrandita va nei Risultati a lavoro finito.",
     .tileRegenerated: "Ogni tile viene rigenerato con il LoRA, e una maschera mantiene la giunzione.",
     .tilesDone: "%d di %d tile completati",
   ]

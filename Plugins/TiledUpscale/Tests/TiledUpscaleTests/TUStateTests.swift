@@ -127,11 +127,11 @@ struct TUStateTests {
     #expect(s.factor == 8 && s.overlap == .wide && s.loraWeight == 0.7)
   }
 
-  @Test func finishingSavesTheComposedPictureWithTheFirstFreeNumber() async throws {
-    let desktop = TestImages.temporaryFolder()
+  @Test func finishingSendsTheComposedPictureAsAResult() async throws {
     let s = state()
-    s.desktopFolder = desktop
     s.setImage(photo(512, 512), name: "a")
+    var sent: [String: Any] = [:]
+    s.contribute = { sent = $0; return ["type": "ok"] }
     await s.prepare(confirmed: true, contribute: { _ in ["type": "ok"] }, registerPreset: { _ in nil })
     _ = await s.sessionNext(Data(#"{"type":"session.next","index":1,"count":1}"#.utf8))
     let previous = TestImages.write(TestImages.solid(1024, 1024, (9, 9, 9)), in: folder, name: "p.png")
@@ -139,10 +139,28 @@ struct TUStateTests {
       Data(#"{"type":"session.next","index":2,"count":1,"previous":{"path":"\#(previous.path)","width":1024,"height":1024}}"#.utf8))
     #expect(String(decoding: done, as: UTF8.self).contains("done"))
     await s.sessionEnded(reason: "finished")
-    let saved = try #require(s.resultURL)
-    #expect(saved.lastPathComponent == "Tiled Upscale 001.png")
-    #expect(TUImage.load(saved)?.width == 1024)
-    #expect(!s.isPrepared)
+    let result = try #require(sent["result"] as? [String: Any])
+    let path = try #require(result["path"] as? String)
+    #expect(TUImage.load(URL(fileURLWithPath: path))?.width == 1024, "the composed picture, in the plug-in's folder")
+    #expect(path.hasPrefix(folder.path))
+    #expect(result["description"] as? String == "Tiled Upscale 2× · 1×1 tiles · LoRA 1.00")
+    #expect(result["name"] as? String == "Tiled Upscale")
+    #expect(s.resultReady && !s.isPrepared)
+    #expect(s.status == TUState.text(.addedToResults, italian: false))
+  }
+
+  @Test func aResultTheAppRefusesIsReported() async throws {
+    let s = state()
+    s.setImage(photo(512, 512), name: "a")
+    s.contribute = { _ in ["type": "ok", "problems": ["Tiled Upscale: unreadable"]] }
+    await s.prepare(confirmed: true, contribute: { _ in ["type": "ok"] }, registerPreset: { _ in nil })
+    _ = await s.sessionNext(Data(#"{"type":"session.next","index":1,"count":1}"#.utf8))
+    let previous = TestImages.write(TestImages.solid(1024, 1024, (9, 9, 9)), in: folder, name: "p.png")
+    _ = await s.sessionNext(
+      Data(#"{"type":"session.next","index":2,"count":1,"previous":{"path":"\#(previous.path)","width":1024,"height":1024}}"#.utf8))
+    await s.sessionEnded(reason: "finished")
+    #expect(!s.resultReady)
+    #expect(s.status.contains("unreadable"))
   }
 
   @Test func thePreviewBaseFollowsThePictureAndTheChoices() throws {
