@@ -51,7 +51,7 @@ final class TUSession: @unchecked Sendable {
   /// The answer to a `session.next`: the pass for the next tile, or `{"done":true}`.
   func next(_ request: TUNextRequest) -> Data {
     if canvas == nil { canvas = TUCanvas(scaling: source, factor: factor, size: scaled) }
-    if baseCanvas == nil, settings.fade > 0 { baseCanvas = TUCanvas(scaling: source, factor: factor, size: scaled) }
+    if baseCanvas == nil, settings.fade > 0 || settings.toneStrength > 0 { baseCanvas = TUCanvas(scaling: source, factor: factor, size: scaled) }
     guard let canvas else {
       problem = "the picture is too big to work on"
       return TUMessages.done
@@ -65,8 +65,17 @@ final class TUSession: @unchecked Sendable {
         problem = "the result of tile \(Self.name(of: tile)) does not fit its tile"
         return TUMessages.done
       }
-      canvas.paste(result, at: tile.rect)
-      previewCanvas?.draw(result, in: TUPreview.rect(of: tile.rect, scale: previewScale))
+      // The tone of the result is brought back to the source's before it is composed, so the next tile finds its neighbour right.
+      var composed = result
+      if settings.toneStrength > 0, let base = baseCanvas?.crop(tile.rect),
+        let corrected = TUTone.correct(
+          result: result, base: base, maskRect: tile.maskRect, radius: settings.toneRadius,
+          strength: Double(settings.toneStrength) / 100)
+      {
+        composed = corrected
+      }
+      canvas.paste(composed, at: tile.rect)
+      previewCanvas?.draw(composed, in: TUPreview.rect(of: tile.rect, scale: previewScale))
       completedTiles += 1
     }
     current = nil

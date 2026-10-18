@@ -143,7 +143,7 @@ struct TUStateTests {
     let path = try #require(result["path"] as? String)
     #expect(TUImage.load(URL(fileURLWithPath: path))?.width == 1024, "the composed picture, in the plug-in's folder")
     #expect(path.hasPrefix(folder.path))
-    #expect(result["description"] as? String == "Tiled Upscale Lab 2× · 1×1 tiles · LoRA 1.00 · tile 1024 · free 200 · blur 30 · margin 30 · fade 48")
+    #expect(result["description"] as? String == "Tiled Upscale Lab 2× · 1×1 tiles · LoRA 1.00 · tile 1024 · free 200 · blur 30 · margin 30 · fade 48 · tone 100%/64")
     #expect(result["name"] as? String == "Tiled Upscale Lab")
     #expect(s.resultReady && !s.isPrepared)
     #expect(s.status == TUState.text(.addedToResults, italian: false))

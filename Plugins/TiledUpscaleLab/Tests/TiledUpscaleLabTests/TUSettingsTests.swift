@@ -8,7 +8,7 @@ struct TUSettingsTests {
   let folder = TestImages.temporaryFolder()
 
   @Test func theDefaultsAreTheOnesOfTheSpec() {
-    #expect(TUSettings.standard == TUSettings(free: 200, blur: 30, outset: 30, fade: 48))
+    #expect(TUSettings.standard == TUSettings(free: 200, blur: 30, outset: 30, fade: 48, toneStrength: 100, toneRadius: 64))
     #expect(TUSettings.standard.tile == 1024)
   }
 
@@ -30,7 +30,7 @@ struct TUSettingsTests {
     try Data(#"{"factor":2,"overlap":256,"loraWeight":1,"settings":{"free":100,"blur":10,"outset":20,"fade":30}}"#.utf8)
       .write(to: folder.appendingPathComponent("state.json"))
     let choice = TUStore(folder: folder).load()
-    #expect(choice.settings == TUSettings(free: 100, blur: 10, outset: 20, fade: 30, tile: 1024))
+    #expect(choice.settings == TUSettings(free: 100, blur: 10, outset: 20, fade: 30, tile: 1024, toneStrength: 100, toneRadius: 64))
   }
 
   @Test func theTileSizeOfTheStateChangesThePassesAndIsKept() {
