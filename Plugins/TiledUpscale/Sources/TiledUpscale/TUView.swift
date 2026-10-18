@@ -44,7 +44,7 @@ struct TUView: View {
       .pickerStyle(.segmented).labelsHidden()
       DSGroupHeader(title: state.text(.loraStrength))
       HStack {
-        Slider(value: $state.loraWeight, in: 0...2, step: 0.05)
+        Slider(value: $state.loraWeight, in: TUPresetTable.loraWeightRange, step: 0.05)
         Text(verbatim: String(format: "%.2f", state.loraWeight)).font(.callout.monospacedDigit()).frame(width: 44)
       }
       Button {

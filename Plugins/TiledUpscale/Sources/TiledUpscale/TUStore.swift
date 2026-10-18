@@ -20,9 +20,11 @@ struct TUStore {
 
   func load() -> TUChoice {
     guard let fileURL, let data = try? Data(contentsOf: fileURL),
-      let choice = try? JSONDecoder().decode(TUChoice.self, from: data), [2, 4, 8].contains(choice.factor),
+      var choice = try? JSONDecoder().decode(TUChoice.self, from: data), [2, 4, 8].contains(choice.factor),
       TileOverlap(rawValue: choice.overlap) != nil
     else { return .standard }
+    let range = TUPresetTable.loraWeightRange
+    choice.loraWeight = min(max(choice.loraWeight, range.lowerBound), range.upperBound)
     return choice
   }
 
