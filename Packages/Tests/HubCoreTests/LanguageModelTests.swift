@@ -60,7 +60,9 @@ struct LanguageModelSettingsTests {
     #expect(LanguageModelSettings.defaults(physicalMemory: 32 * gb).freeImageModelForLanguageModel)
     #expect(!LanguageModelSettings.defaults(physicalMemory: 64 * gb).freeAtRun)
     #expect(!LanguageModelSettings.defaults(physicalMemory: 192 * gb).freeImageModelForLanguageModel)
-    #expect(LanguageModelSettings.defaults(physicalMemory: 64 * gb).folder == "/Volumes/LLM-VLM/MLX")
+    let folder = LanguageModelSettings.defaults(physicalMemory: 64 * gb).folder
+    #expect(folder.hasSuffix("Application Support/DT Hub/LLM"))
+    #expect(!folder.contains("/Volumes"))
     #expect(LanguageModelSettings.defaults(physicalMemory: 64 * gb).idleMinutes == 10)
   }
 
