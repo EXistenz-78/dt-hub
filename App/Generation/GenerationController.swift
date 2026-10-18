@@ -64,6 +64,8 @@ final class GenerationController {
   private(set) var isPipelineRunning = false {
     didSet { contributions?.pipelineLocked = isPipelineRunning }
   }
+  /// The model of the pipeline the plug-in is guiding, while it runs: the finished picture it hands over is filed under it.
+  @ObservationIgnored private var guidedModelFile: String?
   /// How a pipeline the plug-in guides talks to the plug-in; set by the app next to `attach`.
   @ObservationIgnored var guidedChannel: GuidedPluginChannel?
   /// What the plug-ins contributed (teal fields, conflicts, the pipeline); set by `attach`.
@@ -575,6 +577,12 @@ final class GenerationController {
     let folder = channel.sessionFolder()
     defer { channel.removeSessionFolder(folder) }
     let startModel = connection.selection.selectedFile
+    guidedModelFile = startModel
+    defer {
+      guidedModelFile = nil
+      // The session is over, whatever the reason: the pipeline goes from the Run button.
+      contributions?.finishedGuidedPipeline()
+    }
     var known = loaded
     let driver = GuidedSessionDriver(
       passes: guided.passes, tileLimit: parameters.sizeLimit,
@@ -829,6 +837,26 @@ extension GenerationController: ContributionTarget {
       throw ControlError.unreadable(image.name)
     }
     try control.commitPaint(bitmap)
+  }
+
+  /// A picture the plug-in finished (a composed enlargement) becomes a result: saved in the project's folder and put in the
+  /// strip, filed under the model of the pipeline that made it, with `description` where the prompt would be. Only while
+  /// a pipeline the plug-in guides is running.
+  func addResult(_ image: PluginImageRef, description: String) throws {
+    guard let model = guidedModelFile else { throw ControlError.unreadable(image.name) }
+    let url = URL(fileURLWithPath: image.path)
+    guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+      let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+      let width = properties[kCGImagePropertyPixelWidth] as? Int, let height = properties[kCGImagePropertyPixelHeight] as? Int
+    else { throw ControlError.unreadable(image.name) }
+    var shown = parameters
+    shown.width = width
+    shown.height = height
+    shown.loras = []
+    shown.batchSize = 1
+    shown.batchCount = 1
+    let job = GenerationJob(prompt: description, model: model, parameters: shown)
+    Task { _ = await session.adopt(fileAt: url, job: job) }
   }
 
   func setStartImage(_ image: PluginImageRef, from pluginID: String) throws -> UUID {

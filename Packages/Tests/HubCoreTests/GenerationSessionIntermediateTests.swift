@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import HubKit
+import ImageIO
 import Testing
 
 @testable import HubCore
@@ -48,5 +49,25 @@ struct GenerationSessionIntermediateTests {
     await session.waitUntilFinished()
     #expect(session.results.count == 1 && store.count == 1)
     #expect(session.intermediateResult == nil)
+  }
+
+  @Test func aFinishedPictureIsAdoptedIntoTheStripAndTheStore() async throws {
+    let store = MemoryImageStore()
+    let session = GenerationSession(store: store)
+    let url = FileManager.default.temporaryDirectory.appendingPathComponent("adopt-\(UUID()).png")
+    defer { try? FileManager.default.removeItem(at: url) }
+    let image = testImage(width: 48, height: 32)
+    let data = NSMutableData()
+    let destination = CGImageDestinationCreateWithData(data, "public.png" as CFString, 1, nil)!
+    CGImageDestinationAddImage(destination, image, nil)
+    CGImageDestinationFinalize(destination)
+    try (data as Data).write(to: url)
+    let adopted = await session.adopt(fileAt: url, job: job)
+    #expect(adopted)
+    #expect(session.results.count == 1 && store.count == 1)
+    #expect(session.results.first?.job.prompt == "p")
+    #expect(session.results.first?.fileURL != nil)
+    #expect(!(await session.adopt(fileAt: url.appendingPathExtension("missing"), job: job)), "an unreadable file adds nothing")
+    #expect(session.results.count == 1)
   }
 }

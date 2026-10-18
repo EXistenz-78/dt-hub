@@ -277,6 +277,27 @@ public final class GenerationSession {
     }.value
   }
 
+  /// Keeps a finished picture a plug-in made as a result: read from its file, saved in the store (the project's folder, with
+  /// the metadata of `job`) and put first in the strip. False when the file cannot be read.
+  public func adopt(fileAt url: URL, job: GenerationJob) async -> Bool {
+    let store = store
+    let adopted: GeneratedImage? = await Task.detached(priority: .userInitiated) {
+      guard let image = PNGImageStore.image(at: url, maxPixel: 16_384) else { return nil }
+      let date = Date()
+      let shown = Self.reduced(image, to: Self.displayPixels)
+      do {
+        let saved = try store.save(image, job: job, index: 0, date: date, elapsed: nil)
+        return GeneratedImage(image: shown, job: job, date: date, fileURL: saved, saveError: nil, elapsed: nil)
+      } catch {
+        return GeneratedImage(image: image, job: job, date: date, fileURL: nil, saveError: String(describing: error), elapsed: nil)
+      }
+    }.value
+    guard let adopted else { return false }
+    results.insert(adopted, at: 0)
+    persistHistory()
+    return true
+  }
+
   /// Writes an image as a PNG, away from the main actor; false when it cannot be written.
   private nonisolated static func writePNG(_ image: CGImage, to url: URL) async -> Bool {
     await Task.detached(priority: .userInitiated) {

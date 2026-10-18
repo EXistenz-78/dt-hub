@@ -52,6 +52,16 @@ final class FakeContributionTarget: ContributionTarget {
     paintCalls.append(image)
   }
 
+  private(set) var results: [(image: PluginImageRef, description: String)] = []
+  /// Set to make `addResult` throw.
+  var resultFails = false
+
+  func addResult(_ image: PluginImageRef, description: String) throws {
+    struct Failure: Error {}
+    if resultFails { throw Failure() }
+    results.append((image, description))
+  }
+
   func userRemovesStartImage() { startID = nil }
   func userRemovesLoRA(_ file: String) { loras.removeAll { $0.file == file } }
 }
