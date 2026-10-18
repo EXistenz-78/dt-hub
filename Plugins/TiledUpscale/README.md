@@ -25,7 +25,7 @@ Limits: over 16 384 px on a side or 268 megapixels the plug-in refuses; over 100
 
 ## The mask
 
-The first tile has no mask. Every other tile is regenerated everywhere but in the part it shares with the tiles already made, of which **200 px** (250 px with the 320 px overlap, always 25/32 of the overlap) are left free on the left and on top: the first row has the free strip on the left only, the first column on top only, the others both. Blur 30, margin 30, *Keep the original outside the mask* on.
+The first tile has no mask. Every other tile is regenerated everywhere but in the part it shares with the tiles already made, which is left free on the left and on top (**256 px**, or 320 px with the wide overlap: the whole overlap; an experiment, it was 25/32 of it): the first row has the free strip on the left only, the first column on top only, the others both. Blur 30, margin 30, *Keep the original outside the mask* on.
 
 ## Files
 

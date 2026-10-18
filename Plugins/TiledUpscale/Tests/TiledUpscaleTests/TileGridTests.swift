@@ -61,7 +61,7 @@ struct TileGridTests {
 
   @Test func maskRectsFollowTheFourCases() {
     for overlap in TileOverlap.allCases {
-      let free = overlap == .standard ? 200 : 250
+      let free = overlap == .standard ? 256 : 320
       #expect(overlap.free == free)
       let plan = TileGrid.plan(width: 2048, height: 2048, overlap: overlap)
       let w = { (i: Int) in plan.tiles[i].rect.width }
@@ -73,7 +73,7 @@ struct TileGridTests {
     }
     let narrow = TileGrid.plan(width: 1088, height: 1024, overlap: .standard)
     #expect(narrow.tiles[1].rect.width == 320)
-    #expect(narrow.tiles[1].maskRect?.width == 120)
+    #expect(narrow.tiles[1].maskRect?.width == 64, "the last tile is overlap + 64 wide: 64 px are new")
   }
 
   @Test func countMatchesTheSpecExample() {

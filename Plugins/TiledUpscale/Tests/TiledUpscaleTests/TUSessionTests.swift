@@ -58,8 +58,8 @@ struct TUSessionTests {
     #expect(size(answer) == (512, 1024))
     let mask = try #require(load(answer, "mask"))
     #expect(mask.width == 512 && mask.height == 1024)
-    #expect(TestImages.pixel(mask, 199, 500)[0] == 0)
-    #expect(TestImages.pixel(mask, 200, 500)[0] == 255)
+    #expect(TestImages.pixel(mask, 255, 500)[0] == 0)
+    #expect(TestImages.pixel(mask, 256, 500)[0] == 255)
     #expect(TestImages.pixel(mask, 511, 1023)[0] == 255)
     let settings = answer["maskSettings"] as? [String: Any]
     #expect(settings?["blur"] as? Double == 30 && settings?["outset"] as? Int == 30)
@@ -95,14 +95,14 @@ struct TUSessionTests {
     #expect(s.end("stopped") == nil)
   }
 
-  @Test func theWideOverlapStartsAt704AndMasksFrom250() throws {
+  @Test func theWideOverlapStartsAt704AndMasksFrom320() throws {
     let s = session(overlap: .wide)
     _ = s.next(request(1))
     let answer = object(s.next(request(2, previous: previousFile("p1.png", 1024, 1024, (200, 0, 0)))))
     #expect(size(answer) == (576, 1024))
     let mask = try #require(load(answer, "mask"))
-    #expect(TestImages.pixel(mask, 249, 5)[0] == 0)
-    #expect(TestImages.pixel(mask, 250, 5)[0] == 255)
+    #expect(TestImages.pixel(mask, 319, 5)[0] == 0)
+    #expect(TestImages.pixel(mask, 320, 5)[0] == 255)
     let tile = try #require(load(answer, "startImage"))
     #expect(TestImages.pixel(tile, 319, 5) == [200, 0, 0, 255])
     #expect(TestImages.pixel(tile, 320, 5) == [10, 20, 30, 255])
