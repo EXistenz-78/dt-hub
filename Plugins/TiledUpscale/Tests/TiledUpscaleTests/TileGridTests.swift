@@ -29,7 +29,7 @@ struct TileGridTests {
   }
 
   @Test func columnsStartAtMultiplesOfTheStep() {
-    let standard = TileGrid.plan(width: 2688, height: 1024, overlap: .standard)
+    let standard = TileGrid.plan(width: 2688, height: 1024, overlap: .standard, free: 200)
     #expect(standard.tiles.map(\.rect.x) == [0, 768, 1536, 2304])
     #expect(standard.tiles.last?.rect.width == 384)
     let wide = TileGrid.plan(width: 2688, height: 1024, overlap: .wide)
@@ -61,9 +61,8 @@ struct TileGridTests {
 
   @Test func maskRectsFollowTheFourCases() {
     for overlap in TileOverlap.allCases {
-      let free = overlap == .standard ? 256 : 320
-      #expect(overlap.free == free)
-      let plan = TileGrid.plan(width: 2048, height: 2048, overlap: overlap)
+      let free = overlap == .standard ? 200 : 250
+      let plan = TileGrid.plan(width: 2048, height: 2048, overlap: overlap, free: free)
       let w = { (i: Int) in plan.tiles[i].rect.width }
       let h = { (i: Int) in plan.tiles[i].rect.height }
       #expect(plan.tiles[0].maskRect == nil)
@@ -71,13 +70,40 @@ struct TileGridTests {
       #expect(plan.tiles[3].maskRect == TileRect(x: 0, y: free, width: w(3), height: h(3) - free))
       #expect(plan.tiles[4].maskRect == TileRect(x: free, y: free, width: w(4) - free, height: h(4) - free))
     }
-    let narrow = TileGrid.plan(width: 1088, height: 1024, overlap: .standard)
+    let narrow = TileGrid.plan(width: 1088, height: 1024, overlap: .standard, free: 200)
     #expect(narrow.tiles[1].rect.width == 320)
-    #expect(narrow.tiles[1].maskRect?.width == 64, "the last tile is overlap + 64 wide: 64 px are new")
+    #expect(narrow.tiles[1].maskRect?.width == 120)
+    #expect(TileGrid.plan(width: 2048, height: 1024, overlap: .standard, free: 100).tiles[1].maskRect?.x == 100, "the free margin is the plan's own")
   }
 
   @Test func countMatchesTheSpecExample() {
     #expect(TileGrid.plan(width: 8192, height: 8192, overlap: .standard).count == 121)
     #expect(TileGrid.plan(width: 8192, height: 8192, overlap: .wide).count == 144)
+  }
+
+  @Test func aBiggerTileMeansFewerTiles() {
+    let big = TileGrid.plan(width: 4096, height: 1024, overlap: .standard, tile: 2048)
+    #expect(big.tiles.map(\.rect.x) == [0, 1792, 3584])
+    #expect(big.tiles.map(\.rect.width) == [2048, 2048, 512], "the last tile is what is left of the side, wider than the overlap")
+    let mid = TileGrid.plan(width: 4096, height: 1024, overlap: .standard, tile: 1536)
+    #expect(mid.tiles.map(\.rect.x) == [0, 1280, 2560])
+    #expect(mid.tiles.last?.rect.width == 1536)
+    #expect(TileGrid.plan(width: 3968, height: 3968, overlap: .standard, tile: 1024).count == 25)
+    #expect(TileGrid.plan(width: 3968, height: 3968, overlap: .standard, tile: 2048).count == 9)
+  }
+
+  @Test func everyTileSizeKeepsTheTilesAMultipleOf64AndInsideTheSize() {
+    for tile in stride(from: 1024, through: 2048, by: 64) {
+      for overlap in TileOverlap.allCases {
+        for side in [2560, 3968, 4096, 8192] {
+          let plan = TileGrid.plan(width: side, height: 1024, overlap: overlap, tile: tile)
+          for t in plan.tiles {
+            #expect(t.rect.width % 64 == 0 && t.rect.width <= tile, "tile \(tile) overlap \(overlap.rawValue) side \(side)")
+          }
+          let last = plan.tiles.last!.rect
+          #expect(last.x + last.width == side && last.width > overlap.rawValue)
+        }
+      }
+    }
   }
 }

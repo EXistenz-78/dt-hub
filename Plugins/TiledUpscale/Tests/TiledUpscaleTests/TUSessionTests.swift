@@ -9,10 +9,11 @@ struct TUSessionTests {
   let preset = TUPresetTable.preset(forFamily: "flux2_9b")!
 
   /// 1280 × 1024, factor 1: two tiles with the standard overlap (0…1024 and 768…1280).
-  private func session(overlap: TileOverlap = .standard, weight: Double = 1, trigger: String = "TRIG") -> TUSession {
+  private func session(overlap: TileOverlap = .standard, weight: Double = 1, trigger: String = "TRIG", settings: TUSettings? = nil) -> TUSession {
     let source = TestImages.solid(1280, 1024, (10, 20, 30))
     return TUSession(
-      source: source, factor: 1, overlap: overlap, loraWeight: weight, trigger: trigger, preset: preset, tempFolder: folder)
+      source: source, factor: 1, overlap: overlap, settings: settings ?? TUSettings(free: overlap.rawValue, blur: 30, outset: 30, fade: 0),
+      loraWeight: weight, trigger: trigger, preset: preset, tempFolder: folder)
   }
 
   private func request(_ index: Int, count: Int = 2, previous: (String, Int, Int)? = nil) -> TUNextRequest {
@@ -157,5 +158,69 @@ struct TUSessionTests {
     // The overlap (768…1024 → 720…960 in the preview) belongs to the later tile, as in the real picture.
     #expect(TestImages.pixel(both, 800, 100) == [0, 0, 200, 255])
     #expect(TestImages.pixel(both, 100, 100) == [200, 0, 0, 255])
+  }
+
+  @Test func theInputFadesFromTheNeighbourResultToTheSourceAtTheEndOfTheOverlap() throws {
+    let s = session(settings: TUSettings(free: 200, blur: 30, outset: 30, fade: 48))
+    _ = s.next(request(1))
+    let answer = object(s.next(request(2, previous: previousFile("p1.png", 1024, 1024, (200, 0, 0)))))
+    let tile = try #require(load(answer, "startImage"))
+    #expect(TestImages.pixel(tile, 100, 500) == [200, 0, 0, 255], "deep in the neighbour's part it is the neighbour's result")
+    let edge = TestImages.pixel(tile, 255, 500)
+    #expect(abs(Int(edge[0]) - 10) < 4 && abs(Int(edge[1]) - 20) < 4, "at the end of the overlap it is the source: no step")
+    let middle = TestImages.pixel(tile, 232, 500)
+    #expect(abs(Int(middle[0]) - 105) < 12, "half way it is half and half")
+    #expect(TestImages.pixel(tile, 300, 500) == [10, 20, 30, 255], "beyond the overlap it is the source")
+  }
+
+  @Test func withNoFadeTheEdgeStaysHard() throws {
+    let s = session(settings: TUSettings(free: 200, blur: 30, outset: 30, fade: 0))
+    _ = s.next(request(1))
+    let answer = object(s.next(request(2, previous: previousFile("p1.png", 1024, 1024, (200, 0, 0)))))
+    let tile = try #require(load(answer, "startImage"))
+    #expect(TestImages.pixel(tile, 255, 500) == [200, 0, 0, 255])
+    #expect(TestImages.pixel(tile, 256, 500) == [10, 20, 30, 255])
+  }
+
+  @Test func theMaskSettingsAndTheFreeMarginFollowTheSliders() throws {
+    let s = session(settings: TUSettings(free: 120, blur: 12, outset: 7, fade: 0))
+    _ = s.next(request(1))
+    let answer = object(s.next(request(2, previous: previousFile("p1.png", 1024, 1024, (200, 0, 0)))))
+    let settings = answer["maskSettings"] as? [String: Any]
+    #expect(settings?["blur"] as? Double == 12 && settings?["outset"] as? Int == 7)
+    let mask = try #require(load(answer, "mask"))
+    #expect(TestImages.pixel(mask, 119, 5)[0] == 0 && TestImages.pixel(mask, 120, 5)[0] == 255)
+  }
+
+  @Test func aBiggerTileGivesBiggerPasses() throws {
+    let source = TestImages.solid(2300, 2100, (10, 20, 30))
+    let s = TUSession(
+      source: source, factor: 1, overlap: .standard, settings: TUSettings(free: 200, blur: 30, outset: 30, fade: 0, tile: 2048),
+      loraWeight: 1, trigger: "", preset: preset, tempFolder: folder)
+    #expect(s.plan.count == 2, "2300 × 2100 is cut to 2240 × 2048: two tiles of 2048 along, one across")
+    let answer = object(s.next(request(1, count: 2)))
+    #expect(size(answer) == (2048, 2048))
+    let tile = try #require(load(answer, "startImage"))
+    #expect(tile.width == 2048 && tile.height == 2048)
+  }
+}
+
+extension TUSessionTests {
+  @Test func theToneOfAResultIsBroughtBackToTheSourceBeforeItIsComposed() throws {
+    let source = TestImages.solid(1280, 1024, (100, 100, 100))
+    let s = TUSession(
+      source: source, factor: 1, overlap: .standard,
+      settings: TUSettings(free: 200, blur: 30, outset: 30, fade: 0, tile: 1024, toneStrength: 100, toneRadius: 32),
+      loraWeight: 1, trigger: "", preset: preset, tempFolder: folder)
+    _ = s.next(TUNextRequest(index: 1, count: 2, previous: nil))
+    // The model made tile 1 lighter than the source: 160 against 100.
+    let lighter = TestImages.write(TestImages.solid(1024, 1024, (160, 160, 160)), in: folder, name: "light.png")
+    _ = s.next(TUNextRequest(index: 2, count: 2, previous: TUNextRequest.Previous(path: lighter.path, width: 1024, height: 1024)))
+    let darker = TestImages.write(TestImages.solid(512, 1024, (150, 150, 150)), in: folder, name: "light2.png")
+    _ = s.next(TUNextRequest(index: 3, count: 2, previous: TUNextRequest.Previous(path: darker.path, width: 512, height: 1024)))
+    let composed = try #require(s.end("finished"))
+    #expect(abs(Int(TestImages.pixel(composed, 600, 500)[0]) - 100) <= 3, "the new part is back at the source's tone")
+    #expect(TestImages.pixel(composed, 100, 500)[0] == 100 || abs(Int(TestImages.pixel(composed, 100, 500)[0]) - 100) <= 3)
+    #expect(abs(Int(TestImages.pixel(composed, 1100, 500)[0]) - 100) <= 3)
   }
 }

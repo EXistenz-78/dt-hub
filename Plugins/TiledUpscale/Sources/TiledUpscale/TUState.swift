@@ -10,15 +10,21 @@ struct TUSummary: Equatable, Sendable {
   let rows: Int
   let passes: Int
   let verdict: TileLimits.Verdict
+  /// What the model will make in all, in megapixels: the area of every tile, the overlaps counted each time. A rough measure of the
+  /// time (it grows faster than this with the size of a tile): the number to compare between two tile sizes.
+  let generatedMegapixels: Double
   /// True when the enlarged picture is cut a little to make its sides multiples of 64.
   let cropped: Bool
 
-  static func make(sourceWidth: Int, sourceHeight: Int, factor: Int, overlap: TileOverlap) -> TUSummary {
+  static func make(
+    sourceWidth: Int, sourceHeight: Int, factor: Int, overlap: TileOverlap, tile: Int = TileConstants.tile
+  ) -> TUSummary {
     let scaled = TileGrid.scaledSize(width: sourceWidth, height: sourceHeight, factor: factor)
-    let plan = TileGrid.plan(width: scaled.width, height: scaled.height, overlap: overlap)
+    let plan = TileGrid.plan(width: scaled.width, height: scaled.height, overlap: overlap, tile: tile)
     return TUSummary(
       width: scaled.width, height: scaled.height, columns: plan.columns, rows: plan.rows, passes: plan.count,
       verdict: TileLimits.verdict(width: scaled.width, height: scaled.height, passes: plan.count),
+      generatedMegapixels: Double(plan.tiles.reduce(0) { $0 + $1.rect.width * $1.rect.height }) / 1_000_000,
       cropped: scaled.width != sourceWidth * factor || scaled.height != sourceHeight * factor)
   }
 }
@@ -26,9 +32,44 @@ struct TUSummary: Equatable, Sendable {
 /// The tab: the picture, the three choices, the summary, and the enlargement from the preparation to the saved file.
 @MainActor
 final class TUState: ObservableObject {
-  @Published var factor: Int { didSet { choiceChanged(changesPicture: true) } }
-  @Published var overlap: TileOverlap { didSet { choiceChanged(changesPicture: true) } }
-  @Published var loraWeight: Double { didSet { choiceChanged(changesPicture: false) } }
+  /// The enlargements the tab offers.
+  static let factors = TUSettings.factors
+
+  @Published var factor: Int {
+    didSet {
+      if !loadingChoice { autoSizeTile() }
+      choiceChanged(changesPicture: true)
+    }
+  }
+  @Published var overlap: TileOverlap {
+    didSet {
+      if !loadingChoice {
+        // The free part of the advanced values goes back to the one of this overlap; the other values stay.
+        var next = settings
+        next.free = TUSettings.defaultFree(for: overlap)
+        settings = next
+        autoSizeTile()
+      }
+      settings = settings.clamped(overlap: overlap)
+      choiceChanged(changesPicture: true)
+    }
+  }
+  /// The mask and the join: the free part, Draw Things' blur and outset, the fade of the join.
+  @Published private(set) var settings: TUSettings
+  /// The LoRA strength by preset name; see `loraWeight`.
+  @Published private(set) var loraWeights: [String: Double]
+  /// The LoRA strength of the preset of the model in the header: the one the user chose, else the preset's own default. Each
+  /// preset keeps its own (Qwen's LoRA works at 2.5, FLUX's at 1).
+  var loraWeight: Double {
+    get { loraWeights[preset?.name ?? ""] ?? preset?.defaultLoRAWeight ?? 1 }
+    set {
+      let range = TUPresetTable.loraWeightRange
+      var next = loraWeights
+      next[preset?.name ?? ""] = min(max(newValue, range.lowerBound), range.upperBound)
+      loraWeights = next
+      choiceChanged(changesPicture: false)
+    }
+  }
   @Published private(set) var image: CGImage?
   @Published private(set) var imageName = ""
   @Published private(set) var notice: String?
@@ -43,14 +84,71 @@ final class TUState: ObservableObject {
   /// True after Prepare was pressed on a big job: the next press confirms it.
   @Published private(set) var awaitingConfirmation = false
   @Published var active = false
-  /// The model family the header has (`context.family`).
+  /// The model family the header has (`context.family`) and the file of its model (`context.model`).
   @Published var family: String?
+  @Published var model: String?
   /// The folder the app lends for picture files; nil until the first `context`.
   var tempFolder: String?
   /// The trigger word of each LoRA of the server, by file (`context.loraCatalog`).
   var loraTriggers: [String: String] = [:]
   /// Sends a `contribute` message to the app (the plug-in gives it at start; a test gives its own).
   var contribute: (([String: Any]) async -> [String: Any]?)?
+
+  var maskFree: Int {
+    get { settings.free }
+    set { change { $0.free = newValue } }
+  }
+  var maskBlur: Double {
+    get { settings.blur }
+    set { change { $0.blur = newValue } }
+  }
+  var maskOutset: Int {
+    get { settings.outset }
+    set { change { $0.outset = newValue } }
+  }
+  var tileSize: Int {
+    get { settings.tile }
+    set { change { $0.tile = newValue } }
+  }
+  var toneStrength: Int {
+    get { settings.toneStrength }
+    set { change { $0.toneStrength = newValue } }
+  }
+  var toneRadius: Int {
+    get { settings.toneRadius }
+    set { change { $0.toneRadius = newValue } }
+  }
+  var junctionFade: Int {
+    get { settings.fade }
+    set { change { $0.fade = newValue } }
+  }
+  /// What the fade can be now: what the free part leaves of the overlap.
+  var fadeRange: ClosedRange<Int> { 0...max(0, overlap.rawValue - settings.free) }
+
+  /// The tile for the picture as it is now: the smallest that needs at most three along its shorter side (`TUSettings.autoTile`).
+  /// It runs when the picture, the enlargement or the overlap change; the slider can then be moved by hand.
+  private func autoSizeTile() {
+    guard let image else { return }
+    let scaled = TileGrid.scaledSize(width: image.width, height: image.height, factor: factor)
+    var next = settings
+    next.tile = TUSettings.autoTile(shortestSide: min(scaled.width, scaled.height), overlap: overlap)
+    settings = next.clamped(overlap: overlap)
+  }
+
+  /// The values of the advanced section back to the defaults of the overlap (the tile size is not one of them).
+  func resetAdvanced() {
+    var next = TUSettings.defaults(for: overlap)
+    next.tile = settings.tile
+    settings = next.clamped(overlap: overlap)
+    choiceChanged(changesPicture: false)
+  }
+
+  private func change(_ edit: (inout TUSettings) -> Void) {
+    var next = settings
+    edit(&next)
+    settings = next.clamped(overlap: overlap)
+    choiceChanged(changesPicture: false)
+  }
 
   private var store: TUStore
   private let italian: Bool
@@ -63,7 +161,8 @@ final class TUState: ObservableObject {
     let choice = store.load()
     self.factor = choice.factor
     self.overlap = TileOverlap(rawValue: choice.overlap) ?? .standard
-    self.loraWeight = choice.loraWeight
+    self.loraWeights = choice.loraWeights
+    self.settings = choice.settings
   }
 
   static func text(_ key: L.Key, italian: Bool) -> String { L.text(key, italian: italian) }
@@ -74,17 +173,18 @@ final class TUState: ObservableObject {
 
   // MARK: What the tab says
 
-  var preset: TUPreset? { TUPresetTable.preset(forFamily: family) }
+  var preset: TUPreset? { TUPresetTable.preset(forFamily: family, model: model) }
 
   var summary: TUSummary? {
     guard let image else { return nil }
-    return TUSummary.make(sourceWidth: image.width, sourceHeight: image.height, factor: factor, overlap: overlap)
+    return TUSummary.make(
+      sourceWidth: image.width, sourceHeight: image.height, factor: factor, overlap: overlap, tile: settings.tile)
   }
 
   /// The tiles of the picture as it is now, for the grid of the preview.
   var plan: TilePlan? {
     guard let summary else { return nil }
-    return TileGrid.plan(width: summary.width, height: summary.height, overlap: overlap)
+    return TileGrid.plan(width: summary.width, height: summary.height, overlap: overlap, free: settings.free, tile: settings.tile)
   }
 
   var canPrepare: Bool { preset != nil && image != nil && summary?.verdict != .refuse }
@@ -110,6 +210,7 @@ final class TUState: ObservableObject {
     isPrepared = false
     awaitingConfirmation = false
     session = nil
+    autoSizeTile()
     resetPreview()
   }
 
@@ -151,7 +252,9 @@ final class TUState: ObservableObject {
     notice = nil
     if changesPicture { resetPreview() }
     guard !loadingChoice else { return }
-    store.save(TUChoice(factor: factor, overlap: overlap.rawValue, loraWeight: loraWeight))
+    store.save(
+      TUChoice(
+        factor: factor, overlap: overlap.rawValue, loraWeight: loraWeights[""] ?? 1, settings: settings, loraWeights: loraWeights))
   }
 
   func switchProject(folder: URL) {
@@ -160,7 +263,8 @@ final class TUState: ObservableObject {
     loadingChoice = true
     factor = choice.factor
     overlap = TileOverlap(rawValue: choice.overlap) ?? .standard
-    loraWeight = choice.loraWeight
+    loraWeights = choice.loraWeights
+    settings = choice.settings
     loadingChoice = false
     image = nil
     imageName = ""
@@ -176,6 +280,7 @@ final class TUState: ObservableObject {
     guard let context = try? JSONDecoder().decode(DTHubContext.self, from: data) else { return }
     tempFolder = context.tempFolder
     family = context.family
+    model = context.model
     loraTriggers = Dictionary(
       (context.loraCatalog ?? []).filter { !$0.trigger.isEmpty }.map { ($0.file, $0.trigger) }, uniquingKeysWith: { first, _ in first })
   }
@@ -188,7 +293,7 @@ final class TUState: ObservableObject {
     let folder = URL(fileURLWithPath: tempFolder ?? NSTemporaryDirectory(), isDirectory: true)
       .appendingPathComponent("tiled-upscale", isDirectory: true)
     return TUSession(
-      source: image, factor: factor, overlap: overlap, loraWeight: loraWeight,
+      source: image, factor: factor, overlap: overlap, settings: settings, loraWeight: loraWeight,
       trigger: loraTriggers[preset.loraFile] ?? "", preset: preset, tempFolder: folder)
   }
 
@@ -206,13 +311,13 @@ final class TUState: ObservableObject {
     }
     guard let session = makeSession() else { return }
     let trigger = loraTriggers[preset.loraFile] ?? ""
-    let fields = preset.fields(prompt: TUPrompt.text(trigger: trigger))
+    let fields = preset.fields(prompt: preset.prompt(trigger: trigger))
     let loras = preset.loras(weight: loraWeight)
     _ = await registerPreset(["name": preset.name, "fields": fields, "loras": loras])
     let estimate: [String: Any] = [
       "preset": preset.name, "fields": fields, "loras": loras,
       "size": [
-        "width": min(TileConstants.tile, summary.width), "height": min(TileConstants.tile, summary.height),
+        "width": min(settings.tile, summary.width), "height": min(settings.tile, summary.height),
       ],
     ]
     let pipeline: [String: Any] = ["name": "Tiled Upscale", "guided": true, "passes": summary.passes, "estimate": estimate]
@@ -275,7 +380,9 @@ final class TUState: ObservableObject {
       notice = format(.resultNotAdded, error.localizedDescription)
       return
     }
-    let description = format(.resultDescription, factor, summary.columns, summary.rows, loraWeight)
+    let description = format(
+      .resultDescription, factor, summary.columns, summary.rows, loraWeight, settings.tile, settings.free,
+      Int(settings.blur.rounded()), settings.outset, settings.fade, settings.toneStrength, settings.toneRadius)
     let message: [String: Any] = ["result": ["path": url.path, "name": "Tiled Upscale", "description": description]]
     guard let answer = await contribute?(message) else {
       notice = text(.notAnswered)

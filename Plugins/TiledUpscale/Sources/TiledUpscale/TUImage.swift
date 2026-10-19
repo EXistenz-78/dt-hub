@@ -118,6 +118,33 @@ enum TUImage {
     return CGImageDestinationFinalize(destination) ? data as Data : nil
   }
 
+  /// The pixels of a picture as RGBA bytes, sRGB, top row first.
+  static func rgba(_ image: CGImage) -> [UInt8]? {
+    var data = [UInt8](repeating: 0, count: image.width * image.height * 4)
+    let drawn = data.withUnsafeMutableBytes { buffer -> Bool in
+      guard
+        let context = CGContext(
+          data: buffer.baseAddress, width: image.width, height: image.height, bitsPerComponent: 8,
+          bytesPerRow: image.width * 4, space: CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB(),
+          bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+      else { return false }
+      context.setBlendMode(.copy)
+      context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+      return true
+    }
+    return drawn ? data : nil
+  }
+
+  /// A picture from RGBA bytes (sRGB, top row first).
+  static func image(rgba: [UInt8], width: Int, height: Int) -> CGImage? {
+    guard rgba.count == width * height * 4, let provider = CGDataProvider(data: Data(rgba) as CFData) else { return nil }
+    return CGImage(
+      width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: width * 4,
+      space: CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB(),
+      bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue), provider: provider, decode: nil,
+      shouldInterpolate: false, intent: .defaultIntent)
+  }
+
   /// A picture from data (a drop); nil when it cannot be read.
   static func load(data: Data) -> CGImage? {
     CGImageSourceCreateWithData(data as CFData, nil).flatMap { CGImageSourceCreateImageAtIndex($0, 0, nil) }

@@ -35,7 +35,7 @@ struct TUStateTests {
     #expect(s.summary?.passes == 9)
     s.factor = 4
     #expect(s.summary?.width == 3968)
-    #expect(s.summary?.passes == TileGrid.plan(width: 3968, height: 3968, overlap: .wide).count)
+    #expect(s.summary?.passes == TileGrid.plan(width: 3968, height: 3968, overlap: .wide, tile: s.tileSize).count)
   }
 
   @Test func prepareIsOffWithoutAnImageOrWithAnUnsupportedModel() {
@@ -51,8 +51,8 @@ struct TUStateTests {
 
   @Test func prepareRefusesAboveTheLimits() async {
     let s = state()
-    s.setImage(photo(2100, 2100), name: "big")
-    s.factor = 8
+    s.setImage(photo(4300, 4300), name: "big")
+    s.factor = 4
     #expect(s.summary?.verdict == .refuse)
     #expect(!s.canPrepare)
     var contributed = 0
@@ -118,13 +118,13 @@ struct TUStateTests {
     let two = folder.appendingPathComponent("two")
     let s = TUState(store: TUStore(folder: nil), italian: false)
     s.switchProject(folder: one)
-    s.factor = 8
+    s.factor = 4
     s.overlap = .wide
     s.loraWeight = 0.7
     s.switchProject(folder: two)
     #expect(s.factor == 2 && s.overlap == .standard && s.loraWeight == 1)
     s.switchProject(folder: one)
-    #expect(s.factor == 8 && s.overlap == .wide && s.loraWeight == 0.7)
+    #expect(s.factor == 4 && s.overlap == .wide && s.loraWeight == 0.7)
   }
 
   @Test func finishingSendsTheComposedPictureAsAResult() async throws {
@@ -143,7 +143,7 @@ struct TUStateTests {
     let path = try #require(result["path"] as? String)
     #expect(TUImage.load(URL(fileURLWithPath: path))?.width == 1024, "the composed picture, in the plug-in's folder")
     #expect(path.hasPrefix(folder.path))
-    #expect(result["description"] as? String == "Tiled Upscale 2× · 1×1 tiles · LoRA 1.00")
+    #expect(result["description"] as? String == "Tiled Upscale 2× · 1×1 tiles · LoRA 1.00 · tile 1024 · free 192 · blur 30 · margin 29 · fade 64 · tone 100%/16")
     #expect(result["name"] as? String == "Tiled Upscale")
     #expect(s.resultReady && !s.isPrepared)
     #expect(s.status == TUState.text(.addedToResults, italian: false))
@@ -210,5 +210,101 @@ struct TUStateTests {
       try Data(#"{"factor":2,"overlap":256,"loraWeight":\#(saved)}"#.utf8).write(to: one.appendingPathComponent("state.json"))
       #expect(TUStore(folder: one).load().loraWeight == expected, "saved \(saved)")
     }
+  }
+
+  @Test func theEstimateIsTheSizeOfTheBiggestTile() async throws {
+    let s = state()
+    s.setImage(photo(1200, 1200), name: "big")
+    s.factor = 4
+    s.tileSize = 1536
+    var sent: [String: Any] = [:]
+    await s.prepare(confirmed: true, contribute: { sent = $0; return ["type": "ok"] }, registerPreset: { _ in nil })
+    let pipeline = try #require(sent["pipeline"] as? [String: Any])
+    let size = try #require((pipeline["estimate"] as? [String: Any])?["size"] as? [String: Int])
+    #expect(size["width"] == 1536 && size["height"] == 1536)
+    #expect(pipeline["passes"] as? Int == s.summary?.passes)
+  }
+
+  @Test func theSummarySaysHowManyPixelsTheModelWillMake() {
+    // 3968 × 3968: with 1024 tiles the sides are 4 × 1024 + 896 = 4992 long in total (overlaps count twice), 25 tiles.
+    let small = TUSummary.make(sourceWidth: 1000, sourceHeight: 1000, factor: 4, overlap: .standard, tile: 1024)
+    #expect(small.passes == 25)
+    #expect(abs(small.generatedMegapixels - 4992.0 * 4992.0 / 1_000_000) < 0.001)
+    // 3968 with a 1536 tile: sides of 1536 + 1536 + 1408; with a 2048 one: 2048 + 2048 + 384. Both come to 4480, 9 tiles.
+    let mid = TUSummary.make(sourceWidth: 1000, sourceHeight: 1000, factor: 4, overlap: .standard, tile: 1536)
+    let big = TUSummary.make(sourceWidth: 1000, sourceHeight: 1000, factor: 4, overlap: .standard, tile: 2048)
+    #expect(mid.passes == 9 && big.passes == 9)
+    #expect(abs(mid.generatedMegapixels - 4480.0 * 4480.0 / 1_000_000) < 0.001)
+    #expect(abs(big.generatedMegapixels - mid.generatedMegapixels) < 0.001, "the same pixels in all, in bigger tiles")
+    #expect(mid.generatedMegapixels < small.generatedMegapixels)
+  }
+
+  @Test func qwenIsSupportedAndTheFileTellsTurboFromTheOther() {
+    let s = state(family: "qwen_image_2.1")
+    s.model = "qwen_image_2.1_turbo_i8x.ckpt"
+    s.setImage(photo(512, 512), name: "a")
+    #expect(s.canPrepare && s.preset?.name == "TUP · Qwen Image 2.1 Turbo")
+    s.model = "qwen_image_2.1_i8x.ckpt"
+    #expect(s.preset?.name == "TUP · Qwen Image 2.1")
+    s.model = nil
+    #expect(!s.canPrepare, "a Qwen model with no file name has no preset")
+  }
+
+  @Test func theLoRAStrengthIsRememberedPerPreset() {
+    let s = state(family: "flux2_9b")
+    #expect(s.loraWeight == 1)
+    s.loraWeight = 0.6
+    s.family = "qwen_image_2.1"
+    s.model = "qwen_image_2.1_turbo_i8x.ckpt"
+    #expect(s.loraWeight == 2.5, "each preset starts from its own")
+    s.loraWeight = 1.5
+    s.model = "qwen_image_2.1_i8x.ckpt"
+    #expect(s.loraWeight == 2.5)
+    s.model = "qwen_image_2.1_turbo_i8x.ckpt"
+    #expect(s.loraWeight == 1.5)
+    s.family = "flux2_9b"
+    s.model = nil
+    #expect(s.loraWeight == 0.6)
+  }
+
+  @Test func theLoRAStrengthsAreKeptPerProject() {
+    let one = folder.appendingPathComponent("w1")
+    let s = TUState(store: TUStore(folder: nil), italian: false)
+    s.family = "qwen_image_2.1"
+    s.model = "qwen_image_2.1_turbo_i8x.ckpt"
+    s.switchProject(folder: one)
+    s.loraWeight = 2.0
+    s.switchProject(folder: folder.appendingPathComponent("w2"))
+    #expect(s.loraWeight == 2.5)
+    s.switchProject(folder: one)
+    #expect(s.loraWeight == 2.0)
+  }
+
+  @Test func anOldProjectKeepsItsFluxStrength() throws {
+    let old = folder.appendingPathComponent("old")
+    try FileManager.default.createDirectory(at: old, withIntermediateDirectories: true)
+    try Data(#"{"factor":2,"overlap":256,"loraWeight":0.8}"#.utf8).write(to: old.appendingPathComponent("state.json"))
+    let s = state(family: "flux2_9b")
+    s.switchProject(folder: old)
+    #expect(s.loraWeight == 0.8)
+    s.family = "qwen_image_2.1"
+    s.model = "qwen_image_2.1_i8x.ckpt"
+    #expect(s.loraWeight == 2.5)
+  }
+
+  @Test func theQwenPassCarriesItsPromptAndItsLoRA() async throws {
+    let s = state(family: "qwen_image_2.1")
+    s.model = "qwen_image_2.1_turbo_i8x.ckpt"
+    s.setImage(photo(512, 512), name: "a")
+    s.loraTriggers = ["q21_detail_fix_2.0_lora_f16.ckpt": "SHOULD NOT APPEAR"]
+    var sent: [String: Any] = [:]
+    await s.prepare(confirmed: true, contribute: { sent = $0; return ["type": "ok"] }, registerPreset: { _ in nil })
+    let estimate = try #require((sent["pipeline"] as? [String: Any])?["estimate"] as? [String: Any])
+    let fields = try #require(estimate["fields"] as? [String: Any])
+    let prompt = try #require(fields["prompt"] as? String)
+    #expect(prompt.hasPrefix("Upscale this image") && !prompt.contains("SHOULD NOT APPEAR"))
+    let lora = try #require((estimate["loras"] as? [[String: Any]])?.first)
+    #expect(lora["file"] as? String == "q21_detail_fix_2.0_lora_f16.ckpt" && lora["weight"] as? Double == 2.5)
+    #expect(estimate["preset"] as? String == "TUP · Qwen Image 2.1 Turbo")
   }
 }

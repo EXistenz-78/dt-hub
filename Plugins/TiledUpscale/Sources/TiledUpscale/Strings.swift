@@ -7,7 +7,7 @@ enum L {
     case dropHere, open, image, enlargement, overlap, loraStrength
     case prepare, prepared, finalSize, tiles, passes, croppedNote
     case unsupportedModel, tooBig, bigJob, notAnswered, unreadableImage, noFolder
-    case addedToResults, resultNotAdded, resultDescription, useAsStart, stopped, failed, closed, resultPlaceholder, tileRegenerated, tilesDone
+    case resetAdvanced, toneStrength, toneRadius, tileSize, noRoomForFade, megapixels, maskSection, maskFree, maskBlur, maskOutset, junctionFade, addedToResults, resultNotAdded, resultDescription, useAsStart, stopped, failed, closed, resultPlaceholder, tileRegenerated, tilesDone
   }
 
   static var systemIsItalian: Bool {
@@ -33,13 +33,15 @@ enum L {
     .prepare: "Prepare", .prepared: "Ready: press RUN in DT Hub.",
     .finalSize: "Final size: %d × %d px", .tiles: "%d × %d tiles", .passes: "%d passes",
     .croppedNote: "The picture is cut by a few pixels so its sides are multiples of 64.",
-    .unsupportedModel: "This model has no preset in the plug-in yet: choose FLUX.2 [klein] 9B.",
+    .unsupportedModel: "This model has no preset in the plug-in yet: choose FLUX.2 [klein] 9B or Qwen Image 2.1.",
     .tooBig: "Too big: the result would pass 16 384 px on a side or 268 megapixels.",
     .bigJob: "A big job: it takes many passes. Press Prepare again to confirm.",
     .notAnswered: "No answer from the app.", .unreadableImage: "This image could not be read.",
     .noFolder: "No picture folder yet: switch the plug-in on first.",
     .addedToResults: "Done. The enlarged picture is in the Results.", .resultNotAdded: "The picture could not be added to the Results: %@",
-    .resultDescription: "Tiled Upscale %d× · %d×%d tiles · LoRA %.2f",
+    .resultDescription: "Tiled Upscale %d× · %d×%d tiles · LoRA %.2f · tile %d · free %d · blur %d · margin %d · fade %d · tone %d%%/%d",
+    .maskSection: "Advanced", .resetAdvanced: "Restore defaults", .maskFree: "Free part of the overlap", .maskBlur: "Blur of the mask", .maskOutset: "Margin of the mask",
+    .junctionFade: "Fade of the join", .tileSize: "Tile size", .toneStrength: "Brightness correction", .toneRadius: "Radius of the correction", .megapixels: "%.1f megapixels to make", .noRoomForFade: "No room: lower the free part.",
     .useAsStart: "Use as start image", .stopped: "Stopped. Nothing was saved.",
     .failed: "The enlargement failed: %@", .closed: "The enlargement was closed.",
     .resultPlaceholder: "The enlarged picture goes to the Results when it is done.",
@@ -53,13 +55,15 @@ enum L {
     .prepare: "Prepara", .prepared: "Pronto: premi RUN in DT Hub.",
     .finalSize: "Dimensione finale: %d × %d px", .tiles: "%d × %d tile", .passes: "%d passi",
     .croppedNote: "L'immagine viene ritagliata di pochi pixel perché i lati siano multipli di 64.",
-    .unsupportedModel: "Questo modello non ha ancora un preset nel plug-in: scegli FLUX.2 [klein] 9B.",
+    .unsupportedModel: "Questo modello non ha ancora un preset nel plug-in: scegli FLUX.2 [klein] 9B o Qwen Image 2.1.",
     .tooBig: "Troppo grande: il risultato supererebbe 16 384 px per lato o 268 megapixel.",
     .bigJob: "Un lavoro grande: richiede molti passi. Premi di nuovo Prepara per confermare.",
     .notAnswered: "Nessuna risposta dall'app.", .unreadableImage: "Impossibile leggere questa immagine.",
     .noFolder: "Ancora nessuna cartella per le immagini: accendi prima il plug-in.",
     .addedToResults: "Fatto. L'immagine ingrandita è nei Risultati.", .resultNotAdded: "Impossibile aggiungere l'immagine ai Risultati: %@",
-    .resultDescription: "Tiled Upscale %d× · %d×%d tile · LoRA %.2f",
+    .resultDescription: "Tiled Upscale %d× · %d×%d tile · LoRA %.2f · tile %d · libera %d · sfumatura %d · margine %d · fusione %d · luminosità %d%%/%d",
+    .maskSection: "Avanzate", .resetAdvanced: "Valori predefiniti", .maskFree: "Parte libera della sovrapposizione", .maskBlur: "Sfumatura della maschera",
+    .maskOutset: "Margine della maschera", .junctionFade: "Fusione della giunzione", .tileSize: "Dimensione del tile", .toneStrength: "Correzione della luminosità", .toneRadius: "Raggio della correzione", .megapixels: "%.1f megapixel da generare", .noRoomForFade: "Nessuno spazio: riduci la parte libera.",
     .useAsStart: "Usa come immagine di partenza", .stopped: "Fermato. Non è stato salvato nulla.",
     .failed: "L'ingrandimento non è riuscito: %@", .closed: "L'ingrandimento è stato chiuso.",
     .resultPlaceholder: "L'immagine ingrandita va nei Risultati a lavoro finito.",
