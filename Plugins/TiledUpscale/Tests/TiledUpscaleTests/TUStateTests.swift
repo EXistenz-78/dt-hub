@@ -103,14 +103,14 @@ struct TUStateTests {
     #expect(s.isPrepared)
   }
 
-  @Test func theTriggerWordComesFromTheLoRACatalog() throws {
+  @Test func theTriggerWordOfTheServerIsNotUsedForFlux() throws {
     let s = state()
     s.loraTriggers = ["f2_ultra_real_v5_pro_lora_f16.ckpt": "ULTRA"]
     s.setImage(photo(512, 512), name: "a")
     let session = try #require(s.makeSession())
     let answer = try #require(
       JSONSerialization.jsonObject(with: session.next(TUNextRequest(index: 1, count: 1, previous: nil))) as? [String: Any])
-    #expect((answer["fields"] as? [String: Any])?["prompt"] as? String == TUPrompt.text(trigger: "ULTRA"))
+    #expect((answer["fields"] as? [String: Any])?["prompt"] as? String == TUPresetTable.fluxPrompt, "the trigger of the server is not used")
   }
 
   @Test func theChoicesAreKeptPerProject() {

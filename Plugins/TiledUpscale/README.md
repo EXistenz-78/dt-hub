@@ -19,9 +19,9 @@ A plug-in for DT Hub that enlarges a picture **2× or 4×** and gives it new det
 | Shift | 3 | 6.5 | 1 |
 | Shift worked out from the size | no | no | yes |
 | LoRA (default strength) | `f2_ultra_real_v5_pro_lora_f16` (1) | `q21_detail_fix_2.0_lora_f16` (2.5) | `q21_detail_fix_2.0_lora_f16` (2.5) |
-| Prompt | the LoRA's trigger word + «ALSO PRESERVE COLORS AND LUMINOSITY» | one fixed prompt: «Upscale this image to a substantially higher resolution with a decisive gain in clarity…» | the same |
+| Prompt | one fixed prompt: «make this photo high-quality. preserve details. preserve overall composition of this photo. Preserve colors and lights.» | one fixed prompt: «Upscale this image to a substantially higher resolution with a decisive gain in clarity…» | the same |
 
-Strength 1 for all. Turbo is told from the other Qwen by "turbo" in the model's file name. The LoRA strength (−1.5 to 2.5, as in the generation tab) is remembered **per preset** and per project. The plug-in never changes the model: it is the one in the header. The values are in `TUPreset.swift`.
+Strength 1 for all. The FLUX prompt is fixed here and the trigger word of the LoRA on the server is not used: it says «face», «expression», «figure» and «pose», and on a tile with no face the model adds one. Turbo is told from the other Qwen by "turbo" in the model's file name. The LoRA strength (−1.5 to 2.5, as in the generation tab) is remembered **per preset** and per project. The plug-in never changes the model: it is the one in the header. The values are in `TUPreset.swift`.
 
 ## Multiples of 64 and the size of the tile
 
