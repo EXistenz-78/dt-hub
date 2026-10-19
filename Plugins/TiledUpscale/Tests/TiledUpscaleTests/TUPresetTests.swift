@@ -40,13 +40,23 @@ struct TUPresetTests {
     #expect(preset.fields(prompt: "p")["resolutionDependentShift"] as? Bool == true)
   }
 
-  @Test func qwenUsesItsFixedPromptAndFluxTheTriggerWord() throws {
+  @Test func fluxHasItsFixedPromptWhateverTheLoRAsTriggerIs() throws {
+    // The trigger of the LoRA on the server has "face", "expression", "figure", "pose": on a tile with no face the model adds one.
+    let flux = try #require(TUPresetTable.preset(forFamily: "flux2_9b"))
+    let expected = "make this photo high-quality. preserve details. preserve overall composition of this photo. Preserve colors and lights."
+    #expect(TUPresetTable.fluxPrompt == expected)
+    #expect(flux.prompt(trigger: "face expression figure pose") == expected)
+    #expect(flux.prompt(trigger: "") == expected)
+    #expect(!expected.lowercased().contains("face") && !expected.lowercased().contains("expression"))
+  }
+
+  @Test func bothFamiliesUseTheirFixedPrompt() throws {
     let qwen = try #require(TUPresetTable.preset(forFamily: "qwen_image_2.1", model: "qwen_image_2.1_turbo_i8x.ckpt"))
     #expect(qwen.prompt(trigger: "ANYTHING").hasPrefix("Upscale this image to a substantially higher resolution"))
     #expect(qwen.prompt(trigger: "ANYTHING").hasSuffix("a cleaner, richer, higher-resolution version of the same image."))
     #expect(qwen.prompt(trigger: "ANYTHING") == qwen.prompt(trigger: ""), "no trigger word in it")
     let flux = try #require(TUPresetTable.preset(forFamily: "flux2_9b"))
-    #expect(flux.prompt(trigger: "T") == TUPrompt.text(trigger: "T"))
+    #expect(flux.prompt(trigger: "T") == TUPresetTable.fluxPrompt, "no trigger word in it either")
     // The same sentence for both Qwen models.
     let normal = try #require(TUPresetTable.preset(forFamily: "qwen_image_2.1", model: "qwen_image_2.1_i8x.ckpt"))
     #expect(normal.prompt(trigger: "") == qwen.prompt(trigger: ""))

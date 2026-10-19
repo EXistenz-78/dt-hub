@@ -46,6 +46,12 @@ enum TUPresetTable {
 
   static let fluxKlein9BName = "TUP · FLUX.2 klein 9B"
 
+  /// The prompt of every tile of FLUX.2 klein 9B. It is fixed here, not the trigger word of the LoRA on the server: that one
+  /// says "face", "expression", "figure" and "pose", and on a tile with no face the model adds one. It holds no description
+  /// of the content: the tile is all it has to go on.
+  static let fluxPrompt =
+    "make this photo high-quality. preserve details. preserve overall composition of this photo. Preserve colors and lights."
+
   /// The detail LoRA of Qwen Image 2.1 and the prompt of its presets (the same for Turbo and the other).
   static let qwenLoRA = "q21_detail_fix_2.0_lora_f16.ckpt"
   static let qwenPrompt =
@@ -58,7 +64,8 @@ enum TUPresetTable {
     case "flux2_9b":
       return TUPreset(
         name: fluxKlein9BName, steps: 4, guidanceScale: 1, sampler: 16, shift: 3, strength: 1,
-        loraFile: "f2_ultra_real_v5_pro_lora_f16.ckpt", defaultLoRAWeight: 1, resolutionDependentShift: false, fixedPrompt: nil)
+        loraFile: "f2_ultra_real_v5_pro_lora_f16.ckpt", defaultLoRAWeight: 1, resolutionDependentShift: false,
+        fixedPrompt: fluxPrompt)
     case "qwen_image_2.1":
       guard let model else { return nil }
       if model.lowercased().contains("turbo") {
