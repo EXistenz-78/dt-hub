@@ -67,7 +67,7 @@ enum TUPresetTable {
           loraFile: qwenLoRA, defaultLoRAWeight: 2.5, resolutionDependentShift: false, fixedPrompt: qwenPrompt)
       }
       return TUPreset(
-        name: "TUP · Qwen Image 2.1", steps: 40, guidanceScale: 1, sampler: 16, shift: 1, strength: 1, loraFile: qwenLoRA,
+        name: "TUP · Qwen Image 2.1", steps: 33, guidanceScale: 1, sampler: 16, shift: 1, strength: 1, loraFile: qwenLoRA,
         defaultLoRAWeight: 2.5, resolutionDependentShift: true, fixedPrompt: qwenPrompt)
     default:
       return nil

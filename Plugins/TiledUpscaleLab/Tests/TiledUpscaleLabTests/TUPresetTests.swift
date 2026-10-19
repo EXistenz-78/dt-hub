@@ -34,7 +34,7 @@ struct TUPresetTests {
   @Test func qwen21HasItsOwnValuesToo() throws {
     let preset = try #require(TUPresetTable.preset(forFamily: "qwen_image_2.1", model: "qwen_image_2.1_i8x.ckpt"))
     #expect(preset.name == "TUP · Qwen Image 2.1")
-    #expect(preset.steps == 40 && preset.guidanceScale == 1 && preset.sampler == 16 && preset.shift == 1 && preset.strength == 1)
+    #expect(preset.steps == 33 && preset.guidanceScale == 1 && preset.sampler == 16 && preset.shift == 1 && preset.strength == 1)
     #expect(preset.resolutionDependentShift == true, "this one works out its shift from the size")
     #expect(preset.loraFile == "q21_detail_fix_2.0_lora_f16.ckpt" && preset.defaultLoRAWeight == 2.5)
     #expect(preset.fields(prompt: "p")["resolutionDependentShift"] as? Bool == true)
