@@ -47,8 +47,16 @@ struct TUToneTests {
     #expect(abs(level(out, 200, 64) - 100) <= 1, "well inside it is complete")
   }
 
-  @Test func theGainIsLimited() throws {
-    let out = try #require(TUTone.correct(result: gray(64, 64, 200), base: gray(64, 64, 20), maskRect: nil, radius: 16, strength: 1))
-    #expect(level(out, 32, 32) >= 99, "it never takes a tile below half its level")
+  @Test func aShiftOfThreeTimesIsBroughtBack() throws {
+    // A night sky: the source is at 30, the model made it 90. A correction limited to half would leave it at 45.
+    let out = try #require(TUTone.correct(result: gray(128, 128, 90), base: gray(128, 128, 30), maskRect: nil, radius: 24, strength: 1))
+    #expect(abs(level(out, 64, 64) - 30) <= 2)
+    let brighter = try #require(TUTone.correct(result: gray(128, 128, 30), base: gray(128, 128, 90), maskRect: nil, radius: 24, strength: 1))
+    #expect(abs(level(brighter, 64, 64) - 90) <= 5, "and the other way (the +2 that keeps a black from dividing by zero costs a few levels)")
+  }
+
+  @Test func theGainIsStillLimited() throws {
+    let out = try #require(TUTone.correct(result: gray(64, 64, 200), base: gray(64, 64, 4), maskRect: nil, radius: 16, strength: 1))
+    #expect(level(out, 32, 32) >= 39 && level(out, 32, 32) <= 41, "it never scales by less than a fifth: 200 → 40")
   }
 }
