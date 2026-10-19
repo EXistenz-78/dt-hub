@@ -15,6 +15,11 @@ public enum PluginMessageType {
   public static let presets = "presets"
   /// Plug-in → app: a question for the language model; the answer is `{"type":"llm","text":…}`.
   public static let llm = "llm"
+  /// App → plug-in: the app asks a plug-in that guides a pipeline for its next pass (`SessionNextRequest`); the answer is
+  /// the pass or `{"done":true}` (`SessionAnswer`).
+  public static let sessionNext = "session.next"
+  /// App → plug-in: the guided pipeline is over (`PluginSessionReason`).
+  public static let sessionEnd = "session.end"
   /// The answer to a message the app could not use: `{"type":"error","text":…}`.
   public static let error = "error"
   public static let unsupported = "unsupported"

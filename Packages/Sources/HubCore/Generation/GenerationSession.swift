@@ -1,7 +1,9 @@
 import CoreGraphics
 import Foundation
 import HubKit
+import ImageIO
 import Observation
+import UniformTypeIdentifiers
 
 /// One image of the session strip (spec §7), with the job that made it.
 public struct GeneratedImage: Identifiable, Sendable {
@@ -17,6 +19,20 @@ public struct GeneratedImage: Identifiable, Sendable {
   public var elapsed: TimeInterval?
   /// True for a picture read back from its file at launch: `image` is a small version of it.
   public var isRestored = false
+}
+
+/// The picture a pass of a pipeline the plug-in guides made: written to a file of its own, kept out of the strip and
+/// of the output folder (`GenerationSession.start(…intermediate:)`).
+public struct IntermediateResult: Equatable, Sendable {
+  public let url: URL
+  public let width: Int
+  public let height: Int
+
+  public init(url: URL, width: Int, height: Int) {
+    self.url = url
+    self.width = width
+    self.height = height
+  }
 }
 
 /// Runs generations, one at a time: progress, live preview, results, Stop (spec §7, §10).
@@ -49,6 +65,8 @@ public final class GenerationSession {
   /// True when the last RUN ended because Stop was pressed (the phase is `.idle` then, as after a normal end);
   /// false while a RUN is under way and after one that finished or failed.
   public private(set) var lastRunWasStopped = false
+  /// The picture of the last RUN started with `intermediate`; nil before it arrives, and after any other RUN starts.
+  public private(set) var intermediateResult: IntermediateResult?
 
   @ObservationIgnored private let store: any ImageStore
   @ObservationIgnored private var history: ResultsHistoryStore?
@@ -80,13 +98,18 @@ public final class GenerationSession {
   /// Starts a RUN made of batches, run one after the other (see `batchesForRun`); ignored
   /// while one is running. The monitor's checks pause meanwhile. Every batch gets the same
   /// `inputs` (the Control tab's images).
+  ///
+  /// With `intermediate` the last image of the RUN is written to that file and goes neither to the strip nor to the output
+  /// folder (`intermediateResult` says where it is): the passes of a pipeline a plug-in guides hand their pictures back
+  /// to the plug-in, and only what the plug-in makes of them is a result.
   public func start(
     _ batches: [GenerationJob], inputs: GenerationInputs = .none, backend: any GenerationBackend,
-    monitor: ConnectionMonitor
+    monitor: ConnectionMonitor, intermediate: URL? = nil
   ) {
     guard !isRunning, let first = batches.first else { return }
     phase = .running(step: nil, totalSteps: first.parameters.steps)
     lastRunWasStopped = false
+    intermediateResult = nil
     batch = Batch(index: 1, count: batches.count)
     preview = nil
     monitor.pause()
@@ -105,6 +128,12 @@ public final class GenerationSession {
               phase = .running(step: step, totalSteps: total)
             case .preview(let image):
               preview = image
+            case .finished(let images) where intermediate != nil:
+              if let intermediate, let image = images.last,
+                await Self.writePNG(image, to: intermediate)
+              {
+                intermediateResult = IntermediateResult(url: intermediate, width: image.width, height: image.height)
+              }
             case .finished(let images):
               let took = began.duration(to: .now)
               began = .now
@@ -245,6 +274,38 @@ public final class GenerationSession {
           return GeneratedImage(image: image, job: job, date: date, fileURL: nil, saveError: String(describing: error), elapsed: elapsed)
         }
       }
+    }.value
+  }
+
+  /// Keeps a finished picture a plug-in made as a result: read from its file, saved in the store (the project's folder, with
+  /// the metadata of `job` and the `elapsed` seconds the whole job took) and put first in the strip. False when the file
+  /// cannot be read.
+  public func adopt(fileAt url: URL, job: GenerationJob, elapsed: TimeInterval? = nil) async -> Bool {
+    let store = store
+    let adopted: GeneratedImage? = await Task.detached(priority: .userInitiated) {
+      guard let image = PNGImageStore.image(at: url, maxPixel: 16_384) else { return nil }
+      let date = Date()
+      let shown = Self.reduced(image, to: Self.displayPixels)
+      do {
+        let saved = try store.save(image, job: job, index: 0, date: date, elapsed: elapsed)
+        return GeneratedImage(image: shown, job: job, date: date, fileURL: saved, saveError: nil, elapsed: elapsed)
+      } catch {
+        return GeneratedImage(image: image, job: job, date: date, fileURL: nil, saveError: String(describing: error), elapsed: elapsed)
+      }
+    }.value
+    guard let adopted else { return false }
+    results.insert(adopted, at: 0)
+    persistHistory()
+    return true
+  }
+
+  /// Writes an image as a PNG, away from the main actor; false when it cannot be written.
+  private nonisolated static func writePNG(_ image: CGImage, to url: URL) async -> Bool {
+    await Task.detached(priority: .userInitiated) {
+      guard let destination = CGImageDestinationCreateWithURL(url as CFURL, UTType.png.identifier as CFString, 1, nil)
+      else { return false }
+      CGImageDestinationAddImage(destination, image, nil)
+      return CGImageDestinationFinalize(destination)
     }.value
   }
 

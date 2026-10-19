@@ -49,8 +49,15 @@ public enum CUPlanner {
     }
     var result: [CUPass] = []
     var previousSize: Size?
-    for (index, step) in pipeline.steps.enumerated() {
+    // A pipeline the plug-in guides has no list: its passes are measured as the estimate it gave, `passes` times.
+    let guided = pipeline.guided
+    let listed = guided.map { [$0.estimate] } ?? pipeline.steps
+    for (index, step) in listed.enumerated() {
       var used = PipelinePresets.fields(for: step, over: fields, presets: presets, catalog: catalog)
+      if guided != nil, let size = step.size {
+        used.parameters.width = size.width
+        used.parameters.height = size.height
+      }
       if step.usesPresetModel, let previousSize {
         let size = PipelineSizes.scaled(previousSize, by: step.scale, limit: used.parameters.sizeLimit)
         used.parameters.width = size.width
@@ -60,7 +67,7 @@ public enum CUPlanner {
       let file = PipelinePresets.model(for: step, presets: presets, header: headerModel)
       let passModel = file.flatMap { catalog.model(forFile: $0) }
       let presetMissing = !step.preset.isEmpty && presets[step.preset] == nil
-      let replacesStart = step.startImage != nil || (step.useOutputAsStart && index > 0)
+      let replacesStart = guided != nil || step.startImage != nil || (step.useOutputAsStart && index > 0)
       let hasImage = control.hasImage || replacesStart
       let strength = strengthOfPass(
         step, replacesStart, passModel?.capabilities.isEditModel ?? false, used.parameters.width, used.parameters.height)
@@ -73,6 +80,7 @@ public enum CUPlanner {
               used.parameters, model: passModel, hasImage: hasImage, strength: strength,
               references: step.moodboard?.count ?? control.moodboardCount)))
     }
+    if let guided, let one = result.first { return Array(repeating: one, count: guided.passes) }
     return result
   }
 
@@ -80,7 +88,7 @@ public enum CUPlanner {
   /// others with it (`PipelinePresets.load` is all or nothing, which is right for a RUN but not for an estimate).
   public static func availablePresets(for pipeline: PluginPipeline, from store: PresetStore) -> [String: Preset] {
     var loaded: [String: Preset] = [:]
-    for step in pipeline.steps where !step.preset.isEmpty && loaded[step.preset] == nil {
+    for step in (pipeline.guided.map { [$0.estimate] } ?? pipeline.steps) where !step.preset.isEmpty && loaded[step.preset] == nil {
       if let preset = try? store.load(named: step.preset) { loaded[step.preset] = preset }
     }
     return loaded

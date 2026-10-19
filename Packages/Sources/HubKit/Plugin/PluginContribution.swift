@@ -21,6 +21,17 @@ public struct PluginImageRef: Equatable, Sendable {
   }
 }
 
+/// A size in pixels.
+public struct PipelineSize: Equatable, Sendable {
+  public var width: Int
+  public var height: Int
+
+  public init(width: Int, height: Int) {
+    self.width = width
+    self.height = height
+  }
+}
+
 /// One pass of a pipeline (`2026-10-04-preset-pipeline-design.md` §4): a preset to run, by name, and the inputs a
 /// preset does not hold. The preset's values are the user's to see and change in the Preset menu.
 public struct PipelineStep: Equatable, Sendable {
@@ -46,12 +57,23 @@ public struct PipelineStep: Equatable, Sendable {
   public var scale: Double
   /// The strength of this pass (0…1); nil is the automatic one.
   public var strength: Double?
+  /// The next three belong to the passes a plug-in hands over one at a time (a guided pipeline); a static pass ignores them.
+  /// The inpaint mask of the pass: a PNG the size of the pass, 255 where the model regenerates (like `MaskBitmap`).
+  public var mask: PluginImageRef?
+  /// How Draw Things treats that mask; nil keeps the Control tab's.
+  public var maskSettings: MaskSettings?
+  /// The size the pass generates at, in pixels (a multiple of 64).
+  public var size: PipelineSize?
 
   public init(
     title: String = "", preset: String = "", fields: FieldOverlay = FieldOverlay(), loras: [LoRASelection] = [],
     moodboard: [PluginImageRef]? = nil, startImage: PluginImageRef? = nil, useOutputAsStart: Bool = false,
-    usesPresetModel: Bool = false, scale: Double = 1, strength: Double? = nil
+    usesPresetModel: Bool = false, scale: Double = 1, strength: Double? = nil, mask: PluginImageRef? = nil,
+    maskSettings: MaskSettings? = nil, size: PipelineSize? = nil
   ) {
+    self.mask = mask
+    self.maskSettings = maskSettings
+    self.size = size
     self.usesPresetModel = usesPresetModel
     self.scale = scale
     self.strength = strength
@@ -73,10 +95,33 @@ public struct PipelineStep: Equatable, Sendable {
     if case .bool(let flag)? = object["useOutputAsStart"] { useOutput = flag }
     var fields = FieldOverlay()
     if case .object(let json)? = object["fields"] { fields = FieldOverlay(json: json) }
+    var maskSettings: MaskSettings?
+    if let raw = object["maskSettings"], let data = try? JSONEncoder().encode(raw) {
+      maskSettings = (try? JSONDecoder().decode(MaskSettings.self, from: data))?.clamped()
+    }
+    var size: PipelineSize?
+    if case .object(let box)? = object["size"], let width = PluginContribution.integer(box["width"]),
+      let height = PluginContribution.integer(box["height"])
+    {
+      size = PipelineSize(width: width, height: height)
+    }
     self.init(
       title: title, preset: preset, fields: fields, loras: PluginContribution.loras(object["loras"]) ?? [],
       moodboard: PluginContribution.images(object["moodboard"]),
-      startImage: PluginImageRef(object["startImage"]), useOutputAsStart: useOutput)
+      startImage: PluginImageRef(object["startImage"]), useOutputAsStart: useOutput,
+      mask: PluginImageRef(object["mask"]), maskSettings: maskSettings, size: size)
+  }
+}
+
+/// A finished picture a plug-in made (a composed enlargement): the app keeps it as a result, in the project's folder and in
+/// the Results strip. `description` takes the place of the prompt in the Results window's side panel.
+public struct PluginResult: Equatable, Sendable {
+  public var image: PluginImageRef
+  public var description: String
+
+  public init(image: PluginImageRef, description: String = "") {
+    self.image = image
+    self.description = description
   }
 }
 
@@ -84,10 +129,28 @@ public struct PipelineStep: Equatable, Sendable {
 public struct PluginPipeline: Equatable, Sendable {
   public var name: String
   public var steps: [PipelineStep]
+  /// A pipeline the plug-in guides: no list of passes, the app asks the plug-in for each one (`session.next`).
+  public var guided: GuidedPipeline?
 
-  public init(name: String = "", steps: [PipelineStep]) {
+  public init(name: String = "", steps: [PipelineStep], guided: GuidedPipeline? = nil) {
     self.name = name
     self.steps = steps
+    self.guided = guided
+  }
+
+  /// How many passes RUN will make: the ones declared by a guided pipeline, or the listed ones.
+  public var passCount: Int { guided?.passes ?? steps.count }
+}
+
+/// A pipeline whose passes the plug-in hands over one at a time (`session.next`). `estimate` is a pass like the real ones
+/// (the biggest), so the CU meter can measure `passes` of them.
+public struct GuidedPipeline: Equatable, Sendable {
+  public var passes: Int
+  public var estimate: PipelineStep
+
+  public init(passes: Int, estimate: PipelineStep = PipelineStep()) {
+    self.passes = passes
+    self.estimate = estimate
   }
 }
 
@@ -103,12 +166,15 @@ public struct PluginContribution: Equatable, Sendable {
   public var strength: Double?
   /// A drawing (a PNG with transparency) that becomes the Brush layer of the Control tab, over the start image.
   public var paint: PluginImageRef?
+  /// A finished picture to keep as a result (a PNG in the plug-in's folder).
+  public var result: PluginResult?
 
   public init(
     fields: FieldOverlay = FieldOverlay(), loras: [LoRASelection] = [], moodboard: [PluginImageRef] = [],
     startImage: PluginImageRef? = nil, pipeline: PluginPipeline? = nil, strength: Double? = nil,
-    paint: PluginImageRef? = nil
+    paint: PluginImageRef? = nil, result: PluginResult? = nil
   ) {
+    self.result = result
     self.strength = strength
     self.paint = paint
     self.fields = fields
@@ -134,11 +200,36 @@ public struct PluginContribution: Equatable, Sendable {
       var name = ""
       if case .string(let text)? = body["name"] { name = text }
       if !steps.isEmpty { pipeline = PluginPipeline(name: name, steps: steps) }
+    } else if case .object(let body)? = object["pipeline"], case .bool(true)? = body["guided"],
+      let passes = Self.integer(body["passes"]), passes >= 1
+    {
+      var name = ""
+      if case .string(let text)? = body["name"] { name = text }
+      var estimate = PipelineStep()
+      if case .object(let json)? = body["estimate"] { estimate = PipelineStep(json) }
+      pipeline = PluginPipeline(name: name, steps: [], guided: GuidedPipeline(passes: passes, estimate: estimate))
     }
     self.init(
       fields: fields, loras: Self.loras(object["loras"]) ?? [], moodboard: Self.images(object["moodboard"]) ?? [],
       startImage: PluginImageRef(object["startImage"]), pipeline: pipeline, strength: Self.strength(object["strength"]),
-      paint: PluginImageRef(object["paint"]))
+      paint: PluginImageRef(object["paint"]), result: Self.result(object["result"]))
+  }
+
+  /// `{"path","name","description"}`; nothing without a path.
+  static func result(_ value: JSONValue?) -> PluginResult? {
+    guard let image = PluginImageRef(value), case .object(let object)? = value else { return nil }
+    var description = ""
+    if case .string(let text)? = object["description"] { description = text }
+    return PluginResult(image: image, description: description)
+  }
+
+  /// A whole number (an integer or a double with no fraction); anything else is nothing.
+  static func integer(_ value: JSONValue?) -> Int? {
+    switch value {
+    case .int(let number)?: number
+    case .double(let number)? where number.isFinite && number == number.rounded(): Int(number)
+    default: nil
+    }
   }
 
   /// A number, brought into 0…1; anything else is nothing.
@@ -153,7 +244,7 @@ public struct PluginContribution: Equatable, Sendable {
   /// True when the message carries nothing the app can use.
   public var isEmpty: Bool {
     fields.isEmpty && loras.isEmpty && moodboard.isEmpty && startImage == nil && pipeline == nil && strength == nil
-      && paint == nil
+      && paint == nil && result == nil
   }
 
   static func loras(_ value: JSONValue?) -> [LoRASelection]? {
