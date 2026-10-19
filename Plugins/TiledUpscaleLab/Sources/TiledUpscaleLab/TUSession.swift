@@ -102,7 +102,7 @@ final class TUSession: @unchecked Sendable {
     var answer: [String: Any] = [
       "title": "Tile \(Self.name(of: tile))", "startImage": ["path": tileURL.path, "name": "tile-\(tile.index)"],
       "size": ["width": tile.rect.width, "height": tile.rect.height], "preset": preset.name,
-      "fields": preset.fields(prompt: TUPrompt.text(trigger: trigger)), "loras": preset.loras(weight: loraWeight),
+      "fields": preset.fields(prompt: preset.prompt(trigger: trigger)), "loras": preset.loras(weight: loraWeight),
       "strength": preset.strength,
     ]
     do {

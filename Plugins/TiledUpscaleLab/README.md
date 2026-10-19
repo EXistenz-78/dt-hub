@@ -12,6 +12,8 @@ An **experimental fork** of [Tiled Upscale](../TiledUpscale/README.md), kept apa
 
 The values are kept per project, and the picture in the Results says which ones were used («Tiled Upscale Lab 4× · 5×5 tiles · LoRA 1.00 · free 200 · blur 30 · margin 30 · fade 48»), to compare tries.
 
+**Models.** The Lab has a preset for **FLUX.2 [klein] 9B** (LoRA `f2_ultra_real_v5_pro_lora_f16`, prompt = the LoRA's trigger word + the fixed sentence), for **Qwen Image 2.1 Turbo** (8 steps, shift 6.5, shift not worked out from the size) and for **Qwen Image 2.1** (40 steps, shift 1, shift worked out from the size). Both Qwen presets use the LoRA `q21_detail_fix_2.0_lora_f16` at 2.5 and one fixed prompt ("Upscale this image to a substantially higher resolution with a decisive gain in clarity…", with no trigger word). Turbo is told from the other by "turbo" in the model's file name. Guidance 1, sampler 16 and strength 1 for all. The LoRA strength is remembered **per preset** (and per project): each starts from its own (1 for FLUX, 2.5 for Qwen).
+
 Both plug-ins can be installed together; use one at a time (each proposes its own pipeline).
 
 ```sh
