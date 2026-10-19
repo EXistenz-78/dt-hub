@@ -122,7 +122,7 @@ public struct PNGImageStore: ImageStore {
   @Sendable public static func legacyComment(for job: GenerationJob, elapsed: TimeInterval?) -> String {
     let object = job.metadataObject(elapsed: elapsed)
     guard !object.isEmpty, let data = try? JSONSerialization.data(withJSONObject: object) else { return "" }
-    return String(data: data, encoding: .utf8) ?? ""
+    return (String(data: data, encoding: .utf8) ?? "").jsonASCIIEscaped
   }
 
   /// The "UserComment" of a picture, as it is.

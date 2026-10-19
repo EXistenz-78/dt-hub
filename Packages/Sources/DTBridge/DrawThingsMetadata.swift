@@ -30,7 +30,8 @@ public enum DrawThingsMetadata {
     }
     object[GenerationJob.metadataKey] = job.metadataObject(elapsed: elapsed)
     guard let data = try? JSONSerialization.data(withJSONObject: object, options: [.sortedKeys]) else { return "" }
-    return String(data: data, encoding: .utf8) ?? ""
+    // ASCII only: ImageIO stores the "UserComment" as ASCII, and an accent or a "×" came back as "?".
+    return (String(data: data, encoding: .utf8) ?? "").jsonASCIIEscaped
   }
 
   /// The PNG "Description" in the layout of Draw Things (which ImageIO mirrors into the XMP `dc:description`, shown
