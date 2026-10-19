@@ -84,10 +84,14 @@ struct TUSettings: Codable, Equatable, Sendable {
 struct TUChoice: Codable, Equatable, Sendable {
   var factor: Int
   var overlap: Int
+  /// The LoRA strength of a project before the presets had one each; kept to read an old file (it becomes the FLUX preset's).
   var loraWeight: Double
   var settings: TUSettings
+  /// The LoRA strength the user chose, by preset name ("" when the model has none); a preset without an entry has its own default.
+  var loraWeights: [String: Double]
 
-  init(factor: Int, overlap: Int, loraWeight: Double, settings: TUSettings = .standard) {
+  init(factor: Int, overlap: Int, loraWeight: Double, settings: TUSettings = .standard, loraWeights: [String: Double] = [:]) {
+    self.loraWeights = loraWeights
     self.factor = factor
     self.overlap = overlap
     self.loraWeight = loraWeight
@@ -100,6 +104,7 @@ struct TUChoice: Codable, Equatable, Sendable {
     factor = try container.decode(Int.self, forKey: .factor)
     overlap = try container.decode(Int.self, forKey: .overlap)
     loraWeight = try container.decode(Double.self, forKey: .loraWeight)
+    loraWeights = (try? container.decodeIfPresent([String: Double].self, forKey: .loraWeights)) ?? [:]
     settings = (try? container.decodeIfPresent(TUSettings.self, forKey: .settings))
       ?? TUSettings.defaults(for: TileOverlap(rawValue: overlap) ?? .standard)
   }
@@ -125,6 +130,9 @@ struct TUStore {
     guard TUSettings.factors.contains(choice.factor) else { return .standard }
     let range = TUPresetTable.loraWeightRange
     choice.loraWeight = min(max(choice.loraWeight, range.lowerBound), range.upperBound)
+    // A project from before the presets had one strength each: it was the FLUX preset's (when the user had changed it).
+    if choice.loraWeights.isEmpty, choice.loraWeight != 1 { choice.loraWeights[TUPresetTable.fluxKlein9BName] = choice.loraWeight }
+    choice.loraWeights = choice.loraWeights.mapValues { min(max($0, range.lowerBound), range.upperBound) }
     choice.settings = choice.settings.clamped(overlap: TileOverlap(rawValue: choice.overlap) ?? .standard)
     return choice
   }

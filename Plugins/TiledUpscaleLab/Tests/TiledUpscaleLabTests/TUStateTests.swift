@@ -238,4 +238,73 @@ struct TUStateTests {
     #expect(abs(big.generatedMegapixels - mid.generatedMegapixels) < 0.001, "the same pixels in all, in bigger tiles")
     #expect(mid.generatedMegapixels < small.generatedMegapixels)
   }
+
+  @Test func qwenIsSupportedAndTheFileTellsTurboFromTheOther() {
+    let s = state(family: "qwen_image_2.1")
+    s.model = "qwen_image_2.1_turbo_i8x.ckpt"
+    s.setImage(photo(512, 512), name: "a")
+    #expect(s.canPrepare && s.preset?.name == "TUP · Qwen Image 2.1 Turbo")
+    s.model = "qwen_image_2.1_i8x.ckpt"
+    #expect(s.preset?.name == "TUP · Qwen Image 2.1")
+    s.model = nil
+    #expect(!s.canPrepare, "a Qwen model with no file name has no preset")
+  }
+
+  @Test func theLoRAStrengthIsRememberedPerPreset() {
+    let s = state(family: "flux2_9b")
+    #expect(s.loraWeight == 1)
+    s.loraWeight = 0.6
+    s.family = "qwen_image_2.1"
+    s.model = "qwen_image_2.1_turbo_i8x.ckpt"
+    #expect(s.loraWeight == 2.5, "each preset starts from its own")
+    s.loraWeight = 1.5
+    s.model = "qwen_image_2.1_i8x.ckpt"
+    #expect(s.loraWeight == 2.5)
+    s.model = "qwen_image_2.1_turbo_i8x.ckpt"
+    #expect(s.loraWeight == 1.5)
+    s.family = "flux2_9b"
+    s.model = nil
+    #expect(s.loraWeight == 0.6)
+  }
+
+  @Test func theLoRAStrengthsAreKeptPerProject() {
+    let one = folder.appendingPathComponent("w1")
+    let s = TUState(store: TUStore(folder: nil), italian: false)
+    s.family = "qwen_image_2.1"
+    s.model = "qwen_image_2.1_turbo_i8x.ckpt"
+    s.switchProject(folder: one)
+    s.loraWeight = 2.0
+    s.switchProject(folder: folder.appendingPathComponent("w2"))
+    #expect(s.loraWeight == 2.5)
+    s.switchProject(folder: one)
+    #expect(s.loraWeight == 2.0)
+  }
+
+  @Test func anOldProjectKeepsItsFluxStrength() throws {
+    let old = folder.appendingPathComponent("old")
+    try FileManager.default.createDirectory(at: old, withIntermediateDirectories: true)
+    try Data(#"{"factor":2,"overlap":256,"loraWeight":0.8}"#.utf8).write(to: old.appendingPathComponent("state.json"))
+    let s = state(family: "flux2_9b")
+    s.switchProject(folder: old)
+    #expect(s.loraWeight == 0.8)
+    s.family = "qwen_image_2.1"
+    s.model = "qwen_image_2.1_i8x.ckpt"
+    #expect(s.loraWeight == 2.5)
+  }
+
+  @Test func theQwenPassCarriesItsPromptAndItsLoRA() async throws {
+    let s = state(family: "qwen_image_2.1")
+    s.model = "qwen_image_2.1_turbo_i8x.ckpt"
+    s.setImage(photo(512, 512), name: "a")
+    s.loraTriggers = ["q21_detail_fix_2.0_lora_f16.ckpt": "SHOULD NOT APPEAR"]
+    var sent: [String: Any] = [:]
+    await s.prepare(confirmed: true, contribute: { sent = $0; return ["type": "ok"] }, registerPreset: { _ in nil })
+    let estimate = try #require((sent["pipeline"] as? [String: Any])?["estimate"] as? [String: Any])
+    let fields = try #require(estimate["fields"] as? [String: Any])
+    let prompt = try #require(fields["prompt"] as? String)
+    #expect(prompt.hasPrefix("Upscale this image") && !prompt.contains("SHOULD NOT APPEAR"))
+    let lora = try #require((estimate["loras"] as? [[String: Any]])?.first)
+    #expect(lora["file"] as? String == "q21_detail_fix_2.0_lora_f16.ckpt" && lora["weight"] as? Double == 2.5)
+    #expect(estimate["preset"] as? String == "TUP · Qwen Image 2.1 Turbo")
+  }
 }

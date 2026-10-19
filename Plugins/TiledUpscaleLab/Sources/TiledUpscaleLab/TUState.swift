@@ -56,7 +56,20 @@ final class TUState: ObservableObject {
   }
   /// The mask and the join: the free part, Draw Things' blur and outset, the fade of the join.
   @Published private(set) var settings: TUSettings
-  @Published var loraWeight: Double { didSet { choiceChanged(changesPicture: false) } }
+  /// The LoRA strength by preset name; see `loraWeight`.
+  @Published private(set) var loraWeights: [String: Double]
+  /// The LoRA strength of the preset of the model in the header: the one the user chose, else the preset's own default. Each
+  /// preset keeps its own (Qwen's LoRA works at 2.5, FLUX's at 1).
+  var loraWeight: Double {
+    get { loraWeights[preset?.name ?? ""] ?? preset?.defaultLoRAWeight ?? 1 }
+    set {
+      let range = TUPresetTable.loraWeightRange
+      var next = loraWeights
+      next[preset?.name ?? ""] = min(max(newValue, range.lowerBound), range.upperBound)
+      loraWeights = next
+      choiceChanged(changesPicture: false)
+    }
+  }
   @Published private(set) var image: CGImage?
   @Published private(set) var imageName = ""
   @Published private(set) var notice: String?
@@ -71,8 +84,9 @@ final class TUState: ObservableObject {
   /// True after Prepare was pressed on a big job: the next press confirms it.
   @Published private(set) var awaitingConfirmation = false
   @Published var active = false
-  /// The model family the header has (`context.family`).
+  /// The model family the header has (`context.family`) and the file of its model (`context.model`).
   @Published var family: String?
+  @Published var model: String?
   /// The folder the app lends for picture files; nil until the first `context`.
   var tempFolder: String?
   /// The trigger word of each LoRA of the server, by file (`context.loraCatalog`).
@@ -147,7 +161,7 @@ final class TUState: ObservableObject {
     let choice = store.load()
     self.factor = choice.factor
     self.overlap = TileOverlap(rawValue: choice.overlap) ?? .standard
-    self.loraWeight = choice.loraWeight
+    self.loraWeights = choice.loraWeights
     self.settings = choice.settings
   }
 
@@ -159,7 +173,7 @@ final class TUState: ObservableObject {
 
   // MARK: What the tab says
 
-  var preset: TUPreset? { TUPresetTable.preset(forFamily: family) }
+  var preset: TUPreset? { TUPresetTable.preset(forFamily: family, model: model) }
 
   var summary: TUSummary? {
     guard let image else { return nil }
@@ -238,7 +252,9 @@ final class TUState: ObservableObject {
     notice = nil
     if changesPicture { resetPreview() }
     guard !loadingChoice else { return }
-    store.save(TUChoice(factor: factor, overlap: overlap.rawValue, loraWeight: loraWeight, settings: settings))
+    store.save(
+      TUChoice(
+        factor: factor, overlap: overlap.rawValue, loraWeight: loraWeights[""] ?? 1, settings: settings, loraWeights: loraWeights))
   }
 
   func switchProject(folder: URL) {
@@ -247,7 +263,7 @@ final class TUState: ObservableObject {
     loadingChoice = true
     factor = choice.factor
     overlap = TileOverlap(rawValue: choice.overlap) ?? .standard
-    loraWeight = choice.loraWeight
+    loraWeights = choice.loraWeights
     settings = choice.settings
     loadingChoice = false
     image = nil
@@ -264,6 +280,7 @@ final class TUState: ObservableObject {
     guard let context = try? JSONDecoder().decode(DTHubContext.self, from: data) else { return }
     tempFolder = context.tempFolder
     family = context.family
+    model = context.model
     loraTriggers = Dictionary(
       (context.loraCatalog ?? []).filter { !$0.trigger.isEmpty }.map { ($0.file, $0.trigger) }, uniquingKeysWith: { first, _ in first })
   }
@@ -294,7 +311,7 @@ final class TUState: ObservableObject {
     }
     guard let session = makeSession() else { return }
     let trigger = loraTriggers[preset.loraFile] ?? ""
-    let fields = preset.fields(prompt: TUPrompt.text(trigger: trigger))
+    let fields = preset.fields(prompt: preset.prompt(trigger: trigger))
     let loras = preset.loras(weight: loraWeight)
     _ = await registerPreset(["name": preset.name, "fields": fields, "loras": loras])
     let estimate: [String: Any] = [
