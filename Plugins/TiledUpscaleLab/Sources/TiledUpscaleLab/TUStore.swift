@@ -39,15 +39,33 @@ struct TUSettings: Codable, Equatable, Sendable {
     toneRadius = (try? container.decodeIfPresent(Int.self, forKey: .toneRadius)) ?? Self.standard.toneRadius
   }
 
-  static let standard = TUSettings(free: 200, blur: 30, outset: 30, fade: 48, toneStrength: 100, toneRadius: 64)
+  /// The values of the advanced section for an overlap (found by trying: 4× with tiles of about 1500 px). Only the free part
+  /// depends on the overlap: all of it but the 64 px the fade needs.
+  static func defaults(for overlap: TileOverlap) -> TUSettings {
+    TUSettings(
+      free: defaultFree(for: overlap), blur: 30, outset: 29, fade: 64, tile: TileConstants.tile, toneStrength: 100,
+      toneRadius: 16)
+  }
+
+  static let standard = defaults(for: .standard)
+
+  /// The tile for a picture: the smallest, a multiple of 64 between 1024 and 2048, that needs at most three tiles along the
+  /// shorter side of the (cut) enlarged picture. Three tiles reach `3 × tile − 2 × overlap`.
+  static func autoTile(shortestSide: Int, overlap: TileOverlap) -> Int {
+    let wanted = (shortestSide + 2 * overlap.rawValue + 2) / 3
+    let rounded = (wanted + 63) / 64 * 64
+    return min(max(rounded, tileRange.lowerBound), tileRange.upperBound)
+  }
   static let toneStrengthRange = 0...100
   static let toneRadiusRange = 16...256
+  /// The enlargements the tab offers (8× went: too ambitious).
+  static let factors = [2, 4]
   static let tileRange = 1024...2048
   static let blurRange = 0.0...30.0
   static let outsetRange = 0...100
 
-  /// What the masks leave free by default: 25/32 of the overlap (200 of 256, 250 of 320).
-  static func defaultFree(for overlap: TileOverlap) -> Int { Int((Double(overlap.rawValue) * 25 / 32).rounded()) }
+  /// What the masks leave free by default: the overlap but the 64 px of the fade (192 of 256, 256 of 320).
+  static func defaultFree(for overlap: TileOverlap) -> Int { overlap.rawValue - 64 }
 
   /// Every value in its range; the fade stays in what the free part leaves of the overlap (the part that is regenerated:
   /// the free part is put back as it was sent, so a fade there would end up in the picture).
@@ -82,10 +100,11 @@ struct TUChoice: Codable, Equatable, Sendable {
     factor = try container.decode(Int.self, forKey: .factor)
     overlap = try container.decode(Int.self, forKey: .overlap)
     loraWeight = try container.decode(Double.self, forKey: .loraWeight)
-    settings = (try? container.decodeIfPresent(TUSettings.self, forKey: .settings)) ?? .standard
+    settings = (try? container.decodeIfPresent(TUSettings.self, forKey: .settings))
+      ?? TUSettings.defaults(for: TileOverlap(rawValue: overlap) ?? .standard)
   }
 
-  static let standard = TUChoice(factor: 2, overlap: TileOverlap.standard.rawValue, loraWeight: 1)
+  static let standard = TUChoice(factor: 2, overlap: TileOverlap.standard.rawValue, loraWeight: 1, settings: .standard)
 }
 
 struct TUStore {
@@ -98,9 +117,12 @@ struct TUStore {
 
   func load() -> TUChoice {
     guard let fileURL, let data = try? Data(contentsOf: fileURL),
-      var choice = try? JSONDecoder().decode(TUChoice.self, from: data), [2, 4, 8].contains(choice.factor),
+      var choice = try? JSONDecoder().decode(TUChoice.self, from: data),
       TileOverlap(rawValue: choice.overlap) != nil
     else { return .standard }
+    // 8× is gone (too ambitious): a project that had it gets 4×.
+    if choice.factor == 8 { choice.factor = 4 }
+    guard TUSettings.factors.contains(choice.factor) else { return .standard }
     let range = TUPresetTable.loraWeightRange
     choice.loraWeight = min(max(choice.loraWeight, range.lowerBound), range.upperBound)
     choice.settings = choice.settings.clamped(overlap: TileOverlap(rawValue: choice.overlap) ?? .standard)

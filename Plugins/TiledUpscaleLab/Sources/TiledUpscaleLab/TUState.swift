@@ -32,9 +32,24 @@ struct TUSummary: Equatable, Sendable {
 /// The tab: the picture, the three choices, the summary, and the enlargement from the preparation to the saved file.
 @MainActor
 final class TUState: ObservableObject {
-  @Published var factor: Int { didSet { choiceChanged(changesPicture: true) } }
+  /// The enlargements the tab offers.
+  static let factors = TUSettings.factors
+
+  @Published var factor: Int {
+    didSet {
+      if !loadingChoice { autoSizeTile() }
+      choiceChanged(changesPicture: true)
+    }
+  }
   @Published var overlap: TileOverlap {
     didSet {
+      if !loadingChoice {
+        // The free part of the advanced values goes back to the one of this overlap; the other values stay.
+        var next = settings
+        next.free = TUSettings.defaultFree(for: overlap)
+        settings = next
+        autoSizeTile()
+      }
       settings = settings.clamped(overlap: overlap)
       choiceChanged(changesPicture: true)
     }
@@ -95,6 +110,24 @@ final class TUState: ObservableObject {
   }
   /// What the fade can be now: what the free part leaves of the overlap.
   var fadeRange: ClosedRange<Int> { 0...max(0, overlap.rawValue - settings.free) }
+
+  /// The tile for the picture as it is now: the smallest that needs at most three along its shorter side (`TUSettings.autoTile`).
+  /// It runs when the picture, the enlargement or the overlap change; the slider can then be moved by hand.
+  private func autoSizeTile() {
+    guard let image else { return }
+    let scaled = TileGrid.scaledSize(width: image.width, height: image.height, factor: factor)
+    var next = settings
+    next.tile = TUSettings.autoTile(shortestSide: min(scaled.width, scaled.height), overlap: overlap)
+    settings = next.clamped(overlap: overlap)
+  }
+
+  /// The values of the advanced section back to the defaults of the overlap (the tile size is not one of them).
+  func resetAdvanced() {
+    var next = TUSettings.defaults(for: overlap)
+    next.tile = settings.tile
+    settings = next.clamped(overlap: overlap)
+    choiceChanged(changesPicture: false)
+  }
 
   private func change(_ edit: (inout TUSettings) -> Void) {
     var next = settings
@@ -163,6 +196,7 @@ final class TUState: ObservableObject {
     isPrepared = false
     awaitingConfirmation = false
     session = nil
+    autoSizeTile()
     resetPreview()
   }
 

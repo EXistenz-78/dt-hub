@@ -35,7 +35,7 @@ struct TUStateTests {
     #expect(s.summary?.passes == 9)
     s.factor = 4
     #expect(s.summary?.width == 3968)
-    #expect(s.summary?.passes == TileGrid.plan(width: 3968, height: 3968, overlap: .wide).count)
+    #expect(s.summary?.passes == TileGrid.plan(width: 3968, height: 3968, overlap: .wide, tile: s.tileSize).count)
   }
 
   @Test func prepareIsOffWithoutAnImageOrWithAnUnsupportedModel() {
@@ -51,8 +51,8 @@ struct TUStateTests {
 
   @Test func prepareRefusesAboveTheLimits() async {
     let s = state()
-    s.setImage(photo(2100, 2100), name: "big")
-    s.factor = 8
+    s.setImage(photo(4300, 4300), name: "big")
+    s.factor = 4
     #expect(s.summary?.verdict == .refuse)
     #expect(!s.canPrepare)
     var contributed = 0
@@ -118,13 +118,13 @@ struct TUStateTests {
     let two = folder.appendingPathComponent("two")
     let s = TUState(store: TUStore(folder: nil), italian: false)
     s.switchProject(folder: one)
-    s.factor = 8
+    s.factor = 4
     s.overlap = .wide
     s.loraWeight = 0.7
     s.switchProject(folder: two)
     #expect(s.factor == 2 && s.overlap == .standard && s.loraWeight == 1)
     s.switchProject(folder: one)
-    #expect(s.factor == 8 && s.overlap == .wide && s.loraWeight == 0.7)
+    #expect(s.factor == 4 && s.overlap == .wide && s.loraWeight == 0.7)
   }
 
   @Test func finishingSendsTheComposedPictureAsAResult() async throws {
@@ -143,7 +143,7 @@ struct TUStateTests {
     let path = try #require(result["path"] as? String)
     #expect(TUImage.load(URL(fileURLWithPath: path))?.width == 1024, "the composed picture, in the plug-in's folder")
     #expect(path.hasPrefix(folder.path))
-    #expect(result["description"] as? String == "Tiled Upscale Lab 2× · 1×1 tiles · LoRA 1.00 · tile 1024 · free 200 · blur 30 · margin 30 · fade 48 · tone 100%/64")
+    #expect(result["description"] as? String == "Tiled Upscale Lab 2× · 1×1 tiles · LoRA 1.00 · tile 1024 · free 192 · blur 30 · margin 29 · fade 64 · tone 100%/16")
     #expect(result["name"] as? String == "Tiled Upscale Lab")
     #expect(s.resultReady && !s.isPrepared)
     #expect(s.status == TUState.text(.addedToResults, italian: false))

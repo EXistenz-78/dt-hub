@@ -7,7 +7,7 @@ enum L {
     case dropHere, open, image, enlargement, overlap, loraStrength
     case prepare, prepared, finalSize, tiles, passes, croppedNote
     case unsupportedModel, tooBig, bigJob, notAnswered, unreadableImage, noFolder
-    case toneStrength, toneRadius, tileSize, noRoomForFade, megapixels, maskSection, maskFree, maskBlur, maskOutset, junctionFade, addedToResults, resultNotAdded, resultDescription, useAsStart, stopped, failed, closed, resultPlaceholder, tileRegenerated, tilesDone
+    case resetAdvanced, toneStrength, toneRadius, tileSize, noRoomForFade, megapixels, maskSection, maskFree, maskBlur, maskOutset, junctionFade, addedToResults, resultNotAdded, resultDescription, useAsStart, stopped, failed, closed, resultPlaceholder, tileRegenerated, tilesDone
   }
 
   static var systemIsItalian: Bool {
@@ -40,7 +40,7 @@ enum L {
     .noFolder: "No picture folder yet: switch the plug-in on first.",
     .addedToResults: "Done. The enlarged picture is in the Results.", .resultNotAdded: "The picture could not be added to the Results: %@",
     .resultDescription: "Tiled Upscale Lab %d× · %d×%d tiles · LoRA %.2f · tile %d · free %d · blur %d · margin %d · fade %d · tone %d%%/%d",
-    .maskSection: "Mask and join", .maskFree: "Free part of the overlap", .maskBlur: "Blur of the mask", .maskOutset: "Margin of the mask",
+    .maskSection: "Advanced", .resetAdvanced: "Restore defaults", .maskFree: "Free part of the overlap", .maskBlur: "Blur of the mask", .maskOutset: "Margin of the mask",
     .junctionFade: "Fade of the join", .tileSize: "Tile size", .toneStrength: "Brightness correction", .toneRadius: "Radius of the correction", .megapixels: "%.1f megapixels to make", .noRoomForFade: "No room: lower the free part.",
     .useAsStart: "Use as start image", .stopped: "Stopped. Nothing was saved.",
     .failed: "The enlargement failed: %@", .closed: "The enlargement was closed.",
@@ -62,7 +62,7 @@ enum L {
     .noFolder: "Ancora nessuna cartella per le immagini: accendi prima il plug-in.",
     .addedToResults: "Fatto. L'immagine ingrandita è nei Risultati.", .resultNotAdded: "Impossibile aggiungere l'immagine ai Risultati: %@",
     .resultDescription: "Tiled Upscale Lab %d× · %d×%d tile · LoRA %.2f · tile %d · libera %d · sfumatura %d · margine %d · fusione %d · luminosità %d%%/%d",
-    .maskSection: "Maschera e giunzione", .maskFree: "Parte libera della sovrapposizione", .maskBlur: "Sfumatura della maschera",
+    .maskSection: "Avanzate", .resetAdvanced: "Valori predefiniti", .maskFree: "Parte libera della sovrapposizione", .maskBlur: "Sfumatura della maschera",
     .maskOutset: "Margine della maschera", .junctionFade: "Fusione della giunzione", .tileSize: "Dimensione del tile", .toneStrength: "Correzione della luminosità", .toneRadius: "Raggio della correzione", .megapixels: "%.1f megapixel da generare", .noRoomForFade: "Nessuno spazio: riduci la parte libera.",
     .useAsStart: "Usa come immagine di partenza", .stopped: "Fermato. Non è stato salvato nulla.",
     .failed: "L'ingrandimento non è riuscito: %@", .closed: "L'ingrandimento è stato chiuso.",
