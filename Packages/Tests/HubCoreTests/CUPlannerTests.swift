@@ -139,3 +139,20 @@ struct CUPlannerTests {
     #expect(Set(loaded.keys) == ["good"])
   }
 }
+
+@MainActor
+struct CUPlannerGuidedTests {
+  let planner = CUPlannerTests()
+
+  @Test func eachGuidedPassIsMeasuredAsTheEstimate() throws {
+    var estimate = PipelineStep()
+    estimate.size = PipelineSize(width: 512, height: 768)
+    let pipeline = PluginPipeline(name: "g", steps: [], guided: GuidedPipeline(passes: 5, estimate: estimate))
+    let result = planner.passes(pipeline)
+    #expect(result.count == 5)
+    let first = try #require(result[0].inputs)
+    #expect(first.width == 512 && first.height == 768)
+    #expect(first.hasImage)
+    #expect(result.allSatisfy { $0.inputs?.width == 512 })
+  }
+}

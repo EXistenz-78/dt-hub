@@ -316,6 +316,44 @@ public final class PluginRegistry: PluginHosting {
     send(data, to: identifier)
   }
 
+  /// A message to a loaded plug-in, with its answer: nil when the plug-in is not loaded or does not answer within `timeout`.
+  /// For the questions the app asks while a plug-in guides a pipeline (`session.next`).
+  public func request(_ message: Data, to pluginID: String, timeout: Duration) async -> Data? {
+    guard let plugin = loaded[pluginID] else { return nil }
+    return await withCheckedContinuation { continuation in
+      var answered = false
+      func finish(_ value: Data?) {
+        guard !answered else { return }
+        answered = true
+        continuation.resume(returning: value)
+      }
+      Task { finish(await plugin.send(message, timeout: timeout)) }
+      Task {
+        try? await Task.sleep(for: timeout)
+        finish(nil)
+      }
+    }
+  }
+
+  /// A new folder inside the plug-ins' temp folder for the files of one guided pipeline (`session-<UUID>`).
+  public func sessionFolder() -> URL {
+    let url = tempFolder.appendingPathComponent("session-\(UUID().uuidString)", isDirectory: true)
+    try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+    return url
+  }
+
+  /// For looking at the pictures of the passes (the tiles of an enlargement): the session folders are not deleted. The app sets
+  /// it from the `debug.keepGuidedSessionFiles` default; they are in the plug-ins' temp folder as `session-<UUID>`.
+  @ObservationIgnored public var keepsSessionFolders = false
+
+  /// Deletes a session folder (unless `keepsSessionFolders`); anything that is not inside the temp folder is left alone.
+  public func removeSessionFolder(_ url: URL) {
+    guard !keepsSessionFolders else { return }
+    let root = tempFolder.standardizedFileURL.path + "/"
+    guard url.standardizedFileURL.path.hasPrefix(root) else { return }
+    try? FileManager.default.removeItem(at: url)
+  }
+
   private func send(_ message: Data, to identifier: String) {
     guard let plugin = loaded[identifier] else { return }
     Task { _ = await plugin.send(message) }

@@ -59,6 +59,12 @@ struct DTHubApp: App {
       tempFolder: FileManager.default.temporaryDirectory.appendingPathComponent("DTHub-plugins", isDirectory: true))
     // Contributions land on the Generation tab; a plug-in's question goes to the language model.
     generation.attach(plugins.contributions)
+    // `defaults write com.exiztenz.DTHub debug.keepGuidedSessionFiles -bool YES` keeps the pictures of the passes of a pipeline a
+    // plug-in guides (the tiles of an enlargement) to look at them; `defaults delete …` goes back to the clean-up.
+    plugins.keepsSessionFolders = UserDefaults.standard.bool(forKey: "debug.keepGuidedSessionFiles")
+    generation.guidedChannel = GuidedPluginChannel(
+      request: { await plugins.request($0, to: $1, timeout: $2) }, sessionFolder: { plugins.sessionFolder() },
+      removeSessionFolder: { plugins.removeSessionFolder($0) })
     plugins.presetStore = generation.presets
     plugins.askLanguageModel = { prompt, images, options, name, history in
       try await languageModel.respond(

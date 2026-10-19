@@ -64,6 +64,12 @@ final class GenerationController {
   private(set) var isPipelineRunning = false {
     didSet { contributions?.pipelineLocked = isPipelineRunning }
   }
+  /// The model of the pipeline the plug-in is guiding, while it runs: the finished picture it hands over is filed under it.
+  @ObservationIgnored private var guidedModelFile: String?
+  /// When the passes of that pipeline began: the picture it hands over carries the time the whole pipeline took.
+  @ObservationIgnored private var guidedBegan: ContinuousClock.Instant?
+  /// How a pipeline the plug-in guides talks to the plug-in; set by the app next to `attach`.
+  @ObservationIgnored var guidedChannel: GuidedPluginChannel?
   /// What the plug-ins contributed (teal fields, conflicts, the pipeline); set by `attach`.
   @ObservationIgnored private(set) var contributions: ContributionStore?
   /// The presets of the held pipeline, for the CU meter (see `cuPasses`).
@@ -376,7 +382,9 @@ final class GenerationController {
         pipeline = saved.pluginPipeline(named: name)
         contributions?.setUserPipeline(pipeline, named: name)
       }
-      switch PipelinePresets.load(pipeline, from: presets) {
+      // A guided pipeline has no list of passes: the presets of its estimate are checked now, the others when they come.
+      let listed = pipeline.guided.map { PluginPipeline(name: pipeline.name, steps: [$0.estimate]) } ?? pipeline
+      switch PipelinePresets.load(listed, from: presets) {
       case .success(let loaded):
         loadedPresets = loaded
         passes = pipeline
@@ -394,11 +402,16 @@ final class GenerationController {
     }
     isPreparing = true
     isPipelineRunning = passes != nil
+    let guidedOwner = contributions?.pipeline?.pluginID
     preparation = Task {
       // Memory first: the language model leaves, a server parked for it comes back.
       await languageModel.prepareForRun()
       await connection.ensureServerForRun()
       if let passes {
+        if passes.guided != nil, let guidedOwner {
+          _ = await runGuidedPipeline(passes, pluginID: guidedOwner, presets: loadedPresets, with: connection)
+          return
+        }
         let made = await runPipeline(passes, presets: loadedPresets, with: connection)
         if incremental, let made, !Task.isCancelled { await useAsStart(made) }
         return
@@ -450,45 +463,166 @@ final class GenerationController {
     for (index, pass) in passes.enumerated() {
       guard !Task.isCancelled else { return nil }
       pipelinePass = (index + 1, passes.count)
-      var used = PipelinePresets.fields(for: pass, over: fields, presets: loaded, catalog: connection.monitor.catalog)
-      // A user's pipeline: from the second pass on, the size is the previous pass's, multiplied by the pass's scale.
-      if pass.usesPresetModel, let previousSize {
-        let size = PipelineSizes.scaled(previousSize, by: pass.scale, limit: used.parameters.sizeLimit)
-        used.parameters.width = size.width
-        used.parameters.height = size.height
-      }
-      previousSize = Size(width: used.parameters.width, height: used.parameters.height)
-      // The model of the pass: its preset's in a user's pipeline, the header's otherwise. Everything below uses it.
-      let file = PipelinePresets.model(for: pass, presets: loaded, header: connection.selection.selectedFile)
-      let passModel = file.flatMap { connection.monitor.catalog.model(forFile: $0) }
-      let family = passModel?.family
-      guard let base = await renderInputs(in: connection, parameters: used.parameters, model: passModel) else { return nil }
-      guard !Task.isCancelled, let backend = connection.monitor.backend, let model = file,
-        RunAvailability.blocker(
-          connection: connection.monitor.status, selectedModel: model, catalog: connection.monitor.catalog) == nil
+      guard
+        let run = await runPass(
+          pass, presets: loaded, previous: previous, previousSize: previousSize, intermediate: nil, with: connection),
+        let made = run.made
       else { return nil }
-      let inputs = PipelineInputs.inputs(
-        for: pass, base: base, previousOutput: previous, canvasWidth: used.parameters.width,
-        canvasHeight: used.parameters.height, usesMoodboard: FamilyTraits.of(family).usesMoodboard)
-      let replacesStart = inputs.image != nil && inputs.image !== base.image
-      let batches = JobComposer.batches(
-        prompt: used.prompt, negativePrompt: used.negativePrompt, model: model, family: family,
-        parameters: used.parameters, catalog: connection.monitor.catalog,
-        imageStrength: inputs.image == nil ? nil : PipelineInputs.strength(
-          tab: control.inputs, replacesStart: replacesStart, editModel: passModel?.capabilities.isEditModel ?? false,
-          hasMargins: control.hasMargins(canvasWidth: used.parameters.width, canvasHeight: used.parameters.height),
-          step: pass.strength),
-        moodboardCount: inputs.hints.count, maskSettings: inputs.mask == nil ? nil : control.inputs.maskSettings)
-      let before = session.results.first?.id
-      session.start(batches, inputs: inputs, backend: backend, monitor: connection.monitor)
-      await session.waitUntilFinished()
-      if case .failed = session.phase { return nil }
-      // Stopped from anywhere (the Results window too), or no picture: the pipeline ends here.
-      guard !Task.isCancelled, let made = PipelineInputs.output(after: before, in: session.results) else { return nil }
-      lastMade = session.lastRunWasStopped ? nil : made
+      previousSize = run.size
+      lastMade = run.wasStopped ? nil : made
       previous = made.fileURL.flatMap { PNGImageStore.image(at: $0, maxPixel: 4096) } ?? made.image
     }
     return lastMade
+  }
+
+  /// What one pass left: the picture it made (`made`, in the strip) or, for a pass of a pipeline the plug-in guides, the
+  /// file of its picture (`intermediate`); the size it ran at; whether Stop ended it.
+  private struct PassRun {
+    var made: GeneratedImage?
+    var intermediate: IntermediateResult?
+    var size: Size
+    var wasStopped: Bool
+  }
+
+  /// One pass: the tab's fields with the pass's preset on them, the inputs the pass asks for, one run. Nil when the pass
+  /// could not run or was stopped (the phase of the session says which). With `intermediate` the pass is one the plug-in
+  /// handed over (own image, mask and size, and the picture goes to that file, not to the strip).
+  private func runPass(
+    _ pass: PipelineStep, presets loaded: [String: Preset], previous: CGImage?, previousSize: Size?, intermediate: URL?,
+    with connection: DrawThingsConnection
+  ) async -> PassRun? {
+    // A pass the plug-in handed over starts from the tab without its LoRAs and with one picture per run.
+    let tab = intermediate != nil ? GuidedPassInputs.baseFields(from: fields, size: pass.size) : fields
+    var used = PipelinePresets.fields(for: pass, over: tab, presets: loaded, catalog: connection.monitor.catalog)
+    // A user's pipeline: from the second pass on, the size is the previous pass's, multiplied by the pass's scale.
+    if pass.usesPresetModel, let previousSize {
+      let size = PipelineSizes.scaled(previousSize, by: pass.scale, limit: used.parameters.sizeLimit)
+      used.parameters.width = size.width
+      used.parameters.height = size.height
+    }
+    if intermediate != nil, let size = pass.size {
+      used.parameters.width = size.width
+      used.parameters.height = size.height
+    }
+    let ranAt = Size(width: used.parameters.width, height: used.parameters.height)
+    // The model of the pass: its preset's in a user's pipeline, the header's otherwise. Everything below uses it.
+    let file = PipelinePresets.model(for: pass, presets: loaded, header: connection.selection.selectedFile)
+    let passModel = file.flatMap { connection.monitor.catalog.model(forFile: $0) }
+    let family = passModel?.family
+    let inputs: GenerationInputs
+    var replacesStart = false
+    if intermediate != nil {
+      switch GuidedPassInputs.inputs(for: pass, enableInpainting: passModel?.capabilities.needsInpaintControl ?? false) {
+      case .success(let value): inputs = value
+      case .failure(let error):
+        session.fail(
+          with: .generationFailed(String(format: String(localized: "pipeline.guided.badPass"), String(describing: error))))
+        return nil
+      }
+      replacesStart = true
+    } else {
+      guard let base = await renderInputs(in: connection, parameters: used.parameters, model: passModel) else { return nil }
+      inputs = PipelineInputs.inputs(
+        for: pass, base: base, previousOutput: previous, canvasWidth: used.parameters.width,
+        canvasHeight: used.parameters.height, usesMoodboard: FamilyTraits.of(family).usesMoodboard)
+      replacesStart = inputs.image != nil && inputs.image !== base.image
+    }
+    guard !Task.isCancelled, let backend = connection.monitor.backend, let model = file,
+      RunAvailability.blocker(
+        connection: connection.monitor.status, selectedModel: model, catalog: connection.monitor.catalog) == nil
+    else { return nil }
+    let strength: Double? =
+      inputs.image == nil
+      ? nil
+      : intermediate != nil
+        ? (pass.strength ?? 1)
+        : PipelineInputs.strength(
+          tab: control.inputs, replacesStart: replacesStart, editModel: passModel?.capabilities.isEditModel ?? false,
+          hasMargins: control.hasMargins(canvasWidth: used.parameters.width, canvasHeight: used.parameters.height),
+          step: pass.strength)
+    let batches = JobComposer.batches(
+      prompt: used.prompt, negativePrompt: used.negativePrompt, model: model, family: family,
+      parameters: used.parameters, catalog: connection.monitor.catalog, imageStrength: strength,
+      moodboardCount: inputs.hints.count,
+      maskSettings: inputs.mask == nil
+        ? nil : (intermediate != nil ? (pass.maskSettings ?? control.inputs.maskSettings) : control.inputs.maskSettings))
+    let before = session.results.first?.id
+    session.start(batches, inputs: inputs, backend: backend, monitor: connection.monitor, intermediate: intermediate)
+    await session.waitUntilFinished()
+    if case .failed = session.phase { return nil }
+    if intermediate != nil {
+      // Stopped from anywhere, or no picture: the pipeline ends here.
+      guard !Task.isCancelled, let result = session.intermediateResult else { return nil }
+      return PassRun(made: nil, intermediate: result, size: ranAt, wasStopped: session.lastRunWasStopped)
+    }
+    // Stopped from anywhere (the Results window too), or no picture: the pipeline ends here.
+    guard !Task.isCancelled, let made = PipelineInputs.output(after: before, in: session.results) else { return nil }
+    return PassRun(made: made, intermediate: nil, size: ranAt, wasStopped: session.lastRunWasStopped)
+  }
+
+  /// A pipeline the plug-in guides (spec 2026-10-18 §5, §6): for each pass the plug-in is asked for the next one
+  /// (`session.next`), the app runs it, and the picture goes back to the plug-in as a file. The pictures of the passes are
+  /// not results; the plug-in makes the result.
+  private func runGuidedPipeline(
+    _ pipeline: PluginPipeline, pluginID: String, presets loaded: [String: Preset], with connection: DrawThingsConnection
+  ) async -> GeneratedImage? {
+    defer {
+      isPreparing = false
+      pipelinePass = nil
+      preparation = nil
+      isPipelineRunning = false
+    }
+    guard let channel = guidedChannel, let guided = pipeline.guided else {
+      session.fail(with: .generationFailed(String(localized: "pipeline.pluginClosed")))
+      return nil
+    }
+    let folder = channel.sessionFolder()
+    defer { channel.removeSessionFolder(folder) }
+    let startModel = connection.selection.selectedFile
+    guidedModelFile = startModel
+    guidedBegan = .now
+    defer {
+      guidedModelFile = nil
+      guidedBegan = nil
+      // The session is over, whatever the reason: the pipeline goes from the Run button.
+      contributions?.finishedGuidedPipeline()
+    }
+    var known = loaded
+    let driver = GuidedSessionDriver(
+      passes: guided.passes, tileLimit: parameters.sizeLimit,
+      ask: { await channel.request($0, pluginID, .seconds(60)) },
+      runPass: { [self] step, index in
+        guard connection.selection.selectedFile == startModel else {
+          return .failed(String(localized: "pipeline.modelChanged"))
+        }
+        if !step.preset.isEmpty, known[step.preset] == nil {
+          switch PipelinePresets.load(PluginPipeline(steps: [step]), from: presets) {
+          case .success(let more): known.merge(more) { _, new in new }
+          case .failure(let problem):
+            return .failed(String(format: String(localized: "pipeline.missingPreset"), (problem.missing + problem.unreadable).joined(separator: ", ")))
+          }
+        }
+        let target = folder.appendingPathComponent("pass-\(index).png")
+        guard
+          let run = await runPass(
+            step, presets: known, previous: nil, previousSize: nil, intermediate: target, with: connection)
+        else {
+          if case .failed(let error) = session.phase { return .failed(String(describing: error)) }
+          return .stopped
+        }
+        guard !run.wasStopped, let result = run.intermediate else { return .stopped }
+        return .made(result.url, width: result.width, height: result.height)
+      },
+      end: { _ = await channel.request($0, pluginID, .seconds(5)) },
+      progress: { [self] index, count in pipelinePass = (index, count) })
+    switch await driver.run() {
+    case .finished, .stopped: break
+    case .closed: session.fail(with: .generationFailed(String(localized: "pipeline.pluginClosed")))
+    case .failed(let reason):
+      if case .failed = session.phase { break }
+      session.fail(with: .generationFailed(reason))
+    }
+    return nil
   }
 
   /// Makes a result the start image of the Control tab, as "Use as image" in the Results window does.
@@ -709,6 +843,30 @@ extension GenerationController: ContributionTarget {
     try control.commitPaint(bitmap)
   }
 
+  /// A picture the plug-in finished (a composed enlargement) becomes a result: saved in the project's folder and put in the
+  /// strip, filed under the model of the pipeline that made it, with `description` where the prompt would be. Only while
+  /// a pipeline the plug-in guides is running.
+  func addResult(_ image: PluginImageRef, description: String) throws {
+    guard let model = guidedModelFile else { throw ControlError.unreadable(image.name) }
+    let url = URL(fileURLWithPath: image.path)
+    guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+      let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+      let width = properties[kCGImagePropertyPixelWidth] as? Int, let height = properties[kCGImagePropertyPixelHeight] as? Int
+    else { throw ControlError.unreadable(image.name) }
+    var shown = parameters
+    shown.width = width
+    shown.height = height
+    shown.loras = []
+    shown.batchSize = 1
+    shown.batchCount = 1
+    let job = GenerationJob(prompt: description, model: model, parameters: shown)
+    let elapsed = guidedBegan.map { start -> TimeInterval in
+      let took = start.duration(to: .now)
+      return Double(took.components.seconds) + Double(took.components.attoseconds) / 1e18
+    }
+    Task { _ = await session.adopt(fileAt: url, job: job, elapsed: elapsed) }
+  }
+
   func setStartImage(_ image: PluginImageRef, from pluginID: String) throws -> UUID {
     let data = try Self.read(image)
     return try control.setImage(data: data, name: image.name, source: .plugin(id: pluginID))
@@ -721,4 +879,13 @@ extension GenerationController: ContributionTarget {
       throw ControlError.unreadable(image.name)
     }
   }
+}
+
+/// What the controller needs from the plug-in registry to run a pipeline the plug-in guides.
+struct GuidedPluginChannel {
+  /// A message to the plug-in and its answer (nil: none within the time).
+  var request: @MainActor (Data, String, Duration) async -> Data?
+  /// A new folder for the pictures of one session.
+  var sessionFolder: @MainActor () -> URL
+  var removeSessionFolder: @MainActor (URL) -> Void
 }

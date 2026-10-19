@@ -4353,6 +4353,57 @@
         }
       }
     },
+    "pipeline.modelChanged": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The model was changed during the pipeline."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il modello è stato cambiato durante la pipeline."
+          }
+        }
+      }
+    },
+    "pipeline.pluginClosed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The plug-in did not answer: the pipeline was closed."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il plug-in non ha risposto: la pipeline è stata chiusa."
+          }
+        }
+      }
+    },
+    "pipeline.guided.badPass": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The plug-in sent a pass that cannot run: %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il plug-in ha mandato un passo che non si può eseguire: %@"
+          }
+        }
+      }
+    },
     "pipeline.missingPreset": {
       "extractionState": "manual",
       "localizations": {

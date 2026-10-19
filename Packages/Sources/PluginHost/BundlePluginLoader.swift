@@ -54,12 +54,17 @@ final class BundleLoadedPlugin: LoadedPlugin {
 
   /// An answer that did not come in 5 seconds is nil.
   func send(_ message: Data) async -> Data? {
+    await send(message, timeout: .seconds(5))
+  }
+
+  /// An answer that did not come within `timeout` is nil.
+  func send(_ message: Data, timeout: Duration) async -> Data? {
     await withCheckedContinuation { continuation in
       let once = OnceReply(continuation)
       let reply: @convention(block) (Data) -> Void = { once.finish($0) }
       _ = entry.perform(NSSelectorFromString("dthubHandle:reply:"), with: message, with: reply)
       Task {
-        try? await Task.sleep(for: .seconds(5))
+        try? await Task.sleep(for: timeout)
         once.finish(nil)
       }
     }

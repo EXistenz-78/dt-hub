@@ -28,6 +28,24 @@ struct PNGImageStoreTests {
     #expect(PNGImageStore.job(in: url) == job)
   }
 
+  @Test func aPromptWithAccentsAndSymbolsComesBackAsItWasWritten() throws {
+    // The "UserComment" is stored as ASCII by ImageIO: a character outside it turned into "?".
+    let text = "Tiled Upscale 4× · 3×3 tile · luminosità 100% · città, perché ✓ 日本語 😀"
+    let accented = GenerationJob(prompt: text, negativePrompt: "sfocato — più", model: "m.ckpt", parameters: GenerationParameters(seed: 7, randomSeed: false))
+    let url = try PNGImageStore(folder: tempFolder()).save(testImage(), job: accented, index: 0, date: date)
+    #expect(PNGImageStore.job(in: url)?.prompt == text)
+    #expect(PNGImageStore.job(in: url)?.negativePrompt == "sfocato — più")
+  }
+
+  @Test func theCommentStaysPlainASCIIAndStillReadsAsJSON() throws {
+    let text = "4× · luminosità 😀"
+    let accented = GenerationJob(prompt: text, model: "m.ckpt", parameters: GenerationParameters(seed: 7, randomSeed: false))
+    let comment = PNGImageStore.legacyComment(for: accented, elapsed: 3)
+    #expect(comment.unicodeScalars.allSatisfy { $0.isASCII }, "nothing that ASCII cannot hold")
+    let object = try #require(try JSONSerialization.jsonObject(with: Data(comment.utf8)) as? [String: Any])
+    #expect(object["prompt"] as? String == text)
+  }
+
   @Test func theDescriptionIsThePromptSentWithItsTriggerWords() throws {
     let triggered = GenerationJob(
       prompt: "a fox", model: "m.ckpt",

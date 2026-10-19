@@ -95,6 +95,8 @@ public protocol ContributionTarget: AnyObject {
   func setStrength(_ value: Double)
   /// The drawing a plug-in made, as the Brush layer of the Control tab (it replaces the one there).
   func setPaint(_ image: PluginImageRef) throws
+  /// A finished picture a plug-in made, kept as a result (project folder and Results strip).
+  func addResult(_ image: PluginImageRef, description: String) throws
 }
 
 /// Remembers what each plug-in contributed, so the tab can show it (teal, the value in brackets) and so a
@@ -203,14 +205,23 @@ public final class ContributionStore {
       }
     }
 
+    // A finished picture: kept as a result; no teal, no conflict.
+    if let result = contribution.result {
+      do {
+        try target.addResult(result.image, description: result.description)
+      } catch {
+        problems.append("\(result.image.name): \(error)")
+      }
+    }
+
     if let proposed = contribution.pipeline {
       if pipelineLocked {
         problems.append("pipeline: a pipeline is running.")
       } else if let held = pipeline, let owner = held.pluginID, owner != pluginID {
         // Only another plug-in's pipeline is a conflict: the user's own is replaced (the user pressed the plug-in's button).
         addConflict(
-          subject: .pipeline, current: .init(pluginID: owner, content: .passes(held.pipeline.steps.count)),
-          proposed: .init(pluginID: pluginID, content: .passes(proposed.steps.count)), payload: .pipeline(proposed))
+          subject: .pipeline, current: .init(pluginID: owner, content: .passes(held.pipeline.passCount)),
+          proposed: .init(pluginID: pluginID, content: .passes(proposed.passCount)), payload: .pipeline(proposed))
       } else {
         pipeline = PipelineContribution(pluginID: pluginID, pipeline: proposed)
       }
@@ -288,6 +299,12 @@ public final class ContributionStore {
     } else {
       pipeline = nil
     }
+  }
+
+  /// The run of a pipeline the plug-in guided is over: its session is gone, so it is taken from the Run button (running
+  /// it again would be an empty session). A listed pipeline stays, as before.
+  public func finishedGuidedPipeline() {
+    if pipeline?.pipeline.guided != nil { pipeline = nil }
   }
 
   /// "Take away the pipeline" in the Run button's menu.
