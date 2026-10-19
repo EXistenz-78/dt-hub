@@ -24,7 +24,7 @@ A plug-in for DT Hub that enlarges a picture **2× or 4×** and gives it new det
 **Where to get the LoRAs** (put the file in Draw Things' LoRA folder, or import it from Draw Things; the names above are the ones Draw Things gives them):
 
 - `f2_ultra_real_v5_pro_lora_f16` — *UltraReal* v5 Pro for FLUX.2 klein 9B by vizsumit: [Civitai](https://civitai.com/models/2462105?modelVersionId=3370879).
-- `q21_detail_fix_2.0_lora_f16` — *Qwen Image 2.1 Fix* v2.0 by _Envy_: [Civitai](https://civitai.com/models/2957332?modelVersionId=3379469) · [Hugging Face](https://huggingface.co/e-n-v-y/Qwen-Image-2.1-Fix-v2.0).
+- `q21_detail_fix_2.0_lora_f16` — *Qwen Image 2.1 Fix* v2.0 by _Envy_: [Hugging Face](https://huggingface.co/e-n-v-y/Qwen-Image-2.1-Fix-v2.0).
 
 Strength 1 for all. The FLUX prompt is fixed here and the trigger word of the LoRA on the server is not used: it says «face», «expression», «figure» and «pose», and on a tile with no face the model adds one. Turbo is told from the other Qwen by "turbo" in the model's file name. The LoRA strength (−1.5 to 2.5, as in the generation tab) is remembered **per preset** and per project. The plug-in never changes the model: it is the one in the header. The values are in `TUPreset.swift`.
 
