@@ -1,7 +1,7 @@
 import Foundation
 import Testing
 
-@testable import TiledUpscaleLab
+@testable import TiledUpscale
 
 @MainActor
 struct TUSettingsTests {

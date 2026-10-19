@@ -42,7 +42,8 @@ struct TUSessionIdentityTests {
     let expected = try #require(TUCanvas(scaling: source, factor: factor, size: scaled)?.image())
     let preset = try #require(TUPresetTable.preset(forFamily: "flux2_9b"))
     let session = TUSession(
-      source: source, factor: factor, overlap: overlap, loraWeight: 1, trigger: "", preset: preset, tempFolder: folder)
+      source: source, factor: factor, overlap: overlap, settings: TUSettings(free: 200, blur: 30, outset: 30, fade: 0),
+      loraWeight: 1, trigger: "", preset: preset, tempFolder: folder)
     var previous: TUNextRequest.Previous?
     var index = 1
     var passes = 0

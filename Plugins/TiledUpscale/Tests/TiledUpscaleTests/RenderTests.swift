@@ -15,7 +15,7 @@ struct RenderTests {
     state.active = true
     state.tempFolder = NSTemporaryDirectory()
     state.setImage(TestImages.solid(1300, 900, (220, 120, 60), right: (60, 120, 220), splitX: 650), name: "foto.png")
-    func render(_ name: String, width: CGFloat = 900, height: CGFloat = 560) throws {
+    func render(_ name: String, width: CGFloat = 1000, height: CGFloat = 900) throws {
       let view = TUView(state: state, actions: .none).frame(width: width, height: height).background(Color(nsColor: .windowBackgroundColor))
       let renderer = ImageRenderer(content: view)
       renderer.scale = 2
@@ -39,6 +39,37 @@ struct RenderTests {
     }
     _ = await state.sessionNext(Data(#"{"type":"session.next","index":4,"count":\#(plan.count),"previous":{"path":"\#(previous!)","width":\#(plan.tiles[2].rect.width),"height":\#(plan.tiles[2].rect.height)}}"#.utf8))
     try render("during.png")
-    try render("during-big.png", width: 1700, height: 1100)
+    
+  }
+}
+
+/// The tab must draw in every state the sliders can leave it in, also when there is no room for the fade (SwiftUI stops the
+/// whole app on a slider whose step is larger than its range).
+@MainActor
+struct SliderStatesTests {
+  private func draws(_ state: TUState) -> Bool {
+    let view = TUView(state: state, actions: .none).frame(width: 900, height: 900)
+    let renderer = ImageRenderer(content: view)
+    return renderer.cgImage != nil
+  }
+
+  @Test func theTabDrawsWithNoRoomForTheFade() {
+    let state = TUState(store: TUStore(folder: nil), italian: false)
+    state.maskFree = 256
+    #expect(state.fadeRange == 0...0)
+    #expect(draws(state))
+  }
+
+  @Test func theTabDrawsAtTheExtremesOfEverySlider() {
+    for (free, blur, outset) in [(0, 0.0, 0), (256, 30.0, 100), (200, 15.0, 50), (250, 1.0, 1)] {
+      let state = TUState(store: TUStore(folder: nil), italian: false)
+      state.maskFree = free
+      state.maskBlur = blur
+      state.maskOutset = outset
+      state.junctionFade = state.fadeRange.upperBound
+      #expect(draws(state), "free \(free) blur \(blur) outset \(outset)")
+      state.overlap = .wide
+      #expect(draws(state))
+    }
   }
 }

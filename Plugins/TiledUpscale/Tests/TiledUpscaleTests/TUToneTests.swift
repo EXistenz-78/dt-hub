@@ -1,7 +1,7 @@
 import CoreGraphics
 import Testing
 
-@testable import TiledUpscaleLab
+@testable import TiledUpscale
 
 struct TUToneTests {
   private func gray(_ width: Int, _ height: Int, _ value: UInt8) -> CGImage { TestImages.solid(width, height, (value, value, value)) }

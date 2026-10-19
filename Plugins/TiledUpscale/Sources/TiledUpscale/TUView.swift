@@ -15,10 +15,12 @@ struct TUView: View {
   @ObservedObject var state: TUState
   let actions: TUViewActions
   @State private var dropTargeted = false
+  /// The advanced section starts closed.
+  @State private var advancedOpen = false
 
   var body: some View {
     HStack(alignment: .top, spacing: DS.groupGap) {
-      controls.frame(width: 320)
+      ScrollView { controls.padding(.trailing, 4) }.frame(width: 330)
       summaryPanel.frame(maxWidth: .infinity)
     }
     .padding(DS.groupGap)
@@ -34,7 +36,7 @@ struct TUView: View {
       Button(state.text(.open)) { chooseFile() }.buttonStyle(DSPillButtonStyle())
       DSGroupHeader(title: state.text(.enlargement))
       Picker(state.text(.enlargement), selection: $state.factor) {
-        ForEach([2, 4, 8], id: \.self) { Text(verbatim: "\($0)×").tag($0) }
+        ForEach(TUState.factors, id: \.self) { Text(verbatim: "\($0)×").tag($0) }
       }
       .pickerStyle(.segmented).labelsHidden()
       DSGroupHeader(title: state.text(.overlap))
@@ -42,6 +44,31 @@ struct TUView: View {
         ForEach(TileOverlap.allCases, id: \.self) { Text(verbatim: "\($0.rawValue) px").tag($0) }
       }
       .pickerStyle(.segmented).labelsHidden()
+      sliderRow(state.text(.tileSize), value: Binding(get: { Double(state.tileSize) }, set: { state.tileSize = Int($0.rounded()) }),
+        range: Double(TUSettings.tileRange.lowerBound)...Double(TUSettings.tileRange.upperBound), step: 64, text: "\(state.tileSize) px")
+      DisclosureGroup(isExpanded: $advancedOpen) {
+        VStack(alignment: .leading, spacing: DS.rowGap) {
+          sliderRow(state.text(.maskFree), value: Binding(get: { Double(state.maskFree) }, set: { state.maskFree = Int($0.rounded()) }),
+            range: 0...Double(state.overlap.rawValue), step: 8, text: "\(state.maskFree) px")
+          sliderRow(state.text(.maskBlur), value: Binding(get: { state.maskBlur }, set: { state.maskBlur = $0.rounded() }),
+            range: TUSettings.blurRange, step: 1, text: "\(Int(state.maskBlur))")
+          sliderRow(state.text(.maskOutset), value: Binding(get: { Double(state.maskOutset) }, set: { state.maskOutset = Int($0.rounded()) }),
+            range: 0...Double(TUSettings.outsetRange.upperBound), step: 1, text: "\(state.maskOutset)")
+          sliderRow(state.text(.junctionFade), value: Binding(get: { Double(state.junctionFade) }, set: { state.junctionFade = Int($0.rounded()) }),
+            range: 0...Double(state.fadeRange.upperBound), step: 4, text: "\(state.junctionFade) px")
+          if state.fadeRange.upperBound == 0 {
+            Text(state.text(.noRoomForFade)).font(.caption).foregroundStyle(.secondary)
+          }
+          sliderRow(state.text(.toneStrength), value: Binding(get: { Double(state.toneStrength) }, set: { state.toneStrength = Int($0.rounded()) }),
+            range: 0...100, step: 5, text: "\(state.toneStrength) %")
+          sliderRow(state.text(.toneRadius), value: Binding(get: { Double(state.toneRadius) }, set: { state.toneRadius = Int($0.rounded()) }),
+            range: Double(TUSettings.toneRadiusRange.lowerBound)...Double(TUSettings.toneRadiusRange.upperBound), step: 16, text: "\(state.toneRadius) px")
+          Button(state.text(.resetAdvanced)) { state.resetAdvanced() }.buttonStyle(DSPillButtonStyle())
+        }
+        .padding(.top, DS.controlGap)
+      } label: {
+        DSGroupHeader(title: state.text(.maskSection))
+      }
       DSGroupHeader(title: state.text(.loraStrength))
       HStack {
         Slider(value: $state.loraWeight, in: TUPresetTable.loraWeightRange, step: 0.05)
@@ -61,6 +88,21 @@ struct TUView: View {
         Text(state.status).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
       }
       Spacer(minLength: 0)
+    }
+  }
+
+  /// A caption with its value, over a slider.
+  private func sliderRow(_ title: String, value: Binding<Double>, range: ClosedRange<Double>, step: Double, text: String) -> some View {
+    VStack(alignment: .leading, spacing: 2) {
+      HStack {
+        Text(title).font(.caption).foregroundStyle(.secondary)
+        Spacer()
+        Text(verbatim: text).font(.caption.monospacedDigit())
+      }
+      // SwiftUI stops the whole app on a slider whose step is larger than its range: with no room there is only the value.
+      if range.upperBound - range.lowerBound >= step {
+        Slider(value: value, in: range, step: step)
+      }
     }
   }
 
@@ -100,6 +142,7 @@ struct TUView: View {
             Text(verbatim: state.format(.tiles, summary.columns, summary.rows)).foregroundStyle(.secondary)
             Text(verbatim: state.format(.passes, summary.passes)).foregroundStyle(.secondary)
           }
+          Text(verbatim: state.format(.megapixels, summary.generatedMegapixels)).foregroundStyle(.secondary)
           if state.tilesDone > 0 {
             Text(verbatim: state.format(.tilesDone, state.tilesDone, summary.passes)).font(.callout.monospacedDigit())
               .foregroundStyle(DS.accent)

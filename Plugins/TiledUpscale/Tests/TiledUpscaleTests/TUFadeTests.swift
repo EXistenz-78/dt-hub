@@ -1,6 +1,6 @@
 import Testing
 
-@testable import TiledUpscaleLab
+@testable import TiledUpscale
 
 struct TUFadeTests {
   @Test func leftNeighbourOnly() {
