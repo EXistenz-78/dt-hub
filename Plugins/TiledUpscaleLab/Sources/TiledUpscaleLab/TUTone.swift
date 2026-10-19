@@ -9,13 +9,15 @@ import Foundation
 enum TUTone {
   /// The most the correction can scale a colour, up or down (a night sky that the model made three times lighter needs 0.33).
   static let gainRange: ClosedRange<Float> = 0.2...5.0
-  /// Over how many pixels, from the edge of the mask, the correction grows from nothing to all.
-  static let ramp = 48
+  /// Over how many pixels, from the edge where the tile meets its neighbour, the correction grows from nothing to all.
+  static let ramp = 64
 
-  /// `result` is the tile the model made, `base` the enlarged source cut in the same place. `maskRect` is the part the model
-  /// regenerated (in the tile): outside it nothing changes, and inside it the correction grows from its edges that touch the
-  /// neighbours (the free part is put back as it was and must not step). `radius` is the size of the blur that tells "slow" from
-  /// "fine", `strength` how much of the correction is applied (0…1).
+  /// `result` is the tile the model made, `base` the enlarged source cut in the same place. `maskRect` tells where the
+  /// neighbours are (its `x` or `y` above 0: a neighbour on that side). The correction is not tied to the edge of the mask: the
+  /// model changes the tile also before it (the outset and the blur of the mask), and a correction that began at the edge of
+  /// the mask would leave that part light, a bright band. It grows from the edge of the tile where the neighbour is (where the
+  /// two are the same picture and the ratio is 1) over `ramp` pixels, so it makes no step with the neighbour. `radius` is the
+  /// size of the blur that tells "slow" from "fine", `strength` how much of the correction is applied (0…1).
   static func correct(result: CGImage, base: CGImage, maskRect: TileRect?, radius: Int, strength: Double) -> CGImage? {
     guard strength > 0, result.width == base.width, result.height == base.height else { return result }
     let width = result.width
@@ -32,10 +34,9 @@ enum TUTone {
     let slowBase = blur(lightBase, width: width, height: height, radius: radius)
     let amount = Float(min(max(strength, 0), 1))
     for y in 0..<height {
-      let wy = edgeWeight(y, from: maskRect?.y ?? 0)
-      if wy == 0 { continue }
+      let wy = edgeWeight(y, hasNeighbour: (maskRect?.y ?? 0) > 0)
       for x in 0..<width {
-        let w = edgeWeight(x, from: maskRect?.x ?? 0) * wy
+        let w = edgeWeight(x, hasNeighbour: (maskRect?.x ?? 0) > 0) * wy
         if w == 0 { continue }
         let i = y * width + x
         let gain = min(max((slowBase[i] + 2) / (slowResult[i] + 2), gainRange.lowerBound), gainRange.upperBound)
@@ -47,11 +48,10 @@ enum TUTone {
     return TUImage.image(rgba: pixels, width: width, height: height)
   }
 
-  /// 0 before `start`; from `start` a smooth rise to 1 over `ramp` pixels; 1 everywhere when there is no neighbour (`start` 0).
-  private static func edgeWeight(_ position: Int, from start: Int) -> Float {
-    if start <= 0 { return 1 }
-    if position < start { return 0 }
-    let t = min(1, Float(position - start) / Float(ramp))
+  /// 0 at the edge where the neighbour is, a smooth rise to 1 over `ramp` pixels; 1 everywhere when there is no neighbour.
+  private static func edgeWeight(_ position: Int, hasNeighbour: Bool) -> Float {
+    guard hasNeighbour else { return 1 }
+    let t = min(1, Float(position) / Float(ramp))
     return t * t * (3 - 2 * t)
   }
 
