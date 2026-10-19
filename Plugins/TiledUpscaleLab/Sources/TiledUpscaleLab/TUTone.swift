@@ -7,8 +7,8 @@ import Foundation
 /// colours of the result are scaled by the ratio of the two. The hue stays, the fine detail stays (the ratio is smooth), only
 /// the slow drift of the level is taken out.
 enum TUTone {
-  /// The most the correction can scale a colour, up or down.
-  static let gainRange: ClosedRange<Float> = 0.5...2.0
+  /// The most the correction can scale a colour, up or down (a night sky that the model made three times lighter needs 0.33).
+  static let gainRange: ClosedRange<Float> = 0.2...5.0
   /// Over how many pixels, from the edge of the mask, the correction grows from nothing to all.
   static let ramp = 48
 
@@ -38,7 +38,7 @@ enum TUTone {
         let w = edgeWeight(x, from: maskRect?.x ?? 0) * wy
         if w == 0 { continue }
         let i = y * width + x
-        let gain = min(max((slowBase[i] + 1) / (slowResult[i] + 1), gainRange.lowerBound), gainRange.upperBound)
+        let gain = min(max((slowBase[i] + 2) / (slowResult[i] + 2), gainRange.lowerBound), gainRange.upperBound)
         let factor = 1 + amount * w * (gain - 1)
         let p = i * 4
         for c in 0..<3 { pixels[p + c] = UInt8(min(max((Float(pixels[p + c]) * factor).rounded(), 0), 255)) }
