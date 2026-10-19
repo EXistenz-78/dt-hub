@@ -39,12 +39,30 @@ struct TUToneTests {
     #expect(abs((level(out, 20, 20) + level(out, 21, 20)) / 2 - 100) <= 3, "and its mean is the source's")
   }
 
-  @Test func theFreePartIsLeftAloneAndTheCorrectionGrowsInside() throws {
+  @Test func theEdgeThatMeetsTheNeighbourIsLeftAloneAndTheCorrectionGrowsFromIt() throws {
     let masked = TileRect(x: 64, y: 0, width: 192, height: 128)
     let out = try #require(TUTone.correct(result: gray(256, 128, 130), base: gray(256, 128, 100), maskRect: masked, radius: 16, strength: 1))
-    #expect(level(out, 10, 64) == 130, "the free part is not touched")
-    #expect(level(out, 64, 64) > 125, "at the edge of the mask the correction is only starting")
-    #expect(abs(level(out, 200, 64) - 100) <= 1, "well inside it is complete")
+    #expect(level(out, 0, 64) == 130, "the edge where the tile meets its neighbour is not touched")
+    #expect(level(out, 32, 64) > 105 && level(out, 32, 64) < 125, "the correction grows from it")
+    #expect(abs(level(out, 100, 64) - 100) <= 1, "and from 64 px on it is complete")
+  }
+
+  @Test func theWholeRampOfTheMaskEdgeIsCorrected() throws {
+    // The model leaves the first 40 px as they were (30) and lightens the rest in a ramp up to 90, over the mask's edge at 152:
+    // that ramp is where the bright band came from, because it begins before the mask's edge.
+    var bytes = [UInt8](repeating: 255, count: 400 * 64 * 4)
+    for y in 0..<64 {
+      for x in 0..<400 {
+        let v = UInt8(30 + min(60, max(0, (x - 40) * 60 / 160)))
+        for c in 0..<3 { bytes[(y * 400 + x) * 4 + c] = v }
+      }
+    }
+    let result = try #require(TUImage.image(rgba: bytes, width: 400, height: 64))
+    let out = try #require(
+      TUTone.correct(result: result, base: gray(400, 64, 30), maskRect: TileRect(x: 152, y: 0, width: 248, height: 64), radius: 24, strength: 1))
+    for x in [80, 120, 160, 250, 350] {
+      #expect(abs(level(out, x, 32) - 30) <= 6, "x \(x): back at the source's tone, no band")
+    }
   }
 
   @Test func aShiftOfThreeTimesIsBroughtBack() throws {
