@@ -39,6 +39,18 @@ struct DrawThingsMetadataTests {
     #expect(comment["seed_mode"] as? String == "Scale Alike")
   }
 
+  @Test func aPromptWithSymbolsAndAccentsSurvivesTheFileInTheFormatOfDrawThings() throws {
+    let text = "Tiled Upscale 4× · luminosità 100% · 日本語 😀"
+    let accented = GenerationJob(prompt: text, negativePrompt: "blurry", model: job.model, parameters: job.parameters)
+    let comment = DrawThingsMetadata.comment(for: accented, elapsed: 5)
+    #expect(comment.unicodeScalars.allSatisfy { $0.isASCII })
+    let written = try object(comment)
+    #expect(written["c"] as? String == "xx " + text, "the key Draw Things reads: the prompt with the LoRA triggers in front")
+    let store = PNGImageStore(folder: folder(), metadata: DrawThingsMetadata.comment)
+    let url = try store.save(image(), job: accented, index: 0, date: Date(), elapsed: 5)
+    #expect(PNGImageStore.job(in: url)?.prompt == text)
+  }
+
   @Test func v2IsTheConfigurationOfDrawThings() throws {
     let v2 = try #require(try object(DrawThingsMetadata.comment(for: job, elapsed: nil))["v2"] as? [String: Any])
     #expect(v2["width"] as? Int == 2048 && v2["height"] as? Int == 1792 && v2["steps"] as? Int == 40)
