@@ -22,10 +22,10 @@ struct ControlTabView: View {
       content
         .environment(\.controlViewportHeight, proxy.size.height)
         // Messages float over the cards: one that comes and goes must not move what is under the pointer.
-        .overlay(alignment: .top) {
+        .overlay(alignment: .bottom) {
           VStack(spacing: DS.controlGap) { messageBar }
             .padding(.horizontal, DS.groupGap)
-            .padding(.top, DS.controlGap)
+            .padding(.bottom, DS.controlGap)
             .animation(.easeInOut(duration: 0.15), value: control.notice)
             .animation(.easeInOut(duration: 0.15), value: message)
         }
@@ -84,39 +84,61 @@ struct ControlTabView: View {
 
   @ViewBuilder private var messageBar: some View {
     if let notice = control.notice {
-      bar(systemImage: "info.circle", text: ControlText.notice(notice), tint: .secondary) {
-        if control.canUndo { Button("control.undo") { control.undo() }.buttonStyle(DSPillButtonStyle()) }
+      bar(
+        systemImage: "info.circle", text: ControlText.notice(notice), tint: .secondary,
+        close: { control.dismissNotice() }
+      ) {
+        if control.canUndo { compactButton("control.undo") { control.undo() } }
       }
     }
     if let message {
       switch message {
       case .error(let text):
-        bar(systemImage: "exclamationmark.triangle.fill", text: text, tint: DS.remove) {
-          Button("control.dismiss") { self.message = nil }.buttonStyle(DSPillButtonStyle())
-        }
+        bar(
+          systemImage: "exclamationmark.triangle.fill", text: text, tint: DS.remove,
+          close: { self.message = nil }
+        ) {}
       case .adapted(let previous):
-        bar(systemImage: "aspectratio", text: String(localized: "control.adapted"), tint: .secondary) {
-          Button("control.undo") {
+        bar(
+          systemImage: "aspectratio", text: String(localized: "control.adapted"), tint: .secondary,
+          close: { self.message = nil }
+        ) {
+          compactButton("control.undo") {
             generation.restoreDimensions(previous)
             self.message = nil
           }
-          .buttonStyle(DSPillButtonStyle())
         }
       }
     }
   }
 
+  private func compactButton(_ title: LocalizedStringKey, action: @escaping () -> Void) -> some View {
+    Button(title, action: action)
+      .buttonStyle(.plain)
+      .font(.caption.weight(.semibold))
+      .foregroundStyle(DS.accent)
+  }
+
+  /// A small bar at the bottom: icon, text, optional action and an X that closes it.
   private func bar<Actions: View>(
-    systemImage: String, text: String, tint: Color, @ViewBuilder actions: () -> Actions
+    systemImage: String, text: String, tint: Color, close: @escaping () -> Void,
+    @ViewBuilder actions: () -> Actions
   ) -> some View {
     HStack(spacing: DS.controlGap) {
-      Image(systemName: systemImage).foregroundStyle(tint)
-      Text(verbatim: text).font(.callout)
-      Spacer(minLength: 0)
+      Image(systemName: systemImage).font(.caption).foregroundStyle(tint)
+      Text(verbatim: text).font(.caption).lineLimit(2)
       actions()
+      Button(action: close) {
+        Image(systemName: "xmark").font(.system(size: 10, weight: .bold)).foregroundStyle(.secondary)
+          .frame(width: 18, height: 18).contentShape(Rectangle())
+      }
+      .buttonStyle(.plain)
+      .accessibilityLabel(String(localized: "control.dismiss"))
+      .help(String(localized: "control.dismiss"))
     }
-    .padding(DS.panelPadding)
-    .frame(maxWidth: .infinity)
+    .padding(.horizontal, 12)
+    .padding(.vertical, 8)
+    .frame(maxWidth: 420)
     .dsPanel()
     .shadow(color: .black.opacity(0.25), radius: 10, y: 3)
   }
