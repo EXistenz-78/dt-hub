@@ -15,7 +15,7 @@ enum LACivitai {
     var allowed = CharacterSet.alphanumerics
     allowed.insert(charactersIn: "-._~")
     let text = query.addingPercentEncoding(withAllowedCharacters: allowed) ?? ""
-    return URL(string: "https://civitai.com/api/v1/models?query=\(text)&types=LORA&limit=10&nsfw=true")!
+    return URL(string: "https://civitai.com/api/v1/models?query=\(text)&types=LORA&limit=20&nsfw=true")!
   }
 
   /// The models a search found, as pages to choose from. With a `family`, a model stays only if one of its versions

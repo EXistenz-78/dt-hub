@@ -91,10 +91,10 @@ struct LACandidatesTests {
   @Test func atMostThreeFromCivitaiAndTwoFromHuggingFace() async {
     let many = lora("K2 Many")
     civitai("K2 Many", [])
-    civitai("Many", (1...6).map { ($0, "Result \($0)") })
-    huggingFace("Many", ["a/one", "b/two", "c/three"])
+    civitai("Many", (1...6).map { ($0, "Many \($0)") })
+    huggingFace("Many", ["a/many-one", "b/many-two", "c/many-three"])
     await jobs.searchAll([many])
-    #expect(store.entry(for: many.file).candidates.map(\.title) == ["Result 1", "Result 2", "Result 3", "a/one", "b/two"])
+    #expect(store.entry(for: many.file).candidates.map(\.title) == ["Many 1", "Many 2", "Many 3", "a/many-one", "b/many-two"])
   }
 
   @Test func aRepositoryOfTheSameNameIsTakenFromHuggingFace() async {
@@ -141,7 +141,7 @@ struct LACandidatesTests {
 
   @Test func choosingACandidateLinksAndImportsIt() async {
     let pulp = lora("K2 Retropulp")
-    civitai("Retropulp", [(1, "Painted Retro Pulp Covers"), (2, "Boris")])
+    civitai("Retropulp", [(1, "Painted Retro Pulp Covers"), (2, "Boris retro pulp")])
     await jobs.searchAll([pulp])
     let chosen = store.entry(for: pulp.file).candidates[1]
     await state.importPage(for: pulp.file, link: chosen.link, notes: .keepUsers)

@@ -102,6 +102,29 @@ enum LAName {
     return !ours.isDisjoint(with: theirs)
   }
 
+  /// How many of the words of `query` (three letters or more, not a version) a title contains, whatever the spaces and
+  /// capitals ("Retropulp" is in "Retro Pulp Covers"). Zero: the title has nothing to do with the name.
+  static func relevance(of title: String, to query: String) -> Int {
+    let haystack = key(title)
+    return words(of: query).filter { haystack.contains($0) }.count
+  }
+
+  /// The name's own words: no short ones and no version ("v6", "2.0").
+  static func words(of query: String) -> [String] {
+    query.components(separatedBy: CharacterSet.alphanumerics.inverted)
+      .filter { $0.count >= 3 && $0.range(of: "^[vV]?[0-9]+$", options: .regularExpression) == nil }
+      .map(key)
+  }
+
+  /// The name without a version at the end ("Calypso Aesthetic v6" is "Calypso Aesthetic").
+  static func withoutTrailingVersion(_ name: String) -> String { withoutVersion(name) }
+
+  /// The candidates that share a word with the name, the ones with most words first (the order of the site otherwise).
+  static func relevant(_ candidates: [LACandidate], to query: String, title: (LACandidate) -> String) -> [LACandidate] {
+    candidates.map { ($0, relevance(of: title($0), to: query)) }.filter { $0.1 > 0 }
+      .enumerated().sorted { ($0.element.1, $1.offset) > ($1.element.1, $0.offset) }.map(\.element.0)
+  }
+
   private static func withoutVersion(_ name: String) -> String {
     name.replacingOccurrences(of: "(^|[\\s_\\-.])[vV][0-9]+(\\.[0-9]+)*\\s*$", with: "", options: .regularExpression)
   }

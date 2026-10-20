@@ -139,7 +139,7 @@ struct LAPagesTests {
     #expect(LACivitai.modelURL(7).absoluteString == "https://civitai.com/api/v1/models/7")
     let search = LACivitai.searchURL("a b&c").absoluteString
     #expect(search.hasPrefix("https://civitai.com/api/v1/models?"))
-    #expect(search.contains("query=a%20b%26c") && search.contains("types=LORA") && search.contains("nsfw=true") && search.contains("limit=10"))
+    #expect(search.contains("query=a%20b%26c") && search.contains("types=LORA") && search.contains("nsfw=true") && search.contains("limit=20"))
   }
 
   func hf(api: String, readme: String) -> LAPage {
