@@ -84,6 +84,20 @@ struct LAFilteredSearchTests {
     #expect(store.entry(for: lora.file).candidates.map(\.title) == ["Retro Pulp four", "Retro Pulp five"])
   }
 
+  /// The family's words in the query drown the name ("Z-Image Calypso" finds every Z-Image LoRA): the name is searched
+  /// alone, and what shares no word with it is not offered, even if it is for our model.
+  @Test func theNameIsSearchedAloneAndUnrelatedResultsAreNotOffered() async {
+    let lora = DTHubCatalogLoRA(file: "zit_calypso_aesthetic_v6.ckpt", name: "ZIT Calypso_Aesthetic_v6", family: "z_image")
+    serve("Calypso Aesthetic v6", [])
+    serve("Calypso Aesthetic", [
+      (1, "Calypso (Bluey)", "ZImageTurbo"), (2, "Z-Image GodPussy", "ZImageTurbo"), (3, "Calypso Aesthetic Style", "ZImageTurbo"),
+      (4, "Calypso Aesthetic XL", "Pony"),
+    ])
+    serve("Z-Image Calypso Aesthetic v6", [(2, "Z-Image GodPussy", "ZImageTurbo"), (5, "Z-Image Turbo NSFW LoRA", "ZImageTurbo")])
+    await jobs.searchAll([lora])
+    #expect(store.entry(for: lora.file).candidates.map(\.title) == ["Calypso Aesthetic Style", "Calypso (Bluey)"])
+  }
+
   @Test func theSameNameForAnotherModelIsNotLinked() async {
     let lora = DTHubCatalogLoRA(file: "k2_giallo.ckpt", name: "K2 Giallostyle", family: "krea_2")
     serve("Giallostyle", [(1, "Giallostyle", "SD 1.5"), (2, "Giallostyle", "Krea 2")])

@@ -165,8 +165,8 @@ final class LAJobs: ObservableObject {
   }
 
   /// Looks for the page of a LoRA on Civitai and on Hugging Face. The name is freed of the words that only say which
-  /// model it is for (the user's own tag, as "k2"), and searched once with the words authors use for that family
-  /// ("Krea 2 Detail Slider") and once alone; results for another model are left out. A page of the same name is taken
+  /// model it is for (the user's own tag, as "k2"), and searched by the name alone (then with the words authors
+  /// use for that family, "Krea 2 Detail Slider", only if nothing came of it); results for another model are left out. A page of the same name is taken
   /// at once; otherwise what was found is kept for the user to choose from. False when a site asks to slow down: the
   /// run ends and the LoRA stays to search.
   private func search(_ lora: DTHubCatalogLoRA) async -> Bool {
@@ -179,18 +179,28 @@ final class LAJobs: ObservableObject {
     // The name to search for: without the family's words when it had them; without its first word (often a tag) when
     // the family is unknown.
     let core = tagged ? stripped : (label == nil ? short ?? full : full)
-    let queries = label.map { [$0 + " " + core, core] } ?? [core] + (core == full ? [] : [full])
+    // The name alone comes first (the family's words in a query drown the name: "Z-Image Calypso" brings up every Z-Image
+    // LoRA); the results are then kept or left out by model. With the family's words only as the last try.
+    let bare = LAName.withoutTrailingVersion(core)
+    var queries: [String] = [core]
+    let withLabel = label.map { $0 + " " + core }
+    for extra in [bare, core == full || label != nil ? nil : full, withLabel] {
+      if let extra, !extra.isEmpty, !queries.contains(extra) { queries.append(extra) }
+    }
     var names: [String] = []
     for name in [full, short, tagged ? stripped : nil].compactMap({ $0 }) where !names.contains(name) { names.append(name) }
     var civitai: [LACandidate] = []
     var found: LALink?
     for query in queries where found == nil {
+      // The family's words are the last try: only when the name alone brought nothing worth showing.
+      if query == withLabel && !civitai.isEmpty { continue }
       switch await ask(LACivitai.searchURL(query)) {
       case .answer(let data):
         // A LoRA made for another model is not this one, whatever its name.
         let results = LACivitai.candidates(json: data, family: lora.family)
         found = LACivitai.match(results, names: names, family: lora.family)
-        civitai += results.filter { result in !civitai.contains { $0.link == result.link } }
+        let related = LAName.relevant(results, to: core, title: \.title)
+        civitai += related.filter { result in !civitai.contains { $0.link == result.link } }
       case .nothing: break
       case .slowDown: return slowDown()
       case .noAnswer: return true
@@ -200,7 +210,9 @@ final class LAJobs: ObservableObject {
     if found == nil {
       switch await ask(LAHuggingFace.searchURL(core)) {
       case .answer(let data):
-        repositories = LAHuggingFace.candidates(json: data)
+        repositories = LAName.relevant(LAHuggingFace.candidates(json: data), to: core) {
+          $0.title.split(separator: "/").last.map(String.init) ?? $0.title
+        }
         found = LAHuggingFace.match(repositories, names: names)
       case .nothing: break
       case .slowDown: return slowDown()
