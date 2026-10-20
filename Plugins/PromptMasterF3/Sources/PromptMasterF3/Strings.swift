@@ -6,6 +6,10 @@ enum L {
   enum Key: CaseIterable {
     case title
     // Cosa è successo
+    // Le card
+    case descriptionTitle, compositionTitle, canvasTitle, elementsTitle, descriptionPlaceholder, photo, art, shuffle
+    case compositionPlaceholder, compositionHint, duplicateWarning, generation, canvasHint, elementPlaceholder, position, positionInvalid
+    case moveUp, moveDown, removeElement, undo, writeWithLLM, writing, send, sending, noElements, noDescription, clearAll
     case nothingToWrite, writtenCount, failedParts, idsChanged, changedMeanwhile, undone, sent, sentWithConflicts, notAnswered
   }
 
@@ -25,6 +29,17 @@ enum L {
 
   private static let en: [Key: String] = [
     .title: "Prompt Master F3",
+    .descriptionTitle: "General description", .compositionTitle: "Composition", .canvasTitle: "Canvas", .elementsTitle: "Elements",
+    .descriptionPlaceholder: "The whole picture: who or what, doing what, where", .photo: "Photo", .art: "Art", .shuffle: "Shuffle",
+    .compositionPlaceholder: "Name the elements with <id> placeholders: a woman <woman_1> next to a red umbrella <umbrella_1>…",
+    .compositionHint: "Add an <ID> in the text to create an Element.",
+    .duplicateWarning: "%@ appears twice: number the ids (%@_1, %@_2…).", .generation: "Generation",
+    .canvasHint: "Drag a box to move it, the corners of the selected one to resize it. New boxes appear from the top left.",
+    .elementPlaceholder: "What must appear inside this region", .position: "Position",
+    .positionInvalid: "Not a position: four numbers from 0 to 1000, each side at least 20 long.",
+    .moveUp: "Move up", .moveDown: "Move down", .removeElement: "Remove this element (and its <id> from the text)",
+    .undo: "Undo", .writeWithLLM: "Write with LLM", .writing: "Writing…", .send: "Send", .sending: "Sending…",
+    .noElements: "No elements yet.", .noDescription: "(no description)", .clearAll: "Clear",
     .nothingToWrite: "Nothing to write yet.", .writtenCount: "%d text(s) written.",
     .failedParts: "Not rewritten (the original stays): %@.", .idsChanged: "the LLM changed the ids of the composition",
     .changedMeanwhile: "Changed while writing, so kept as it is: %@.", .undone: "Previous texts restored.",
@@ -33,6 +48,17 @@ enum L {
   ]
   private static let it: [Key: String] = [
     .title: "Prompt Master F3",
+    .descriptionTitle: "Descrizione generale", .compositionTitle: "Composizione", .canvasTitle: "Canvas", .elementsTitle: "Elementi",
+    .descriptionPlaceholder: "L'immagine intera: chi o che cosa, che cosa fa, dove", .photo: "Foto", .art: "Arte", .shuffle: "Shuffle",
+    .compositionPlaceholder: "Nomina gli elementi con segnaposto <id>: una donna <woman_1> accanto a un ombrello rosso <umbrella_1>…",
+    .compositionHint: "Aggiungi un <ID> nel testo per creare un Elemento.",
+    .duplicateWarning: "%@ compare due volte: numera gli id (%@_1, %@_2…).", .generation: "Generazione",
+    .canvasHint: "Trascina un box per spostarlo, gli angoli di quello selezionato per ridimensionarlo. I box nuovi compaiono dall'alto a sinistra.",
+    .elementPlaceholder: "Che cosa deve apparire in questa regione", .position: "Posizione",
+    .positionInvalid: "Non è una posizione: quattro numeri da 0 a 1000, ogni lato lungo almeno 20.",
+    .moveUp: "Sposta su", .moveDown: "Sposta giù", .removeElement: "Rimuovi questo elemento (e il suo <id> dal testo)",
+    .undo: "Annulla", .writeWithLLM: "Scrivi con LLM", .writing: "Scrivo…", .send: "Invia", .sending: "Invio…",
+    .noElements: "Ancora nessun elemento.", .noDescription: "(senza descrizione)", .clearAll: "Svuota",
     .nothingToWrite: "Non c'è ancora niente da scrivere.", .writtenCount: "%d testo/i scritto/i.",
     .failedParts: "Non riscritti (resta l'originale): %@.", .idsChanged: "l'LLM ha cambiato gli id della composizione",
     .changedMeanwhile: "Cambiati mentre scrivevo, restano come sono: %@.", .undone: "Testi precedenti ripristinati.",

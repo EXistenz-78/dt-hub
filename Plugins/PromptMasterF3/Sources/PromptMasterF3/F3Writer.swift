@@ -39,8 +39,9 @@ enum F3IDCheck {
 }
 
 /// «Scrivi con LLM» (spec §9): una richiesta con tutte le parti, il ripiego per le mancanti, il controllo degli id.
+@MainActor
 struct F3Writer {
-  var ask: @Sendable (String, String, DTHubLLMOptions) async -> DTHubLLMAnswer
+  var ask: (String, String, DTHubLLMOptions) async -> DTHubLLMAnswer
   var italian: Bool = L.systemIsItalian
 
   static let idReminder = "IMPORTANT: copy every <placeholder> exactly as written, the same number of times, and every quoted phrase unchanged."

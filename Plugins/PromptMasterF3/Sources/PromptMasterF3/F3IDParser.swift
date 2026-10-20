@@ -36,4 +36,11 @@ enum F3IDParser {
     }
     return result
   }
+
+  /// L'id senza il numero finale (`lamp_1` → `lamp`, `lamp` → `lamp`): la base per consigliare di numerare gli id ripetuti.
+  static func numberingBase(of id: String) -> String {
+    guard let underscore = id.lastIndex(of: "_") else { return id }
+    let tail = id[id.index(after: underscore)...]
+    return !tail.isEmpty && tail.allSatisfy(\.isNumber) && underscore > id.startIndex ? String(id[..<underscore]) : id
+  }
 }

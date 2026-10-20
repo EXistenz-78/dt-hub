@@ -44,4 +44,12 @@ struct IDParserTests {
     let match = F3IDParser.ids(in: text)[0]
     #expect(String(text[match.range]) == "<abc>")
   }
+
+  @Test func numberingBaseStripsATrailingNumber() {
+    #expect(F3IDParser.numberingBase(of: "lamp_1") == "lamp")
+    #expect(F3IDParser.numberingBase(of: "lamp") == "lamp")
+    #expect(F3IDParser.numberingBase(of: "street_lamp_12") == "street_lamp")
+    #expect(F3IDParser.numberingBase(of: "lamp_x") == "lamp_x")
+    #expect(F3IDParser.numberingBase(of: "_1") == "_1")
+  }
 }
