@@ -5,7 +5,7 @@ import Foundation
 enum BBoxScale { static let grid = 1000 }
 
 /// The box of an element on the 0…1000 grid of the caption, `[y0, x0, y1, x1]` (y first), origin at the top left.
-struct BBox: Codable, Equatable, Sendable {
+struct BBox: Codable, Hashable, Sendable {
   var y0: Int
   var x0: Int
   var y1: Int
