@@ -7,6 +7,8 @@ import SwiftUI
 struct WorkspaceTabBar: View {
   let workspace: WorkspaceState
   let plugins: PluginRegistry
+  /// True when the Moodboard has images or there is a start image: Control, when closed, shows a small teal dot.
+  var controlHasImages = false
   @Environment(\.openSettings) private var openSettings
   /// The tab the mouse rests on: its name shows too (one at a time).
   @State private var hoveredTabID: String?
@@ -16,7 +18,8 @@ struct WorkspaceTabBar: View {
       pluginsMenu
       ForEach(workspace.tabs) { tab in
         WorkspaceTabButton(
-          tab: tab, isSelected: tab.id == workspace.selectedTabID, hoveredID: $hoveredTabID
+          tab: tab, isSelected: tab.id == workspace.selectedTabID, hoveredID: $hoveredTabID,
+          showsBadge: tab.id == WorkspaceTab.controlID && controlHasImages
         ) {
           workspace.select(tab.id)
         }
@@ -72,6 +75,8 @@ private struct WorkspaceTabButton: View {
   let tab: WorkspaceTab
   let isSelected: Bool
   @Binding var hoveredID: String?
+  /// A small teal dot on the icon; only while the tab is not the open one.
+  var showsBadge = false
   let select: () -> Void
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @State private var pendingHover: Task<Void, Never>?
@@ -84,6 +89,13 @@ private struct WorkspaceTabButton: View {
       HStack(spacing: DS.pillIconGap) {
         Image(systemName: tab.systemImage)
           .font(.system(size: 13, weight: .semibold))
+          .overlay(alignment: .topTrailing) {
+            if showsBadge && !isSelected {
+              Circle().fill(DS.accent).frame(width: 7, height: 7)
+                .offset(x: 4, y: -3)
+                .accessibilityHidden(true)
+            }
+          }
         if isExpanded {
           Text(tab.title)
             .lineLimit(1)
