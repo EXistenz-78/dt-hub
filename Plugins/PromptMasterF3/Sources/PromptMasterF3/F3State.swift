@@ -193,6 +193,55 @@ final class F3State: ObservableObject {
       temperature: settings.temperature, maxTokens: settings.maxTokens, thinking: settings.thinking, timeout: settings.timeout)
   }
 
+  /// Mette nei campi i testi riscritti. Un testo che l'utente ha cambiato mentre l'LLM scriveva resta com'è. Prima si
+  /// fotografa lo stato (solo l'ultima fotografia), per «Annulla».
+  func apply(_ result: F3WriteResult) {
+    var applicable: [F3Rewrite] = []
+    var kept: [String] = []
+    for rewrite in result.rewrites {
+      if currentText(of: rewrite.kind) == rewrite.original { applicable.append(rewrite) } else { kept.append(rewrite.kind.title) }
+    }
+    var lines = [result.status]
+    if !applicable.isEmpty {
+      document.snapshot = F3Snapshot.take(from: document)
+      for rewrite in applicable {
+        switch rewrite.kind {
+        case .description:
+          document.description = rewrite.text
+          document.selection = []
+        case .composition: document.composition = rewrite.text
+        case .element(let id): update(element: id) { $0.desc = rewrite.text }
+        }
+      }
+      commitComposition()
+    }
+    if !kept.isEmpty { lines.append(L.format(.changedMeanwhile, kept.joined(separator: ", "), italian: italian)) }
+    status = lines.filter { !$0.isEmpty }.joined(separator: " ")
+  }
+
+  private func currentText(of kind: F3Part.Kind) -> String? {
+    switch kind {
+    case .description: return document.description.trimmingCharacters(in: .whitespacesAndNewlines)
+    case .composition: return document.composition.trimmingCharacters(in: .whitespacesAndNewlines)
+    case .element(let id): return document.element(id)?.desc.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+  }
+
+  /// «Annulla»: rimette i testi di prima (solo l'ultima scrittura) e riallinea gli elementi agli id del testo.
+  func undo() {
+    guard let snapshot = document.snapshot else { return }
+    pendingSync?.cancel()
+    var restored = document
+    snapshot.restore(into: &restored)
+    document = restored
+    commitComposition()
+    // Gli elementi ricomparsi dagli id tornano con i testi della fotografia.
+    for index in document.elements.indices {
+      if let desc = snapshot.descs[document.elements[index].id] { document.elements[index].desc = desc }
+    }
+    status = L.text(.undone, italian: italian)
+  }
+
   // MARK: Progetti
 
   /// Vero mentre la sessione di un progetto viene letta nel tab: i cambi che ne vengono non si riscrivono.
