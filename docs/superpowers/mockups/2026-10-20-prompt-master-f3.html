@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prompt Master F3 mockup</title>
+<style>
+  :root {
+    --bg: #1b1c1f; --card: #2c3a3c; --head: #243032; --box: #1f2a2c; --line: #3d5155; --text: #f2f2f7; --secondary: #9fb0b3;
+    --accent: #3ec8c8; --accent-text: #0b1d1d; --warn: #f09837;
+    --c1: #3ec8c8; --c2: #f0b43c; --c3: #c77dff; --c4: #6fcf7f; --c5: #ff7a7a;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 18px; background: var(--bg); color: var(--text);
+    font: 13px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; }
+  .tab { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 1180px; margin: 0 auto; align-items: start; }
+  .col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
+  .card > h2 { margin: 0; padding: 10px 14px; background: var(--head); font-size: 14px; font-weight: 600; text-align: center; position: relative; }
+  .card > h2 .x { position: absolute; right: 12px; top: 8px; width: 18px; height: 18px; border-radius: 50%; background: var(--warn); color: #1b1c1f; font-size: 11px; line-height: 18px; }
+  .body { padding: 14px; }
+  .label { font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--secondary); margin: 0 0 6px; }
+  .note { font-size: 11px; color: var(--secondary); margin: 8px 0 0; }
+  textarea, .field { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--box); color: var(--text); font: inherit; resize: none; }
+  .mono { font-family: ui-monospace, Menlo, monospace; }
+  button, .pill { font: inherit; padding: 7px 14px; border-radius: 999px; border: 1px solid var(--line); background: #1a2224; color: var(--text); display: inline-flex; align-items: center; gap: 6px; }
+  .pill.on, button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+  button.dim { color: #6d7f82; }
+  .row { display: flex; align-items: center; gap: 8px; }
+  .spacer { flex: 1; }
+  hr { border: 0; border-top: 1px solid var(--line); margin: 12px 0; }
+  .cat { display: flex; justify-content: space-between; padding: 5px 0; font-weight: 600; letter-spacing: .04em; font-size: 12px; text-transform: uppercase; }
+  .cat .n { background: var(--line); border-radius: 999px; padding: 0 8px; font-size: 11px; }
+  .sub { display: flex; justify-content: space-between; padding: 3px 0 3px 14px; font-size: 12px; }
+  .sub span:last-child { color: var(--accent); }
+  /* composition */
+  .comp { min-height: 64px; line-height: 1.7; white-space: pre-wrap; }
+  .tag { padding: 1px 7px; border-radius: 6px; font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: #10191a; font-weight: 600; }
+  .t1 { background: var(--c1); } .t2 { background: var(--c2); } .t3 { background: var(--c3); } .t4 { background: var(--c4); } .t5 { background: var(--c5); }
+  .tag.pending { background: transparent; color: var(--warn); border: 1px dashed var(--warn); }
+  .caret { display: inline-block; width: 1px; height: 14px; background: var(--text); vertical-align: middle; }
+  .hint { background: var(--box); border: 1px dashed var(--line); border-radius: 10px; padding: 6px 10px; margin-top: 8px; font-size: 12px; color: var(--secondary); }
+  /* canvas */
+  .canvaswrap { padding: 14px; }
+  .canvas { position: relative; width: 100%; aspect-ratio: 3 / 2; border: 1px solid var(--line); border-radius: 8px;
+    background-color: #1b2527;
+    background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 10% 10%; background-position: -1px -1px; opacity: 1; }
+  .bb { position: absolute; border: 2px dashed; border-radius: 3px; }
+  .bb b { position: absolute; top: -1px; left: -1px; transform: translateY(-100%); font: 600 11px ui-monospace, Menlo, monospace; padding: 1px 6px; border-radius: 4px 4px 0 0; color: #10191a; white-space: nowrap; }
+  .bb.sel { border-style: solid; border-color: #fff !important; }
+  .bb.sel::after { content: ""; position: absolute; right: -5px; bottom: -5px; width: 9px; height: 9px; background: #fff; border-radius: 2px; }
+  /* elements */
+  .el { border: 1px solid var(--line); border-radius: 14px; padding: 10px; margin-bottom: 10px; background: var(--box); }
+  .el.sel { border: 2px solid var(--accent); }
+  .el .head { display: flex; align-items: center; gap: 8px; }
+  .el .head .id { font: 600 12px ui-monospace, Menlo, monospace; padding: 1px 8px; border-radius: 6px; color: #10191a; }
+  .el .head .t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--secondary); }
+  .el .head .ic { color: var(--secondary); }
+  .el textarea { margin-top: 8px; height: 58px; }
+  .el .pos { margin-top: 8px; }
+  .el.nobox { border-style: dashed; border-color: var(--warn); }
+  .el .warn { color: var(--warn); font-size: 12px; margin-top: 8px; }
+  .legend { max-width: 1180px; margin: 22px auto 0; color: var(--secondary); font-size: 12.5px; }
+  .legend h3 { color: var(--text); font-size: 13px; margin: 14px 0 6px; }
+  .legend li { margin: 4px 0; }
+  .legend code { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="tab">
+
+  <!-- Colonna sinistra: 1 + 2 -->
+  <div class="col">
+
+    <section class="card" aria-label="Descrizione generale">
+      <h2>1 · Descrizione generale<span class="x">×</span></h2>
+      <div class="body">
+        <div class="label">Descrizione generale</div>
+        <textarea style="height:84px">A cinematic editorial photograph of a woman standing in a rainy Tokyo street at night.</textarea>
+        <div class="row" style="margin-top:10px">
+          <span class="pill on">📷 Photo</span><span class="pill">🎨 Art</span>
+          <span class="spacer"></span>
+          <span class="pill">🎲 Shuffle</span>
+        </div>
+        <hr>
+        <div class="cat"><span>› Camera &amp; Optics</span><span class="n">3</span></div>
+        <div class="cat"><span>⌄ Light</span><span class="n">2</span></div>
+        <div class="sub"><span>Light Source</span><span>Neon light</span></div>
+        <div class="sub"><span>Lighting Scheme</span><span>Rim light</span></div>
+        <div class="cat"><span>› Color</span><span class="n">0</span></div>
+        <div class="cat"><span>› Style &amp; Medium</span><span class="n">1</span></div>
+        <div class="cat"><span>› Subject</span><span class="n">0</span></div>
+        <div class="cat"><span>› Environment</span><span class="n">1</span></div>
+        <div class="cat"><span>› Matter &amp; Effects</span><span class="n">0</span></div>
+        <p class="note">Tutti i gruppi del database tranne «Technical» (token qualità, negativi, testo/lettering).</p>
+      </div>
+    </section>
+
+    <section class="card" aria-label="Composizione">
+      <h2>2 · Composizione<span class="x">×</span></h2>
+      <div class="body">
+                <div class="field comp">The composition contains a woman <span class="tag t1">&lt;woman_1&gt;</span>, a red umbrella <span class="tag t2">&lt;umbrella_1&gt;</span>,
+neon signs <span class="tag t3">&lt;neon_1&gt;</span>, wet pavement <span class="tag t4">&lt;pavement_1&gt;</span> and a street lamp <span class="tag t5">&lt;lamp_1&gt;</span> next to a second one <span class="tag t5">&lt;lamp_1&gt;</span><span class="caret"></span></div>
+        <p class="note" style="margin-top:6px">Aggiungi un <span class="mono">&lt;ID&gt;</span> nel testo per creare un Elemento.</p>
+        <div class="hint" style="border-color:var(--warn);color:var(--warn);margin-top:6px">⚠ <span class="mono">&lt;lamp_1&gt;</span> compare due volte: numera gli id (<span class="mono">lamp_1</span>, <span class="mono">lamp_2</span>…).</div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Colonna destra: 3 + 4 -->
+  <div class="col">
+
+    <section class="card" aria-label="Canvas">
+      <h2>3 · Canvas</h2>
+      <div class="canvaswrap">
+        <div class="note" style="margin:0 0 8px">Generation: 1.536 × 1.024</div>
+        <div class="canvas">
+          <div class="bb sel" style="border-color:#fff; top:2%; left:1%; width:18%; height:24%"><b style="background:var(--c1)">woman_1</b></div>
+          <div class="bb" style="border-color:var(--c2); top:2%; left:21%; width:18%; height:24%"><b style="background:var(--c2)">umbrella_1</b></div>
+          <div class="bb" style="border-color:var(--c3); top:2%; left:41%; width:18%; height:24%"><b style="background:var(--c3)">neon_1</b></div>
+          <div class="bb" style="border-color:var(--c4); top:2%; left:61%; width:18%; height:24%"><b style="background:var(--c4)">pavement_1</b></div>
+          <div class="bb" style="border-color:var(--c5); top:32%; left:1%; width:18%; height:24%"><b style="background:var(--c5)">lamp_1</b></div>
+        </div>
+        <p class="note">I nuovi box si dispongono in fila da in alto a sinistra, senza sovrapporsi: l'utente scrive prima tutti gli id e poi li posiziona. Sposta un box o ridimensionalo dagli angoli. Ogni id ha il suo colore, lo stesso nel testo, sulla tela e nella scheda.</p>
+      </div>
+    </section>
+
+    <section class="card" aria-label="Elementi">
+      <h2>4 · Elementi<span class="x">×</span></h2>
+      <div class="body">
+        <div class="el sel">
+          <div class="head"><span style="color:var(--secondary)">⌄</span><span class="id" style="background:var(--c1)">woman_1</span><span class="t">A young woman in a black trench coat…</span><span class="ic">↑ ↓ ×</span></div>
+          <textarea>A young woman in a black trench coat, standing upright and looking toward the camera, realistic face and natural proportions.</textarea>
+          <div class="label" style="margin-top:8px">Position</div>
+          <div class="field mono pos">[12, 12, 203, 229]</div>
+        </div>
+        <div class="el">
+          <div class="head"><span style="color:var(--secondary)">›</span><span class="id" style="background:var(--c2)">umbrella_1</span><span class="t">A vivid transparent red umbrella held above the…</span><span class="ic">↑ ↓ ×</span></div>
+        </div>
+        <div class="el">
+          <div class="head"><span style="color:var(--secondary)">›</span><span class="id" style="background:var(--c3)">neon_1</span><span class="t">Dense vertical Japanese neon signs glowing in cyan…</span><span class="ic">↑ ↓ ×</span></div>
+        </div>
+        <div class="el">
+          <div class="head"><span style="color:var(--secondary)">›</span><span class="id" style="background:var(--c4)">pavement_1</span><span class="t">Dark wet asphalt reflecting the colored neon lights.</span><span class="ic">↑ ↓ ×</span></div>
+        </div>
+        <div class="el">
+          <div class="head"><span style="color:var(--secondary)">›</span><span class="id" style="background:var(--c5)">lamp_1</span><span class="t">A tall dark street lamp with a warm glow…</span><span class="ic">↑ ↓ ×</span></div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <button>↶ Annulla</button>
+          <button>✦ Scrivi con LLM</button>
+          <span class="spacer"></span>
+          <button class="primary">➤ Invia</button>
+        </div>
+        <p class="note">«Scrivi con LLM» sostituisce i testi nei campi (descrizione, composizione, desc degli elementi): il prompt finale si vede già lì. «Annulla» rimette i testi di prima. Invia mette nel Prompt: descrizione, composizione, array JSON; il negativo si svuota.</p>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="legend">
+  <h3>Come funziona</h3>
+  <ul>
+    <li><b>Sorgente degli id:</b> il testo della Composizione. Le schede e i box nascono, si rinominano o spariscono da lì. Non esistono elementi senza box: ogni id nuovo ne riceve uno.</li>
+    <li><b>Un solo pulsante «Scrivi con LLM»</b> (in basso): riscrive descrizione, composizione e <code>desc</code> degli elementi in un colpo solo e <b>sostituisce i testi nell'interfaccia</b>. «Annulla» ripristina gli originali.</li>
+    <li><b>Regola per l'LLM (master prompt specifico di F3):</b> i testi tra <code>&lt;…&gt;</code> non si toccano mai; si traduce in inglese e si arricchisce solo il testo attorno.</li>
+    <li><b>Id liberi;</b> se uno è ripetuto compare un avviso che consiglia di numerarli (<code>_1</code>, <code>_2</code>…).</li>
+    <li><b>Il prompt inviato</b> = descrizione + composizione + array JSON <code>[{id, bbox:[y0,x0,y1,x1], desc}]</code> (0–1000; da confermare in Draw Things).</li>
+  </ul>
+  <h3>Decisioni</h3>
+  <ul>
+    <li><b>Database della card 1:</b> tutti i gruppi tranne «Technical» (gruppo H).</li>
+    <li><b>Annulla:</b> solo l'ultima scrittura dell'LLM. Le parti da elaborare vanno all'LLM come file Markdown, salvati in una cartella temporanea: servono per il ripristino e forse anche per ricordare lo stato tra una sessione e l'altra.</li>
+  </ul>
+  <h3>Ancora aperto</h3>
+  <ul>
+    <li>Dettaglio dei file MD per l'LLM e del ripristino (vedi sotto).</li>
+  </ul>
+</div>
+</body>
+</html>
