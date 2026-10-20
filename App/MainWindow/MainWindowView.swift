@@ -30,7 +30,9 @@ struct MainWindowView: View {
       .fixedSize(horizontal: false, vertical: true)
       ManagedServerBanner(connection: connection)
       DSTabFrame {
-        WorkspaceTabBar(workspace: workspace, plugins: plugins)
+        WorkspaceTabBar(
+          workspace: workspace, plugins: plugins,
+          controlHasImages: generation.control.inputs.image != nil || !generation.control.inputs.moodboard.isEmpty)
       } content: {
         tabContent
       }

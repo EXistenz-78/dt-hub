@@ -311,18 +311,25 @@ struct ResultsView: View {
       }
       Button("results.addToMoodboard") { addToMoodboard(chosen) }
         .buttonStyle(DSPillButtonStyle())
-      let urls = chosen.compactMap(\.fileURL)
-      if !urls.isEmpty {
-        Button("results.showInFinder") { NSWorkspace.shared.activateFileViewerSelecting(urls) }
-          .buttonStyle(DSPillButtonStyle())
-      }
       if chosen.count <= 1 {
         Button("results.resume") { controller.resume(result, with: connection) }
           .buttonStyle(DSPillButtonStyle())
       }
-      Button("results.trash") { trash(chosen.map(\.id)) }
+      let urls = chosen.compactMap(\.fileURL)
+      if !urls.isEmpty {
+        Button { NSWorkspace.shared.activateFileViewerSelecting(urls) } label: {
+          Image(systemName: "folder.fill")
+        }
         .buttonStyle(DSPillButtonStyle())
-        .help(String(localized: "results.trash.help"))
+        .help(String(localized: "results.showInFinder"))
+        .accessibilityLabel(String(localized: "results.showInFinder"))
+      }
+      Button { trash(chosen.map(\.id)) } label: {
+        Image(systemName: "trash.fill")
+      }
+      .buttonStyle(DSPillButtonStyle())
+      .help(String(localized: "results.trash.help"))
+      .accessibilityLabel(String(localized: "results.trash"))
     }
   }
 }
