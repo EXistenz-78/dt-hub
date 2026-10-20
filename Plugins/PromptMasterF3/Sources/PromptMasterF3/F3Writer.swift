@@ -44,7 +44,8 @@ struct F3Writer {
   var ask: (String, String, DTHubLLMOptions) async -> DTHubLLMAnswer
   var italian: Bool = L.systemIsItalian
 
-  static let idReminder = "IMPORTANT: copy every <placeholder> exactly as written, the same number of times, and every quoted phrase unchanged."
+  static let idReminder =
+    "IMPORTANT: write the text in English (translate it if it is in another language). Copy every <placeholder> exactly as written, the same number of times, and every quoted phrase unchanged."
 
   func write(document: F3Document, catalog: F3Catalog, system: String, options: DTHubLLMOptions) async -> F3WriteResult {
     let parts = F3Brief.parts(from: document, catalog: catalog)
@@ -94,6 +95,8 @@ struct F3Writer {
 
   /// Le parti con `<id>` (composizione) e ogni parte con virgolette devono restare intatte.
   private func acceptable(_ text: String, for part: F3Part) -> Bool {
+    // Un testo che doveva diventare inglese e resta italiano non vale: si riprova.
+    if F3Language.looksItalian(text) { return false }
     switch part.kind {
     case .composition: return F3IDCheck.preserves(original: part.text, rewritten: text)
     default: return F3IDCheck.quoted(part.text).allSatisfy { text.contains($0) } && !containsPlaceholder(text, part: part)

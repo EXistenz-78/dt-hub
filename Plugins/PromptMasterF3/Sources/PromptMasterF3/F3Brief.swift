@@ -45,7 +45,7 @@ enum F3Brief {
   static func message(_ parts: [F3Part], reminder: String? = nil) -> String {
     var text = parts.map { "## \($0.kind.title)\n\($0.block)" }.joined(separator: "\n\n")
     if let reminder { text += "\n\n" + reminder }
-    text += "\n\nReply in exactly this shape, replacing the dots with the text:\n"
+    text += "\n\nReply in English, in exactly this shape, replacing the dots with the English text:\n"
     text += parts.map { "## \($0.kind.title)\n..." }.joined(separator: "\n\n")
     return text
   }
