@@ -35,6 +35,8 @@ final class F3State: ObservableObject {
   private(set) var pendingSync: Task<Void, Never>?
   /// Dove si leggono il master prompt e quello dell'utente (a ogni scrittura).
   let promptFolder: DTHubPromptFolder
+  /// La cartella del progetto aperto (dove stanno `state.json` e `llm/`); nil finché l'app non ha detto il progetto.
+  private(set) var projectFolder: URL?
 
   init(
     data: F3Data = F3Data.load(), promptFolder: DTHubPromptFolder = F3Prompts.folder(), store: F3Store = F3Store(),
@@ -163,6 +165,23 @@ final class F3State: ObservableObject {
     change(&document.elements[index])
   }
 
+  // MARK: Il canvas
+
+  var canvasItems: [CanvasItem] { document.elements.map { CanvasItem(id: $0.id, colorIndex: $0.colorIndex, box: $0.box) } }
+
+  /// Un gesto finito sul canvas: sposta o ridimensiona, o seleziona; sul vuoto un clic toglie la selezione.
+  func canvasEnd(_ drag: CanvasDrag, geometry: CanvasGeometry) {
+    switch drag.mode {
+    case .none:
+      if !drag.moved { selectedElement = nil }
+    case .tag(let id):
+      if !drag.moved { selectedElement = id }
+    case .move(let id, _), .resize(let id, _, _):
+      selectedElement = id
+      if drag.moved, let box = geometry.result(of: drag) { update(element: id) { $0.box = box } }
+    }
+  }
+
   // MARK: Invia e scrivi
 
   var terms: [String] { catalog.termNames(document.selection, mode: document.mode) }
@@ -251,6 +270,7 @@ final class F3State: ObservableObject {
   /// sessione che il tab aveva prima).
   func switchProject(folder: URL, adoptLegacy: Bool) {
     pendingSync?.cancel()
+    projectFolder = folder
     store.storage = FileStorage(folder: folder)
     if adoptLegacy { store.adoptLegacy(from: legacyStorage) }
     let session = store.load()

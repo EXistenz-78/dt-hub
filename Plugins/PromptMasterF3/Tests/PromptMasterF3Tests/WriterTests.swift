@@ -17,6 +17,7 @@ final class ScriptedLLM: @unchecked Sendable {
   }
 }
 
+@MainActor
 struct WriterTests {
   let catalog = F3Catalog(database: F3Data.embeddedDatabase, config: F3Data.embeddedConfig)
 
