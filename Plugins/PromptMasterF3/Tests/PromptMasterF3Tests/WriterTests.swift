@@ -124,4 +124,22 @@ struct WriterTests {
     #expect(llm.requests.isEmpty)
     #expect(result.status == "Nothing to write yet.")
   }
+
+  @Test func textLeftInItalianIsRetriedWithATranslationReminder() async {
+    let stayed = good.replacingOccurrences(of: "A woman in a black trench coat.", with: "una donna con un trench nero che cammina sotto la pioggia.")
+    let llm = ScriptedLLM([.text(stayed), .text("## element: woman_1\nA woman in a black trench coat walking in the rain.")])
+    let result = await run(llm)
+    #expect(llm.requests.count == 2)
+    #expect(llm.requests[1].contains("write the text in English"))
+    #expect(result.rewrites.first { $0.kind == .element(id: "woman_1") }?.text == "A woman in a black trench coat walking in the rain.")
+  }
+
+  @Test func textStillInItalianAfterTheRetryKeepsTheOriginal() async {
+    let italian = "una donna con un trench nero che cammina sotto la pioggia."
+    let stayed = good.replacingOccurrences(of: "A woman in a black trench coat.", with: italian)
+    let llm = ScriptedLLM([.text(stayed), .text(italian)])
+    let result = await run(llm)
+    #expect(!result.rewrites.contains { $0.kind == .element(id: "woman_1") })
+    #expect(result.status.contains("element: woman_1"))
+  }
 }

@@ -26,7 +26,7 @@ struct BriefTests {
       ## element: woman_1
       una giovane donna
 
-      Reply in exactly this shape, replacing the dots with the text:
+      Reply in English, in exactly this shape, replacing the dots with the English text:
       ## description
       ...
 
@@ -67,6 +67,6 @@ struct BriefTests {
 
   @Test func reminderComesBeforeTheShape() {
     let message = F3Brief.message([F3Part(kind: .composition, text: "<a>")], reminder: "KEEP")
-    #expect(message.contains("<a>\n\nKEEP\n\nReply in exactly"))
+    #expect(message.contains("<a>\n\nKEEP\n\nReply in English, in exactly"))
   }
 }
