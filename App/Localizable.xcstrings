@@ -3316,6 +3316,91 @@
         }
       }
     },
+    "header.stop.step": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Step %lld/%lld"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Step %lld/%lld"
+          }
+        }
+      }
+    },
+    "header.server.managed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "the server DT Hub starts (gRPCServerCLI)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "il server avviato da DT Hub (gRPCServerCLI)"
+          }
+        }
+      }
+    },
+    "header.server.attach": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "the server that is already running"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "il server già attivo"
+          }
+        }
+      }
+    },
+    "header.server.switch": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Click to switch to %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clic per passare a %@"
+          }
+        }
+      }
+    },
+    "header.server.cannotSwitch": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cannot switch to %@: set it up in Preferences first"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile passare a %@: configuralo prima nelle Preferenze"
+          }
+        }
+      }
+    },
     "header.dtplus.help": {
       "extractionState": "manual",
       "localizations": {

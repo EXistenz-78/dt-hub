@@ -163,6 +163,24 @@ final class DrawThingsConnection {
     await managedServer.start(managed)
   }
 
+  /// The mode a click on the status dot would switch to.
+  var otherServerMode: ServerMode { managed.mode == .managed ? .attach : .managed }
+
+  /// Whether the other server can be switched to: its settings must be valid.
+  var canSwitchServer: Bool {
+    otherServerMode == .managed
+      ? { var other = managed; other.mode = .managed; return other.validationError() == nil }()
+      : settings.validationError == nil
+  }
+
+  /// Switches between the server DT Hub starts and the one that is already running, with the settings of Preferences.
+  func switchServer() async {
+    guard canSwitchServer else { return }
+    var other = managed
+    other.mode = otherServerMode
+    await apply(settings, secret: savedSecret(), managed: other)
+  }
+
   /// Saves the settings and the secret, starts or stops the managed server, then reconnects.
   func apply(_ newSettings: ConnectionSettings, secret: String, managed newManaged: ManagedServerSettings) async {
     settings = newSettings

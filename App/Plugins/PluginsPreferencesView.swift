@@ -85,8 +85,13 @@ struct PluginsPreferencesView: View {
         .labelsHidden()
         .toggleStyle(.switch)
       }
-      Button("prefs.plugins.remove", role: .destructive) { remove(entry) }
-        .buttonStyle(DSPillButtonStyle())
+      Button(role: .destructive) { remove(entry) } label: {
+        Image(systemName: "trash.fill")
+      }
+      .buttonStyle(.borderless)
+      .foregroundStyle(DS.remove)
+      .help(String(localized: "prefs.plugins.remove"))
+      .accessibilityLabel(String(localized: "prefs.plugins.remove"))
     }
   }
 
