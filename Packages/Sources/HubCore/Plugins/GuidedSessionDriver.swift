@@ -69,11 +69,14 @@ public final class GuidedSessionDriver {
         }
       }
     }
-    return await finish(.finished, reason: .finished)
+    // Every declared pass ran and the plug-in was not asked again: the last result goes with the closing message.
+    return await finish(.finished, reason: .finished, previous: previous)
   }
 
-  private func finish(_ outcome: GuidedOutcome, reason: PluginSessionReason) async -> GuidedOutcome {
-    await end(PluginSession.endMessage(reason))
+  private func finish(
+    _ outcome: GuidedOutcome, reason: PluginSessionReason, previous: SessionPrevious? = nil
+  ) async -> GuidedOutcome {
+    await end(PluginSession.endMessage(reason, previous: previous))
     return outcome
   }
 }
