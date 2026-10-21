@@ -215,6 +215,21 @@ final class DrawThingsConnection {
     guard effective.validationError == nil else { return nil }
     return DrawThingsBackend(
       host: effective.trimmedHost, port: effective.port, useTLS: effective.useTLS,
-      sharedSecret: managed.mode == .managed ? nil : secretStore.read(), includeRemoteModels: dtPlus && canUseDTPlus)
+      sharedSecret: managed.mode == .managed ? nil : secretStore.read(), includeRemoteModels: dtPlus && canUseDTPlus,
+      customModels: customModels)
+  }
+
+  /// The server DT Hub starts does not send the specifications of the models the user imported: they are read from the
+  /// custom.json of its models folder and, for a model nothing else describes, of the Draw Things app (macOS asks the
+  /// user for that, so DT Hub keeps what it read in its own folder). The app's server sends them itself.
+  private var customModels: CustomModelSource? {
+    guard managed.mode == .managed else { return nil }
+    let folder = managed.modelsFolder.trimmingCharacters(in: .whitespacesAndNewlines)
+    let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+      .appendingPathComponent("DT Hub", isDirectory: true)
+    return CustomModelSource(
+      folderFile: folder.isEmpty ? nil : URL(fileURLWithPath: folder).appendingPathComponent("custom.json"),
+      appFile: URL(fileURLWithPath: CLILocator.drawThingsAppModelsFolder()).appendingPathComponent("custom.json"),
+      cacheFile: support.appendingPathComponent("custom-models.json"))
   }
 }

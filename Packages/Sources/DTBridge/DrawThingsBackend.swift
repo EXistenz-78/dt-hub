@@ -23,14 +23,23 @@ public actor DrawThingsBackend: GenerationBackend {
   private let uncuratedModels: LiveModelList?
   /// What the cloud has: with DT+ the menu lists only its models, and its LoRAs join the local ones.
   private let cloud: CloudCatalog?
+  /// Where the specifications of the models the user imported are read from: the server DT Hub starts does not send
+  /// them.
+  private let customModels: CustomModelSource?
 
   /// - Parameters:
   ///   - useTLS: the Draw Things API server uses TLS by default (spec §5).
   ///   - sharedSecret: sent with every request when the server requires one.
-  public init(host: String, port: Int, useTLS: Bool, sharedSecret: String?, includeRemoteModels: Bool = false) {
+  ///   - customModels: where to read the specifications of imported models from, for a server that does not send them
+  ///     (the one DT Hub starts).
+  public init(
+    host: String, port: Int, useTLS: Bool, sharedSecret: String?, includeRemoteModels: Bool = false,
+    customModels: CustomModelSource? = nil
+  ) {
     self.init(
       host: host, port: port, useTLS: useTLS, sharedSecret: sharedSecret, communityModels: .community,
-      includeRemoteModels: includeRemoteModels, uncuratedModels: .uncurated, officialModels: .official, cloud: .shared) {}
+      includeRemoteModels: includeRemoteModels, uncuratedModels: .uncurated, officialModels: .official, cloud: .shared,
+      customModels: customModels) {}
   }
 
   /// The ceiling of a request or reply: 1 GiB. The default (256 MiB) stops an image-to-image or an
@@ -40,7 +49,7 @@ public actor DrawThingsBackend: GenerationBackend {
   init(
     host: String, port: Int, useTLS: Bool, sharedSecret: String?, communityModels: LiveModelList? = nil,
     includeRemoteModels: Bool = false, uncuratedModels: LiveModelList? = nil, officialModels: LiveModelList? = nil,
-    cloud: CloudCatalog? = nil,
+    cloud: CloudCatalog? = nil, customModels: CustomModelSource? = nil,
     onNewClient: @escaping @Sendable () -> Void
   ) {
     self.communityModels = communityModels
@@ -48,6 +57,7 @@ public actor DrawThingsBackend: GenerationBackend {
     self.uncuratedModels = uncuratedModels
     self.officialModels = officialModels
     self.cloud = cloud
+    self.customModels = customModels
     endpoint = ServerEndpoint(host: host, port: port)
     options = ConnectionOptions(
       security: useTLS ? .tls() : .plaintext,
@@ -77,6 +87,14 @@ public actor DrawThingsBackend: GenerationBackend {
     let live: [String: Data] = await communityModels?.specs() ?? [:]
     if !live.isEmpty {
       await service.modelSpecs.register(Self.specs(toRegisterFor: reply.files, live: live))
+    }
+    // The imported models the server did not describe: their specification is in a custom.json.
+    if let customModels {
+      var described: Set<String> = []
+      for file in reply.files where await service.modelSpecs.spec(for: file) != nil { described.insert(file) }
+      let custom = CustomModelFiles.specs(for: reply.files, described: described, source: customModels)
+      let undescribed = custom.values.compactMap { ModelSpec(json: $0) }
+      if !undescribed.isEmpty { await service.modelSpecs.register(undescribed) }
     }
     var specs: [String: ModelSpecInfo] = [:]
     for file in reply.files {
