@@ -25,6 +25,8 @@ struct DTHubApp: App {
   @State private var canvasWindow = CanvasWindowState()
 
   init() {
+    // Before any window exists: SwiftUI's own memory of the main window gets the frame this app kept.
+    WindowFrameKeeper.preseedSystemFrame(key: WindowFrameKeeper.mainKey, minSize: WindowFrameKeeper.mainMinSize)
     // The prompts for Enhance/Generate Prompt: the base files in Data/DTHub, written if missing or old.
     PromptLibrary.live.install()
     let connection = DrawThingsConnection()
@@ -138,6 +140,8 @@ struct DTHubApp: App {
         }
     }
     .windowResizability(.contentMinSize)
+    // The first launch (nothing saved yet) opens at a normal size, not as big as the screen.
+    .defaultSize(width: 1100, height: 820)
     .commands {
       CommandMenu(String(localized: "tab.generation")) {
         GenerationCommands(generation: generation, connection: connection)
