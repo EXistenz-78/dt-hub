@@ -45,6 +45,7 @@ struct MainWindowView: View {
     .frame(minWidth: 900, idealWidth: 1100, minHeight: 640, idealHeight: 820)
     .background(DSBackground())
     .background(DSWindowConfigurator())
+    .background(WindowFrameKeeper(key: WindowFrameKeeper.mainKey, minSize: WindowFrameKeeper.mainMinSize))
     .tint(DS.accent)
     .overlay(alignment: .bottom) { PluginNoticeBanner(plugins: plugins) }
     .environment(plugins)
