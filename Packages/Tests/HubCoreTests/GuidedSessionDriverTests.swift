@@ -11,6 +11,7 @@ struct GuidedSessionDriverTests {
     var asked: [SessionNextRequest] = []
     var passes: [Int] = []
     var ended: [String] = []
+    var endedPrevious: [String?] = []
     var progress: [String] = []
   }
 
@@ -44,6 +45,7 @@ struct GuidedSessionDriverTests {
       end: { data in
         let object = try! JSONSerialization.jsonObject(with: data) as! [String: Any]
         log.ended.append(object["reason"] as! String)
+        log.endedPrevious.append((object["previous"] as? [String: Any])?["path"] as? String)
       },
       progress: { log.progress.append("\($0)/\($1)") })
   }
@@ -55,6 +57,8 @@ struct GuidedSessionDriverTests {
     #expect(log.passes == [1, 2, 3])
     #expect(log.asked.map(\.previous?.path) == [nil, "/t/pass-1.png", "/t/pass-2.png"])
     #expect(log.ended == ["finished"])
+    // The plug-in is not asked after the last pass, so its result goes with the closing message.
+    #expect(log.endedPrevious == ["/t/pass-3.png"])
   }
 
   @Test func doneEndsTheSessionEarlyWithoutError() async {
@@ -63,6 +67,8 @@ struct GuidedSessionDriverTests {
     #expect(outcome == .finished)
     #expect(log.passes == [1])
     #expect(log.ended == ["finished"])
+    // The plug-in already got pass 1's result with the question that was answered "done".
+    #expect(log.endedPrevious == [nil])
   }
 
   @Test func invalidAnswerFailsWithTheReason() async {
@@ -112,6 +118,7 @@ struct GuidedSessionDriverTests {
       end: { data in
         let object = try! JSONSerialization.jsonObject(with: data) as! [String: Any]
         log.ended.append(object["reason"] as! String)
+        log.endedPrevious.append((object["previous"] as? [String: Any])?["path"] as? String)
       })
     handle = Task { await driver.run() }
     let outcome = await handle!.value

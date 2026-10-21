@@ -40,9 +40,13 @@ public struct SessionNextRequest: Equatable, Sendable {
 }
 
 public enum PluginSession {
-  /// `session.end` (app → plug-in), with the reason.
-  public static func endMessage(_ reason: PluginSessionReason) -> Data {
-    let object: [String: Any] = ["type": PluginMessageType.sessionEnd, "reason": reason.rawValue]
+  /// `session.end` (app → plug-in), with the reason. `previous` is the result of the last pass when no later `session.next`
+  /// carried it (the pipeline ran its declared passes to the end): without it the plug-in would never see the last result.
+  public static func endMessage(_ reason: PluginSessionReason, previous: SessionPrevious? = nil) -> Data {
+    var object: [String: Any] = ["type": PluginMessageType.sessionEnd, "reason": reason.rawValue]
+    if let previous {
+      object["previous"] = ["path": previous.path, "width": previous.width, "height": previous.height]
+    }
     return (try? JSONSerialization.data(withJSONObject: object)) ?? PluginMessageType.bare(PluginMessageType.sessionEnd)
   }
 }
