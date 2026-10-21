@@ -60,9 +60,9 @@ struct LoRAOverridesTests {
   @Test func theWeightStaysInsideTheRange() {
     var overrides = LoRAOverrides()
     overrides.setWeight(9, for: fox)
-    #expect(overrides.entries[fox.file]?.weight == 2.5)
+    #expect(overrides.entries[fox.file]?.weight == 4)
     overrides.setWeight(-9, for: fox)
-    #expect(overrides.entries[fox.file]?.weight == -1.5)
+    #expect(overrides.entries[fox.file]?.weight == -4)
   }
 
   @Test func aWeightOfOneOrNoneIsNoOverride() {

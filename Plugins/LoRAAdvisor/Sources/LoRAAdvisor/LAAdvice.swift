@@ -16,7 +16,7 @@ enum LAAdvice {
   }
 
   /// The weights the LoRA card takes.
-  static let weightRange = -1.5...2.5
+  static let weightRange: ClosedRange<Double> = -4...4
   static let most = 5
   static let notesInPrompt = 300
 

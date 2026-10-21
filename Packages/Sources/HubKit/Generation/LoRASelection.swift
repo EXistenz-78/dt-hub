@@ -18,7 +18,7 @@ public struct LoRASelection: Equatable, Codable, Sendable, Identifiable {
   /// example with the LLM) never touches them; put in front of the prompt at RUN.
   public var trigger: String
 
-  public static let weightRange = -1.5...2.5
+  public static let weightRange: ClosedRange<Double> = -4...4
 
   public init(file: String, weight: Double = 1, mode: LoRAMode = .all, trigger: String = "") {
     self.file = file

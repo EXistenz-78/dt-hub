@@ -107,8 +107,8 @@ struct LoRASelectionTests {
   }
 
   @Test func clampsLoRAWeights() {
-    let clamped = GenerationParameters(loras: [LoRASelection(file: "a", weight: 9), LoRASelection(file: "b", weight: -3)]).clamped()
-    #expect(clamped.loras.map(\.weight) == [2.5, -1.5])
+    let clamped = GenerationParameters(loras: [LoRASelection(file: "a", weight: 9), LoRASelection(file: "b", weight: -9)]).clamped()
+    #expect(clamped.loras.map(\.weight) == [4, -4])
   }
 
   @Test func loRAModesMatchDrawThingsRawValues() {
