@@ -70,6 +70,22 @@ final class TUState: ObservableObject {
       choiceChanged(changesPicture: false)
     }
   }
+  /// The user's instructions, added to the prompt of every tile. Changing them does not touch a prepared or running session: the
+  /// next tile just reads the new text.
+  @Published var extraPrompt: String {
+    didSet {
+      session?.extraPrompt = promptExtra
+      persist()
+    }
+  }
+  /// Instructions for the tile that is made again, after the general ones.
+  @Published var tileExtra = ""
+  /// The tile picked in the preview to be made again, nil when none.
+  @Published private(set) var selectedTile: Int?
+  /// True when a run finished and the picture is kept, so a tile can be made again.
+  @Published private(set) var canRegenerate = false
+  /// The tile the prepared pipeline makes again, nil for a whole enlargement.
+  @Published private(set) var regeneratingTile: Int?
   @Published private(set) var image: CGImage?
   @Published private(set) var imageName = ""
   @Published private(set) var notice: String?
@@ -140,6 +156,7 @@ final class TUState: ObservableObject {
     var next = TUSettings.defaults(for: overlap)
     next.tile = settings.tile
     settings = next.clamped(overlap: overlap)
+    dropSession()
     choiceChanged(changesPicture: false)
   }
 
@@ -147,6 +164,7 @@ final class TUState: ObservableObject {
     var next = settings
     edit(&next)
     settings = next.clamped(overlap: overlap)
+    dropSession()
     choiceChanged(changesPicture: false)
   }
 
@@ -163,6 +181,7 @@ final class TUState: ObservableObject {
     self.overlap = TileOverlap(rawValue: choice.overlap) ?? .standard
     self.loraWeights = choice.loraWeights
     self.settings = choice.settings
+    self.extraPrompt = choice.extraPrompt
   }
 
   static func text(_ key: L.Key, italian: Bool) -> String { L.text(key, italian: italian) }
@@ -209,7 +228,7 @@ final class TUState: ObservableObject {
     notice = nil
     isPrepared = false
     awaitingConfirmation = false
-    session = nil
+    dropSession()
     autoSizeTile()
     resetPreview()
   }
@@ -251,10 +270,33 @@ final class TUState: ObservableObject {
     awaitingConfirmation = false
     notice = nil
     if changesPicture { resetPreview() }
+    if changesPicture { dropSession() }
+    persist()
+  }
+
+  private func persist() {
     guard !loadingChoice else { return }
     store.save(
       TUChoice(
-        factor: factor, overlap: overlap.rawValue, loraWeight: loraWeights[""] ?? 1, settings: settings, loraWeights: loraWeights))
+        factor: factor, overlap: overlap.rawValue, loraWeight: loraWeights[""] ?? 1, settings: settings, loraWeights: loraWeights,
+        extraPrompt: extraPrompt))
+  }
+
+  /// The general and the tile's instructions, as one text.
+  private var promptExtra: String {
+    let general = extraPrompt.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard regeneratingTile != nil else { return general }
+    let own = tileExtra.trimmingCharacters(in: .whitespacesAndNewlines)
+    return [general, own].filter { !$0.isEmpty }.joined(separator: " ")
+  }
+
+  /// The finished picture and the choice of a tile are given up (the picture, the grid or the settings changed under them).
+  private func dropSession() {
+    session = nil
+    canRegenerate = false
+    selectedTile = nil
+    regeneratingTile = nil
+    tileExtra = ""
   }
 
   func switchProject(folder: URL) {
@@ -265,6 +307,7 @@ final class TUState: ObservableObject {
     overlap = TileOverlap(rawValue: choice.overlap) ?? .standard
     loraWeights = choice.loraWeights
     settings = choice.settings
+    extraPrompt = choice.extraPrompt
     loadingChoice = false
     image = nil
     imageName = ""
@@ -272,7 +315,7 @@ final class TUState: ObservableObject {
     isPrepared = false
     resultReady = false
     awaitingConfirmation = false
-    session = nil
+    dropSession()
     resetPreview()
   }
 
@@ -294,7 +337,7 @@ final class TUState: ObservableObject {
       .appendingPathComponent("tiled-upscale", isDirectory: true)
     return TUSession(
       source: image, factor: factor, overlap: overlap, settings: settings, loraWeight: loraWeight,
-      trigger: loraTriggers[preset.loraFile] ?? "", preset: preset, tempFolder: folder)
+      trigger: loraTriggers[preset.loraFile] ?? "", extraPrompt: extraPrompt, preset: preset, tempFolder: folder)
   }
 
   /// Registers the preset and proposes the guided pipeline to the app; the user then presses RUN. `contribute` and
@@ -310,8 +353,7 @@ final class TUState: ObservableObject {
       return
     }
     guard let session = makeSession() else { return }
-    let trigger = loraTriggers[preset.loraFile] ?? ""
-    let fields = preset.fields(prompt: preset.prompt(trigger: trigger))
+    let fields = preset.fields(prompt: session.prompt)
     let loras = preset.loras(weight: loraWeight)
     _ = await registerPreset(["name": preset.name, "fields": fields, "loras": loras])
     let estimate: [String: Any] = [
@@ -325,6 +367,7 @@ final class TUState: ObservableObject {
       notice = text(.notAnswered)
       return
     }
+    dropSession()
     self.session = session
     tilesDone = 0
     previewProgress = nil
@@ -337,6 +380,7 @@ final class TUState: ObservableObject {
   /// The app asks for the next pass (`session.next`). The picture work runs off the main actor.
   func sessionNext(_ message: Data) async -> Data {
     guard let session, let request = TUMessages.parseNext(message) else { return TUMessages.done }
+    session.extraPrompt = promptExtra
     let answer = await Task.detached(priority: .userInitiated) { session.next(request) }.value
     // A result that came back is on the preview now.
     if session.completedTiles != tilesDone {
@@ -346,13 +390,24 @@ final class TUState: ObservableObject {
     return answer
   }
 
-  /// The pipeline is over (`session.end`): a finished one is saved on the Desktop.
-  func sessionEnded(reason: String) async {
+  /// The pipeline is over (`session.end`): a finished one is saved on the Desktop. `previous` is the last tile's result, which the
+  /// app sends here because it does not ask again after the last pass.
+  func sessionEnded(reason: String, previous: TUNextRequest.Previous? = nil) async {
     guard let session else { return }
-    let composed = await Task.detached(priority: .userInitiated) { session.end(reason) }.value
+    session.extraPrompt = promptExtra
+    let composed = await Task.detached(priority: .userInitiated) { session.end(reason, previous: previous) }.value
     let problem = session.problem
-    self.session = nil
+    // The last tile is back now: the preview shows it too.
+    tilesDone = session.completedTiles
+    previewProgress = session.previewImage()
+    regeneratingTile = nil
     isPrepared = false
+    // A picture that is whole is kept for making a tile again; any other end drops it.
+    canRegenerate = session.isComplete
+    if !session.isComplete {
+      self.session = nil
+      selectedTile = nil
+    }
     switch reason {
     case "finished":
       if let problem {
@@ -364,6 +419,64 @@ final class TUState: ObservableObject {
     case "closed": notice = text(.closed)
     default: notice = format(.failed, problem ?? reason)
     }
+  }
+
+  // MARK: Making a tile again
+
+  /// Picks the tile under a point of the preview (a fraction of its width and height); a tap on the picked tile lets it go.
+  func selectTile(atX fx: Double, y fy: Double) {
+    guard canRegenerate, let plan = session?.plan else { return }
+    let x = fx * Double(plan.width)
+    let y = fy * Double(plan.height)
+    // Tiles overlap: the one whose centre is nearest is the one the point is "in".
+    let hit = plan.tiles.filter {
+      x >= Double($0.rect.x) && x < Double($0.rect.x + $0.rect.width) && y >= Double($0.rect.y) && y < Double($0.rect.y + $0.rect.height)
+    }
+    .min { distance($0, x, y) < distance($1, x, y) }
+    selectedTile = hit?.index == selectedTile ? nil : hit?.index
+  }
+
+  private func distance(_ tile: Tile, _ x: Double, _ y: Double) -> Double {
+    let dx = Double(tile.rect.x) + Double(tile.rect.width) / 2 - x
+    let dy = Double(tile.rect.y) + Double(tile.rect.height) / 2 - y
+    return dx * dx + dy * dy
+  }
+
+  /// The name of the picked tile ("2B"), nil when none.
+  var selectedTileName: String? {
+    guard let selectedTile, let tile = session?.plan.tiles[safe: selectedTile] else { return nil }
+    return TUSession.name(of: tile)
+  }
+
+  /// Proposes a one-pass guided pipeline that makes the picked tile again, from the original; the user then presses RUN.
+  func prepareRegeneration(
+    contribute: ([String: Any]) async -> [String: Any]?, registerPreset: ([String: Any]) async -> [String: Any]?
+  ) async {
+    guard canRegenerate, let session, let index = selectedTile, let tile = session.plan.tiles[safe: index] else { return }
+    let preset = session.preset
+    let weight = loraWeights[preset.name] ?? preset.defaultLoRAWeight
+    regeneratingTile = index
+    guard session.beginRegeneration(of: index, loraWeight: weight, extraPrompt: promptExtra) else {
+      regeneratingTile = nil
+      return
+    }
+    let fields = preset.fields(prompt: session.prompt)
+    let loras = preset.loras(weight: weight)
+    _ = await registerPreset(["name": preset.name, "fields": fields, "loras": loras])
+    let estimate: [String: Any] = [
+      "preset": preset.name, "fields": fields, "loras": loras,
+      "size": ["width": tile.rect.width, "height": tile.rect.height],
+    ]
+    let pipeline: [String: Any] = ["name": "Tiled Upscale", "guided": true, "passes": 1, "estimate": estimate]
+    guard let answer = await contribute(["pipeline": pipeline]), answer["type"] as? String != "error" else {
+      session.cancelRegeneration()
+      regeneratingTile = nil
+      notice = text(.notAnswered)
+      return
+    }
+    resultReady = false
+    isPrepared = true
+    notice = format(.regenerationPrepared, TUSession.name(of: tile))
   }
 
   /// The composed picture goes to the app as a result: written in the plug-in's folder and described by its enlargement,
@@ -407,4 +520,8 @@ final class TUState: ObservableObject {
     let name = "Tiled Upscale"
     if await contribute(["startImage": ["path": path, "name": name]]) == nil { notice = text(.notAnswered) }
   }
+}
+
+extension Array {
+  fileprivate subscript(safe index: Int) -> Element? { indices.contains(index) ? self[index] : nil }
 }

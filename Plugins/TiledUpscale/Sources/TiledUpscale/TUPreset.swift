@@ -85,6 +85,12 @@ enum TUPresetTable {
 enum TUPrompt {
   static let sentence = "ALSO PRESERVE COLORS AND LUMINOSITY"
 
+  /// The prompt of the preset, then the user's own instructions (nothing added when they are empty).
+  static func compose(_ base: String, extra: String) -> String {
+    let added = extra.trimmingCharacters(in: .whitespacesAndNewlines)
+    return added.isEmpty ? base : "\(base) \(added)"
+  }
+
   /// The trigger word of the LoRA, then the fixed sentence.
   static func text(trigger: String) -> String {
     let word = trigger.trimmingCharacters(in: .whitespacesAndNewlines)

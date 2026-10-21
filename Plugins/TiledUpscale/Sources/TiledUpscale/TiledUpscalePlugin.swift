@@ -7,7 +7,7 @@ final class TiledUpscalePlugin: DTHubPlugin {
   /// Edit and in-context models only: the tile is the picture the model changes. For now the plug-in has a preset for
   /// FLUX.2 klein 9B only (`TUPresetTable`).
   let manifest = DTHubManifest(
-    id: "com.exiztenz.dthub.tiledupscale", name: "Tiled Upscale", version: "1.1", symbol: "square.grid.3x3",
+    id: "com.exiztenz.dthub.tiledupscale", name: "Tiled Upscale", version: "1.2", symbol: "square.grid.3x3",
     families: nil, requiresEditModel: true)
   private let state = TUState(store: TUStore(folder: nil))
   private var host: DTHubHost?
@@ -15,7 +15,8 @@ final class TiledUpscalePlugin: DTHubPlugin {
   func makeViewController() -> NSViewController {
     let actions = TUViewActions(
       prepare: { [weak self] confirmed in self?.prepare(confirmed: confirmed) },
-      useAsStart: { [weak self] in self?.useAsStart() })
+      useAsStart: { [weak self] in self?.useAsStart() },
+      regenerate: { [weak self] in self?.regenerate() })
     return NSHostingController(rootView: TUView(state: state, actions: actions))
   }
 
@@ -44,7 +45,13 @@ final class TiledUpscalePlugin: DTHubPlugin {
       return await state.sessionNext(message)
     case "session.end":
       let object = (try? JSONSerialization.jsonObject(with: message)) as? [String: Any]
-      await state.sessionEnded(reason: object?["reason"] as? String ?? "closed")
+      var previous: TUNextRequest.Previous?
+      if let box = object?["previous"] as? [String: Any], let path = box["path"] as? String,
+        let width = box["width"] as? Int, let height = box["height"] as? Int
+      {
+        previous = TUNextRequest.Previous(path: path, width: width, height: height)
+      }
+      await state.sessionEnded(reason: object?["reason"] as? String ?? "closed", previous: previous)
       return nil
     default:
       return DTHubMessage.bare("unsupported")
@@ -57,6 +64,14 @@ final class TiledUpscalePlugin: DTHubPlugin {
       await state.prepare(
         confirmed: confirmed, contribute: { await host.contribute($0) },
         registerPreset: { await host.registerPresets([$0]) })
+    }
+  }
+
+  private func regenerate() {
+    guard let host else { return }
+    Task {
+      await state.prepareRegeneration(
+        contribute: { await host.contribute($0) }, registerPreset: { await host.registerPresets([$0]) })
     }
   }
 

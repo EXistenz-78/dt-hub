@@ -7,6 +7,7 @@ import UniformTypeIdentifiers
 struct TUViewActions {
   var prepare: (_ confirmed: Bool) -> Void = { _ in }
   var useAsStart: () -> Void = {}
+  var regenerate: () -> Void = {}
   static var none: TUViewActions { TUViewActions() }
 }
 
@@ -74,6 +75,9 @@ struct TUView: View {
         Slider(value: $state.loraWeight, in: TUPresetTable.loraWeightRange, step: 0.05)
         Text(verbatim: String(format: "%.2f", state.loraWeight)).font(.callout.monospacedDigit()).frame(width: 44)
       }
+      DSGroupHeader(title: state.text(.extraPrompt))
+      TextField(state.text(.extraPromptHint), text: $state.extraPrompt, axis: .vertical)
+        .textFieldStyle(.roundedBorder).lineLimit(1...3)
       Button {
         actions.prepare(state.awaitingConfirmation)
       } label: {
@@ -154,6 +158,7 @@ struct TUView: View {
           Text(state.text(.resultPlaceholder)).font(.callout).foregroundStyle(.secondary)
         }
         Text(state.text(.tileRegenerated)).font(.caption).foregroundStyle(.secondary)
+        if state.canRegenerate { regenerationControls }
         if state.resultReady {
           Button(action: actions.useAsStart) {
             HStack(spacing: DS.pillIconGap) {
@@ -168,6 +173,26 @@ struct TUView: View {
       .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
     .dsPanel()
+  }
+
+  /// The tile picked in the preview, its own instructions, and the button that makes it again.
+  private var regenerationControls: some View {
+    VStack(alignment: .leading, spacing: DS.controlGap) {
+      if let name = state.selectedTileName {
+        Text(verbatim: state.format(.tileSelected, name)).font(.callout).foregroundStyle(DS.accent)
+        TextField(state.text(.tileExtraHint), text: $state.tileExtra, axis: .vertical)
+          .textFieldStyle(.roundedBorder).lineLimit(1...3)
+        Button(action: actions.regenerate) {
+          HStack(spacing: DS.pillIconGap) {
+            Image(systemName: "arrow.triangle.2.circlepath")
+            Text(verbatim: state.format(.regenerateTile, name))
+          }
+        }
+        .buttonStyle(DSPillButtonStyle(prominent: true))
+      } else {
+        Text(state.text(.regenerateHint)).font(.caption).foregroundStyle(.secondary)
+      }
+    }
   }
 
   /// The enlarged picture, faded, with the grid of the tiles on it; the tiles that are back are drawn over both, at full
@@ -192,6 +217,26 @@ struct TUView: View {
       }
       if let progress = state.previewProgress {
         Image(nsImage: NSImage(cgImage: progress, size: .zero)).resizable().interpolation(.high)
+      }
+      if state.canRegenerate, let plan = state.plan {
+        GeometryReader { proxy in
+          ZStack(alignment: .topLeading) {
+            Color.clear.contentShape(Rectangle())
+            if let index = state.selectedTile, plan.tiles.indices.contains(index) {
+              let tile = plan.tiles[index]
+              let scaleX = proxy.size.width / CGFloat(plan.width)
+              let scaleY = proxy.size.height / CGFloat(plan.height)
+              Rectangle().fill(DS.accent.opacity(0.18))
+                .overlay(Rectangle().strokeBorder(DS.accent, lineWidth: 2))
+                .frame(width: CGFloat(tile.rect.width) * scaleX, height: CGFloat(tile.rect.height) * scaleY)
+                .offset(x: CGFloat(tile.rect.x) * scaleX, y: CGFloat(tile.rect.y) * scaleY)
+                .allowsHitTesting(false)
+            }
+          }
+          .onTapGesture { point in
+            state.selectTile(atX: Double(point.x / proxy.size.width), y: Double(point.y / proxy.size.height))
+          }
+        }
       }
     }
     .aspectRatio(CGFloat(summary.width) / CGFloat(summary.height), contentMode: .fit)
