@@ -2,7 +2,7 @@ import HubCore
 import HubKit
 import SwiftUI
 
-/// The CU meter, next to the DT+ button: the compute units the next RUN needs against the limit per RUN, as
+/// The CU meter, inside the DT+ pill: the compute units the next RUN needs against the limit per RUN, as
 /// "32,4k / 40k" with a thin bar (green, amber from 90 %, red over the limit). A click opens the details: the exact
 /// value, the heaviest pass of a pipeline, the boosts needed. It only advises: the cloud decides (spec §5).
 struct CUMeterView: View {
@@ -45,20 +45,25 @@ struct CUMeterView: View {
     Button {
       showDetails.toggle()
     } label: {
-      HStack(spacing: 8) {
+      // The bar, and under it, smaller, the value against the limit.
+      VStack(spacing: 3) {
+        ZStack(alignment: .leading) {
+          Capsule().fill(Color.primary.opacity(0.15))
+          if let fraction = presentation.fraction {
+            Capsule().fill(color(for: presentation.state)).frame(width: 56 * min(fraction, 1))
+          }
+        }
+        .frame(width: 56, height: 4)
         Text(verbatim: presentation.compact)
+          .font(.system(size: 10, weight: .medium))
           .monospacedDigit()
           .foregroundStyle(color(for: presentation.state))
-        if let fraction = presentation.fraction {
-          ZStack(alignment: .leading) {
-            Capsule().fill(Color.primary.opacity(0.15))
-            Capsule().fill(color(for: presentation.state)).frame(width: 36 * min(fraction, 1))
-          }
-          .frame(width: 36, height: 4)
-        }
+          .lineLimit(1)
+          .fixedSize()
       }
+      .contentShape(Rectangle())
     }
-    .buttonStyle(DSPillButtonStyle())
+    .buttonStyle(.plain)
     .help(String(localized: presentation.heaviest == nil ? "header.cu.none" : "header.cu.help"))
     .accessibilityLabel(String(localized: "header.cu.title"))
     .accessibilityValue(presentation.compact)

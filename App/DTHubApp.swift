@@ -168,5 +168,6 @@ struct DTHubApp: App {
         connection: connection, generation: generation, languageModel: languageModel, download: download,
         plugins: plugins, projects: projects)
     }
+    .windowResizability(.contentSize)
   }
 }

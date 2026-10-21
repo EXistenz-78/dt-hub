@@ -25,15 +25,9 @@ struct HeaderBar: View {
     HStack(spacing: DS.controlGap) {
       projectMenu
       modelMenu
-      dtPlusButton
-      if connection.dtPlus && connection.canUseDTPlus {
-        CUMeterView(connection: connection, generation: generation)
-      }
+      dtPlusPill
       Spacer(minLength: DS.groupGap)
-      DSStatusDot(status: connection.indicator)
-        .padding(.horizontal, 6)
-        .help(statusText)
-        .accessibilityLabel(statusText)
+      serverDotButton
       SettingsLink {
         Image(systemName: "gearshape")
       }
@@ -48,22 +42,60 @@ struct HeaderBar: View {
     .dsPanel()
   }
 
+  /// The status dot: a click switches between the server DT Hub starts and the one already running (settings from
+  /// Preferences). Disabled while something runs, or when the other server's settings are not valid.
+  private var serverDotButton: some View {
+    let busy = generation.session.isRunning || generation.isPreparing
+    let target = String(localized: connection.otherServerMode == .managed ? "header.server.managed" : "header.server.attach")
+    let hint = connection.canSwitchServer
+      ? String(format: String(localized: "header.server.switch"), target)
+      : String(format: String(localized: "header.server.cannotSwitch"), target)
+    return Button {
+      Task { await connection.switchServer() }
+    } label: {
+      DSStatusDot(status: connection.indicator)
+        .padding(6)
+        .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+    .disabled(busy || !connection.canSwitchServer)
+    .help(statusText + "\n" + hint)
+    .accessibilityLabel(statusText)
+    .accessibilityHint(hint)
+  }
+
   /// DT+: with the Draw Things app's server in Bridge Mode, the models of Draw Things' lists that are not downloaded
   /// are offered too, and run in the cloud. Teal while on; off and disabled with the server DT Hub starts.
-  private var dtPlusButton: some View {
+  private var dtPlusPill: some View {
     let on = connection.dtPlus && connection.canUseDTPlus
-    return Button {
-      Task { await connection.setDTPlus(!connection.dtPlus) }
-    } label: {
-      Text(verbatim: "DT+")
-        .fontWeight(.semibold)
-        .foregroundStyle(on ? DS.accent : Color.primary)
+    let locked = !connection.canUseDTPlus || generation.session.isRunning || generation.isPreparing
+    return HStack(spacing: 10) {
+      Button {
+        Task { await connection.setDTPlus(!connection.dtPlus) }
+      } label: {
+        Text(verbatim: "DT+")
+          .font(.system(size: 13, weight: .semibold))
+          .foregroundStyle(on ? DS.accent : Color.primary)
+          .contentShape(Rectangle())
+      }
+      .buttonStyle(.plain)
+      .disabled(locked)
+      .help(String(localized: connection.canUseDTPlus ? "header.dtplus.help" : "header.dtplus.managed"))
+      .accessibilityLabel(String(localized: "header.dtplus.help"))
+      .accessibilityValue(String(localized: on ? "header.incremental.on" : "header.incremental.off"))
+      if on {
+        Divider().frame(height: 18)
+        CUMeterView(connection: connection, generation: generation)
+      }
     }
-    .buttonStyle(DSPillButtonStyle())
-    .disabled(!connection.canUseDTPlus || generation.session.isRunning || generation.isPreparing)
-    .help(String(localized: connection.canUseDTPlus ? "header.dtplus.help" : "header.dtplus.managed"))
-    .accessibilityLabel(String(localized: "header.dtplus.help"))
-    .accessibilityValue(String(localized: on ? "header.incremental.on" : "header.incremental.off"))
+    .padding(.horizontal, DS.pillHPadding)
+    .frame(height: DS.pillHeight)
+    // Never squeezed: the other items give way before DT+ does.
+    .fixedSize(horizontal: true, vertical: false)
+    .layoutPriority(2)
+    .dsGlass(Capsule(style: .continuous))
+    .opacity(connection.canUseDTPlus ? 1 : 0.4)
+    .animation(.easeOut(duration: 0.15), value: on)
   }
 
   /// Incremental mode: each result becomes the start image of the next RUN. Teal and filled while on.
@@ -123,6 +155,7 @@ struct HeaderBar: View {
         DSMenuLabel(modelTitle, detail: modelDetail, systemImage: "cube")
       }
       .dsMenuPill()
+      .help(selectedModel?.family ?? "")
     }
   }
 
@@ -139,6 +172,7 @@ struct HeaderBar: View {
     .frame(height: DS.pillHeight)
     .dsGlass(Capsule(style: .continuous))
     .fixedSize()
+    .help(selectedModel?.family ?? "")
     .popover(isPresented: $showModelPicker, arrowEdge: .bottom) {
       ModelPickerView(
         catalog: monitor.catalog, selectedFile: selection.selectedFile, message: modelPickerMessage, state: $modelTree
@@ -192,9 +226,9 @@ struct HeaderBar: View {
     return selection.selectedFile ?? String(localized: "header.model.none")
   }
 
-  /// The family of the selected model, or a warning when the server lacks it.
+  /// A warning when the server lacks the selected model; the family is no longer in the pill (it is in the tooltip).
   private var modelDetail: String? {
-    if let selectedModel { return selectedModel.family }
+    if selectedModel != nil { return nil }
     if selection.selectedFile != nil, monitor.status == .connected,
       !monitor.catalog.isModelBrowsingDisabled
     {
@@ -217,39 +251,31 @@ struct HeaderBar: View {
       Button {
         generation.stop()
       } label: {
-        HStack(spacing: DS.pillIconGap) {
-          Image(systemName: "stop.fill")
-            .font(.system(size: 14, weight: .semibold))
-            .accessibilityHidden(true)
-          Text("header.stop")
-          if let pass = generation.pipelinePass {
-            Text(verbatim: String(format: String(localized: "header.stop.pass"), pass.index, pass.count))
-          }
-          if let step = progress?.step, let total = progress?.total {
-            Text(verbatim: "\(step)/\(total)")
-              .monospacedDigit()
-          }
-        }
+        runLabel(
+          title: "header.stop", icon: "stop.fill",
+          pass: generation.pipelinePass.map { "\($0.index)/\($0.count)" },
+          step: progress?.step.map { "\($0)/\(progress?.total ?? 0)" })
       }
+      .accessibilityLabel(stopAccessibilityLabel(progress: progress))
       .buttonStyle(DSPillButtonStyle(prominent: true))
+      .fixedSize()
       .help(String(localized: "header.stop.help"))
     } else {
       let pipeline = plugins.contributions.pipeline
       Button {
         if generation.run(with: connection) { openWindow(id: ResultsWindow.id) }
       } label: {
-        HStack(spacing: DS.pillIconGap) {
-          Image(systemName: "play.fill")
-            .font(.system(size: 14, weight: .semibold))
-            .accessibilityHidden(true)
-          if let pipeline {
-            Text(verbatim: ContributionText.runTitle(passes: pipeline.pipeline.passCount))
-          } else {
-            Text("header.run")
-          }
-        }
+        // The same lines as Stop: the passes of the pipeline and, without one, the steps of the card.
+        runLabel(
+          title: "header.run", icon: "play.fill",
+          pass: pipeline.map { "\($0.pipeline.passCount)" },
+          step: pipeline == nil ? "\(generation.parameters.steps)" : nil)
       }
+      .accessibilityLabel(
+        pipeline.map { ContributionText.runTitle(passes: $0.pipeline.passCount) }
+          ?? String(localized: "header.run"))
       .buttonStyle(DSPillButtonStyle(prominent: true))
+      .fixedSize()
       .disabled(runBlocker != nil || generation.isPreparing || projects.current == nil)
       .help(runBlocker == nil ? (pipeline.map { ContributionText.pipelineHelp($0, plugins: plugins) } ?? runHelp) : runHelp)
       .contextMenu {
@@ -258,6 +284,51 @@ struct HeaderBar: View {
         }
       }
     }
+  }
+
+  /// The content of Run and of Stop: the title with its icon and, smaller below it, the pass of a pipeline and the step,
+  /// each with its icon. Same layout in every state of the button.
+  private func runLabel(title: LocalizedStringKey, icon: String, pass: String?, step: String?) -> some View {
+    VStack(spacing: 1) {
+      HStack(spacing: DS.pillIconGap) {
+        Image(systemName: icon)
+          .font(.system(size: 14, weight: .semibold))
+          .accessibilityHidden(true)
+        Text(title)
+      }
+      if pass != nil || step != nil {
+        HStack(spacing: 8) {
+          if let pass {
+            Label {
+              Text(verbatim: pass).monospacedDigit()
+            } icon: {
+              Image(systemName: "square.grid.3x3")
+            }
+          }
+          if let step {
+            Label {
+              Text(verbatim: step).monospacedDigit()
+            } icon: {
+              Image(systemName: "shoeprints.fill")
+            }
+          }
+        }
+        .labelStyle(CompactProgressLabelStyle())
+        .font(.system(size: 10, weight: .medium))
+        .opacity(0.8)
+      }
+    }
+  }
+
+  private func stopAccessibilityLabel(progress: (step: Int?, total: Int)?) -> String {
+    var parts = [String(localized: "header.stop")]
+    if let pass = generation.pipelinePass {
+      parts.append(String(format: String(localized: "header.stop.pass"), pass.index, pass.count))
+    }
+    if let step = progress?.step, let total = progress?.total {
+      parts.append(String(format: String(localized: "header.stop.step"), step, total))
+    }
+    return parts.joined(separator: ", ")
   }
 
   private var runHelp: String {
@@ -279,5 +350,15 @@ struct HeaderBar: View {
       return connection.noModelsText
     }
     return ConnectionStatusText.headline(status: monitor.status, error: monitor.lastError)
+  }
+}
+
+/// The small progress line under Stop: the icon, a short gap, the number.
+private struct CompactProgressLabelStyle: LabelStyle {
+  func makeBody(configuration: Configuration) -> some View {
+    HStack(spacing: 3) {
+      configuration.icon
+      configuration.title
+    }
   }
 }

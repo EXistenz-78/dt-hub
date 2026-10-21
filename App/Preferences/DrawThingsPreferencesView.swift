@@ -28,20 +28,6 @@ struct DrawThingsPreferencesView: View {
   var body: some View {
     Form {
       Section {
-        Picker("prefs.server.mode", selection: $managedDraft.mode) {
-          Text("prefs.server.mode.attach").tag(ServerMode.attach)
-          Text("prefs.server.mode.managed").tag(ServerMode.managed)
-        }
-        .pickerStyle(.segmented)
-      }
-
-      if isManaged {
-        managedSection
-      } else {
-        attachSection
-      }
-
-      Section {
         HStack(spacing: DS.controlGap) {
           DSStatusDot(status: connection.indicator)
           VStack(alignment: .leading, spacing: 2) {
@@ -69,6 +55,20 @@ struct DrawThingsPreferencesView: View {
           Text("prefs.dt.secret.saveError")
             .foregroundStyle(DS.remove)
         }
+      }
+
+      Section {
+        Picker("prefs.server.mode", selection: $managedDraft.mode) {
+          Text("prefs.server.mode.attach").tag(ServerMode.attach)
+          Text("prefs.server.mode.managed").tag(ServerMode.managed)
+        }
+        .pickerStyle(.segmented)
+      }
+
+      if isManaged {
+        managedSection
+      } else {
+        attachSection
       }
     }
     .formStyle(.grouped)

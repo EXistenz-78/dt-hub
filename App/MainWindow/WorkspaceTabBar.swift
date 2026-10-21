@@ -26,6 +26,11 @@ struct WorkspaceTabBar: View {
       }
       Spacer(minLength: 0)
     }
+    // The name of the tab under the mouse stays open while the mouse is on the bar: leaving a tab for the next one
+    // closes one name and opens the other in one step, so the tabs do not move under the pointer in between.
+    .onHover { inside in
+      if !inside, hoveredTabID != nil { withAnimation(.easeOut(duration: 0.15)) { hoveredTabID = nil } }
+    }
   }
 
   /// The plug-ins on or off, and the way to Preferences: only the icon (and the arrow), always there so a plug-in can be
@@ -68,9 +73,9 @@ struct WorkspaceTabBar: View {
   }
 }
 
-/// One tab: its icon, and its name when it is the open tab or the mouse rests on it. The name appears after a short
-/// rest (120 ms) so that crossing the bar quickly does not open and close every tab in the way, which would move the
-/// tabs under the pointer.
+/// One tab: its icon, and its name when it is the open tab or the mouse rests on it. The first name appears after a
+/// short rest (120 ms); once one is open, moving to another tab swaps the names at once and the open name stays until
+/// the mouse leaves the bar, so the tabs do not slide away from the pointer.
 private struct WorkspaceTabButton: View {
   let tab: WorkspaceTab
   let isSelected: Bool
@@ -111,14 +116,17 @@ private struct WorkspaceTabButton: View {
     .onHover { inside in
       pendingHover?.cancel()
       pendingHover = nil
-      if inside {
+      // Leaving a tab changes nothing: the bar clears the name when the mouse leaves it altogether.
+      guard inside else { return }
+      if hoveredID != nil {
+        // Coming from another tab: swap at once, so the tabs on the right do not slide away from the pointer.
+        withAnimation(animation) { hoveredID = tab.id }
+      } else {
         pendingHover = Task { @MainActor in
           try? await Task.sleep(for: .milliseconds(120))
           guard !Task.isCancelled else { return }
           withAnimation(animation) { hoveredID = tab.id }
         }
-      } else if hoveredID == tab.id {
-        withAnimation(animation) { hoveredID = nil }
       }
     }
   }
