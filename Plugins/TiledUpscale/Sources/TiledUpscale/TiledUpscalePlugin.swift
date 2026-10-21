@@ -7,7 +7,7 @@ final class TiledUpscalePlugin: DTHubPlugin {
   /// Edit and in-context models only: the tile is the picture the model changes. For now the plug-in has a preset for
   /// FLUX.2 klein 9B only (`TUPresetTable`).
   let manifest = DTHubManifest(
-    id: "com.exiztenz.dthub.tiledupscale", name: "Tiled Upscale", version: "1.0", symbol: "square.grid.3x3",
+    id: "com.exiztenz.dthub.tiledupscale", name: "Tiled Upscale", version: "1.1", symbol: "square.grid.3x3",
     families: nil, requiresEditModel: true)
   private let state = TUState(store: TUStore(folder: nil))
   private var host: DTHubHost?

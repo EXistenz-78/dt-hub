@@ -41,8 +41,8 @@ enum TUPresetTable {
   static let maskBlur = 30.0
   static let maskOutset = 30
 
-  /// The strength a LoRA can have, as in the app's LoRA card (Draw Things accepts −1,5…2,5).
-  static let loraWeightRange = -1.5...2.5
+  /// The strength a LoRA can have, as in the app's LoRA card (−4…4).
+  static let loraWeightRange: ClosedRange<Double> = -4...4
 
   static let fluxKlein9BName = "TUP · FLUX.2 klein 9B"
 

@@ -50,9 +50,9 @@ struct LoRAOverridesStoreTests {
   @Test func aWeightOutOfRangeIsBroughtBack() throws {
     let url = file()
     try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-    try Data(#"{"schema": 1, "loras": {"a.ckpt": {"weight": 7}, "b.ckpt": {"weight": -7}}}"#.utf8).write(to: url)
+    try Data(#"{"schema": 1, "loras": {"a.ckpt": {"weight": 9}, "b.ckpt": {"weight": -9}}}"#.utf8).write(to: url)
     let loaded = LoRAOverridesStore(fileURL: url).load()
-    #expect(loaded.entries["a.ckpt"]?.weight == 2.5 && loaded.entries["b.ckpt"]?.weight == -1.5)
+    #expect(loaded.entries["a.ckpt"]?.weight == 4 && loaded.entries["b.ckpt"]?.weight == -4)
   }
 
   @Test func theFileIsReadableByHand() throws {

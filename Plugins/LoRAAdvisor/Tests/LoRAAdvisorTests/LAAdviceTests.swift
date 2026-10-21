@@ -65,7 +65,7 @@ struct LAAdviceTests {
 
   @Test func weightsComeBackWithinTheRange() {
     let read = LAAdvice.parse(#"[{"n":1,"weight":99},{"n":2,"weight":-9},{"n":3,"weight":"x"}]"#, candidates: three)
-    #expect(read?.map(\.weight) == [2.5, -1.5, 1])
+    #expect(read?.map(\.weight) == [4, -4, 1])
   }
 
   @Test func atMostFiveAreKept() {
@@ -88,6 +88,6 @@ struct LAAdviceTests {
     #expect(sent["file"] as? String == "a.ckpt" && sent["weight"] as? Double == 0.8 && sent["trigger"] as? String == "aa")
     #expect(sent.count == 3 && body.count == 1)
     #expect(((LAAdvice.contribution(lora("A"), weight: 0.5)["loras"] as? [[String: Any]])?.first?["weight"] as? Double) == 0.5)
-    #expect(((LAAdvice.contribution(lora("A"), weight: 9)["loras"] as? [[String: Any]])?.first?["weight"] as? Double) == 2.5)
+    #expect(((LAAdvice.contribution(lora("A"), weight: 9)["loras"] as? [[String: Any]])?.first?["weight"] as? Double) == 4)
   }
 }

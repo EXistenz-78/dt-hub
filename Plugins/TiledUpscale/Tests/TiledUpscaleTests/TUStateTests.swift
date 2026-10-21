@@ -203,10 +203,10 @@ struct TUStateTests {
   }
 
   @Test func theLoRAStrengthRangeIsTheGenerationCardsAndASavedValueIsBroughtIntoIt() throws {
-    #expect(TUPresetTable.loraWeightRange == -1.5...2.5)
+    #expect(TUPresetTable.loraWeightRange == -4...4)
     let one = folder.appendingPathComponent("range")
     try FileManager.default.createDirectory(at: one, withIntermediateDirectories: true)
-    for (saved, expected) in [(9.0, 2.5), (-3.0, -1.5), (-1.5, -1.5), (2.5, 2.5), (0.3, 0.3)] {
+    for (saved, expected) in [(9.0, 4.0), (-9.0, -4.0), (-4.0, -4.0), (4.0, 4.0), (0.3, 0.3)] {
       try Data(#"{"factor":2,"overlap":256,"loraWeight":\#(saved)}"#.utf8).write(to: one.appendingPathComponent("state.json"))
       #expect(TUStore(folder: one).load().loraWeight == expected, "saved \(saved)")
     }
