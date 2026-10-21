@@ -8,6 +8,7 @@ enum L {
     case prepare, prepared, finalSize, tiles, passes, croppedNote
     case unsupportedModel, tooBig, bigJob, notAnswered, unreadableImage, noFolder
     case resetAdvanced, toneStrength, toneRadius, tileSize, noRoomForFade, megapixels, maskSection, maskFree, maskBlur, maskOutset, junctionFade, addedToResults, resultNotAdded, resultDescription, useAsStart, stopped, failed, closed, resultPlaceholder, tileRegenerated, tilesDone
+    case extraPrompt, extraPromptHint, tileExtraHint, regenerateTile, regenerateHint, regenerationPrepared, tileSelected
   }
 
   static var systemIsItalian: Bool {
@@ -47,6 +48,10 @@ enum L {
     .resultPlaceholder: "The enlarged picture goes to the Results when it is done.",
     .tileRegenerated: "Each tile is regenerated with the LoRA, with the join kept by a mask.",
     .tilesDone: "%d of %d tiles done",
+    .extraPrompt: "Additional instructions", .extraPromptHint: "Added to the prompt of every tile",
+    .tileExtraHint: "Only for this tile (optional)", .regenerateTile: "Regenerate tile %@",
+    .regenerateHint: "Click a tile to select it and make it again from the original.",
+    .regenerationPrepared: "Ready: press RUN in DT Hub to make tile %@ again.", .tileSelected: "Tile %@ selected",
   ]
 
   private static let it: [Key: String] = [
@@ -69,5 +74,9 @@ enum L {
     .resultPlaceholder: "L'immagine ingrandita va nei Risultati a lavoro finito.",
     .tileRegenerated: "Ogni tile viene rigenerato con il LoRA, e una maschera mantiene la giunzione.",
     .tilesDone: "%d di %d tile completati",
+    .extraPrompt: "Istruzioni aggiuntive", .extraPromptHint: "Aggiunte al prompt di ogni tile",
+    .tileExtraHint: "Solo per questo tile (facoltativo)", .regenerateTile: "Rigenera tile %@",
+    .regenerateHint: "Clicca un tile per selezionarlo e rifarlo dall'originale.",
+    .regenerationPrepared: "Pronto: premi RUN in DT Hub per rifare il tile %@.", .tileSelected: "Tile %@ selezionato",
   ]
 }

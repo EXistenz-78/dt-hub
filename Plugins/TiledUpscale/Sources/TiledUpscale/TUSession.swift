@@ -14,9 +14,12 @@ final class TUSession: @unchecked Sendable {
   private let scaled: ScaledSize
   private let settings: TUSettings
   private let overlap: TileOverlap
-  private let loraWeight: Double
+  private(set) var loraWeight: Double
   private let trigger: String
-  private let preset: TUPreset
+  /// The user's own instructions, added to the preset's prompt of every tile.
+  /// Read at every tile, so a change made while the pipeline waits or runs reaches the next tile.
+  var extraPrompt: String
+  let preset: TUPreset
   private let tempFolder: URL
   private var canvas: TUCanvas?
   /// The enlarged source alone, kept only when the join is faded (the fade mixes it with what the neighbours made).
@@ -27,12 +30,19 @@ final class TUSession: @unchecked Sendable {
   /// How many tiles are back and composed.
   private(set) var completedTiles = 0
   private var nextTile = 0
+  /// One past the last tile this run makes: all of them, or the one being regenerated.
+  private var lastTile: Int
   private var current: Tile?
+  /// The tile being regenerated after the run, nil during the run itself.
+  private var regenerating: Int?
+  /// True once a run finished with no problem: the canvas is whole and a tile can be made again.
+  private(set) var isComplete = false
 
   init(
     source: CGImage, factor: Int, overlap: TileOverlap, settings: TUSettings, loraWeight: Double, trigger: String,
-    preset: TUPreset, tempFolder: URL
+    extraPrompt: String = "", preset: TUPreset, tempFolder: URL
   ) {
+    self.extraPrompt = extraPrompt
     self.overlap = overlap
     self.settings = settings.clamped(overlap: overlap)
     self.source = source
@@ -46,44 +56,51 @@ final class TUSession: @unchecked Sendable {
     self.trigger = trigger
     self.preset = preset
     self.tempFolder = tempFolder
+    self.lastTile = plan.count
+  }
+
+  /// The prompt of every tile: the preset's, then the user's instructions.
+  var prompt: String { TUPrompt.compose(preset.prompt(trigger: trigger), extra: extraPrompt) }
+
+  /// Makes the next run a single tile of the finished picture: it starts from the original, not from the result that is there.
+  /// False when there is no finished picture or no such tile.
+  func beginRegeneration(of index: Int, loraWeight: Double, extraPrompt: String) -> Bool {
+    guard isComplete, canvas != nil, plan.tiles.indices.contains(index) else { return false }
+    self.loraWeight = loraWeight
+    self.extraPrompt = extraPrompt
+    regenerating = index
+    nextTile = index
+    lastTile = index + 1
+    current = nil
+    problem = nil
+    return true
+  }
+
+  /// The tile made again is given up before it started (the app did not take the pipeline): the picture stays as it was.
+  func cancelRegeneration() {
+    regenerating = nil
+    lastTile = plan.count
+    current = nil
   }
 
   /// The answer to a `session.next`: the pass for the next tile, or `{"done":true}`.
   func next(_ request: TUNextRequest) -> Data {
     if canvas == nil { canvas = TUCanvas(scaling: source, factor: factor, size: scaled) }
-    if baseCanvas == nil, settings.fade > 0 || settings.toneStrength > 0 { baseCanvas = TUCanvas(scaling: source, factor: factor, size: scaled) }
+    if baseCanvas == nil, regenerating != nil || settings.fade > 0 || settings.toneStrength > 0 {
+      baseCanvas = TUCanvas(scaling: source, factor: factor, size: scaled)
+    }
     guard let canvas else {
       problem = "the picture is too big to work on"
       return TUMessages.done
     }
     // The result of the tile that was running goes back where it came from.
-    if let tile = current, let previous = request.previous {
-      guard previous.width == tile.rect.width, previous.height == tile.rect.height,
-        let result = TUImage.load(URL(fileURLWithPath: previous.path)),
-        result.width == tile.rect.width, result.height == tile.rect.height
-      else {
-        problem = "the result of tile \(Self.name(of: tile)) does not fit its tile"
-        return TUMessages.done
-      }
-      // The tone of the result is brought back to the source's before it is composed, so the next tile finds its neighbour right.
-      var composed = result
-      if settings.toneStrength > 0, let base = baseCanvas?.crop(tile.rect),
-        let corrected = TUTone.correct(
-          result: result, base: base, maskRect: tile.maskRect, radius: settings.toneRadius,
-          strength: Double(settings.toneStrength) / 100)
-      {
-        composed = corrected
-      }
-      canvas.paste(composed, at: tile.rect)
-      previewCanvas?.draw(composed, in: TUPreview.rect(of: tile.rect, scale: previewScale))
-      completedTiles += 1
-    }
+    if let previous = request.previous, !absorb(previous) { return TUMessages.done }
     current = nil
-    guard nextTile < plan.count else { return TUMessages.done }
+    guard nextTile < lastTile else { return TUMessages.done }
     let tile = plan.tiles[nextTile]
     nextTile += 1
     current = tile
-    guard var piece = canvas.crop(tile.rect) else {
+    guard var piece = (regenerating != nil ? regenerationPiece(for: tile) : canvas.crop(tile.rect)) else {
       problem = "tile \(Self.name(of: tile)) could not be cut"
       return TUMessages.done
     }
@@ -102,7 +119,7 @@ final class TUSession: @unchecked Sendable {
     var answer: [String: Any] = [
       "title": "Tile \(Self.name(of: tile))", "startImage": ["path": tileURL.path, "name": "tile-\(tile.index)"],
       "size": ["width": tile.rect.width, "height": tile.rect.height], "preset": preset.name,
-      "fields": preset.fields(prompt: preset.prompt(trigger: trigger)), "loras": preset.loras(weight: loraWeight),
+      "fields": preset.fields(prompt: prompt), "loras": preset.loras(weight: loraWeight),
       "strength": preset.strength,
     ]
     do {
@@ -130,13 +147,78 @@ final class TUSession: @unchecked Sendable {
   /// 1200 px on the long side); where a tile is not back yet it is transparent.
   func previewImage() -> CGImage? { previewCanvas?.image() }
 
-  /// The session is over. The composed picture when it finished with no problem, else nil.
-  func end(_ reason: String) -> CGImage? {
-    let result = reason == "finished" && problem == nil ? canvas?.image() : nil
-    canvas = nil
-    baseCanvas = nil
+  /// The result of the tile that was running goes back where it came from (its tone brought back to the source's first, so the
+  /// next tile finds its neighbour right). False when the result does not fit its tile.
+  private func absorb(_ previous: TUNextRequest.Previous) -> Bool {
+    guard let tile = current, let canvas else { return true }
+    guard previous.width == tile.rect.width, previous.height == tile.rect.height,
+      let result = TUImage.load(URL(fileURLWithPath: previous.path)),
+      result.width == tile.rect.width, result.height == tile.rect.height
+    else {
+      problem = "the result of tile \(Self.name(of: tile)) does not fit its tile"
+      return false
+    }
+    var composed = result
+    if settings.toneStrength > 0, let base = baseCanvas?.crop(tile.rect),
+      let corrected = TUTone.correct(
+        result: result, base: base, maskRect: tile.maskRect, radius: settings.toneRadius,
+        strength: Double(settings.toneStrength) / 100)
+    {
+      composed = corrected
+    }
+    canvas.paste(composed, at: tile.rect)
+    previewCanvas?.draw(composed, in: TUPreview.rect(of: tile.rect, scale: previewScale))
+    if regenerating == nil { completedTiles += 1 }
     current = nil
-    return result
+    return true
+  }
+
+  /// The input of a tile made again: the original there, but the strips it shares with the tiles above and to the left are what
+  /// those tiles made (as they were when the run reached this tile), so the join is kept.
+  private func regenerationPiece(for tile: Tile) -> CGImage? {
+    guard let canvas, let base = baseCanvas, let original = base.crop(tile.rect) else { return nil }
+    guard tile.row > 0 || tile.column > 0, let work = TUCanvas(width: tile.rect.width, height: tile.rect.height) else {
+      return original
+    }
+    work.paste(original, at: TileRect(x: 0, y: 0, width: tile.rect.width, height: tile.rect.height))
+    let strip = overlap.rawValue
+    if tile.row > 0 {
+      let height = min(strip, tile.rect.height)
+      if let top = canvas.crop(TileRect(x: tile.rect.x, y: tile.rect.y, width: tile.rect.width, height: height)) {
+        work.paste(top, at: TileRect(x: 0, y: 0, width: tile.rect.width, height: height))
+      }
+    }
+    if tile.column > 0 {
+      let width = min(strip, tile.rect.width)
+      if let left = canvas.crop(TileRect(x: tile.rect.x, y: tile.rect.y, width: width, height: tile.rect.height)) {
+        work.paste(left, at: TileRect(x: 0, y: 0, width: width, height: tile.rect.height))
+      }
+    }
+    return work.image()
+  }
+
+  /// The session is over. `previous` is the result of the last pass when the app sends it with the closing message (it does not
+  /// ask again after the last pass). The composed picture when the run finished with no problem, else nil. A finished picture is
+  /// kept, so a tile can be made again; a run that did not finish drops it, a tile made again that did not finish leaves it as it was.
+  func end(_ reason: String, previous: TUNextRequest.Previous? = nil) -> CGImage? {
+    if reason == "finished", let previous { _ = absorb(previous) }
+    let succeeded = reason == "finished" && problem == nil
+    let wasRegenerating = regenerating != nil
+    regenerating = nil
+    current = nil
+    if succeeded {
+      isComplete = true
+      lastTile = plan.count
+      return canvas?.image()
+    }
+    if !wasRegenerating {
+      canvas = nil
+      baseCanvas = nil
+      isComplete = false
+    } else {
+      lastTile = plan.count
+    }
+    return nil
   }
 
   /// "1A": the row number and the column letter.

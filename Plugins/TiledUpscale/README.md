@@ -2,14 +2,18 @@
 
 A plug-in for DT Hub that enlarges a picture **2× or 4×** and gives it new detail tile by tile, with an edit model: the picture is enlarged once (bilinear), cut into overlapping tiles, and each tile is regenerated with a preset and a LoRA. Every result is put back into the picture before the next tile is cut, so the part a tile shares with its neighbour is already enlarged, and a mask, a fade of the join and a correction of the brightness keep the join invisible.
 
-**Works with:** edit and in-context models, with a preset for **FLUX.2 [klein] 9B**, **Qwen Image 2.1 Turbo** and **Qwen Image 2.1** (see *Models*); any other model shows a notice and the *Prepare* button stays off. **Needs DT Hub 0.3.2 or later** (the pipeline a plug-in guides, see `PluginKit/README.md`). No network.
+**Works with:** edit and in-context models, with a preset for **FLUX.2 [klein] 9B**, **Qwen Image 2.1 Turbo** and **Qwen Image 2.1** (see *Models*); any other model shows a notice and the *Prepare* button stays off. **Needs DT Hub 0.3.6 or later** (0.3.2 works, but the last tile is then missing from the preview and from the picture) (the pipeline a plug-in guides, see `PluginKit/README.md`). No network.
 
 ## How it works
 
 1. Drop or open a picture, choose the enlargement (2× or 4×), the overlap between tiles (256 or 320 px) and the strength of the LoRA. The **tile size sets itself** from the picture (see below); the *Advanced* section, closed by default, holds the rest.
-2. The tab shows the final size, the tiles, the **number of passes** and the megapixels the model will make, over a preview: the enlarged picture faded, with the grid of the tiles on it. Press **Prepare** (a very big job asks for a second press): the plug-in registers its preset and proposes a pipeline.
+2. Optionally write **additional instructions**: they are added to the preset's prompt of every tile, and can be changed while the job waits or runs (the next tile reads the new text). The tab shows the final size, the tiles, the **number of passes** and the megapixels the model will make, over a preview: the enlarged picture faded, with the grid of the tiles on it. Press **Prepare** (a very big job asks for a second press): the plug-in registers its preset and proposes a pipeline.
 3. Press **RUN** in DT Hub. The app asks the plug-in for each pass in turn; DT Hub shows "Pass k of N", Stop ends the job, and no other pipeline or RUN can start meanwhile. Each tile that comes back is drawn over the preview at full opacity, covering the grid, so a join that is not clean shows instead of being masked by a line.
 4. When the last tile is back the picture goes to **DT Hub's Results**: it is saved in the project's folder and put first in the strip (the side panel says «Tiled Upscale 4× · 3×3 tiles · LoRA 1.00 · tile 1536 · free 256 · …», with the time the whole pipeline took), and the pipeline leaves the Run button. *Use as start image* sends it to the Control tab. The pictures of the single passes are not results: they do not go to the Results strip or to the project's folder.
+
+## Making one tile again
+
+When a run is finished the picture stays in the plug-in. Click a tile in the preview to pick it (click again to let it go), optionally write instructions **for that tile only** (added after the general ones), and press **Regenerate tile**. The plug-in proposes a one-pass pipeline: press **RUN**. The tile starts **from the original** (the enlarged source, not the result that is there); the strips it shares with the tiles above and on the left are what those tiles made, so the join is kept. The seed is random, so every try differs. The new tile replaces the old one, and the whole picture goes to the Results again. The join with the tiles to the right and below, made from the old tile, can differ a little. Changing the image, the enlargement, the overlap or the advanced values drops the kept picture.
 
 ## Models
 

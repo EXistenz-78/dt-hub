@@ -89,8 +89,14 @@ struct TUChoice: Codable, Equatable, Sendable {
   var settings: TUSettings
   /// The LoRA strength the user chose, by preset name ("" when the model has none); a preset without an entry has its own default.
   var loraWeights: [String: Double]
+  /// The user's instructions added to the prompt of every tile.
+  var extraPrompt: String
 
-  init(factor: Int, overlap: Int, loraWeight: Double, settings: TUSettings = .standard, loraWeights: [String: Double] = [:]) {
+  init(
+    factor: Int, overlap: Int, loraWeight: Double, settings: TUSettings = .standard, loraWeights: [String: Double] = [:],
+    extraPrompt: String = ""
+  ) {
+    self.extraPrompt = extraPrompt
     self.loraWeights = loraWeights
     self.factor = factor
     self.overlap = overlap
@@ -105,6 +111,7 @@ struct TUChoice: Codable, Equatable, Sendable {
     overlap = try container.decode(Int.self, forKey: .overlap)
     loraWeight = try container.decode(Double.self, forKey: .loraWeight)
     loraWeights = (try? container.decodeIfPresent([String: Double].self, forKey: .loraWeights)) ?? [:]
+    extraPrompt = (try? container.decodeIfPresent(String.self, forKey: .extraPrompt)) ?? ""
     settings = (try? container.decodeIfPresent(TUSettings.self, forKey: .settings))
       ?? TUSettings.defaults(for: TileOverlap(rawValue: overlap) ?? .standard)
   }
