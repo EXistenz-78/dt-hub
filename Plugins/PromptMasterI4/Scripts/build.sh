@@ -5,7 +5,7 @@
 set -e
 HERE="${0:A:h}"
 OUT="${1:?usage: build.sh OUT_FOLDER}"
-VERSION="1.2"
+VERSION="1.3"
 mkdir -p "$OUT"
 SCRATCH="$(mktemp -d)"
 trap 'rm -rf "$SCRATCH"' EXIT

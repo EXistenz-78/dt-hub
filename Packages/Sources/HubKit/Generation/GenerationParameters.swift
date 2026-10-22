@@ -92,6 +92,13 @@ public struct GenerationParameters: Equatable, Codable, Sendable {
     loras.append(LoRASelection(file: file, weight: weight, trigger: trigger))
   }
 
+  /// Puts the LoRA `file` in the place of `old`, keeping the row's mode; the weight and the trigger word are those of the new
+  /// LoRA (the old ones belonged to another). Nothing when `old` is gone, or when `file` is already chosen (and it is not `old`).
+  public mutating func replaceLoRA(_ old: String, with file: String, weight: Double = 1, trigger: String = "") {
+    guard file != old, let index = loras.firstIndex(where: { $0.file == old }), !loras.contains(where: { $0.file == file }) else { return }
+    loras[index] = LoRASelection(file: file, weight: weight, mode: loras[index].mode, trigger: trigger)
+  }
+
   public mutating func removeLoRA(_ file: String) {
     loras.removeAll { $0.file == file }
   }
