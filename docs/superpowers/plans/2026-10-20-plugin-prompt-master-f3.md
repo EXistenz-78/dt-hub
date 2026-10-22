@@ -21,7 +21,7 @@
 - Box di default: lato 180 su 1000 (quadrato in pixel), passo 200, a fila da in alto a sinistra (spec §8).
 - LLM: una sola richiesta senza `model`, `thinking` spento, temperatura 0,6, `maxTokens` 4096, attesa 600 s; il controllo degli id è nel codice (spec §9).
 - Annulla ripristina **solo l'ultima** scrittura (testi, voci, composizione, `desc`); file in `llm/` accanto a `state.json`.
-- Database: `prompt-database.json` condiviso, **senza il gruppo H**; niente dati personali nei file (`/Users/existenz`, mail) nei commit.
+- Database: `prompt-database.json` condiviso, **senza il gruppo H**; niente dati personali nei file (il percorso della cartella utente, la mail) nei commit.
 - Metodo: test-first (RED poi GREEN), un commit per task, file aggiunti **per nome** (mai `git add -A`).
 
 ## Review Focus
