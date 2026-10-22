@@ -26,6 +26,10 @@ struct PromptsTests {
     // The syntax summary, the Context list and the examples for every kind of element.
     #expect(system.contains("src_bbox") && system.contains("Context") && system.contains("NEVER say \"preserving\""))
     #expect(system.contains("Second example (move, remove, keep)"))
+    // An object taken from a reference: only the named object is described, and it is adapted to the main picture.
+    #expect(system.contains("describe ONLY the object the user's text names"))
+    #expect(system.contains("size, lighting, cast shadows and focus must match"))
+    #expect(system.contains("ignore all of that"))
     #expect(EditPrompts.problems(in: EditPrompts.folder(dataFolder: root)).isEmpty)
   }
 
