@@ -167,6 +167,13 @@ struct ResultsView: View {
         }
       }
       .padding(2)
+      // Dragging a picture of the selection takes the whole selection; any other picture goes alone.
+      .dragContainer(for: DraggedResult.self) { ids in
+        session.results.filter { ids.contains($0.id) }.compactMap { result in
+          result.fileURL.map { DraggedResult(id: result.id, url: $0) }
+        }
+      }
+      .dragContainerSelection(Array(picks.ids))
     }
     .frame(height: 80)
     .focusable()
@@ -201,7 +208,7 @@ struct ResultsView: View {
       Button("results.trash") { trash(targets.map(\.id)) }
     }
     if let url = result.fileURL {
-      button.draggable(url)
+      button.draggable(containerItemID: result.id)
     } else {
       button
     }
@@ -387,5 +394,15 @@ private struct DeleteKeyMonitor: NSViewRepresentable {
       if let monitor { NSEvent.removeMonitor(monitor) }
       monitor = nil
     }
+  }
+}
+
+/// A picture of the strip while it is dragged: its file (so the Control tab, the Finder and other apps take it).
+private struct DraggedResult: Identifiable, Transferable {
+  let id: GeneratedImage.ID
+  let url: URL
+
+  static var transferRepresentation: some TransferRepresentation {
+    ProxyRepresentation { $0.url }
   }
 }
