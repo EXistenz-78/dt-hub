@@ -1,3 +1,4 @@
+import AppKit
 import DTHubPluginKit
 import Foundation
 import Testing
@@ -119,6 +120,43 @@ struct StateTests {
     s.document.delete("el_2")
     s.update(context: try context())
     #expect(s.selected == nil)
+  }
+
+  @Test func theCropsGoOnlyWhenTheBoxIsOnAndOnlyForPairsFromAReference() throws {
+    let image = FileManager.default.temporaryDirectory.appendingPathComponent("f3e-\(UUID().uuidString)-a.png")
+    let temp = FileManager.default.temporaryDirectory.appendingPathComponent("f3e-tmp-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: temp, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: image); try? FileManager.default.removeItem(at: temp) }
+    let rep = try #require(NSBitmapImageRep(
+      bitmapDataPlanes: nil, pixelsWide: 300, pixelsHigh: 200, bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+      colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0))
+    try #require(rep.representation(using: .png, properties: [:])).write(to: image)
+    let s = EditState(store: EditStore(storage: MemoryStorage()), italian: false)
+    let json = #"{"type":"context","tempFolder":"\#(temp.path)","startImage":"/s/start.png","moodboard":["\#(image.path)"]}"#
+    s.update(context: try JSONDecoder().decode(DTHubContext.self, from: Data(json.utf8)))
+    s.drawOnReference(box(100, 100, 600, 600))
+    s.drawOnCanvas(box(0, 0, 100, 100))
+    #expect(s.hasCrops && s.llmAttachments().isEmpty)  // the box is off
+    s.document.llmImages = true
+    let attachments = s.llmAttachments()
+    #expect(attachments.count == 1 && attachments[0].elementID == "el_1")
+    #expect(FileManager.default.fileExists(atPath: attachments[0].path) && attachments[0].path.hasPrefix(temp.path))
+    #expect(ImageSizes.read(path: attachments[0].path) == CGSize(width: 150, height: 100))
+  }
+
+  @Test func theTagColorsAreThoseOfTheElements() throws {
+    let s = state()
+    s.document.draw(onCanvas: box(0, 0, 100, 100))
+    s.document.draw(onCanvas: box(200, 200, 300, 300))
+    #expect(s.tagColors == ["el_1": 0, "el_2": 1])
+  }
+
+  @Test func anOldStateFileWithoutTheImagesSwitchStillLoads() throws {
+    let storage = MemoryStorage()
+    let old = #"{"schema":1,"document":{"prose":"kept","elements":[],"referenceIndex":0}}"#
+    storage.set(Data(old.utf8), forKey: EditStore.key)
+    #expect(state(storage).document.prose == "kept")
+    #expect(!state(storage).document.sendsImages)
   }
 
   @Test func undoRestoresOnlyTheLastWrite() throws {

@@ -14,7 +14,7 @@ struct PromptCard: View {
         FieldLabel(text: L.text(.proseTitle, italian: state.italian))
         ProseEditor(
           text: Binding(get: { state.document.prose }, set: { state.document.prose = $0 }),
-          placeholder: L.text(.proseHint, italian: state.italian), minHeight: 64, maxHeight: 120)
+          placeholder: L.text(.proseHint, italian: state.italian), colors: state.tagColors, minHeight: 64, maxHeight: 120)
         if state.document.elements.isEmpty {
           Text(L.text(.noElements, italian: state.italian)).font(.caption).foregroundStyle(.secondary)
         }
@@ -35,6 +35,18 @@ struct PromptCard: View {
   }
 
   private var buttons: some View {
+    VStack(alignment: .leading, spacing: DS.controlGap) {
+      if state.hasCrops {
+        Toggle(
+          isOn: Binding(get: { state.document.sendsImages }, set: { state.document.llmImages = $0 })
+        ) { Text(L.text(.sendImages, italian: state.italian)).font(.callout) }
+        .toggleStyle(DSCheckboxToggleStyle()).help(L.text(.sendImagesHelp, italian: state.italian))
+      }
+      actionRow
+    }
+  }
+
+  private var actionRow: some View {
     HStack(spacing: DS.controlGap) {
       Button { state.undo() } label: {
         HStack(spacing: DS.pillIconGap) {
