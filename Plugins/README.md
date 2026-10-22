@@ -1,6 +1,6 @@
 # DT Hub plug-ins
 
-Eleven plug-ins ship in this repository. Each is a Swift package of its own, with its own tests and its own README. Prompt Master, Prompt Master I4, Sphere Light, Batch plus, AI Assistant, Qwen 2.1 Inpainting, Depth & Pose, Tiled Upscale and Flux3 Editing keep their state per project.
+Twelve plug-ins ship in this repository. Each is a Swift package of its own, with its own tests and its own README. Prompt Master, Prompt Master I4, Sphere Light, Batch plus, AI Assistant, Qwen 2.1 Inpainting, Depth & Pose, Tiled Upscale, Prompt Master F3 and Flux3 Editing keep their state per project.
 A plug-in only works with the model families it was made for (Depth & Pose, with edit and in-context models): on any other model it is **switched off and its tab is hidden**,
 so the tab bar only ever shows what can be used with the model you picked.
 
@@ -8,6 +8,7 @@ so the tab bar only ever shows what can be used with the model you picked.
 | --- | --- | --- |
 | **[Prompt Master](PromptMaster/README.md)** | FLUX.1, FLUX.2 (dev, klein 9B, klein 4B), Krea 2, Qwen Image, Qwen Image 2.1, Z Image, Stable Diffusion XL (and Pony / Illustrious), Stable Diffusion 1.5, ERNIE-Image, HiDream-I1, Anima (Cosmos 2.5): **13 families** | A database of 875 curated terms (8 groups, 40 categories: photography, light, colour, style, matter) that you pick with checkboxes, plus a free description in any language. *Write prompt* sends everything to the app's local LLM together with the prompt of the selected model family (DT Hub's own Family prompt: needs DT Hub 0.1.9 or later), and the English prompt that comes back is written into the Generation tab (and into the negative prompt, for families that read one). Includes Shuffle and Shuffle scene. |
 | **[Prompt Master I4](PromptMasterI4/README.md)** | **Ideogram 4** only | Composes the fixed-order JSON caption the model was trained on. Pick terms from the database, write the texts, and place objects and lettering on a canvas with their boxes and colours; the JSON is previewed live, and the LLM can write the descriptions for you. |
+| **[Prompt Master F3](PromptMasterF3/README.md)** | **FLUX.3 [klein] 5.6B** | Composes the structured prompt of FLUX.3: a description of the scene, a composition sentence that names the elements with `<id>` placeholders, and the JSON list of their boxes (`[top, left, bottom, right]` on a 0–1000 grid) and descriptions. Writing an `<id>` creates its box and card; the canvas has the proportions of the Generation; the LLM can write the texts without touching the placeholders. |
 | **[Sphere Light Reference](SphereLight/README.md)** | The **FLUX.2 [klein]** family (**9B** recommended, better results; 4B works too), with the [Sun Direction LoRA](https://huggingface.co/eric-venti-seeds/Sun-Direction-Lora-Flux2Klein9B) | Place lights on a sphere, render it (CPU ray tracing) and send it to Draw Things so the light, the colours and the sun direction of an image match the sphere. **Multiple and coloured lights are exclusive to this plug-in**: it pushes the LoRA beyond its original limits. |
 | **[Character Sheet](CharacterSheet/README.md)** | **Qwen Image 2.1** only | Prepares a character design sheet from one picture: a base sheet (views, poses, silhouettes, expressions, details), a 4×3 expressions sheet or a 5×2 poses sheet. The picture goes to the Moodboard, the canvas is set and the prompt is written, either from a static prompt or by a local vision model (Qwen3-VL, or Qwen's PE I2I prompt enhancer). **Based on [NeuroContent's workflow](https://civitai.com/models/2960750/qwen-image-21-character-design-sheet-maker-workflow?modelVersionId=3377047).** |
 | **[Batch plus](BatchPlus/README.md)** | **All families** | Prepares a series of consecutive RUNs and sends it as a pipeline: either numeric parameters that grow by an increment (steps, guidance, shift, CFG-Zero\* initial steps, seed, LoRA weights, varying together) or a bulleted list of prompts, one pass each. |
@@ -26,7 +27,7 @@ so the tab bar only ever shows what can be used with the model you picked.
 
 ## Install
 
-Every [release](https://github.com/EXistenz-78/dt-hub/releases/latest) carries the ten plug-ins. Download the one you want, unzip it (you get a `.dthubplugin` bundle):
+Every [release](https://github.com/EXistenz-78/dt-hub/releases/latest) carries the twelve plug-ins. Download the one you want, unzip it (you get a `.dthubplugin` bundle):
 
 - [Prompt Master](https://github.com/EXistenz-78/dt-hub/releases/latest/download/PromptMaster.dthubplugin.zip)
 - [Prompt Master I4](https://github.com/EXistenz-78/dt-hub/releases/latest/download/PromptMasterI4.dthubplugin.zip)
@@ -38,6 +39,8 @@ Every [release](https://github.com/EXistenz-78/dt-hub/releases/latest) carries t
 - [LoRA Advisor](https://github.com/EXistenz-78/dt-hub/releases/latest/download/LoRAAdvisor.dthubplugin.zip)
 - [Depth & Pose](https://github.com/EXistenz-78/dt-hub/releases/latest/download/DepthPose.dthubplugin.zip)
 - [Tiled Upscale](https://github.com/EXistenz-78/dt-hub/releases/latest/download/TiledUpscale.dthubplugin.zip)
+- [Prompt Master F3](https://github.com/EXistenz-78/dt-hub/releases/latest/download/PromptMasterF3.dthubplugin.zip)
+- [Flux3 Editing](https://github.com/EXistenz-78/dt-hub/releases/latest/download/Flux3Editing.dthubplugin.zip)
 
 Then, in DT Hub, open **Preferences › Plug-ins**, press **Add…**, pick the `.dthubplugin` bundle and restart the app (turning a
 plug-in on or off, or removing it, takes effect at the next launch). Each plug-in then appears as a tab, and can be switched on and off
