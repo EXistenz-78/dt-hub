@@ -28,6 +28,7 @@ struct LoRACard: View {
         }
         ForEach(controller.parameters.loras) { selection in
           LoRARow(
+            choices: choices(replacing: selection.file),
             selection: binding(for: selection),
             name: catalog.lora(forFile: selection.file)?.name ?? selection.file,
             status: catalog.status(of: selection, family: family),
@@ -53,32 +54,38 @@ struct LoRACard: View {
   }
 
   private var addMenu: some View {
-    let offered = catalog.loras(for: family)
-    let chosen = Set(controller.parameters.loras.map(\.file))
-    return Menu {
-      if offered.isEmpty {
-        Text("card.lora.noneAvailable")
-      }
-      let known = offered.filter { $0.family != nil }
-      let unknown = offered.filter { $0.family == nil }
-      if !known.isEmpty {
-        Section {
-          ForEach(known) { lora in addButton(lora, disabled: chosen.contains(lora.file)) }
-        } header: {
-          Text(verbatim: family ?? "")
-        }
-      }
-      if !unknown.isEmpty {
-        Section {
-          ForEach(unknown) { lora in addButton(lora, disabled: chosen.contains(lora.file)) }
-        } header: {
-          Text("card.lora.unknownFamily")
-        }
-      }
+    Menu {
+      choices(replacing: nil)
     } label: {
       DSMenuLabel(String(localized: "card.lora.add"), systemImage: "plus")
     }
     .dsMenuPill()
+  }
+
+  /// What the menus offer, the same for "Add LoRA" and for the name of a chosen LoRA: the LoRAs of the family, then those of
+  /// unknown family. With `current` a choice replaces that LoRA in its place (the one of the row is ticked); without it adds.
+  @ViewBuilder private func choices(replacing current: String?) -> some View {
+    let offered = catalog.loras(for: family)
+    let chosen = Set(controller.parameters.loras.map(\.file))
+    if offered.isEmpty {
+      Text("card.lora.noneAvailable")
+    }
+    let known = offered.filter { $0.family != nil }
+    let unknown = offered.filter { $0.family == nil }
+    if !known.isEmpty {
+      Section {
+        ForEach(known) { lora in choiceButton(lora, chosen: chosen, current: current) }
+      } header: {
+        Text(verbatim: family ?? "")
+      }
+    }
+    if !unknown.isEmpty {
+      Section {
+        ForEach(unknown) { lora in choiceButton(lora, chosen: chosen, current: current) }
+      } header: {
+        Text("card.lora.unknownFamily")
+      }
+    }
   }
 
   /// The window where the user keeps the trigger word and the default weight of every LoRA of the server.
@@ -94,19 +101,29 @@ struct LoRACard: View {
     .buttonStyle(DSPillButtonStyle())
   }
 
-  private func addButton(_ lora: CatalogLoRA, disabled: Bool) -> some View {
+  private func choiceButton(_ lora: CatalogLoRA, chosen: Set<String>, current: String?) -> some View {
     Button {
-      controller.parameters.addLoRA(lora.file, weight: lora.defaultWeight ?? 1, trigger: lora.trigger)
+      if let current {
+        controller.parameters.replaceLoRA(current, with: lora.file, weight: lora.defaultWeight ?? 1, trigger: lora.trigger)
+      } else {
+        controller.parameters.addLoRA(lora.file, weight: lora.defaultWeight ?? 1, trigger: lora.trigger)
+      }
     } label: {
-      Text(verbatim: lora.name)
+      if lora.file == current {
+        Label(lora.name, systemImage: "checkmark")
+      } else {
+        Text(verbatim: lora.name)
+      }
     }
-    .disabled(disabled)
+    .disabled(chosen.contains(lora.file))
   }
 }
 
 /// One chosen LoRA: name and remove on the first line, mode and weight on the second, the
 /// trigger word on the third, the reason in orange when it is not sent.
-private struct LoRARow: View {
+private struct LoRARow<Choices: View>: View {
+  /// The menu of the name: the same choices as "Add LoRA", each replacing this LoRA.
+  let choices: Choices
   @Binding var selection: LoRASelection
   let name: String
   let status: LoRAStatus
@@ -117,10 +134,23 @@ private struct LoRARow: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 6) {
       HStack(spacing: DS.controlGap) {
-        Text(verbatim: name)
-          .lineLimit(1)
-          .truncationMode(.middle)
-          .foregroundStyle(status == .usable ? .primary : .secondary)
+        Menu {
+          choices
+        } label: {
+          HStack(spacing: 4) {
+            Text(verbatim: name)
+              .lineLimit(1)
+              .truncationMode(.middle)
+            Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold))
+          }
+          .foregroundStyle(status == .usable ? DS.accent : DS.accent.opacity(0.6))
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
+        .fixedSize(horizontal: false, vertical: true)
+        .help(String(localized: "card.lora.replace"))
+        .accessibilityLabel(String(localized: "card.lora.replace"))
         Spacer(minLength: DS.controlGap)
         Button(action: remove) {
           Image(systemName: "minus.circle.fill")
