@@ -55,6 +55,11 @@ struct ImageCard: View {
         .frame(width: 104, height: 104)
         .clipShape(RoundedRectangle(cornerRadius: DS.boxRadius, style: .continuous))
         .modifier(DragOut(url: control.copyURL(of: image)))
+        .overlay(alignment: .bottomTrailing) {
+          if let number = control.startImageNumber, FamilyTraits.of(generation.family(in: connection)).usesMoodboard {
+            ImageNumberBadge(number: number).padding(4)
+          }
+        }
         Button {
           control.removeImage()
         } label: {
