@@ -153,6 +153,42 @@ final class EditState: ObservableObject {
   }
   var canSend: Bool { active && !isSending && !isWriting && problems.isEmpty }
 
+  /// I segnaposto che la prosa può citare: gli id degli elementi e le immagini (`ref_image_0…`).
+  var allowedTags: Set<String> {
+    Set(document.elements.map(\.id)).union(["ref_image_\(RefNumbering.startImageNumber)"]).union(refs.map { "ref_image_\($0.number)" })
+  }
+
+  var writeSystem: String { EditPrompts.system() }
+
+  /// Mette nei campi i testi riscritti. Un testo che l'utente ha cambiato mentre l'LLM scriveva resta com'è. Prima si
+  /// fotografa lo stato (solo l'ultima fotografia), per «Annulla».
+  func apply(_ result: EditWriteResult) {
+    var applicable: [EditRewrite] = []
+    var kept: [String] = []
+    for rewrite in result.rewrites {
+      if currentText(of: rewrite.kind) == rewrite.original { applicable.append(rewrite) } else { kept.append(rewrite.kind.title) }
+    }
+    var lines = [result.status]
+    if !applicable.isEmpty {
+      takeSnapshot()
+      for rewrite in applicable {
+        switch rewrite.kind {
+        case .prose: document.prose = rewrite.text
+        case .element(let id): update(element: id) { $0.desc = rewrite.text }
+        }
+      }
+    }
+    if !kept.isEmpty { lines.append(L.format(.changedMeanwhile, kept.joined(separator: ", "), italian: italian)) }
+    status = lines.filter { !$0.isEmpty }.joined(separator: " ")
+  }
+
+  private func currentText(of kind: EditPart.Kind) -> String? {
+    switch kind {
+    case .prose: return document.prose.trimmingCharacters(in: .whitespacesAndNewlines)
+    case .element(let id): return document.element(id)?.desc.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+  }
+
   var canUndo: Bool { document.snapshot != nil && !isWriting }
 
   /// Fotografa i testi (solo l'ultima fotografia), prima che una scrittura li sostituisca.

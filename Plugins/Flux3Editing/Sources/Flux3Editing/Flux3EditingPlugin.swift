@@ -14,6 +14,11 @@ final class Flux3EditingPlugin: DTHubPlugin {
   private let state = EditState()
   private var host: DTHubHost?
 
+  init() {
+    // Il master prompt, scritto in Data/prompt-master-flux3-editing se manca o è più vecchio (e `custom/`).
+    EditPrompts.install()
+  }
+
   func makeViewController() -> NSViewController {
     NSHostingController(
       rootView: EditView(state: state, send: { [weak self] in self?.send() }, write: { [weak self] in self?.write() }))
@@ -43,8 +48,38 @@ final class Flux3EditingPlugin: DTHubPlugin {
     }
   }
 
-  private func write() {}  // T9
-  private func send() {}  // T9
+  private func write() {
+    guard state.canWrite, let host else { return }
+    state.isWriting = true
+    state.status = L.text(.writing, italian: state.italian)
+    let document = state.document
+    let (allowed, system) = (state.allowedTags, state.writeSystem)
+    let writer = EditWriter(
+      ask: { prompt, system, options in await host.askLanguageModelAnswer(prompt, system: system, options: options) },
+      italian: state.italian)
+    Task {
+      let result = await writer.write(document: document, allowedTags: allowed, system: system, options: EditPrompts.options)
+      let before = EditSnapshot.take(from: document)
+      state.apply(result)
+      if let folder = state.projectFolder, !result.request.isEmpty {
+        EditWorkFolder(folder: folder).write(request: result.request, answer: result.answer, before: before)
+      }
+      state.isWriting = false
+    }
+  }
+
+  private func send() {
+    guard state.canSend, let host else { return }
+    state.isSending = true
+    state.status = ""
+    let sender = EditSender(contribute: { await host.contribute($0) }, italian: state.italian)
+    let text = state.sendText
+    Task {
+      let outcome = await sender.send(text)
+      state.status = outcome.status
+      state.isSending = false
+    }
+  }
 }
 
 @objc(Flux3EditingEntry)
