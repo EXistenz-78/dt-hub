@@ -167,6 +167,25 @@ struct PluginRegistryTests {
     #expect(try lastContext().languageModels?.count == 2)
   }
 
+  @Test func theContextCarriesTheImageWindowWhenThereIsOne() async throws {
+    try PluginFixture.bundle(in: root, id: "a", name: "A")
+    let loader = FakeLoader()
+    let registry = registry(loader: loader, enabled: ["a"])
+    registry.start()
+    registry.updateContext(model: "m.ckpt", family: "flux2_9b", parameters: GenerationParameters())
+    await settle()
+    let plugin = try #require(loader.plugins["a"])
+    func lastContext() throws -> PluginContext {
+      let data = try #require(plugin.sent.last { PluginMessageType.of($0) == PluginMessageType.context })
+      return try JSONDecoder().decode(PluginContext.self, from: data)
+    }
+    #expect(try lastContext().startImageWindow == nil)
+    registry.startImageWindow = { PluginImageWindow(x: 50, y: 0, width: 200, height: 200) }
+    registry.refreshContext()
+    await settle()
+    #expect(try lastContext().startImageWindow == PluginImageWindow(x: 50, y: 0, width: 200, height: 200))
+  }
+
   @Test func theContextCarriesTheCurrentParametersNotTheLastOnesTheAppSent() async throws {
     try PluginFixture.bundle(in: root, id: "a", name: "A")
     let loader = FakeLoader()

@@ -110,9 +110,14 @@ public struct DTHubContext: Decodable, Sendable {
   /// The LoRAs of the server, with the trigger words and weights of the app's LoRA manager. Empty when there are none;
   /// nil from an app that does not send it (before 0.2.2).
   public var loraCatalog: [DTHubCatalogLoRA]?
+  /// Where the start image sits in the canvas of the Generation: the part of the image that fills it, in the image's
+  /// pixels from the top-left (it can be larger than the image: the rest is margin). nil without a start image or from
+  /// an app older than 0.3.7.
+  public var startImageWindow: DTHubImageWindow?
 
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
+    startImageWindow = (try? container.decodeIfPresent(DTHubImageWindow.self, forKey: .startImageWindow)) ?? nil
     model = try container.decodeIfPresent(String.self, forKey: .model)
     family = try container.decodeIfPresent(String.self, forKey: .family)
     tempFolder = try container.decode(String.self, forKey: .tempFolder)
@@ -132,7 +137,22 @@ public struct DTHubContext: Decodable, Sendable {
 
   private enum CodingKeys: String, CodingKey {
     case model, family, tempFolder, startImage, moodboard, languageModels, parameters, prompt, negativePrompt, strength
-    case promptGuide, loraCatalog
+    case promptGuide, loraCatalog, startImageWindow
+  }
+}
+
+/// The part of the start image that fills the canvas (`DTHubContext.startImageWindow`).
+public struct DTHubImageWindow: Decodable, Equatable, Sendable {
+  public var x: Double
+  public var y: Double
+  public var width: Double
+  public var height: Double
+
+  public init(x: Double, y: Double, width: Double, height: Double) {
+    self.x = x
+    self.y = y
+    self.width = width
+    self.height = height
   }
 }
 

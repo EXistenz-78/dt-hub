@@ -64,6 +64,24 @@ struct DTHubPluginKitTests {
     let old = try JSONDecoder().decode(DTHubContext.self, from: Data(#"{"type":"context","tempFolder":"/t"}"#.utf8))
     #expect(old.startImage == nil && old.moodboard == nil && old.languageModels == nil)
   }
+
+  @Test func theImageWindowIsReadAndNeverCostsTheRestOfTheContext() throws {
+    let with = try JSONDecoder().decode(
+      DTHubContext.self,
+      from: Data(#"{"type":"context","tempFolder":"/t","startImage":"/s.png","startImageWindow":{"x":50,"y":0,"width":200,"height":200}}"#.utf8))
+    #expect(with.startImageWindow == DTHubImageWindow(x: 50, y: 0, width: 200, height: 200))
+    #expect(old(try contextWithoutWindow()).startImageWindow == nil)
+    let broken = try JSONDecoder().decode(
+      DTHubContext.self,
+      from: Data(#"{"type":"context","tempFolder":"/t","startImage":"/s.png","startImageWindow":"nonsense"}"#.utf8))
+    #expect(broken.startImageWindow == nil && broken.startImage == "/s.png")
+  }
+
+  private func contextWithoutWindow() throws -> DTHubContext {
+    try JSONDecoder().decode(DTHubContext.self, from: Data(#"{"type":"context","tempFolder":"/t"}"#.utf8))
+  }
+
+  private func old(_ context: DTHubContext) -> DTHubContext { context }
 }
 
 @Suite("DTHubProject")

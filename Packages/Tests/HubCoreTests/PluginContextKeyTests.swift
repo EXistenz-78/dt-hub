@@ -19,6 +19,14 @@ struct PluginContextKeyTests {
     #expect(base != wider && base != taller && wider != taller)
   }
 
+  @Test func aFramingChangeChangesTheContextKey() {
+    var zoomed = base
+    zoomed.framingZoom = 20
+    var moved = base
+    moved.framingOffsetX = 0.5
+    #expect(base != zoomed && base != moved)
+  }
+
   @Test func theModelTheFamilyTheStartImageAndTheMoodboardCountToo() {
     var other = base
     other.model = "n.ckpt"
