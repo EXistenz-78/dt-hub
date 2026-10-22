@@ -2347,6 +2347,40 @@
         }
       }
     },
+    "control.number.label": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Image %lld in the prompt"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Immagine %lld nel prompt"
+          }
+        }
+      }
+    },
+    "control.number.help": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In the prompt, call this picture “image %lld”."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nel prompt, chiama questa immagine «immagine %lld»."
+          }
+        }
+      }
+    },
     "control.moodboard.add": {
       "extractionState": "manual",
       "localizations": {
@@ -2404,13 +2438,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Drop on a picture to replace it, anywhere else to add."
+            "value": "Drop on a picture to replace it, anywhere else to add. Drag a picture to reorder."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Rilascia su un'immagine per sostituirla, altrove per aggiungere."
+            "value": "Rilascia su un'immagine per sostituirla, altrove per aggiungere. Trascina un'immagine per riordinare."
           }
         }
       }
