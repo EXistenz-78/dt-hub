@@ -34,7 +34,10 @@ extension EditSnapshot {
 
 /// Quello che l'utente ha scritto e disegnato (spec §5, §8).
 struct EditDocument: Codable, Equatable, Sendable {
-  var prose = ""
+  /// La frase con cui parte il testo: l'utente la completa.
+  static let defaultProse = "Modify <ref_image_0> by: "
+
+  var prose = EditDocument.defaultProse
   var elements: [EditElement] = []
   var snapshot: EditSnapshot?
   /// Quale immagine del Moodboard mostra la prima tela (0 = la prima accesa).
@@ -46,6 +49,14 @@ struct EditDocument: Codable, Equatable, Sendable {
 
   static let maxTargetSide = 300
   static let targetGap = 20
+
+  /// «Pulisci»: via i riquadri e il testo (torna la frase di partenza). La casella dei ritagli è una preferenza, resta.
+  mutating func clear() {
+    elements = []
+    prose = Self.defaultProse
+    snapshot = nil
+    referenceIndex = 0
+  }
 
   // MARK: Disegnare
 

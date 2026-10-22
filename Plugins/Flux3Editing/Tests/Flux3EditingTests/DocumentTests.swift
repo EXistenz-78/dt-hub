@@ -139,6 +139,27 @@ struct DocumentTests {
     #expect(doc.repeatedIDs == ["el_1"])
   }
 
+  @Test func aNewDocumentStartsWithTheDefaultSentence() {
+    #expect(EditDocument().prose == "Modify <ref_image_0> by: ")
+    #expect(EditDocument.defaultProse.hasPrefix("Modify <ref_image_0> by:"))
+  }
+
+  @Test func clearingEmptiesTheBoxesAndRestoresTheSentenceKeepingTheSwitch() {
+    var doc = EditDocument()
+    doc.prose = "Modify <ref_image_0> by: adding <el_1>"
+    doc.draw(onCanvas: box(0, 0, 100, 100))
+    doc.draw(onReference: "a.png", box: box(0, 0, 100, 100))
+    doc.snapshot = EditSnapshot(prose: "x", descriptions: [:])
+    doc.referenceIndex = 2
+    doc.llmImages = true
+    doc.clear()
+    #expect(doc.elements.isEmpty && doc.prose == EditDocument.defaultProse && doc.snapshot == nil && doc.referenceIndex == 0)
+    #expect(doc.sendsImages)  // a preference, not content
+    // The ids start again from el_1.
+    doc.draw(onCanvas: box(0, 0, 100, 100))
+    #expect(doc.elements[0].id == "el_1" && doc.elements[0].colorIndex == 0)
+  }
+
   @Test func theDocumentSurvivesCodable() throws {
     var doc = EditDocument()
     doc.prose = "Modify <ref_image_0>"
