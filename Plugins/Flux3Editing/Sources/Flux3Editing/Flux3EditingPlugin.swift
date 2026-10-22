@@ -4,9 +4,9 @@ import SwiftUI
 
 @MainActor
 final class Flux3EditingPlugin: DTHubPlugin {
-  /// Le famiglie del plug-in, in un solo punto. Per ora FLUX.2 [klein] (come Prompt Master F3), così si prova nell'app fino
-  /// alla generazione del prompt; quando Draw Things espone FLUX.3 Klein si aggiunge il suo id (sconosciuto: nessuna ipotesi).
-  static let families = ["flux2_9b", "flux2_4b"]
+  /// Le famiglie del plug-in, in un solo punto: FLUX.3 [klein] 5.6B, con le sue varianti Base e quantizzate, ha la `version`
+  /// `flux3_5b` nell'elenco dei modelli di Draw Things.
+  static let families = ["flux3_5b"]
 
   let manifest = DTHubManifest(
     id: "com.exiztenz.dthub.flux3editing", name: "Flux3 Editing", version: "1.0", symbol: "scribble.variable",

@@ -18,7 +18,7 @@ final class EditState: ObservableObject {
   @Published private(set) var startSize: CGSize?
   /// La dimensione della Generazione, come l'app l'ha detta per ultima: il canvas di uscita.
   @Published private(set) var generationSize: CGSize?
-  /// Dove sta l'immagine di partenza nel canvas (app ≥ 0.3.7); nil se l'app non lo dice.
+  /// Dove sta l'immagine di partenza nel canvas (app ≥ 0.3.8); nil se l'app non lo dice.
   @Published private(set) var window: DTHubImageWindow?
   /// L'elemento selezionato sulle tele o nell'elenco (stato della vista: non si ricorda).
   @Published var selected: String?

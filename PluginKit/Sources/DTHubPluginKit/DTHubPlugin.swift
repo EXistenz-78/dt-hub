@@ -112,7 +112,7 @@ public struct DTHubContext: Decodable, Sendable {
   public var loraCatalog: [DTHubCatalogLoRA]?
   /// Where the start image sits in the canvas of the Generation: the part of the image that fills it, in the image's
   /// pixels from the top-left (it can be larger than the image: the rest is margin). nil without a start image or from
-  /// an app older than 0.3.7.
+  /// an app older than 0.3.8.
   public var startImageWindow: DTHubImageWindow?
 
   public init(from decoder: any Decoder) throws {
