@@ -22,14 +22,16 @@ struct EditPart: Equatable, Sendable {
 /// Il messaggio all'LLM (spec §7): blocchi Markdown con un titolo ciascuno.
 enum EditBrief {
   static func parts(from document: EditDocument) -> [EditPart] {
-    var parts: [EditPart] = []
-    let prose = document.prose.trimmingCharacters(in: .whitespacesAndNewlines)
-    if !prose.isEmpty { parts.append(EditPart(kind: .prose, text: prose)) }
+    var elementParts: [EditPart] = []
     for element in document.elements {
       let desc = element.desc.trimmingCharacters(in: .whitespacesAndNewlines)
-      if !desc.isEmpty { parts.append(EditPart(kind: .element(id: element.id), text: desc)) }
+      if !desc.isEmpty { elementParts.append(EditPart(kind: .element(id: element.id), text: desc)) }
     }
-    return parts
+    let prose = document.prose.trimmingCharacters(in: .whitespacesAndNewlines)
+    // The starting sentence alone is not a text to rewrite; with descriptions to write it goes along, so the LLM completes it.
+    let bareStart = prose == EditDocument.defaultProse.trimmingCharacters(in: .whitespacesAndNewlines)
+    if prose.isEmpty || (bareStart && elementParts.isEmpty) { return elementParts }
+    return [EditPart(kind: .prose, text: prose)] + elementParts
   }
 
   /// Che cosa è ogni elemento, per le parti che si riscrivono: serve all'LLM a scrivere la descrizione giusta (conservare il

@@ -159,6 +159,25 @@ struct StateTests {
     #expect(!state(storage).document.sendsImages)
   }
 
+  @Test func clearingTheTabLeavesItAsNew() throws {
+    let s = state()
+    s.document.prose = "Modify <ref_image_0> by: adding <el_1>"
+    s.document.draw(onCanvas: box(0, 0, 100, 100))
+    s.select("el_1")
+    #expect(s.canClear)
+    s.clear()
+    #expect(s.document.elements.isEmpty && s.document.prose == EditDocument.defaultProse && s.selected == nil)
+    #expect(!s.canClear)
+  }
+
+  @Test func theDefaultSentenceAloneIsNothingToWrite() throws {
+    let s = state()
+    s.active = true
+    #expect(!s.hasWritableContent && !s.canWrite)
+    s.document.prose += "adding a lamp"
+    #expect(s.hasWritableContent && s.canWrite)
+  }
+
   @Test func undoRestoresOnlyTheLastWrite() throws {
     let s = state()
     s.document.prose = "original prose"
@@ -192,7 +211,7 @@ struct StateTests {
     s.switchProject(folder: a, adoptLegacy: false)
     s.document.prose = "in A"
     s.switchProject(folder: b, adoptLegacy: false)
-    #expect(s.document.prose == "")
+    #expect(s.document.prose == EditDocument.defaultProse)
     s.document.prose = "in B"
     s.switchProject(folder: a, adoptLegacy: false)
     #expect(s.document.prose == "in A")

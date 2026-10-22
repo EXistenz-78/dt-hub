@@ -6,6 +6,7 @@ struct PromptCard: View {
   @ObservedObject var state: EditState
   let send: () -> Void
   let write: () -> Void
+  @State private var confirmClear = false
 
   var body: some View {
     VStack(spacing: 0) {
@@ -14,7 +15,8 @@ struct PromptCard: View {
         FieldLabel(text: L.text(.proseTitle, italian: state.italian))
         ProseEditor(
           text: Binding(get: { state.document.prose }, set: { state.document.prose = $0 }),
-          placeholder: L.text(.proseHint, italian: state.italian), colors: state.tagColors, minHeight: 64, maxHeight: 120)
+          placeholder: "", colors: state.tagColors, minHeight: 64, maxHeight: 120)
+        Text(L.text(.proseHint, italian: state.italian)).font(.caption).foregroundStyle(.secondary)
         if state.document.elements.isEmpty {
           Text(L.text(.noElements, italian: state.italian)).font(.caption).foregroundStyle(.secondary)
         }
@@ -32,6 +34,9 @@ struct PromptCard: View {
       .padding(DS.panelPadding)
     }
     .dsPanel()
+    .confirmationDialog(L.text(.clearTitle, italian: state.italian), isPresented: $confirmClear) {
+      Button(L.text(.clearAction, italian: state.italian), role: .destructive) { state.clear() }
+    }
   }
 
   private var buttons: some View {
@@ -68,6 +73,10 @@ struct PromptCard: View {
       }
       .buttonStyle(DSPillButtonStyle()).disabled(!state.canWrite)
       Spacer(minLength: 0)
+      Button { confirmClear = true } label: { Image(systemName: "trash") }
+        .buttonStyle(DSPillButtonStyle()).disabled(!state.canClear || state.isWriting || state.isSending)
+        .help(L.text(.clearHelp, italian: state.italian))
+        .accessibilityLabel(L.text(.clearHelp, italian: state.italian))
       Button(action: send) {
         HStack(spacing: DS.pillIconGap) {
           if state.isSending {

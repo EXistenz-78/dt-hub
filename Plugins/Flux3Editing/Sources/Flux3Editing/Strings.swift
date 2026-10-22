@@ -13,6 +13,7 @@ enum L {
     case undo, writeWithLLM, writing, send, sending, sent, sentWithConflicts, notAnswered
     case problemNoStart, problemNoElements, problemEmptyID, problemEmptyDescription, problemRepeatedID, problemImageMissing
     case sendImages, sendImagesHelp, imagesNotSent
+    case clearHelp, clearTitle, clearAction
     case nothingToWrite, writtenCount, failedParts, tagsChanged, changedMeanwhile
     case warningIDNotInProse, warningUnknownReference, warningTooManyImages, imageGone, generationCanvas
   }
@@ -59,6 +60,7 @@ enum L {
     .sendImages: "Send the cropped pictures to the LLM",
     .sendImagesHelp: "Attaches, for each box drawn on a Moodboard picture, the crop of that box. It needs a model that can read images; otherwise the texts are written without them.",
     .imagesNotSent: "The model could not take the pictures: written from the texts only.",
+    .clearHelp: "Clear the text and all the boxes", .clearTitle: "Clear the text and all the boxes?", .clearAction: "Clear",
     .nothingToWrite: "Nothing to write yet.", .writtenCount: "%d text(s) written.",
     .failedParts: "Not rewritten (the original stays): %@.", .tagsChanged: "the LLM changed the placeholders",
     .changedMeanwhile: "Changed while writing, so kept as it is: %@.",
@@ -91,6 +93,7 @@ enum L {
     .sendImages: "Manda i ritagli all'LLM",
     .sendImagesHelp: "Allega, per ogni riquadro disegnato su un'immagine del Moodboard, il ritaglio di quel riquadro. Serve un modello che legga le immagini; altrimenti i testi si scrivono senza.",
     .imagesNotSent: "Il modello non ha potuto prendere le immagini: scritto dai soli testi.",
+    .clearHelp: "Pulisci il testo e tutti i riquadri", .clearTitle: "Pulire il testo e tutti i riquadri?", .clearAction: "Pulisci",
     .nothingToWrite: "Non c'è ancora niente da scrivere.", .writtenCount: "%d testo/i scritto/i.",
     .failedParts: "Non riscritti (resta l'originale): %@.", .tagsChanged: "l'LLM ha cambiato i segnaposto",
     .changedMeanwhile: "Cambiati mentre scrivevo, restano come sono: %@.",

@@ -131,9 +131,25 @@ final class EditState: ObservableObject {
     if selected == id { selected = newID }
   }
 
+  /// La frase di partenza da sola non è un testo da scrivere.
+  private var proseIsEdited: Bool {
+    let prose = document.prose.trimmingCharacters(in: .whitespacesAndNewlines)
+    return !prose.isEmpty && prose != EditDocument.defaultProse.trimmingCharacters(in: .whitespacesAndNewlines)
+  }
+
+  /// «Pulisci» ha qualcosa da togliere: dei riquadri o un testo diverso da quello di partenza.
+  var canClear: Bool { !document.elements.isEmpty || document.prose != EditDocument.defaultProse }
+
+  /// «Pulisci»: il tab torna come nuovo.
+  func clear() {
+    document.clear()
+    selected = nil
+    status = ""
+  }
+
   /// «Scrivi con LLM» ha qualcosa da scrivere: un testo o la descrizione di un riquadro.
   var hasWritableContent: Bool {
-    !document.prose.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    proseIsEdited
       || document.elements.contains { !$0.desc.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
   }
 
