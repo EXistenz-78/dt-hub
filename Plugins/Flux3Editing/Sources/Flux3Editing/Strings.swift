@@ -12,6 +12,7 @@ enum L {
     case kindFromReference, kindNew, kindExisting, kindMove, kindRemove, moveUp, moveDown, removeElement, idLabel
     case undo, writeWithLLM, writing, send, sending, sent, sentWithConflicts, notAnswered
     case problemNoStart, problemNoElements, problemEmptyID, problemEmptyDescription, problemRepeatedID, problemImageMissing
+    case nothingToWrite, writtenCount, failedParts, tagsChanged, changedMeanwhile
     case warningIDNotInProse, warningUnknownReference, warningTooManyImages, imageGone, generationCanvas
   }
 
@@ -54,6 +55,9 @@ enum L {
     .warningIDNotInProse: "%@ is not cited in the text as <%@>.", .warningUnknownReference: "The text cites <ref_image_%d>, which is not in the Moodboard.",
     .warningTooManyImages: "FLUX.3 reads at most ten pictures: the start image and nine from the Moodboard.",
     .imageGone: "Its picture is no longer in the Moodboard.", .generationCanvas: "Canvas %d × %d",
+    .nothingToWrite: "Nothing to write yet.", .writtenCount: "%d text(s) written.",
+    .failedParts: "Not rewritten (the original stays): %@.", .tagsChanged: "the LLM changed the placeholders",
+    .changedMeanwhile: "Changed while writing, so kept as it is: %@.",
   ]
   private static let it: [Key: String] = [
     .title: "Flux3 Editing",
@@ -80,5 +84,8 @@ enum L {
     .warningIDNotInProse: "%@ non è citato nel testo come <%@>.", .warningUnknownReference: "Il testo cita <ref_image_%d>, che non è nel Moodboard.",
     .warningTooManyImages: "FLUX.3 legge al massimo dieci immagini: quella di partenza e nove del Moodboard.",
     .imageGone: "La sua immagine non è più nel Moodboard.", .generationCanvas: "Canvas %d × %d",
+    .nothingToWrite: "Non c'è ancora niente da scrivere.", .writtenCount: "%d testo/i scritto/i.",
+    .failedParts: "Non riscritti (resta l'originale): %@.", .tagsChanged: "l'LLM ha cambiato i segnaposto",
+    .changedMeanwhile: "Cambiati mentre scrivevo, restano come sono: %@.",
   ]
 }
