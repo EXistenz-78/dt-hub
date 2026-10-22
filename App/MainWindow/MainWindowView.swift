@@ -17,7 +17,9 @@ struct MainWindowView: View {
     let moodboard = generation.control.inputs.moodboard.filter(\.isOn).map { $0.id.uuidString }.joined(separator: ",")
     return PluginContextKey(
       model: model?.file, family: model?.family, isEditModel: model?.capabilities.isEditModel, startImageID: generation.control.inputs.image?.id.uuidString,
-      moodboardIDs: moodboard, width: generation.parameters.width, height: generation.parameters.height)
+      moodboardIDs: moodboard, width: generation.parameters.width, height: generation.parameters.height,
+      framingZoom: generation.control.inputs.framing.zoom, framingOffsetX: generation.control.inputs.framing.offsetX,
+      framingOffsetY: generation.control.inputs.framing.offsetY)
   }
 
   var body: some View {

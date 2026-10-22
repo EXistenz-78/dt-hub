@@ -11,11 +11,19 @@ public struct PluginContextKey: Equatable, Sendable {
   public var moodboardIDs: String
   public var width: Int
   public var height: Int
+  /// The framing of the start image in the canvas (zoom and offsets): moving it changes where the image sits, which a
+  /// plug-in that draws on the canvas has to hear about.
+  public var framingZoom: Double
+  public var framingOffsetX: Double
+  public var framingOffsetY: Double
 
   public init(
     model: String?, family: String?, isEditModel: Bool? = nil, startImageID: String?, moodboardIDs: String, width: Int,
-    height: Int
+    height: Int, framingZoom: Double = 0, framingOffsetX: Double = 0, framingOffsetY: Double = 0
   ) {
+    self.framingZoom = framingZoom
+    self.framingOffsetX = framingOffsetX
+    self.framingOffsetY = framingOffsetY
     self.model = model
     self.family = family
     self.isEditModel = isEditModel

@@ -169,13 +169,17 @@ public struct PluginContext: Codable, Equatable, Sendable {
   /// The LoRAs of the server, with the user's trigger words and weights. Always sent by the app, even empty (no LoRA,
   /// no server): a plug-in that does not find the key is talking to an older app.
   public var loraCatalog: [PluginCatalogLoRA]?
+  /// Where the start image sits in the canvas of the Generation (the framing of the Control tab). Absent without a start
+  /// image or from an older app.
+  public var startImageWindow: PluginImageWindow?
 
   public init(
     model: String?, family: String?, parameters: GenerationParameters, tempFolder: String, startImage: String? = nil,
     moodboard: [String]? = nil, languageModels: [PluginLanguageModel]? = nil, prompt: String? = nil,
     negativePrompt: String? = nil, strength: Double? = nil, promptGuide: PluginPromptGuide? = nil,
-    loraCatalog: [PluginCatalogLoRA]? = nil
+    loraCatalog: [PluginCatalogLoRA]? = nil, startImageWindow: PluginImageWindow? = nil
   ) {
+    self.startImageWindow = startImageWindow
     self.loraCatalog = loraCatalog
     self.promptGuide = promptGuide
     self.prompt = prompt
