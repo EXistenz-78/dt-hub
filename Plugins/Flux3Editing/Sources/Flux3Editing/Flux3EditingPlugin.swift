@@ -11,20 +11,40 @@ final class Flux3EditingPlugin: DTHubPlugin {
   let manifest = DTHubManifest(
     id: "com.exiztenz.dthub.flux3editing", name: "Flux3 Editing", version: "1.0", symbol: "rectangle.on.rectangle",
     families: Flux3EditingPlugin.families)
+  private let state = EditState()
   private var host: DTHubHost?
 
   func makeViewController() -> NSViewController {
-    NSHostingController(rootView: Text(L.text(.title)).padding())
+    NSHostingController(
+      rootView: EditView(state: state, send: { [weak self] in self?.send() }, write: { [weak self] in self?.write() }))
   }
 
   func start(host: DTHubHost) { self.host = host }
 
   func handle(_ message: Data) async -> Data? {
     switch DTHubMessage.type(of: message) {
-    case "context", "project", "activate", "deactivate": return nil
-    default: return DTHubMessage.bare("unsupported")
+    case "context":
+      if let context = try? JSONDecoder().decode(DTHubContext.self, from: message) { state.update(context: context) }
+      return nil
+    case "project":
+      // La sessione del tab appartiene al progetto aperto.
+      if let project = try? JSONDecoder().decode(DTHubProject.self, from: message) {
+        state.switchProject(folder: URL(fileURLWithPath: project.folder, isDirectory: true), adoptLegacy: project.adoptLegacy)
+      }
+      return nil
+    case "activate":
+      state.active = true
+      return nil
+    case "deactivate":
+      state.active = false
+      return nil
+    default:
+      return DTHubMessage.bare("unsupported")
     }
   }
+
+  private func write() {}  // T9
+  private func send() {}  // T9
 }
 
 @objc(Flux3EditingEntry)
