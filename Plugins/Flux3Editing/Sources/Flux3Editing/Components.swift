@@ -84,7 +84,7 @@ private struct ProseTextView: NSViewRepresentable {
     context.coordinator.highlight()
   }
 
-  final class Coordinator: NSObject, NSTextViewDelegate {
+  @MainActor final class Coordinator: NSObject, NSTextViewDelegate {
     static var font: NSFont { NSFont.preferredFont(forTextStyle: .body) }
     var parent: ProseTextView
     weak var view: NSTextView?
