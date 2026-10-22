@@ -102,6 +102,21 @@ final class EditState: ObservableObject {
 
   func select(_ id: String?) { selected = id }
 
+  /// Il nome di un elemento cambia (la selezione lo segue).
+  func rename(_ id: String, to newID: String) {
+    guard newID != id else { return }
+    update(element: id) { $0.id = newID }
+    if selected == id { selected = newID }
+  }
+
+  /// «Scrivi con LLM» ha qualcosa da scrivere: un testo o la descrizione di un riquadro.
+  var hasWritableContent: Bool {
+    !document.prose.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+      || document.elements.contains { !$0.desc.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+  }
+
+  var canWrite: Bool { active && !isWriting && !isSending && hasWritableContent }
+
   func update(element id: String, _ change: (inout EditElement) -> Void) {
     guard let index = document.elements.firstIndex(where: { $0.id == id }) else { return }
     change(&document.elements[index])
@@ -112,6 +127,30 @@ final class EditState: ObservableObject {
   var problems: [EditProblem] { EditComposer.problems(document, refs: refs, hasStartImage: startImage != nil) }
   var warnings: [EditWarning] { EditComposer.warnings(document, refs: refs) }
   var sendText: String { EditComposer.text(document, refs: refs) }
+
+  /// I problemi e gli avvisi a parole, per le righe sotto i pulsanti.
+  var problemLines: [String] {
+    problems.map { problem in
+      switch problem {
+      case .noStartImage: return L.text(.problemNoStart, italian: italian)
+      case .noElements: return L.text(.problemNoElements, italian: italian)
+      case .emptyID: return L.text(.problemEmptyID, italian: italian)
+      case .emptyDescription(let id): return L.format(.problemEmptyDescription, id, italian: italian)
+      case .repeatedID(let id): return L.format(.problemRepeatedID, id, italian: italian)
+      case .imageMissing(let id): return L.format(.problemImageMissing, id, italian: italian)
+      }
+    }
+  }
+
+  var warningLines: [String] {
+    warnings.map { warning in
+      switch warning {
+      case .idNotInProse(let id): return L.format(.warningIDNotInProse, id, id, italian: italian)
+      case .unknownReferenceInProse(let n): return L.format(.warningUnknownReference, n, italian: italian)
+      case .tooManyImages: return L.text(.warningTooManyImages, italian: italian)
+      }
+    }
+  }
   var canSend: Bool { active && !isSending && !isWriting && problems.isEmpty }
 
   var canUndo: Bool { document.snapshot != nil && !isWriting }
