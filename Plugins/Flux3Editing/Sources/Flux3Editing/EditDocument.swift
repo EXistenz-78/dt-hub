@@ -7,6 +7,31 @@ struct EditSnapshot: Codable, Equatable, Sendable {
   var descriptions: [String: String]
 }
 
+extension EditSnapshot {
+  /// I testi di adesso (prima che una scrittura li sostituisca).
+  static func take(from document: EditDocument) -> EditSnapshot {
+    EditSnapshot(
+      prose: document.prose,
+      descriptions: Dictionary(document.elements.map { ($0.id, $0.desc) }, uniquingKeysWith: { first, _ in first }))
+  }
+
+  /// Rimette i testi (la prosa e le descrizioni degli elementi che ci sono ancora) e spegne Annulla.
+  func restore(into document: inout EditDocument) {
+    document.prose = prose
+    for index in document.elements.indices {
+      if let text = descriptions[document.elements[index].id] { document.elements[index].desc = text }
+    }
+    document.snapshot = nil
+  }
+
+  /// I testi in Markdown, leggibili a mano (`llm/before.md`).
+  var markdown: String {
+    var text = "## prose\n\(prose)"
+    for id in descriptions.keys.sorted() { text += "\n\n## element: \(id)\n\(descriptions[id] ?? "")" }
+    return text + "\n"
+  }
+}
+
 /// Quello che l'utente ha scritto e disegnato (spec §5, §8).
 struct EditDocument: Codable, Equatable, Sendable {
   var prose = ""
