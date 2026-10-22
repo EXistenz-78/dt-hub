@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flux3 Editing mockup</title>
+<style>
+  :root {
+    --bg: #1b1c1f; --card: #2c3a3c; --head: #243032; --box: #1f2a2c; --line: #3d5155; --text: #f2f2f7; --secondary: #9fb0b3;
+    --accent: #3ec8c8; --accent-text: #0b1d1d; --warn: #f09837;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 18px; background: var(--bg); color: var(--text);
+    font: 13px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; }
+  .tab { max-width: 1180px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  .wide { grid-column: 1 / -1; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; min-width: 0; }
+  .card > h2 { margin: 0; padding: 10px 14px; background: var(--head); font-size: 14px; font-weight: 600; text-align: center; }
+  .body { padding: 14px; }
+  .note { font-size: 11px; color: var(--secondary); margin: 8px 0 0; }
+  button, .pill { font: inherit; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: #1a2224; color: var(--text); cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button.primary, .pill.on { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+  .row { display: flex; align-items: center; gap: 8px; }
+  .spacer { flex: 1; }
+  .mono { font-family: ui-monospace, Menlo, monospace; }
+  .sec { color: var(--secondary); }
+
+  /* canvas with a picture behind */
+  .stagewrap { display: flex; align-items: center; gap: 8px; }
+  .nav { width: 28px; height: 28px; padding: 0; border-radius: 50%; font-size: 16px; line-height: 1; flex: none; }
+  .nav:disabled { opacity: .3; cursor: default; }
+  .stage { flex: 1; display: flex; justify-content: center; align-items: center; height: 300px; background: #162022; border-radius: 10px; border: 1px solid var(--line); }
+  .canvas { position: relative; max-width: 100%; max-height: 100%; border: 1px solid var(--line); cursor: crosshair; user-select: none; overflow: hidden; }
+  .canvas .lbl { position: absolute; left: 6px; bottom: 5px; font: 600 11px ui-monospace, Menlo, monospace; background: rgba(0,0,0,.55); padding: 1px 7px; border-radius: 5px; pointer-events: none; }
+  .badge { position: absolute; right: 6px; bottom: 5px; min-width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; font: 700 12px ui-rounded, sans-serif; display: grid; place-items: center; border: 1px solid rgba(0,0,0,.35); pointer-events: none; }
+  .bb { position: absolute; border: 2px solid; border-radius: 3px; cursor: move; }
+  .bb.src { border-style: dashed; }
+  .bb b { position: absolute; top: -1px; left: -1px; transform: translateY(-100%); font: 600 10px ui-monospace, Menlo, monospace; padding: 1px 6px; border-radius: 4px 4px 0 0; color: #10191a; white-space: nowrap; }
+  .bb.sel { box-shadow: 0 0 0 2px #fff; }
+  .bb.sel::after { content: ""; position: absolute; right: -6px; bottom: -6px; width: 10px; height: 10px; background: #fff; border-radius: 2px; cursor: nwse-resize; }
+  .bb .x { position: absolute; inset: 0; background:
+      linear-gradient(to top right, transparent calc(50% - 1px), currentColor 50%, transparent calc(50% + 1px)),
+      linear-gradient(to top left, transparent calc(50% - 1px), currentColor 50%, transparent calc(50% + 1px)); opacity: .8; pointer-events: none; }
+  .legend { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; font-size: 11px; color: var(--secondary); }
+  .legend i { display: inline-block; width: 18px; height: 0; border-top: 2px solid var(--secondary); vertical-align: middle; margin-right: 4px; }
+  .legend i.d { border-top-style: dashed; }
+
+  /* mini cards */
+  .els { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 10px; }
+  .el { border: 1px solid var(--line); border-radius: 14px; padding: 10px; background: var(--box); }
+  .el.sel { border: 2px solid var(--accent); padding: 9px; }
+  .el .head { display: flex; align-items: center; gap: 8px; }
+  .el .id { font: 600 12px ui-monospace, Menlo, monospace; padding: 1px 8px; border-radius: 6px; color: #10191a; border: 0; width: 110px; }
+  .el select { font: inherit; background: #1a2224; color: var(--text); border: 1px solid var(--line); border-radius: 999px; padding: 3px 8px; }
+  .el .from { font: 11px ui-monospace, Menlo, monospace; color: var(--secondary); flex: 1; text-align: right; white-space: nowrap; }
+  .el .co { margin-top: 6px; font: 11px ui-monospace, Menlo, monospace; color: var(--secondary); }
+  .el textarea { width: 100%; height: 52px; margin-top: 6px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 10px; background: #172023; color: var(--text); font: inherit; resize: none; }
+  .del { color: var(--secondary); background: none; border: 0; padding: 0 4px; font-size: 15px; }
+  textarea.main { width: 100%; height: 64px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--box); color: var(--text); font: inherit; resize: none; margin-bottom: 12px; }
+  pre { margin: 10px 0 0; padding: 10px; background: #162022; border: 1px solid var(--line); border-radius: 10px; font: 11px/1.45 ui-monospace, Menlo, monospace; color: #cfe3e3; max-height: 240px; overflow: auto; white-space: pre-wrap; }
+  .empty { color: var(--secondary); padding: 18px; text-align: center; border: 1px dashed var(--line); border-radius: 12px; }
+</style>
+</head>
+<body>
+<div class="tab">
+
+  <div class="card">
+    <h2>Moodboard</h2>
+    <div class="body">
+      <div class="stagewrap">
+        <button class="nav" id="prev" title="Immagine precedente">‹</button>
+        <div class="stage"><div class="canvas" id="refCanvas"></div></div>
+        <button class="nav" id="next" title="Immagine successiva">›</button>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <span id="refInfo" class="mono sec"></span><span class="spacer"></span>
+        <span class="sec">Disegna un riquadro su ciò che vuoi prendere.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Immagine di partenza</h2>
+    <div class="body">
+      <div class="stagewrap">
+        <div class="stage"><div class="canvas" id="mainCanvas"></div></div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <span class="mono sec">ref_image_0</span><span class="spacer"></span>
+        <span class="sec">Disegna qui un elemento nuovo, da spostare o da togliere.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card wide">
+    <h2>Prompt</h2>
+    <div class="body">
+      <textarea class="main" id="prose">Modify <ref_image_0> by adding the objects from the reference images where shown. Preserve the lighting and perspective of <ref_image_0>. Keep everything else unchanged.</textarea>
+      <div class="els" id="els"></div>
+      <div class="row" style="margin-top:12px">
+        <button class="primary">Scrivi con LLM</button><button>Annulla</button><span class="spacer"></span><button class="primary">Invia</button>
+      </div>
+      <pre id="json"></pre>
+      <div class="legend">
+        <span><i></i>riquadro di destinazione (<b class="mono">tgt_bbox</b>)</span>
+        <span><i class="d"></i>riquadro di origine (<b class="mono">src_bbox</b>)</span>
+        <span>stesso colore = stessa coppia</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const COLORS = ['#3ec8c8','#f0b43c','#c77dff','#6fcf7f','#ff7a7a','#66a6ff','#ff9ecd','#bccd5c'];
+// images: aspect ratio, a gradient, an "object" to find (placeholder for the user's pictures)
+const IMAGES = [
+  { name: 'partenza.png', ratio: 4/3,  bg: 'linear-gradient(160deg,#3b5a63,#1d2f38 60%,#4a3a2e)', obj: [0.12,0.52,0.30,0.88, '#c9a36b', 'divano'] },
+  { name: 'sedia.png',    ratio: 3/4,  bg: 'linear-gradient(180deg,#59606b,#2c3037)',            obj: [0.20,0.30,0.80,0.82, '#c0533b', 'sedia'] },
+  { name: 'lampada.png',  ratio: 1,    bg: 'linear-gradient(200deg,#6d5a3d,#2d2418)',            obj: [0.25,0.18,0.82,0.62, '#e8d9a8', 'lampada'] },
+  { name: 'gatto.png',    ratio: 3/2,  bg: 'linear-gradient(140deg,#4a5d3a,#232d1b)',            obj: [0.42,0.22,0.88,0.70, '#d08a4a', 'gatto'] },
+];
+// ref_image_0 = start image; references follow (badge 2, 3, …) — rule A of the brief
+let boxes = [];   // {id,color,kind:'ref'|'new'|'keep'|'move'|'remove', ref, src:{x0,y0,x1,y1}, tgt:{…}|null, desc}
+let cur = 1, sel = null, counter = 1;
+const $ = s => document.querySelector(s);
+const refCanvas = $('#refCanvas'), mainCanvas = $('#mainCanvas');
+
+function size(canvas, ratio) {
+  const stage = canvas.parentElement; const W = stage.clientWidth - 2, H = stage.clientHeight - 2;
+  let w = W, h = W / ratio; if (h > H) { h = H; w = H * ratio; }
+  canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
+}
+function paintBg(canvas, img, badge, label) {
+  canvas.style.background = img.bg;
+  canvas.innerHTML = '';
+  const o = img.obj, d = document.createElement('div');
+  d.style.cssText = `position:absolute;left:${o[1]*100}%;top:${o[0]*100}%;width:${(o[3]-o[1])*100}%;height:${(o[2]-o[0])*100}%;background:${o[4]};border-radius:14%;opacity:.85;display:grid;place-items:center;color:#0006;font:700 12px sans-serif;pointer-events:none`;
+  d.textContent = o[5]; canvas.appendChild(d);
+  const l = document.createElement('div'); l.className = 'lbl'; l.textContent = label; canvas.appendChild(l);
+  const b = document.createElement('div'); b.className = 'badge'; b.textContent = badge; canvas.appendChild(b);
+}
+const pct = v => (v * 100) + '%';
+function boxEl(canvas, bx, rect, cls, tag) {
+  const e = document.createElement('div');
+  e.className = 'bb ' + cls + (sel === bx.id ? ' sel' : '');
+  e.style.cssText = `left:${pct(rect.x0)};top:${pct(rect.y0)};width:${pct(rect.x1-rect.x0)};height:${pct(rect.y1-rect.y0)};border-color:${bx.color};color:${bx.color}`;
+  e.innerHTML = `<b style="background:${bx.color}">${tag}</b>` + (bx.kind === 'remove' && cls === 'src' ? '<span class="x"></span>' : '');
+  e.dataset.id = bx.id; e.dataset.which = cls;
+  canvas.appendChild(e); return e;
+}
+function render() {
+  const ref = IMAGES[cur], main = IMAGES[0];
+  size(refCanvas, ref.ratio); size(mainCanvas, main.ratio);
+  paintBg(refCanvas, ref, cur + 1, 'ref_image_' + cur);
+  paintBg(mainCanvas, main, 1, 'ref_image_0');
+  for (const bx of boxes) {
+    if (bx.kind === 'ref' && bx.ref === cur) boxEl(refCanvas, bx, bx.src, 'src', bx.id);
+    if (bx.kind === 'ref') boxEl(mainCanvas, bx, bx.tgt, 'tgt', bx.id);
+    if (bx.kind === 'new') boxEl(mainCanvas, bx, bx.tgt, 'tgt', bx.id);
+    if (bx.kind === 'keep') boxEl(mainCanvas, bx, bx.src, 'tgt', bx.id + ' · esistente');
+    if (bx.kind === 'move') { boxEl(mainCanvas, bx, bx.src, 'src', bx.id + ' da'); boxEl(mainCanvas, bx, bx.tgt, 'tgt', bx.id + ' a'); }
+    if (bx.kind === 'remove') boxEl(mainCanvas, bx, bx.src, 'src', bx.id + ' · via');
+  }
+  $('#prev').disabled = cur <= 1; $('#next').disabled = cur >= IMAGES.length - 1;
+  $('#refInfo').textContent = `${ref.name} · ref_image_${cur} · ${cur} di ${IMAGES.length - 1}`;
+  renderCards(); renderJson();
+}
+const grid = r => r && [r.y0, r.x0, r.y1, r.x1].map(v => Math.round(v * 1000));
+const fmt = r => r ? '[' + grid(r).join(', ') + ']' : 'null';
+function renderCards() {
+  const host = $('#els');
+  if (!boxes.length) { host.innerHTML = '<div class="empty" style="grid-column:1/-1">Nessun riquadro. Disegnane uno sul Moodboard (per prendere un oggetto) o sull’immagine di partenza.</div>'; return; }
+  host.innerHTML = '';
+  for (const bx of boxes) {
+    const e = document.createElement('div'); e.className = 'el' + (sel === bx.id ? ' sel' : ''); e.dataset.id = bx.id;
+    const from = bx.kind === 'ref' ? 'ref_image_' + bx.ref : bx.kind === 'new' ? 'null' : 'ref_image_0';
+    const src = bx.kind === 'keep' ? bx.src : bx.src, tgt = bx.kind === 'keep' ? bx.src : bx.kind === 'remove' ? null : bx.tgt;
+    const kinds = bx.kind === 'ref' ? '<option value="ref" selected>Da riferimento</option>'
+      : ['new:Nuovo', 'keep:Esistente', 'move:Sposta', 'remove:Togli'].map(k => { const [v, t] = k.split(':'); return `<option value="${v}"${v === bx.kind ? ' selected' : ''}>${t}</option>`; }).join('');
+    e.innerHTML = `<div class="head"><input class="id" value="${bx.id}" style="background:${bx.color}" data-f="id"><select data-f="kind">${kinds}</select><span class="from">from: ${from}</span><button class="del" title="Elimina">✕</button></div>
+      <div class="co">src_bbox ${fmt(bx.kind === 'new' ? null : src)}<br>tgt_bbox ${fmt(tgt)}</div>
+      <textarea data-f="desc" placeholder="Descrivi l’elemento…">${bx.desc}</textarea>`;
+    host.appendChild(e);
+  }
+}
+function renderJson() {
+  const list = boxes.map(bx => ({
+    id: bx.id,
+    from: bx.kind === 'ref' ? 'ref_image_' + bx.ref : bx.kind === 'new' ? null : 'ref_image_0',
+    src_bbox: bx.kind === 'new' ? null : grid(bx.src),
+    tgt_bbox: bx.kind === 'remove' ? null : bx.kind === 'keep' ? grid(bx.src) : grid(bx.tgt),
+    desc: bx.desc || '…'
+  }));
+  $('#json').textContent = $('#prose').value + '\n\n' + JSON.stringify(list, null, 2);
+}
+const clamp = v => Math.max(0, Math.min(1, v));
+function pos(ev, canvas) { const r = canvas.getBoundingClientRect(); return { x: clamp((ev.clientX - r.left) / r.width), y: clamp((ev.clientY - r.top) / r.height) }; }
+function norm(a, b) { return { x0: Math.min(a.x, b.x), y0: Math.min(a.y, b.y), x1: Math.max(a.x, b.x), y1: Math.max(a.y, b.y) }; }
+const nextId = () => ({ id: 'el_' + counter++, color: COLORS[(counter - 2) % COLORS.length] });
+
+function attach(canvas, isMain) {
+  canvas.addEventListener('pointerdown', ev => {
+    const hit = ev.target.closest('.bb');
+    const p0 = pos(ev, canvas);
+    if (hit) {                       // move / resize an existing box
+      const bx = boxes.find(b => b.id === hit.dataset.id), which = hit.dataset.which;
+      const rect = (which === 'src' && !(bx.kind === 'ref' && isMain)) ? bx.src : (bx.kind === 'keep' ? bx.src : bx.tgt);
+      const r = hit.getBoundingClientRect(), resize = (ev.clientX > r.right - 12 && ev.clientY > r.bottom - 12);
+      sel = bx.id; const start = { ...rect };
+      const move = e => { const p = pos(e, canvas), dx = p.x - p0.x, dy = p.y - p0.y;
+        if (resize) { rect.x1 = clamp(Math.max(start.x0 + .02, start.x1 + dx)); rect.y1 = clamp(Math.max(start.y0 + .02, start.y1 + dy)); }
+        else { const w = start.x1 - start.x0, h = start.y1 - start.y0; rect.x0 = clamp(Math.min(1 - w, start.x0 + dx)); rect.y0 = clamp(Math.min(1 - h, start.y0 + dy)); rect.x1 = rect.x0 + w; rect.y1 = rect.y0 + h; }
+        render(); };
+      const up = () => { removeEventListener('pointermove', move); removeEventListener('pointerup', up); };
+      addEventListener('pointermove', move); addEventListener('pointerup', up); render(); return;
+    }
+    const draft = document.createElement('div'); draft.className = 'bb'; draft.style.borderColor = '#fff'; canvas.appendChild(draft);
+    const move = e => { const r = norm(p0, pos(e, canvas)); draft.style.cssText = `left:${pct(r.x0)};top:${pct(r.y0)};width:${pct(r.x1-r.x0)};height:${pct(r.y1-r.y0)};border-color:#fff`; };
+    const up = e => { removeEventListener('pointermove', move); removeEventListener('pointerup', up);
+      const r = norm(p0, pos(e, canvas)); if (r.x1 - r.x0 < .03 || r.y1 - r.y0 < .03) { render(); return; }
+      const base = nextId();
+      if (isMain) boxes.push({ ...base, kind: 'new', src: null, tgt: r, desc: '' });
+      else {                          // a box on a reference makes its pair on the start image
+        const w = Math.min(.3, r.x1 - r.x0), h = Math.min(.3, r.y1 - r.y0);
+        boxes.push({ ...base, kind: 'ref', ref: cur, src: r, tgt: { x0: .35, y0: .35, x1: .35 + w, y1: .35 + h }, desc: '' });
+      }
+      sel = base.id; render(); };
+    addEventListener('pointermove', move); addEventListener('pointerup', up);
+  });
+}
+attach(refCanvas, false); attach(mainCanvas, true);
+$('#prev').onclick = () => { cur--; render(); }; $('#next').onclick = () => { cur++; render(); };
+$('#prose').oninput = renderJson;
+$('#els').addEventListener('click', e => { const el = e.target.closest('.el'); if (!el) return;
+  // a click on a menu or a field must not redraw the cards (it would close the open menu)
+  if (e.target.closest('select, input, textarea')) { sel = el.dataset.id; return; }
+  if (e.target.classList.contains('del')) boxes = boxes.filter(b => b.id !== el.dataset.id); else sel = el.dataset.id; render(); });
+$('#els').addEventListener('change', e => { const bx = boxes.find(b => b.id === e.target.closest('.el').dataset.id), f = e.target.dataset.f;
+  if (f === 'id') bx.id = e.target.value.trim() || bx.id; else if (f === 'desc') bx.desc = e.target.value;
+  else if (f === 'kind') { const k = e.target.value, rect = bx.tgt || bx.src;
+    if (k === 'move') { bx.src = { ...rect }; bx.tgt = { x0: Math.min(.7, rect.x0 + .25), y0: rect.y0, x1: Math.min(.7, rect.x0 + .25) + (rect.x1 - rect.x0), y1: rect.y1 }; }
+    else if (k === 'new') { bx.tgt = { ...rect }; bx.src = null; } else bx.src = { ...rect };
+    bx.kind = k; }
+  render(); });
+$('#els').addEventListener('input', e => { if (e.target.dataset.f === 'desc') { boxes.find(b => b.id === e.target.closest('.el').dataset.id).desc = e.target.value; renderJson(); } });
+addEventListener('resize', render);
+// a starting example: take the lamp from reference 2 and put it on the sofa
+boxes.push({ id: 'lampada_1', color: COLORS[0], kind: 'ref', ref: 2, src: { x0: .18, y0: .25, x1: .62, y1: .82 }, tgt: { x0: .55, y0: .30, x1: .72, y1: .55 }, desc: 'The table lamp from the reference image, on the sofa.' });
+counter = 2; sel = 'lampada_1';
+cur = 2; render();
+</script>
+</body>
+</html>
