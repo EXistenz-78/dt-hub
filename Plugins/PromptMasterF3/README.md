@@ -1,6 +1,6 @@
 # Prompt Master F3
 
-> **Works with:** FLUX.3 Klein (structured prompts with boxes). **For now it is switched on for the FLUX.2 [klein] families** (`flux2_9b`, `flux2_4b`) so it can be tried in the app up to the generated prompt; the Run only makes sense on FLUX.3 Klein, which Draw Things does not offer yet.
+> **Works with:** FLUX.3 [klein] 5.6B (structured prompts with boxes), in all its variants (`flux3_5b`: Base, 8-bit, 4-bit, Exact).
 > On any other family the plug-in is switched off and its tab is hidden.
 
 A DT Hub plug-in that builds the **structured prompt of FLUX.3**: a description of the scene, a composition sentence that names the elements with `<id>` placeholders, and a JSON array that says where each element goes (`bbox`, `[top, left, bottom, right]` on a 0–1000 grid) and what it is (`desc`). The result goes to the Prompt field of the Generation tab.
