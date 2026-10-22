@@ -30,6 +30,8 @@ final class EditState: ObservableObject {
   /// La cartella del progetto aperto (dove stanno `state.json` e `llm/`); nil finché l'app non ha detto il progetto.
   private(set) var projectFolder: URL?
   private var isRestoring = false
+  /// La cartella per scambiare file con l'app (i ritagli per l'LLM): quella del contesto.
+  private(set) var tempFolder: URL?
 
   init(
     store: EditStore = EditStore(), italian: Bool = L.systemIsItalian,
@@ -52,8 +54,28 @@ final class EditState: ObservableObject {
       generationSize = CGSize(width: width, height: height)
     }
     window = context.startImageWindow
+    tempFolder = URL(fileURLWithPath: context.tempFolder, isDirectory: true)
     clampReference()
     if let id = selected, document.element(id) == nil { selected = nil }
+  }
+
+  /// Il colore di ogni id nel testo (lo stesso del riquadro e della scheda).
+  var tagColors: [String: Int] { Dictionary(document.elements.map { ($0.id, $0.colorIndex) }, uniquingKeysWith: { first, _ in first }) }
+
+  /// C'è almeno un riquadro disegnato sul Moodboard: solo allora i ritagli hanno senso.
+  var hasCrops: Bool { document.elements.contains { $0.kind == .fromReference } }
+
+  /// I ritagli da mandare all'LLM (solo se la casella è accesa): per ogni coppia «da riferimento» la parte dell'immagine che
+  /// il riquadro indica, scritta nella cartella temporanea.
+  func llmAttachments() -> [EditAttachment] {
+    guard document.sendsImages, let tempFolder else { return [] }
+    return document.elements.compactMap { element in
+      guard element.kind == .fromReference, let file = element.refFile, let box = element.src,
+        let ref = refs.first(where: { $0.fileName == file }),
+        let path = EditCrops.crop(path: ref.path, box: box, to: tempFolder, name: element.id)
+      else { return nil }
+      return EditAttachment(elementID: element.id, path: path)
+    }
   }
 
   /// Un'app che non manda `startImageWindow`: si dice, non si nasconde (spec §4).

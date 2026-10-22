@@ -22,13 +22,17 @@ struct WriterTests {
 
   private func writer(_ answers: [DTHubLLMAnswer], log: Log = Log()) -> EditWriter {
     var queue = answers
-    return EditWriter(ask: { request, _, _ in
+    return EditWriter(ask: { request, _, _, images in
       log.requests.append(request)
+      log.images.append(images)
       return queue.isEmpty ? .failure("No answer.") : queue.removeFirst()
     }, italian: false)
   }
 
-  final class Log { var requests: [String] = [] }
+  final class Log {
+    var requests: [String] = []
+    var images: [[String]] = []
+  }
 
   @Test func theRequestIsMarkdownWithOneBlockPerPart() async {
     let log = Log()
@@ -54,10 +58,43 @@ struct WriterTests {
     let request = log.requests[0]
     let context = String(request[..<request.range(of: "## prose")!.lowerBound])
     #expect(context.contains("lamp_1: an object taken from <ref_image_1>"))
-    #expect(context.contains("el_1: a new object, generated from its description"))
+    #expect(context.contains("el_1: a new object to describe in rich visual detail"))
     #expect(context.contains("el_2: already in <ref_image_0>; kept in place, or changed as its description says"))
     #expect(context.contains("el_3: already in <ref_image_0>; moved to another place"))
     #expect(context.contains("el_4: already in <ref_image_0>; removed"))
+  }
+
+  @Test func theCropsAreAttachedAndNamedBeforeTheBlocks() async {
+    let log = Log()
+    let attachments = [EditAttachment(elementID: "lamp_1", path: "/t/lamp_1.png")]
+    _ = await writer([.text("## prose\nModify <ref_image_0>.")], log: log)
+      .write(document: document(), refs: [], allowedTags: allowed, attachments: attachments, system: "S", options: options)
+    #expect(log.images[0] == ["/t/lamp_1.png"])
+    #expect(log.requests[0].contains("picture 1: lamp_1"))
+  }
+
+  @Test func aModelThatCannotTakePicturesIsAskedAgainWithoutThem() async {
+    let log = Log()
+    let attachments = [EditAttachment(elementID: "lamp_1", path: "/t/lamp_1.png")]
+    let result = await writer(
+      [
+        .failure("This model cannot read images."),
+        .text("## prose\nModify <ref_image_0> by adding <lamp_1> from <ref_image_1>.\n\n## element: lamp_1\nA brass table lamp."),
+      ], log: log
+    ).write(document: document(), refs: [], allowedTags: allowed, attachments: attachments, system: "S", options: options)
+    #expect(log.images == [["/t/lamp_1.png"], []])
+    #expect(!log.requests[1].contains("picture 1"))
+    #expect(result.rewrites.count == 2 && result.status.contains(L.text(.imagesNotSent, italian: false)))
+  }
+
+  @Test func onlyTheCropsOfTheAskedPartsAreAttached() async {
+    let log = Log()
+    var doc = document()
+    doc.prose = ""
+    let attachments = [EditAttachment(elementID: "lamp_1", path: "/t/a.png"), EditAttachment(elementID: "gone_9", path: "/t/b.png")]
+    _ = await writer([.text("## element: lamp_1\nA lamp.")], log: log)
+      .write(document: doc, refs: [], allowedTags: allowed, attachments: attachments, system: "S", options: options)
+    #expect(log.images[0] == ["/t/a.png"])
   }
 
   @Test func theContextIsNeverTakenForAnAnswer() {

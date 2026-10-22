@@ -18,23 +18,41 @@ struct EditWriteResult: Sendable {
 /// «Scrivi con LLM» (spec §7): una richiesta con tutte le parti, il ripiego per le mancanti, il controllo dei segnaposto.
 @MainActor
 struct EditWriter {
-  var ask: (String, String, DTHubLLMOptions) async -> DTHubLLMAnswer
+  var ask: (String, String, DTHubLLMOptions, [String]) async -> DTHubLLMAnswer
   var italian: Bool = L.systemIsItalian
 
   static let reminder =
     "IMPORTANT: write the text in English (translate it if it is in another language). Copy every <placeholder> exactly as written, the same number of times, and every quoted phrase unchanged."
 
   /// `allowedTags`: i segnaposto che la prosa può citare (gli id degli elementi e `ref_image_N` delle immagini che ci sono).
-  func write(document: EditDocument, refs: [RefImage], allowedTags: Set<String>, system: String, options: DTHubLLMOptions) async -> EditWriteResult {
+  func write(
+    document: EditDocument, refs: [RefImage], allowedTags: Set<String>, attachments: [EditAttachment] = [], system: String,
+    options: DTHubLLMOptions
+  ) async -> EditWriteResult {
     let parts = EditBrief.parts(from: document)
     guard !parts.isEmpty else {
       return EditWriteResult(rewrites: [], status: L.text(.nothingToWrite, italian: italian), request: "", answer: "")
     }
-    let request = EditBrief.message(parts, context: EditBrief.context(for: parts, in: document, refs: refs))
+    // Only the crops of the elements being rewritten go along.
+    func crops(for parts: [EditPart]) -> [EditAttachment] {
+      let ids = Set(parts.compactMap { part -> String? in if case .element(let id) = part.kind { return id } else { return nil } })
+      return attachments.filter { ids.contains($0.elementID) }
+    }
+    var picturesDropped = false
+    var sent = crops(for: parts)
+    var request = EditBrief.message(parts, context: EditBrief.context(for: parts, in: document, refs: refs), attachments: sent)
     var failureText: String?
     var answer = ""
     var parsed: [EditPart.Kind: String] = [:]
-    switch await ask(request, system, options) {
+    var first = await ask(request, system, options, sent.map(\.path))
+    if case .failure = first, !sent.isEmpty {
+      // The model cannot take pictures (or failed with them): once more with the texts only.
+      picturesDropped = true
+      sent = []
+      request = EditBrief.message(parts, context: EditBrief.context(for: parts, in: document, refs: refs))
+      first = await ask(request, system, options, [])
+    }
+    switch first {
     case .text(let text):
       answer = text
       parsed = EditAnswerParser.parse(text, requested: parts.map(\.kind))
@@ -47,7 +65,10 @@ struct EditWriter {
       var candidate = parsed[part.kind]
       if candidate == nil || !acceptable(candidate!, for: part, allowed: allowedTags) {
         // Ripiego: la sola parte, con l'ordine ripetuto.
-        if case .text(let text) = await ask(EditBrief.message([part], context: EditBrief.context(for: [part], in: document, refs: refs), reminder: Self.reminder), system, options) {
+        let own = picturesDropped ? [] : crops(for: [part])
+        let message = EditBrief.message(
+          [part], context: EditBrief.context(for: [part], in: document, refs: refs), attachments: own, reminder: Self.reminder)
+        if case .text(let text) = await ask(message, system, options, own.map(\.path)) {
           answer += "\n\n" + text
           candidate = EditAnswerParser.parse(text, requested: [part.kind])[part.kind]
         } else {
@@ -63,6 +84,7 @@ struct EditWriter {
       }
     }
     var lines: [String] = []
+    if picturesDropped { lines.append(L.text(.imagesNotSent, italian: italian)) }
     if let failureText, rewrites.isEmpty { lines.append(failureText) }
     if !rewrites.isEmpty { lines.append(L.format(.writtenCount, rewrites.count, italian: italian)) }
     if !problems.isEmpty && !(failureText != nil && rewrites.isEmpty) {
