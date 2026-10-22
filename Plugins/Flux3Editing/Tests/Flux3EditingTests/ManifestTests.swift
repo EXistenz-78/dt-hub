@@ -11,6 +11,7 @@ struct ManifestTests {
     #expect(plugin.manifest.id == "com.exiztenz.dthub.flux3editing")
     #expect(plugin.manifest.name == "Flux3 Editing")
     #expect(plugin.manifest.version == "1.0")
-    #expect(!plugin.manifest.symbol.isEmpty)
+    // The same icon as Qwen 2.1 Inpainting: plug-ins that do the same for different models never show together.
+    #expect(plugin.manifest.symbol == "scribble.variable")
   }
 }

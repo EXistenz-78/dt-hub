@@ -9,7 +9,7 @@ final class Flux3EditingPlugin: DTHubPlugin {
   static let families = ["flux2_9b", "flux2_4b"]
 
   let manifest = DTHubManifest(
-    id: "com.exiztenz.dthub.flux3editing", name: "Flux3 Editing", version: "1.0", symbol: "rectangle.on.rectangle",
+    id: "com.exiztenz.dthub.flux3editing", name: "Flux3 Editing", version: "1.0", symbol: "scribble.variable",
     families: Flux3EditingPlugin.families)
   private let state = EditState()
   private var host: DTHubHost?
