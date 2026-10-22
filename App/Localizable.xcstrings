@@ -1327,6 +1327,23 @@
         }
       }
     },
+    "card.lora.replace": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Replace this LoRA with another"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sostituisci questo LoRA con un altro"
+          }
+        }
+      }
+    },
     "card.lora.remove": {
       "extractionState": "manual",
       "localizations": {

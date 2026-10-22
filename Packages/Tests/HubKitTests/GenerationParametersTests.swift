@@ -92,6 +92,30 @@ struct LoRASelectionTests {
     #expect(parameters.loras == [LoRASelection(file: "a")])
   }
 
+  @Test func replacingALoRAPutsTheNewOneInTheSamePlaceKeepingTheMode() {
+    var parameters = GenerationParameters(loras: [
+      LoRASelection(file: "a"), LoRASelection(file: "b", weight: 0.4, mode: .base, trigger: "old"), LoRASelection(file: "c"),
+    ])
+    parameters.replaceLoRA("b", with: "d", weight: 0.8, trigger: "new trigger")
+    #expect(parameters.loras.map(\.file) == ["a", "d", "c"])
+    #expect(parameters.loras[1] == LoRASelection(file: "d", weight: 0.8, mode: .base, trigger: "new trigger"))
+  }
+
+  @Test func replacingWithALoRAAlreadyChosenOrOneThatIsGoneChangesNothing() {
+    var parameters = GenerationParameters(loras: [LoRASelection(file: "a"), LoRASelection(file: "b")])
+    let before = parameters
+    parameters.replaceLoRA("a", with: "b", weight: 1, trigger: "")  // "b" is already there
+    parameters.replaceLoRA("zzz", with: "d", weight: 1, trigger: "")  // "zzz" was removed meanwhile
+    #expect(parameters == before)
+  }
+
+  @Test func replacingALoRAWithItselfChangesNothing() {
+    var parameters = GenerationParameters(loras: [LoRASelection(file: "a", weight: 0.3, trigger: "x")])
+    let before = parameters
+    parameters.replaceLoRA("a", with: "a", weight: 1, trigger: "")
+    #expect(parameters == before)
+  }
+
   @Test func thePromptIsTrimmedWhereItJoinsTheTriggers() {
     let job = GenerationJob(
       prompt: "\n  a fox  ", model: "m.ckpt", parameters: GenerationParameters(loras: [LoRASelection(file: "a", trigger: "cine1p")]))
