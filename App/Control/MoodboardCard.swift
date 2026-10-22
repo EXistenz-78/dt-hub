@@ -5,6 +5,28 @@ import SwiftUI
 /// The Moodboard (spec: tab Control §3): the pictures with a switch and a ✕ on each, and the drop
 /// rule: on a picture replaces it, anywhere else in the card adds. Every picture that is on
 /// counts the same (the shares of §4.1 come back when a model honours them).
+/// The number a picture has in the prompt (“image 2”), as Draw Things numbers them.
+struct ImageNumberBadge: View {
+  let number: Int
+  var body: some View {
+    Text(verbatim: "\(number)")
+      .font(.system(size: 12, weight: .bold, design: .rounded)).monospacedDigit()
+      .foregroundStyle(.white)
+      .frame(minWidth: 22, minHeight: 22)
+      .background(Circle().fill(DS.accent))
+      .overlay(Circle().strokeBorder(Color.black.opacity(0.35), lineWidth: 1))
+      .accessibilityLabel(String(format: String(localized: "control.number.label"), number))
+      .help(String(format: String(localized: "control.number.help"), number))
+  }
+}
+
+/// A picture dragged out of the Moodboard is its own file: when that file comes back onto the card it is a
+/// reordering, not an import (a Finder file or a picture from the gallery is a different file).
+private func moodboardEntry(in control: ControlStore, droppedURLs urls: [URL]) -> MoodboardEntry? {
+  guard urls.count == 1, let url = urls.first?.standardizedFileURL else { return nil }
+  return control.inputs.moodboard.first { control.copyURL(of: $0.image)?.standardizedFileURL == url }
+}
+
 struct MoodboardCard: View {
   let generation: GenerationController
   let connection: DrawThingsConnection
@@ -49,7 +71,8 @@ struct MoodboardCard: View {
           LazyVGrid(columns: [GridItem(.adaptive(minimum: 124), spacing: DS.rowGap, alignment: .top)], spacing: DS.rowGap) {
             ForEach(entries) { entry in
               MoodboardTile(
-                entry: entry, control: control, isContributed: contributions?.moodboardPlugins[entry.id] != nil, report: report)
+                entry: entry, number: usable ? control.moodboardNumbers[entry.id] : nil, control: control,
+                isContributed: contributions?.moodboardPlugins[entry.id] != nil, report: report)
             }
           }
           Text("control.moodboard.hint").font(.caption).foregroundStyle(.secondary)
@@ -60,6 +83,11 @@ struct MoodboardCard: View {
       .opacity(usable ? 1 : 0.5)
       .overlay(RoundedRectangle(cornerRadius: DS.boxRadius).strokeBorder(DS.accent, lineWidth: isTargeted ? 2 : 0))
       .dropDestination(for: URL.self) { urls, _ in
+        // A picture of the Moodboard dragged to an empty place of the card goes last.
+        if let moved = moodboardEntry(in: control, droppedURLs: urls) {
+          control.moveMoodboardImage(id: moved.id, before: nil)
+          return true
+        }
         Task { if let message = await ControlImport.takeMoodboard(urls: urls, into: control) { report(.error(message)) } }
         return true
       } isTargeted: { isTargeted = $0 }
@@ -87,6 +115,8 @@ struct MoodboardCard: View {
 /// replaces it.
 private struct MoodboardTile: View {
   let entry: MoodboardEntry
+  /// Its number in the prompt; nil when it is off or the model ignores the Moodboard.
+  let number: Int?
   let control: ControlStore
   /// A plug-in added this picture and it is still there: teal at 30%.
   let isContributed: Bool
@@ -94,6 +124,7 @@ private struct MoodboardTile: View {
   @Environment(PluginRegistry.self) private var plugins: PluginRegistry?
   @State private var thumbnail: CGImage?
   @State private var isTargeted = false
+  @State private var isReorderTarget = false
 
   var body: some View {
     VStack(spacing: 4) {
@@ -111,6 +142,9 @@ private struct MoodboardTile: View {
         .overlay(
           RoundedRectangle(cornerRadius: DS.boxRadius, style: .continuous)
             .strokeBorder(DS.accent, lineWidth: isTargeted ? 2 : 0))
+        .overlay(alignment: .leading) {
+          Rectangle().fill(DS.accent).frame(width: 3).opacity(isReorderTarget ? 1 : 0)
+        }
         VStack {
           HStack {
             overlayButton(
@@ -123,24 +157,36 @@ private struct MoodboardTile: View {
             }
           }
           Spacer()
+          if let number {
+            HStack { Spacer(); ImageNumberBadge(number: number) }
+          }
         }
         .padding(4)
       }
       .frame(width: 124, height: 124)
       .contributed(isContributed)
+      .modifier(MoodboardDragOut(url: control.copyURL(of: entry.image)))
       if case .plugin = entry.image.source {
         Text(verbatim: ControlText.source(entry.image.source, plugins: plugins))
           .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
       }
     }
     .dropDestination(for: URL.self) { urls, _ in
+      // A picture of the Moodboard dropped on this one goes before it.
+      if let moved = moodboardEntry(in: control, droppedURLs: urls) {
+        control.moveMoodboardImage(id: moved.id, before: entry.id)
+        return true
+      }
       Task {
         if let message = await ControlImport.replaceMoodboard(id: entry.id, urls: urls, into: control) {
           report(.error(message))
         }
       }
       return true
-    } isTargeted: { isTargeted = $0 }
+    } isTargeted: {
+      isTargeted = $0
+      isReorderTarget = $0
+    }
     .task(id: entry.id) {
       guard let request = control.previewRequest(ofMoodboard: entry.id, maxPixel: 280) else { return thumbnail = nil }
       thumbnail = await Task.detached { request.render() }.value
@@ -157,5 +203,13 @@ private struct MoodboardTile: View {
     .buttonStyle(.plain)
     .accessibilityLabel(label)
     .help(label)
+  }
+}
+
+private struct MoodboardDragOut: ViewModifier {
+  let url: URL?
+
+  func body(content: Content) -> some View {
+    if let url { content.draggable(url) } else { content }
   }
 }

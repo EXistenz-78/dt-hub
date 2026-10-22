@@ -42,6 +42,22 @@ public final class ControlStore {
 
   /// The files of the Moodboard pictures that are on, in the order of the thumbnails: the references a model can read.
   public var moodboardURLs: [URL] { inputs.moodboard.filter(\.isOn).map { storage.url(for: $0.image.fileName) } }
+  /// The number a model gives the start image in the prompt (“image 1”), as Draw Things numbers them
+  /// (`PromptBrief.imageLabels`): 1 when there is a start image.
+  public var startImageNumber: Int? { inputs.image == nil ? nil : 1 }
+
+  /// The number of every Moodboard picture that is on, as Draw Things numbers them: after the start image
+  /// (when there is one), in the order of the thumbnails. A picture that is off has no number.
+  public var moodboardNumbers: [UUID: Int] {
+    var next = inputs.image == nil ? 1 : 2
+    var numbers: [UUID: Int] = [:]
+    for entry in inputs.moodboard where entry.isOn {
+      numbers[entry.id] = next
+      next += 1
+    }
+    return numbers
+  }
+
   /// Changes with every step of the history, so `canUndo` and `canRedo` can be observed (the
   /// stacks themselves are not).
   private var historyVersion = 0

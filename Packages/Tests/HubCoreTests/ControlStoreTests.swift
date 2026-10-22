@@ -410,6 +410,24 @@ struct ControlStoreTests {
     #expect(store.inputs.moodboard[0].isOn == true)
   }
 
+  @Test func picturesAreNumberedTheWayDrawThingsNumbersThem() throws {
+    let store = store(in: folder())
+    try addPictures(store, 3)
+    let ids = store.inputs.moodboard.map(\.id)
+    // No start image: the first picture that is on is 1; a picture that is off has no number.
+    #expect(store.startImageNumber == nil)
+    #expect(store.moodboardNumbers == [ids[0]: 1, ids[1]: 2, ids[2]: 3])
+    store.setMoodboardOn(id: ids[1], isOn: false)
+    #expect(store.moodboardNumbers == [ids[0]: 1, ids[2]: 2])
+    // With a start image it is 1 and the Moodboard follows.
+    try store.setImage(data: pictureData(width: 30, height: 20), name: "s.png", source: .pasteboard)
+    #expect(store.startImageNumber == 1)
+    #expect(store.moodboardNumbers == [ids[0]: 2, ids[2]: 3])
+    // Reordering renumbers.
+    store.moveMoodboardImage(id: ids[2], before: ids[0])
+    #expect(store.moodboardNumbers == [ids[2]: 2, ids[0]: 3])
+  }
+
   @Test func undoKeepsTheOrderTheUserGave() throws {
     let store = store(in: folder())
     try addPictures(store, 3)
