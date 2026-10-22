@@ -25,12 +25,12 @@ struct EditWriter {
     "IMPORTANT: write the text in English (translate it if it is in another language). Copy every <placeholder> exactly as written, the same number of times, and every quoted phrase unchanged."
 
   /// `allowedTags`: i segnaposto che la prosa può citare (gli id degli elementi e `ref_image_N` delle immagini che ci sono).
-  func write(document: EditDocument, allowedTags: Set<String>, system: String, options: DTHubLLMOptions) async -> EditWriteResult {
+  func write(document: EditDocument, refs: [RefImage], allowedTags: Set<String>, system: String, options: DTHubLLMOptions) async -> EditWriteResult {
     let parts = EditBrief.parts(from: document)
     guard !parts.isEmpty else {
       return EditWriteResult(rewrites: [], status: L.text(.nothingToWrite, italian: italian), request: "", answer: "")
     }
-    let request = EditBrief.message(parts)
+    let request = EditBrief.message(parts, context: EditBrief.context(for: parts, in: document, refs: refs))
     var failureText: String?
     var answer = ""
     var parsed: [EditPart.Kind: String] = [:]
@@ -47,7 +47,7 @@ struct EditWriter {
       var candidate = parsed[part.kind]
       if candidate == nil || !acceptable(candidate!, for: part, allowed: allowedTags) {
         // Ripiego: la sola parte, con l'ordine ripetuto.
-        if case .text(let text) = await ask(EditBrief.message([part], reminder: Self.reminder), system, options) {
+        if case .text(let text) = await ask(EditBrief.message([part], context: EditBrief.context(for: [part], in: document, refs: refs), reminder: Self.reminder), system, options) {
           answer += "\n\n" + text
           candidate = EditAnswerParser.parse(text, requested: [part.kind])[part.kind]
         } else {

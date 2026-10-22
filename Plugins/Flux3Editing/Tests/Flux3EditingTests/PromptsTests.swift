@@ -23,6 +23,9 @@ struct PromptsTests {
     EditPrompts.install(dataFolder: root)
     let system = EditPrompts.system(in: EditPrompts.folder(dataFolder: root))
     #expect(system.contains("NEVER change") && system.contains("ref_image_") && system.contains("## prose"))
+    // The syntax summary, the Context list and the examples for every kind of element.
+    #expect(system.contains("src_bbox") && system.contains("Context") && system.contains("NEVER say \"preserving\""))
+    #expect(system.contains("Second example (move, remove, keep)"))
     #expect(EditPrompts.problems(in: EditPrompts.folder(dataFolder: root)).isEmpty)
   }
 

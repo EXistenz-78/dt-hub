@@ -53,12 +53,12 @@ final class Flux3EditingPlugin: DTHubPlugin {
     state.isWriting = true
     state.status = L.text(.writing, italian: state.italian)
     let document = state.document
-    let (allowed, system) = (state.allowedTags, state.writeSystem)
+    let (allowed, system, refs) = (state.allowedTags, state.writeSystem, state.refs)
     let writer = EditWriter(
       ask: { prompt, system, options in await host.askLanguageModelAnswer(prompt, system: system, options: options) },
       italian: state.italian)
     Task {
-      let result = await writer.write(document: document, allowedTags: allowed, system: system, options: EditPrompts.options)
+      let result = await writer.write(document: document, refs: refs, allowedTags: allowed, system: system, options: EditPrompts.options)
       let before = EditSnapshot.take(from: document)
       state.apply(result)
       if let folder = state.projectFolder, !result.request.isEmpty {

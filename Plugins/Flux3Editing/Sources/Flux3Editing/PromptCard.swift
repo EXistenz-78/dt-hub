@@ -12,7 +12,7 @@ struct PromptCard: View {
       DSPanelHeader(icon: "text.alignleft", title: L.text(.promptTitle, italian: state.italian))
       VStack(alignment: .leading, spacing: DS.rowGap) {
         FieldLabel(text: L.text(.proseTitle, italian: state.italian))
-        NoteField(
+        ProseEditor(
           text: Binding(get: { state.document.prose }, set: { state.document.prose = $0 }),
           placeholder: L.text(.proseHint, italian: state.italian), minHeight: 64, maxHeight: 120)
         if state.document.elements.isEmpty {
@@ -95,13 +95,8 @@ private struct ElementCard: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 6) {
       HStack(spacing: 8) {
-        TextField(
-          L.text(.idLabel, italian: state.italian),
-          text: Binding(get: { element.id }, set: { state.rename(element.id, to: $0) })
-        )
-        .textFieldStyle(.plain).font(.caption.monospaced().weight(.semibold)).foregroundStyle(Color.black.opacity(0.85))
-        .padding(.horizontal, 6).padding(.vertical, 2).frame(width: 118)
-        .background(RoundedRectangle(cornerRadius: 5).fill(EditPalette.color(index: element.colorIndex)))
+        IDField(id: element.id, placeholder: L.text(.idLabel, italian: state.italian)) { state.rename(element.id, to: $0) }
+          .background(RoundedRectangle(cornerRadius: 5).fill(EditPalette.color(index: element.colorIndex)))
         kindMenu
         Spacer(minLength: 0)
         icon("arrow.up", help: L.text(.moveUp, italian: state.italian), enabled: index > 0) { state.document.moveElement(element.id, by: -1) }
@@ -116,8 +111,12 @@ private struct ElementCard: View {
       }
       Text(verbatim: "from: \(fromText) · \(coordinates)").font(.caption.monospaced()).foregroundStyle(.secondary)
       if isMissing { Text(L.text(.imageGone, italian: state.italian)).font(.caption).foregroundStyle(DS.remove) }
+      // The text is read from the state, not from the copy of the element this card was drawn with: a stale copy hands the
+      // editor the old text between two keystrokes and the cursor jumps to the end.
       NoteField(
-        text: Binding(get: { element.desc }, set: { value in state.update(element: element.id) { $0.desc = value } }),
+        text: Binding(
+          get: { state.document.element(element.id)?.desc ?? element.desc },
+          set: { value in state.update(element: element.id) { $0.desc = value } }),
         placeholder: L.text(.descriptionPlaceholder, italian: state.italian), minHeight: 52, maxHeight: 100)
     }
     .padding(10)
@@ -179,5 +178,26 @@ private struct ElementCard: View {
   private func icon(_ name: String, help: String, enabled: Bool, action: @escaping () -> Void) -> some View {
     Button(action: action) { Image(systemName: name).font(.caption) }
       .buttonStyle(.plain).foregroundStyle(.secondary).disabled(!enabled).help(help)
+  }
+}
+
+/// L'id di un elemento: si scrive in una copia locale e si conferma a Invio o quando il campo perde il fuoco. Cambiare l'id a
+/// ogni lettera cambierebbe l'identità della scheda e il campo perderebbe il fuoco a ogni battuta.
+private struct IDField: View {
+  let id: String
+  let placeholder: String
+  let commit: (String) -> Void
+  @State private var text = ""
+  @FocusState private var focused: Bool
+
+  var body: some View {
+    TextField(placeholder, text: $text)
+      .textFieldStyle(.plain).font(.caption.monospaced().weight(.semibold)).foregroundStyle(Color.black.opacity(0.85))
+      .padding(.horizontal, 6).padding(.vertical, 2).frame(width: 118)
+      .focused($focused)
+      .onAppear { text = id }
+      .onChange(of: id) { _, new in if !focused { text = new } }
+      .onChange(of: focused) { _, isFocused in if !isFocused { commit(text) } }
+      .onSubmit { commit(text) }
   }
 }
