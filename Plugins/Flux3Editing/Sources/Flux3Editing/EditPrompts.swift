@@ -1,11 +1,13 @@
 import DTHubPluginKit
 import Foundation
 
-/// Il master prompt del plug-in come file Markdown (`Data/prompt-master-flux3-editing/master-prompt.md`) e quello dell'utente in
+/// Il master prompt del plug-in come file Markdown (`Data/flux3-editing/master-prompt.md`) e quello dell'utente in
 /// `custom/master-prompt.md`. Un prompt specialistico, solo per questo plug-in: non passa dai Family prompt dell'app.
 enum EditPrompts {
   static let masterPath = "master-prompt.md"
-  static let folderName = "prompt-master-flux3-editing"
+  static let folderName = "flux3-editing"
+  /// Il nome della prima versione: la sua cartella (con i file `custom/` dell'utente) passa al nome nuovo.
+  static let legacyFolderName = "prompt-master-flux3-editing"
 
   static var defaultDataFolder: URL {
     FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -21,6 +23,10 @@ enum EditPrompts {
 
   /// All'avvio: scrive il master prompt se manca o è più vecchio di quello incorporato, e crea `custom/`.
   static func install(dataFolder: URL = defaultDataFolder) {
+    let old = dataFolder.appendingPathComponent(legacyFolderName, isDirectory: true)
+    let new = dataFolder.appendingPathComponent(folderName, isDirectory: true)
+    let files = FileManager.default
+    if files.fileExists(atPath: old.path), !files.fileExists(atPath: new.path) { try? files.moveItem(at: old, to: new) }
     folder(dataFolder: dataFolder).install([masterPath: EmbeddedData.masterPrompt])
   }
 

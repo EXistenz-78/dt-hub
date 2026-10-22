@@ -11,11 +11,35 @@ struct PromptsTests {
   @Test func installWritesTheMasterPromptAndTheCustomFolder() {
     let root = temporaryFolder()
     EditPrompts.install(dataFolder: root)
-    let folder = root.appendingPathComponent("prompt-master-flux3-editing", isDirectory: true)
+    let folder = root.appendingPathComponent("flux3-editing", isDirectory: true)
     #expect(FileManager.default.fileExists(atPath: folder.appendingPathComponent("master-prompt.md").path))
     var isDirectory: ObjCBool = false
     #expect(FileManager.default.fileExists(atPath: folder.appendingPathComponent("custom").path, isDirectory: &isDirectory))
     #expect(isDirectory.boolValue)
+  }
+
+  @Test func theFolderOfTheFirstVersionMovesToTheNewNameWithItsCustomFiles() throws {
+    let root = temporaryFolder()
+    let old = root.appendingPathComponent("prompt-master-flux3-editing/custom", isDirectory: true)
+    try FileManager.default.createDirectory(at: old, withIntermediateDirectories: true)
+    try "my rule".write(to: old.appendingPathComponent("master-prompt.md"), atomically: true, encoding: .utf8)
+    EditPrompts.install(dataFolder: root)
+    let new = root.appendingPathComponent("flux3-editing", isDirectory: true)
+    #expect(try String(contentsOf: new.appendingPathComponent("custom/master-prompt.md"), encoding: .utf8) == "my rule")
+    #expect(FileManager.default.fileExists(atPath: new.appendingPathComponent("master-prompt.md").path))
+    #expect(!FileManager.default.fileExists(atPath: root.appendingPathComponent("prompt-master-flux3-editing").path))
+  }
+
+  @Test func anExistingNewFolderIsNeverReplacedByTheOldOne() throws {
+    let root = temporaryFolder()
+    let old = root.appendingPathComponent("prompt-master-flux3-editing", isDirectory: true)
+    let new = root.appendingPathComponent("flux3-editing/custom", isDirectory: true)
+    try FileManager.default.createDirectory(at: old, withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(at: new, withIntermediateDirectories: true)
+    try "new".write(to: new.appendingPathComponent("master-prompt.md"), atomically: true, encoding: .utf8)
+    EditPrompts.install(dataFolder: root)
+    #expect(try String(contentsOf: new.appendingPathComponent("master-prompt.md"), encoding: .utf8) == "new")
+    #expect(FileManager.default.fileExists(atPath: old.path))
   }
 
   @Test func theSystemPromptTeachesTheFormatAndTheOrderNotToTouchTheTags() {
@@ -36,7 +60,7 @@ struct PromptsTests {
   @Test func theUsersOwnPromptIsAddedAfterTheMaster() throws {
     let root = temporaryFolder()
     EditPrompts.install(dataFolder: root)
-    let custom = root.appendingPathComponent("prompt-master-flux3-editing/custom", isDirectory: true)
+    let custom = root.appendingPathComponent("flux3-editing/custom", isDirectory: true)
     try "Always mention the lighting.".write(to: custom.appendingPathComponent("master-prompt.md"), atomically: true, encoding: .utf8)
     let system = EditPrompts.system(in: EditPrompts.folder(dataFolder: root))
     #expect(system.contains("NEVER change") && system.contains("Always mention the lighting."))
