@@ -127,6 +127,23 @@ public struct PluginCatalogLoRA: Codable, Equatable, Sendable {
   }
 }
 
+/// The part of the start image that fills the canvas of the Generation, in pixels of the image counted from the top-left
+/// (`FramingMath.cropRect` with the framing of the Control tab). It can be larger than the image (zoom below 0: the part
+/// outside is margin the model regenerates) or smaller (zoom above 0: only a part of the image is used).
+public struct PluginImageWindow: Codable, Equatable, Sendable {
+  public var x: Double
+  public var y: Double
+  public var width: Double
+  public var height: Double
+
+  public init(x: Double, y: Double, width: Double, height: Double) {
+    self.x = x
+    self.y = y
+    self.width = width
+    self.height = height
+  }
+}
+
 /// App → plug-in: where the app stands (sent when the plug-in is activated, when the model, its parameters or the
 /// start image change, and when the user comes back to a tab).
 public struct PluginContext: Codable, Equatable, Sendable {

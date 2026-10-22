@@ -428,6 +428,19 @@ struct ControlStoreTests {
     #expect(store.moodboardNumbers == [ids[2]: 2, ids[0]: 3])
   }
 
+  @Test func startImageWindowFollowsTheFraming() throws {
+    let store = store(in: folder())
+    #expect(store.startImageWindow(canvasWidth: 200, canvasHeight: 200) == nil)
+    try store.setImage(data: pictureData(width: 300, height: 200), name: "s.png", source: .pasteboard)
+    #expect(store.startImageWindow(canvasWidth: 200, canvasHeight: 200) == PluginImageWindow(x: 50, y: 0, width: 200, height: 200))
+    store.setZoom(100)
+    #expect(store.startImageWindow(canvasWidth: 200, canvasHeight: 200)?.width == 50)
+    store.setZoom(-100)
+    let wide = store.startImageWindow(canvasWidth: 200, canvasHeight: 200)
+    #expect(wide?.width == 800)
+    #expect((wide?.x ?? 0) < 0)
+  }
+
   @Test func undoKeepsTheOrderTheUserGave() throws {
     let store = store(in: folder())
     try addPictures(store, 3)

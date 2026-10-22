@@ -42,6 +42,15 @@ public final class ControlStore {
 
   /// The files of the Moodboard pictures that are on, in the order of the thumbnails: the references a model can read.
   public var moodboardURLs: [URL] { inputs.moodboard.filter(\.isOn).map { storage.url(for: $0.image.fileName) } }
+  /// Where the start image sits in a canvas of this size, as the Control tab's framing puts it; nil without a start image.
+  public func startImageWindow(canvasWidth: Int, canvasHeight: Int) -> PluginImageWindow? {
+    guard let image = inputs.image else { return nil }
+    let rect = FramingMath.cropRect(
+      imageWidth: image.pixelWidth, imageHeight: image.pixelHeight, canvasWidth: canvasWidth, canvasHeight: canvasHeight,
+      framing: inputs.framing)
+    return PluginImageWindow(x: rect.origin.x, y: rect.origin.y, width: rect.width, height: rect.height)
+  }
+
   /// The number a model gives the start image in the prompt (“image 1”), as Draw Things numbers them
   /// (`PromptBrief.imageLabels`): 1 when there is a start image.
   public var startImageNumber: Int? { inputs.image == nil ? nil : 1 }
