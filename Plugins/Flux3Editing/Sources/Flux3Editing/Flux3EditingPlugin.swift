@@ -15,7 +15,7 @@ final class Flux3EditingPlugin: DTHubPlugin {
   private var host: DTHubHost?
 
   init() {
-    // Il master prompt, scritto in Data/prompt-master-flux3-editing se manca o è più vecchio (e `custom/`).
+    // Il master prompt, scritto in Data/flux3-editing se manca o è più vecchio (e `custom/`).
     EditPrompts.install()
   }
 
