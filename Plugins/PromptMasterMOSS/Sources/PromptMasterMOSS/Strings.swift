@@ -5,6 +5,8 @@ import Foundation
 enum L {
   enum Key: CaseIterable {
     case title
+    // Avvisi
+    case sizeRatioChanged
   }
 
   static var systemIsItalian: Bool {
@@ -22,9 +24,13 @@ enum L {
   }
 
   private static let en: [Key: String] = [
-    .title: "Prompt Master MOSS"
+    .title: "Prompt Master MOSS",
+    .sizeRatioChanged:
+      "The Generation size changed from %d×%d to %d×%d, a different shape: the boxes keep the same fractions of the canvas, so they are stretched. Check their positions.",
   ]
   private static let it: [Key: String] = [
-    .title: "Prompt Master MOSS"
+    .title: "Prompt Master MOSS",
+    .sizeRatioChanged:
+      "La dimensione della Generazione è passata da %d×%d a %d×%d, con un'altra forma: i box restano nelle stesse frazioni della tela, quindi si deformano. Controlla le posizioni.",
   ]
 }
