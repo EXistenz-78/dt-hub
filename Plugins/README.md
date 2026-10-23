@@ -1,6 +1,6 @@
 # DT Hub plug-ins
 
-Twelve plug-ins ship in this repository. Each is a Swift package of its own, with its own tests and its own README. Prompt Master, Prompt Master I4, Sphere Light, Batch plus, AI Assistant, Qwen 2.1 Inpainting, Depth & Pose, Tiled Upscale, Prompt Master F3 and Flux3 Editing keep their state per project.
+Thirteen plug-ins ship in this repository. Each is a Swift package of its own, with its own tests and its own README. Prompt Master, Prompt Master I4, Sphere Light, Batch plus, AI Assistant, Qwen 2.1 Inpainting, Depth & Pose, Tiled Upscale, Prompt Master F3, Flux3 Editing and Prompt Master MOSS keep their state per project.
 A plug-in only works with the model families it was made for (Depth & Pose, with edit and in-context models): on any other model it is **switched off and its tab is hidden**,
 so the tab bar only ever shows what can be used with the model you picked.
 
@@ -18,6 +18,7 @@ so the tab bar only ever shows what can be used with the model you picked.
 | **[Depth & Pose](DepthPose/README.md)** | **Edit and in-context models** (FLUX.2, Qwen Image 2.1, Qwen Image Edit, FLUX.1 Kontext…) | A depth map ([Depth Anything V2](https://github.com/DepthAnything/Depth-Anything-V2) Base, Core ML) and/or a DWPose-style skeleton (body, face and hands, [DWPose-L](https://github.com/IDEA-Research/DWPose) in Core ML) from one picture, in about a second, sent to the Moodboard as a reference or saved on your Desktop. The two models (about 200 MB, CC BY-NC 4.0, and about 64 MB, Apache-2.0) are downloaded once each, when you press their buttons, from this repository's releases; that is its only use of the network. |
 | **[Tiled Upscale](TiledUpscale/README.md)** | **Edit models: FLUX.2 [klein] 9B, Qwen Image 2.1 and its Turbo** | Enlarges a picture 2× or 4× tile by tile: each overlapping tile is regenerated with a preset and a LoRA ([UltraReal v5 Pro](https://civitai.com/models/2462105?modelVersionId=3370879) for FLUX.2 klein 9B, [Qwen Image 2.1 Fix v2.0](https://huggingface.co/e-n-v-y/Qwen-Image-2.1-Fix-v2.0) for Qwen) and put back before the next, with a mask, a fade of the join and a correction of the brightness so the joins do not show. The tile size sets itself (at most three tiles along the short side), the result goes to the Results, and any tile can be picked in the preview and made again from the original, with its own instructions. Additional instructions can be added to the prompt. Sizes are kept in multiples of 64. Needs DT Hub 0.3.6 or later. |
 | **[Flux3 Editing](Flux3Editing/README.md)** | **FLUX.3 [klein] 5.6B**; needs DT Hub 0.4.0 or later | Builds the editing prompt of FLUX.3 with reference pictures: draw a box on an object of a Moodboard picture and its pair on the start image, or draw boxes on the start image to add, keep, move or remove something. The start image is shown as the output canvas, placed as in the Control tab; the pairs have their own colours, the LLM can write the texts without touching the placeholders. |
+| **[Prompt Master MOSS](PromptMasterMOSS/README.md)** | **MOSS Image** (Base and SFT) | Builds the JSON layout prompt of MOSS Image: a summary (description, `meta`, `canvas`, palette) and a list of items with a type (object, character, text, panel, subject), a caption and a box, in pixels from the centre of the picture. Draw the boxes on a canvas, pick terms from the database, and let the LLM write the texts in English; the negative terms go to the negative field. The boxes are stored as fractions of the canvas and converted with the Generation size when you press Send. |
 
 <p>
   <img src="../docs/images/prompt-master.png" alt="Prompt Master" width="32%">
@@ -41,6 +42,7 @@ Every [release](https://github.com/EXistenz-78/dt-hub/releases/latest) carries t
 - [Tiled Upscale](https://github.com/EXistenz-78/dt-hub/releases/latest/download/TiledUpscale.dthubplugin.zip)
 - [Prompt Master F3](https://github.com/EXistenz-78/dt-hub/releases/latest/download/PromptMasterF3.dthubplugin.zip)
 - [Flux3 Editing](https://github.com/EXistenz-78/dt-hub/releases/latest/download/Flux3Editing.dthubplugin.zip)
+- [Prompt Master MOSS](https://github.com/EXistenz-78/dt-hub/releases/latest/download/PromptMasterMOSS.dthubplugin.zip)
 
 Then, in DT Hub, open **Preferences › Plug-ins**, press **Add…**, pick the `.dthubplugin` bundle and restart the app (turning a
 plug-in on or off, or removing it, takes effect at the next launch). Each plug-in then appears as a tab, and can be switched on and off

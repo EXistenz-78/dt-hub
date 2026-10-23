@@ -9,7 +9,7 @@ final class F3Plugin: DTHubPlugin {
   static let families = ["flux3_5b"]
 
   let manifest = DTHubManifest(
-    id: "com.exiztenz.dthub.promptmasterf3", name: "Prompt Master F3", version: "1.0", symbol: "wand.and.stars",
+    id: "com.exiztenz.dthub.promptmasterf3", name: "Prompt Master F3", version: "1.0.1", symbol: "wand.and.stars",
     families: F3Plugin.families)
   private let state = F3State()
   private var host: DTHubHost?
