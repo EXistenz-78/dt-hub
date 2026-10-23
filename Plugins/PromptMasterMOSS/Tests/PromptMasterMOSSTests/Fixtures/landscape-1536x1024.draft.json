@@ -1,0 +1,89 @@
+{
+ "width": 1536,
+ "height": 1024,
+ "bbox_coord_space": "abs",
+ "bbox_format": "xyxy",
+ "summary": {
+  "meta": [
+   "product campaign",
+   "studio photography"
+  ],
+  "canvas": "single",
+  "palette": [
+   "#F5F5DC",
+   "#2F4F4F",
+   "#B22222"
+  ],
+  "caption": "A warm studio campaign for a ceramic cup."
+ },
+ "items": [
+  {
+   "label": "object",
+   "caption": "An ivory ceramic cup, speckled glaze.",
+   "bbox": [
+    176,
+    224,
+    800,
+    864
+   ],
+   "tags": [
+    "ceramic",
+    "cup"
+   ],
+   "palette": [
+    "#F5F5DC"
+   ]
+  },
+  {
+   "label": "text",
+   "caption": "Dark-green serif headline.",
+   "text": "把日常，过成诗。",
+   "bbox": [
+    928,
+    272,
+    1408,
+    448
+   ],
+   "palette": [
+    "#2F4F4F"
+   ]
+  },
+  {
+   "label": "text",
+   "caption": "Smaller support line.",
+   "text": "一杯温暖\n一刻从容",
+   "bbox": [
+    928,
+    512,
+    1376,
+    656
+   ]
+  },
+  {
+   "label": "character",
+   "caption": "A hand holding the cup.",
+   "bbox": [
+    300,
+    300,
+    700,
+    900
+   ],
+   "tags": [
+    "hand"
+   ]
+  },
+  {
+   "label": "object",
+   "caption": "A linen napkin.",
+   "bbox": [
+    1000,
+    100,
+    1500,
+    500
+   ],
+   "tags": [
+    "linen"
+   ]
+  }
+ ]
+}
