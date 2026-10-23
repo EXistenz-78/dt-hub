@@ -1,0 +1,37 @@
+{
+ "width": 1024,
+ "height": 640,
+ "bbox_coord_space": "abs",
+ "bbox_format": "xyxy",
+ "summary": {
+  "meta": [
+   "poster"
+  ],
+  "canvas": "single",
+  "caption": "Quotes, a backslash, an emoji and Chinese text."
+ },
+ "items": [
+  {
+   "label": "text",
+   "caption": "Bold sign with \"quoted\" lettering and a back\\slash.",
+   "text": "Say \"hi\" \\ C:\\tmp\nline two 😀",
+   "bbox": [
+    100,
+    100,
+    900,
+    300
+   ]
+  },
+  {
+   "label": "text",
+   "caption": "Calligraphy on a round fan.",
+   "text": "浮生若梦\n但愿长安",
+   "bbox": [
+    100,
+    350,
+    500,
+    600
+   ]
+  }
+ ]
+}
