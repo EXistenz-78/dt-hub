@@ -112,6 +112,15 @@ final class I4State: ObservableObject {
     expandedElements.insert(id)
   }
 
+  /// The binding of a field of an element. It reads the document, not the copy of the element the card was drawn with: a stale
+  /// copy hands the editor the old text between two keystrokes and the cursor jumps to the end. `fallback` only counts when
+  /// the element is gone in the meantime.
+  func elementBinding<T>(_ id: Int, _ keyPath: WritableKeyPath<I4Element, T>, fallback: T) -> Binding<T> {
+    Binding(
+      get: { [unowned self] in document.elements.first { $0.id == id }?[keyPath: keyPath] ?? fallback },
+      set: { [unowned self] value in document.updateElement(id) { $0[keyPath: keyPath] = value } })
+  }
+
   func removeElement(_ id: Int) {
     document.removeElement(id)
     expandedElements.remove(id)
