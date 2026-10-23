@@ -140,6 +140,71 @@ final class MossState: ObservableObject {
   /// Il plug-in è attivo, non si sta inviando né scrivendo e non ci sono problemi.
   var canSend: Bool { active && !isSending && !isWriting && problems.isEmpty }
 
+  // MARK: Scrivi con LLM
+
+  var hasWritableContent: Bool {
+    !document.description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+      || !catalog.captionLines(document.selection).isEmpty
+      || document.freeMeta.contains { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+      || document.items.contains { !$0.caption.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !$0.tagList.isEmpty }
+  }
+
+  var canWrite: Bool { active && !isWriting && !isSending && hasWritableContent }
+  var canUndo: Bool { document.snapshot != nil && !isWriting }
+
+  var writeSystem: String { MossPrompts.system(in: promptFolder) }
+  var writeOptions: DTHubLLMOptions {
+    let settings = data.config.options
+    return DTHubLLMOptions(
+      temperature: settings.temperature, maxTokens: settings.maxTokens, thinking: settings.thinking, timeout: settings.timeout)
+  }
+
+  /// Mette nei campi i testi riscritti. Un testo che l'utente ha cambiato mentre l'LLM scriveva resta com'è. Prima si
+  /// fotografa lo stato (solo l'ultima fotografia), per «Annulla».
+  func apply(_ result: MossWriteResult) {
+    var applicable: [MossRewrite] = []
+    var kept: [String] = []
+    for rewrite in result.rewrites {
+      if currentText(of: rewrite.kind) == rewrite.original { applicable.append(rewrite) } else { kept.append(rewrite.kind.title) }
+    }
+    var lines = [result.status]
+    if !applicable.isEmpty {
+      document.snapshot = MossSnapshot.take(from: document)
+      for rewrite in applicable {
+        switch rewrite.kind {
+        case .summary:
+          document.description = rewrite.text
+          // Le voci della caption sono ormai nel testo; quelle di medium e genere non passano dall'LLM e restano.
+          document.selection = catalog.keepingMeta(document.selection)
+        case .meta:
+          document.freeMeta = rewrite.text.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        case .item(let id, _): update(item: id) { $0.caption = rewrite.text }
+        case .tags(let id): update(item: id) { $0.tags = rewrite.text }
+        }
+      }
+    }
+    if !kept.isEmpty { lines.append(L.format(.changedMeanwhile, kept.joined(separator: ", "), italian: italian)) }
+    status = lines.filter { !$0.isEmpty }.joined(separator: " ")
+  }
+
+  private func currentText(of kind: MossPart.Kind) -> String? {
+    switch kind {
+    case .summary: return document.description.trimmingCharacters(in: .whitespacesAndNewlines)
+    case .meta: return document.freeMeta.map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }.joined(separator: ", ")
+    case .item(let id, _): return document.items.first { $0.id == id }?.caption.trimmingCharacters(in: .whitespacesAndNewlines)
+    case .tags(let id): return document.items.first { $0.id == id }?.tagList.joined(separator: ", ")
+    }
+  }
+
+  /// «Annulla»: rimette i testi di prima (solo l'ultima scrittura).
+  func undo() {
+    guard let snapshot = document.snapshot else { return }
+    var restored = document
+    snapshot.restore(into: &restored)
+    document = restored
+    status = L.text(.undone, italian: italian)
+  }
+
   // MARK: Progetti
 
   /// Vero mentre la sessione di un progetto viene letta nel tab: i cambi che ne vengono non si riscrivono.
