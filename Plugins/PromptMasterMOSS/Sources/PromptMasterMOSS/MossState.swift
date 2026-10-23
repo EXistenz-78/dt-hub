@@ -124,6 +124,45 @@ final class MossState: ObservableObject {
     document.items.swapAt(index, index + step)
   }
 
+  // MARK: Il canvas
+
+  /// Il menu dei tipi aperto dall'etichetta di un riquadro (stato della vista: non si ricorda).
+  @Published var typeMenuItem: Int?
+
+  var canvasItems: [CanvasItem] {
+    document.items.enumerated().map { CanvasItem(id: $1.id, number: $0 + 1, label: $1.label, box: $1.box) }
+  }
+
+  /// Un gesto finito sul canvas: disegna un box nuovo (un oggetto), sposta o ridimensiona, o apre il menu dei tipi sull'etichetta;
+  /// sul vuoto un clic toglie la selezione.
+  func canvasEnd(_ drag: CanvasDrag, geometry: CanvasGeometry) {
+    switch drag.mode {
+    case .draw:
+      typeMenuItem = nil
+      if drag.moved, let box = geometry.result(of: drag) { addItem(label: .object, box: box) } else { selectedItem = nil }
+    case .tag(let id):
+      if !drag.moved {
+        select(id)
+        typeMenuItem = id
+      }
+    case .move(let id, _), .resize(let id, _, _):
+      typeMenuItem = nil
+      select(id)
+      if drag.moved, let box = geometry.result(of: drag) { update(item: id) { $0.box = box } }
+    }
+  }
+
+  private func select(_ id: Int) {
+    selectedItem = id
+    update(item: id) { $0.expanded = true }
+  }
+
+  /// Un tipo scelto dal menu dell'etichetta.
+  func chooseLabel(_ label: MossLabel, for id: Int) {
+    setLabel(label, for: id)
+    typeMenuItem = nil
+  }
+
   // MARK: Invia
 
   var problems: [MossProblem] { MossComposer.problems(document, catalog: catalog, size: generationSize) }
