@@ -42,6 +42,11 @@ public struct PromptLibrary: Sendable {
   /// Only the built-in copies: no folder to read (what the tests and any default argument use).
   public static let builtIn = PromptLibrary(folder: URL(fileURLWithPath: "/nonexistent/DT Hub/DTHub", isDirectory: true))
 
+  /// Other spellings of a family id: Draw Things' Official list writes `mossImage`, its configurations `moss_image`.
+  static let aliases = ["mossImage": "moss_image"]
+
+  private static func canonical(_ id: String) -> String { aliases[id] ?? id }
+
   public static let priorityLine = "In case of conflict, the instructions below take precedence over those above."
 
   // MARK: Reading
@@ -71,7 +76,8 @@ public struct PromptLibrary: Sendable {
     return result
   }
 
-  private func familyEntry(_ id: String) -> (prompt: FamilyPrompt, problems: [String])? {
+  private func familyEntry(_ spelled: String) -> (prompt: FamilyPrompt, problems: [String])? {
+    let id = Self.canonical(spelled)
     guard let embedded = EmbeddedPrompts.families[id] else { return nil }
     let (file, problem) = load("family/\(id).md", embedded: embedded, needsLabel: true)
     var problems = problem.map { [$0] } ?? []
@@ -130,6 +136,7 @@ public struct PromptLibrary: Sendable {
 
   /// Rules, Family, then the user's: the system prompt for a task and a family (the generic one without a known family).
   public func system(task: PromptTask, family id: String?) -> String {
+    let id = id.map(Self.canonical)
     let known = id.flatMap { familyEntry($0)?.prompt }
     var rules: String
     var familyText: String

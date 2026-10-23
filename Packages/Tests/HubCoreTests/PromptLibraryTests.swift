@@ -110,12 +110,12 @@ struct PromptLibraryTests {
     #expect(PromptLibrary(folder: dir).ownSystemAddition(task: .describe) == PromptLibrary.priorityLine + "\n\nSempre in inglese.")
   }
 
-  @Test func familiesAreTheThirteenSortedByLabel() throws {
+  @Test func familiesAreTheFifteenSortedByLabel() throws {
     let list = PromptLibrary(folder: try folder()).families()
-    #expect(list.count == 13)
+    #expect(list.count == 15)
     #expect(list.map(\.label) == list.map(\.label).sorted { $0.localizedStandardCompare($1) == .orderedAscending })
     #expect(list.first { $0.id == "flux2_9b" }?.label == "FLUX.2 [klein] 9B")
-    #expect(list.filter(\.negative).count == 6)
+    #expect(list.filter(\.negative).count == 7)
   }
 
   @Test func notesAreThePartAfterTheModelNotesHeading() throws {
