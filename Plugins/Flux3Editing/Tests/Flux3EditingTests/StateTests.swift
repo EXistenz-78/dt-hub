@@ -122,26 +122,63 @@ struct StateTests {
     #expect(s.selected == nil)
   }
 
-  @Test func theCropsGoOnlyWhenTheBoxIsOnAndOnlyForPairsFromAReference() throws {
-    let image = FileManager.default.temporaryDirectory.appendingPathComponent("f3e-\(UUID().uuidString)-a.png")
+  private func picture(width: Int, height: Int, in folder: URL) throws -> URL {
+    let url = folder.appendingPathComponent("f3e-\(UUID().uuidString)-p.png")
+    let rep = try #require(NSBitmapImageRep(
+      bitmapDataPlanes: nil, pixelsWide: width, pixelsHigh: height, bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+      colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0))
+    try #require(rep.representation(using: .png, properties: [:])).write(to: url)
+    return url
+  }
+
+  @Test func thePicturesGoOnlyWhenTheBoxIsOn_theStartAsTheCanvasAndTheUsedReferencesWhole() throws {
     let temp = FileManager.default.temporaryDirectory.appendingPathComponent("f3e-tmp-\(UUID().uuidString)")
     try FileManager.default.createDirectory(at: temp, withIntermediateDirectories: true)
-    defer { try? FileManager.default.removeItem(at: image); try? FileManager.default.removeItem(at: temp) }
-    let rep = try #require(NSBitmapImageRep(
-      bitmapDataPlanes: nil, pixelsWide: 300, pixelsHigh: 200, bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
-      colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0))
-    try #require(rep.representation(using: .png, properties: [:])).write(to: image)
+    defer { try? FileManager.default.removeItem(at: temp) }
+    let start = try picture(width: 300, height: 200, in: temp)
+    let first = try picture(width: 300, height: 200, in: temp), unused = try picture(width: 300, height: 200, in: temp)
     let s = EditState(store: EditStore(storage: MemoryStorage()), italian: false)
-    let json = #"{"type":"context","tempFolder":"\#(temp.path)","startImage":"/s/start.png","moodboard":["\#(image.path)"]}"#
+    let json = #"{"type":"context","tempFolder":"\#(temp.path)","parameters":{"width":1024,"height":512},"startImage":"\#(start.path)","moodboard":["\#(first.path)","\#(unused.path)"]}"#
+    s.update(context: try JSONDecoder().decode(DTHubContext.self, from: Data(json.utf8)))
+    s.drawOnReference(box(100, 100, 600, 600))  // sulla prima reference
+    s.drawOnCanvas(box(0, 0, 100, 100))
+    #expect(s.canSendImages && s.llmPictures().isEmpty)  // the box is off
+    s.document.llmImages = true
+    let pictures = s.llmPictures()
+    #expect(pictures.map(\.number) == [0, 1])  // the second reference is not used: it stays home
+    #expect(pictures.map(\.role) == [.start, .reference])
+    #expect(pictures.allSatisfy { FileManager.default.fileExists(atPath: $0.path) && $0.path.hasPrefix(temp.path) })
+    #expect(ImageSizes.read(path: pictures[0].path) == CGSize(width: 1024, height: 512))  // the canvas: the shape of the Generation
+    #expect(ImageSizes.read(path: pictures[1].path) == CGSize(width: 1024, height: 683))  // the reference: its own shape
+  }
+
+  @Test func withoutAStartImageOrAReadableOneThePictureIsLeftOutWithoutFailing() throws {
+    let temp = FileManager.default.temporaryDirectory.appendingPathComponent("f3e-tmp-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: temp, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: temp) }
+    let ref = try picture(width: 300, height: 200, in: temp)
+    let s = EditState(store: EditStore(storage: MemoryStorage()), italian: false)
+    let json = #"{"type":"context","tempFolder":"\#(temp.path)","startImage":"/nonexistent/start.png","moodboard":["\#(ref.path)"]}"#
     s.update(context: try JSONDecoder().decode(DTHubContext.self, from: Data(json.utf8)))
     s.drawOnReference(box(100, 100, 600, 600))
-    s.drawOnCanvas(box(0, 0, 100, 100))
-    #expect(s.hasCrops && s.llmAttachments().isEmpty)  // the box is off
     s.document.llmImages = true
-    let attachments = s.llmAttachments()
-    #expect(attachments.count == 1 && attachments[0].elementID == "el_1")
-    #expect(FileManager.default.fileExists(atPath: attachments[0].path) && attachments[0].path.hasPrefix(temp.path))
-    #expect(ImageSizes.read(path: attachments[0].path) == CGSize(width: 150, height: 100))
+    #expect(s.llmPictures().map(\.number) == [1])  // the unreadable start picture is skipped
+    #expect(s.canSendImages)
+  }
+
+  @Test func tooManyReferencesAreLeftOutAndNamed() throws {
+    let temp = FileManager.default.temporaryDirectory.appendingPathComponent("f3e-tmp-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: temp, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: temp) }
+    let files = try (0..<6).map { _ in try picture(width: 300, height: 200, in: temp) }
+    let s = EditState(store: EditStore(storage: MemoryStorage()), italian: false)
+    let json = #"{"type":"context","tempFolder":"\#(temp.path)","startImage":"/s/start.png","moodboard":[\#(files.map { "\"\($0.path)\"" }.joined(separator: ","))]}"#
+    s.update(context: try JSONDecoder().decode(DTHubContext.self, from: Data(json.utf8)))
+    for index in 0..<6 {
+      if index > 0 { s.showReference(by: 1) }
+      s.drawOnReference(box(100, 100, 600, 600))
+    }
+    #expect(s.droppedPictures == [6])  // the start picture plus five references is the most that goes along
   }
 
   @Test func theTagColorsAreThoseOfTheElements() throws {

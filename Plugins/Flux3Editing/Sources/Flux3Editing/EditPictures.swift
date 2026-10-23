@@ -36,6 +36,13 @@ struct PlannedPicture: Equatable, Sendable {
   var boxes: [OverlayBox]
 }
 
+/// Un'immagine già disegnata e scritta su disco, pronta per l'LLM, nell'ordine in cui parte (`path` è il PNG con i riquadri).
+struct EditPicture: Equatable, Sendable {
+  var number: Int
+  var role: PlannedPicture.Role
+  var path: String
+}
+
 struct EditPicturePlan: Equatable, Sendable {
   var pictures: [PlannedPicture]
   /// I numeri delle reference usate che non entrano nel tetto delle immagini.

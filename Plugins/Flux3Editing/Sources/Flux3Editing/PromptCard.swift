@@ -41,7 +41,7 @@ struct PromptCard: View {
 
   private var buttons: some View {
     VStack(alignment: .leading, spacing: DS.controlGap) {
-      if state.hasCrops {
+      if state.canSendImages {
         Toggle(
           isOn: Binding(get: { state.document.sendsImages }, set: { state.document.llmImages = $0 })
         ) { Text(L.text(.sendImages, italian: state.italian)).font(.callout) }
