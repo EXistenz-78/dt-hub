@@ -6,7 +6,7 @@ enum L {
   enum Key: CaseIterable {
     case title
     // Avvisi
-    case sizeRatioChanged
+    case sizeRatioChanged, reviewDiscarded
     // Canvas
     case canvas, generation, labelObject, labelCharacter, labelText, labelPanel, labelSubject
     // Interfaccia
@@ -68,6 +68,7 @@ enum L {
     .problemEmptyCaption: "Element %d has no caption.", .problemEmptyText: "Element %d is a Text with no text.",
     .canvas: "Canvas", .generation: "Generation", .labelObject: "Object", .labelCharacter: "Character", .labelText: "Text",
     .labelPanel: "Panel", .labelSubject: "Subject",
+    .reviewDiscarded: "The Generation size changed, so the JSON you edited by hand was discarded (its coordinates were for the old size).",
     .nothingToWrite: "Nothing to write yet.", .writtenCount: "%d text(s) written.",
     .failedParts: "Not rewritten (the original stays): %@.", .changedMeanwhile: "Changed while writing, so kept as it is: %@.",
     .undone: "Previous texts restored.",
@@ -95,6 +96,7 @@ enum L {
     .problemEmptyCaption: "L'elemento %d non ha la caption.", .problemEmptyText: "L'elemento %d è un Testo senza testo.",
     .canvas: "Canvas", .generation: "Generazione", .labelObject: "Oggetto", .labelCharacter: "Personaggio", .labelText: "Testo",
     .labelPanel: "Pannello", .labelSubject: "Soggetto",
+    .reviewDiscarded: "La dimensione della Generazione è cambiata, quindi il JSON modificato a mano è stato scartato (le sue coordinate erano per la dimensione di prima).",
     .nothingToWrite: "Niente da scrivere.", .writtenCount: "%d testi scritti.",
     .failedParts: "Non riscritti (resta l'originale): %@.", .changedMeanwhile: "Cambiati mentre scrivevo, quindi restano come sono: %@.",
     .undone: "Testi precedenti ripristinati.",

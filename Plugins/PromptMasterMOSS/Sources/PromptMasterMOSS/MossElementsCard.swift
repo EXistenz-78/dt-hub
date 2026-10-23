@@ -32,10 +32,8 @@ struct MossElementsCard: View {
         }
         .frame(minHeight: 140, maxHeight: .infinity)
         buttons
-        if !state.status.isEmpty {
-          Text(state.status).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
-        } else if !state.canSend, let hint = state.sendHint {
-          Text(hint).font(.caption).foregroundStyle(.secondary)
+        ForEach(state.statusLines, id: \.self) { line in
+          Text(line).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
         }
       }
       .padding(DS.panelPadding)

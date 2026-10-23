@@ -92,11 +92,30 @@ struct WriterTests {
     #expect(result.status.contains("offline"))
   }
 
+  @Test func aFailureAsksOnlyOnce_noRetryPerPart() async {
+    let script = Script([.failure("offline")])
+    _ = await writer(script).write(document: document(), catalog: catalog, system: "s", options: options)
+    #expect(script.requests.count == 1)
+  }
+
+  @Test func placeholderAnswersAreRejected_theTextsStay() async {
+    let echo = DTHubLLMAnswer.text("## summary\n...\n\n## element 1 (panel)\n...\n\n## element 2 (text)\n...")
+    let script = Script([echo, .text("## summary\n..."), .text("## element 1 (panel)\n..."), .text("## element 2 (text)\n...")])
+    let result = await writer(script).write(document: document(), catalog: catalog, system: "s", options: options)
+    #expect(result.rewrites.isEmpty)
+  }
+
   @Test func nothingToWriteSaysSoAndAsksNothing() async {
     let script = Script([])
     let result = await writer(script).write(document: MossDocument(), catalog: catalog, system: "s", options: options)
     #expect(result.rewrites.isEmpty && result.request.isEmpty && script.requests.isEmpty)
     #expect(result.status == "Nothing to write yet.")
+  }
+
+  @Test func guillemetsAndSingleCurlyQuotesProtectWordsToo() {
+    #expect(MossCheck.quoted("insegna «Benvenuti» e ‘ciao’") == ["Benvenuti", "ciao"])
+    #expect(!MossCheck.preservesQuoted(original: "insegna «Benvenuti»", rewritten: "a sign saying «Welcome»"))
+    #expect(MossCheck.preservesQuoted(original: "insegna «Benvenuti»", rewritten: "a sign saying «Benvenuti»"))
   }
 
   @Test func quotedWordsAreFoundStraightOrCurly() {

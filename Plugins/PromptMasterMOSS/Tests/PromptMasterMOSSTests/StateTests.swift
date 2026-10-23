@@ -113,4 +113,16 @@ struct StateTests {
     #expect(state.document.description == "del progetto")
     #expect(state.reviewOverride == nil && state.sizeNotice == nil && state.selectedItem == nil)
   }
+
+  @Test func aHandEditedJSONIsDiscardedWhenTheGenerationSizeChanges() {
+    let state = state()
+    ready(state)
+    state.editJSON("{\"mine\":1}")
+    state.update(generationSize: PixelSize(width: 1024, height: 640))  // la stessa dimensione: niente cambia
+    #expect(state.reviewOverride == "{\"mine\":1}")
+    state.update(generationSize: PixelSize(width: 1536, height: 960))  // le sue coordinate erano per la dimensione di prima
+    #expect(state.reviewOverride == nil)
+    #expect(state.sizeNotice == L.text(.reviewDiscarded, italian: false))
+    #expect(state.currentJSON()?.hasPrefix("{\"summary\"") == true)
+  }
 }
