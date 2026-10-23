@@ -62,6 +62,12 @@ struct MossCatalog: Sendable, MossTerms {
     return chosen(selection) { !excluded.contains($0.id) }
   }
 
+  /// Solo le voci di medium e genere (quelle che non passano dall'LLM e restano scelte dopo una scrittura).
+  func keepingMeta(_ selection: Set<String>) -> Set<String> {
+    let meta = Set(config.metaCategories)
+    return selection.filter { id in categoryOfTerm[id].map(meta.contains) ?? false }
+  }
+
   /// Le righe `Categoria: voce` delle voci della caption (categoria in inglese, voce in `en`): quello che l'LLM riceve.
   func captionLines(_ selection: Set<String>) -> [String] {
     let excluded = Set(config.metaCategories + config.hiddenCategories)
