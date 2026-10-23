@@ -62,6 +62,15 @@ struct MossCatalog: Sendable, MossTerms {
     return chosen(selection) { !excluded.contains($0.id) }
   }
 
+  /// Le righe `Categoria: voce` delle voci della caption (categoria in inglese, voce in `en`): quello che l'LLM riceve.
+  func captionLines(_ selection: Set<String>) -> [String] {
+    let excluded = Set(config.metaCategories + config.hiddenCategories)
+    return database.categories.compactMap { category in
+      guard !excluded.contains(category.id), let term = category.terms.first(where: { selection.contains($0.id) }) else { return nil }
+      return "\(category.en): \(term.en)"
+    }
+  }
+
   /// Le voci del negativo: i termini aggiunti dal plug-in, poi i venticinque del database.
   var negativeChoices: [PMTerm] {
     config.extraNegativeTerms + (byID["negative_terms"]?.terms.filter { term in !config.extraNegativeTerms.contains { $0.en == term.en } } ?? [])
