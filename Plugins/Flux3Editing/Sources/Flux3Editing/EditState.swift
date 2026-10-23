@@ -62,19 +62,31 @@ final class EditState: ObservableObject {
   /// Il colore di ogni id nel testo (lo stesso del riquadro e della scheda).
   var tagColors: [String: Int] { Dictionary(document.elements.map { ($0.id, $0.colorIndex) }, uniquingKeysWith: { first, _ in first }) }
 
-  /// C'è almeno un riquadro disegnato sul Moodboard: solo allora i ritagli hanno senso.
-  var hasCrops: Bool { document.elements.contains { $0.kind == .fromReference } }
+  /// Ci sono immagini da mandare all'LLM: quella di partenza, o almeno un riquadro disegnato sul Moodboard.
+  var canSendImages: Bool { startImage != nil || document.elements.contains { $0.kind == .fromReference } }
 
-  /// I ritagli da mandare all'LLM (solo se la casella è accesa): per ogni coppia «da riferimento» la parte dell'immagine che
-  /// il riquadro indica, scritta nella cartella temporanea.
-  func llmAttachments() -> [EditAttachment] {
+  private var picturePlan: EditPicturePlan { EditPictures.plan(document: document, refs: refs, hasStartImage: startImage != nil) }
+
+  /// I numeri delle reference usate che non entrano nel tetto delle immagini (partenza più cinque).
+  var droppedPictures: [Int] { picturePlan.dropped }
+
+  /// Le immagini da mandare all'LLM (solo se la casella è accesa): quella di partenza come la tela di uscita e le reference
+  /// usate intere, con i riquadri disegnati, scritte nella cartella temporanea. Un'immagine che non si legge si salta.
+  func llmPictures() -> [EditPicture] {
     guard document.sendsImages, let tempFolder else { return [] }
-    return document.elements.compactMap { element in
-      guard element.kind == .fromReference, let file = element.refFile, let box = element.src,
-        let ref = refs.first(where: { $0.fileName == file }),
-        let path = EditCrops.crop(path: ref.path, box: box, to: tempFolder, name: element.id)
+    return picturePlan.pictures.compactMap { planned in
+      let source: (path: String, geometry: StageGeometry)
+      if planned.role == .start {
+        guard let startImage else { return nil }
+        source = (startImage.path, startGeometry)
+      } else {
+        guard let ref = refs.first(where: { $0.number == planned.number }) else { return nil }
+        source = (ref.path, referenceGeometry(of: ref))
+      }
+      guard let path = EditOverlay.render(
+        imagePath: source.path, geometry: source.geometry, boxes: planned.boxes, to: tempFolder, name: "\(planned.number)")
       else { return nil }
-      return EditAttachment(elementID: element.id, path: path)
+      return EditPicture(number: planned.number, role: planned.role, path: path)
     }
   }
 

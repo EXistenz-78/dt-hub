@@ -12,7 +12,7 @@ enum L {
     case kindFromReference, kindNew, kindExisting, kindMove, kindRemove, moveUp, moveDown, removeElement, idLabel
     case undo, writeWithLLM, writing, send, sending, sent, sentWithConflicts, notAnswered
     case problemNoStart, problemNoElements, problemEmptyID, problemEmptyDescription, problemRepeatedID, problemImageMissing
-    case sendImages, sendImagesHelp, imagesNotSent
+    case sendImages, sendImagesHelp, imagesNotSent, picturesLeftOut
     case clearHelp, clearTitle, clearAction
     case nothingToWrite, writtenCount, failedParts, tagsChanged, changedMeanwhile
     case warningIDNotInProse, warningUnknownReference, warningTooManyImages, imageGone, generationCanvas
@@ -57,8 +57,9 @@ enum L {
     .warningIDNotInProse: "%@ is not cited in the text as <%@>.", .warningUnknownReference: "The text cites <ref_image_%d>, which is not in the Moodboard.",
     .warningTooManyImages: "FLUX.3 reads at most ten pictures: the start image and nine from the Moodboard.",
     .imageGone: "Its picture is no longer in the Moodboard.", .generationCanvas: "Canvas %d × %d",
-    .sendImages: "Send the cropped pictures to the LLM",
-    .sendImagesHelp: "Attaches, for each box drawn on a Moodboard picture, the crop of that box. It needs a model that can read images; otherwise the texts are written without them.",
+    .sendImages: "Send the pictures to the LLM",
+    .sendImagesHelp: "Attaches the start picture (as the canvas of the result) and the Moodboard pictures you drew on, with the boxes and their ids drawn on them, so the model sees the whole scene. It needs a model that can read images; otherwise the texts are written without them.",
+    .picturesLeftOut: "Too many pictures for the model: left out %@.",
     .imagesNotSent: "The model could not take the pictures: written from the texts only.",
     .clearHelp: "Clear the text and all the boxes", .clearTitle: "Clear the text and all the boxes?", .clearAction: "Clear",
     .nothingToWrite: "Nothing to write yet.", .writtenCount: "%d text(s) written.",
@@ -90,8 +91,9 @@ enum L {
     .warningIDNotInProse: "%@ non è citato nel testo come <%@>.", .warningUnknownReference: "Il testo cita <ref_image_%d>, che non è nel Moodboard.",
     .warningTooManyImages: "FLUX.3 legge al massimo dieci immagini: quella di partenza e nove del Moodboard.",
     .imageGone: "La sua immagine non è più nel Moodboard.", .generationCanvas: "Canvas %d × %d",
-    .sendImages: "Manda i ritagli all'LLM",
-    .sendImagesHelp: "Allega, per ogni riquadro disegnato su un'immagine del Moodboard, il ritaglio di quel riquadro. Serve un modello che legga le immagini; altrimenti i testi si scrivono senza.",
+    .sendImages: "Manda le immagini all'LLM",
+    .sendImagesHelp: "Allega l'immagine di partenza (come la tela del risultato) e le immagini del Moodboard su cui hai disegnato, con i riquadri e i loro id disegnati sopra, così il modello vede tutta la scena. Serve un modello che sappia leggere le immagini; altrimenti i testi si scrivono senza.",
+    .picturesLeftOut: "Troppe immagini per il modello: lasciate fuori %@.",
     .imagesNotSent: "Il modello non ha potuto prendere le immagini: scritto dai soli testi.",
     .clearHelp: "Pulisci il testo e tutti i riquadri", .clearTitle: "Pulire il testo e tutti i riquadri?", .clearAction: "Pulisci",
     .nothingToWrite: "Non c'è ancora niente da scrivere.", .writtenCount: "%d testo/i scritto/i.",

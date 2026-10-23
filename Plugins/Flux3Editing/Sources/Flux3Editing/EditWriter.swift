@@ -26,21 +26,17 @@ struct EditWriter {
 
   /// `allowedTags`: i segnaposto che la prosa può citare (gli id degli elementi e `ref_image_N` delle immagini che ci sono).
   func write(
-    document: EditDocument, refs: [RefImage], allowedTags: Set<String>, attachments: [EditAttachment] = [], system: String,
+    document: EditDocument, refs: [RefImage], allowedTags: Set<String>, pictures: [EditPicture] = [], system: String,
     options: DTHubLLMOptions
   ) async -> EditWriteResult {
     let parts = EditBrief.parts(from: document)
     guard !parts.isEmpty else {
       return EditWriteResult(rewrites: [], status: L.text(.nothingToWrite, italian: italian), request: "", answer: "")
     }
-    // Only the crops of the elements being rewritten go along.
-    func crops(for parts: [EditPart]) -> [EditAttachment] {
-      let ids = Set(parts.compactMap { part -> String? in if case .element(let id) = part.kind { return id } else { return nil } })
-      return attachments.filter { ids.contains($0.elementID) }
-    }
+    // All the pictures go along, with every part and with every retry: they are what lets the model see the scene as a whole.
     var picturesDropped = false
-    var sent = crops(for: parts)
-    var request = EditBrief.message(parts, context: EditBrief.context(for: parts, in: document, refs: refs), attachments: sent)
+    var sent = pictures
+    var request = EditBrief.message(parts, context: EditBrief.context(for: parts, in: document, refs: refs, pictures: sent), pictures: sent)
     var failureText: String?
     var answer = ""
     var parsed: [EditPart.Kind: String] = [:]
@@ -65,9 +61,9 @@ struct EditWriter {
       var candidate = parsed[part.kind]
       if candidate == nil || !acceptable(candidate!, for: part, allowed: allowedTags) {
         // Ripiego: la sola parte, con l'ordine ripetuto.
-        let own = picturesDropped ? [] : crops(for: [part])
+        let own = picturesDropped ? [] : pictures
         let message = EditBrief.message(
-          [part], context: EditBrief.context(for: [part], in: document, refs: refs), attachments: own, reminder: Self.reminder)
+          [part], context: EditBrief.context(for: [part], in: document, refs: refs, pictures: own), pictures: own, reminder: Self.reminder)
         if case .text(let text) = await ask(message, system, options, own.map(\.path)) {
           answer += "\n\n" + text
           candidate = EditAnswerParser.parse(text, requested: [part.kind])[part.kind]
