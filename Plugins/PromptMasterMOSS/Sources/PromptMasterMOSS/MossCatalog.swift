@@ -93,3 +93,13 @@ extension MossDocument {
     selection = selection.filter { visible.contains($0) }
   }
 }
+
+extension MossDocument {
+  /// Sceglie una voce: una sola per categoria (scegliere un'altra della stessa la sostituisce, scegliere la stessa la toglie).
+  mutating func choose(_ termID: String, catalog: MossCatalog) {
+    guard let category = catalog.category(ofTerm: termID) else { return }
+    let wasChosen = selection.contains(termID)
+    selection.subtract(category.terms.map(\.id))
+    if !wasChosen { selection.insert(termID) }
+  }
+}

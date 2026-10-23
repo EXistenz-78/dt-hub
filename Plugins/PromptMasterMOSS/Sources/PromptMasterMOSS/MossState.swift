@@ -90,6 +90,62 @@ final class MossState: ObservableObject {
 
   // MARK: Gli elenchi
 
+  func choose(_ termID: String) { document.choose(termID, catalog: catalog) }
+
+  func toggleNegative(_ termID: String) {
+    if !document.negativeSelection.insert(termID).inserted { document.negativeSelection.remove(termID) }
+  }
+
+  func addFreeMeta(_ text: String) {
+    let tag = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !tag.isEmpty, !document.freeMeta.contains(where: { $0.caseInsensitiveCompare(tag) == .orderedSame }) else { return }
+    document.freeMeta.append(tag)
+  }
+
+  func removeFreeMeta(at index: Int) {
+    guard document.freeMeta.indices.contains(index) else { return }
+    document.freeMeta.remove(at: index)
+  }
+
+  /// A quale lista di colori si riferisce un'azione: la palette del Summary o quella di un elemento.
+  enum ColorTarget: Equatable {
+    case summary
+    case item(Int)
+  }
+
+  func colors(of target: ColorTarget) -> [String] {
+    switch target {
+    case .summary: return document.palette
+    case .item(let id): return document.items.first { $0.id == id }?.colors ?? []
+    }
+  }
+
+  func limit(of target: ColorTarget) -> Int { target == .summary ? Palette.styleLimit : Palette.elementLimit }
+
+  private func changeColors(_ target: ColorTarget, _ change: (inout [String]) -> Void) {
+    switch target {
+    case .summary: change(&document.palette)
+    case .item(let id): update(item: id) { change(&$0.colors) }
+    }
+  }
+
+  func addColor(to target: ColorTarget) {
+    guard colors(of: target).count < limit(of: target) else { return }
+    var generator = SystemRandomNumberGenerator()
+    let hex = Palette.random(using: &generator)
+    changeColors(target) { $0.append(hex) }
+  }
+
+  func setColor(_ text: String, at index: Int, in target: ColorTarget) {
+    guard let hex = Palette.normalize(text), colors(of: target).indices.contains(index) else { return }
+    changeColors(target) { $0[index] = hex }
+  }
+
+  func removeColor(at index: Int, from target: ColorTarget) {
+    guard colors(of: target).indices.contains(index) else { return }
+    changeColors(target) { $0.remove(at: index) }
+  }
+
   func isChosen(_ termID: String) -> Bool { document.selection.contains(termID) }
   func setMode(_ mode: StyleMode) { document.setMode(mode, catalog: catalog) }
   func shuffle() { document.selection = shuffler(catalog, document.mode) }
@@ -170,6 +226,56 @@ final class MossState: ObservableObject {
   /// Il JSON che «Invia» manda: quello modificato a mano, altrimenti quello dei campi; nil senza una dimensione utilizzabile.
   func currentJSON() -> String? {
     if let reviewOverride { return reviewOverride }
+    guard let size = generationSize, size.isUsable else { return nil }
+    return MossComposer.json(document, catalog: catalog, size: size)
+  }
+
+  /// Perché «Invia» è disattivato (il primo problema), nelle parole dell'utente; nil se non ci sono problemi.
+  var sendHint: String? {
+    guard let problem = problems.first(where: { $0 == .unknownSize }) ?? problems.first else { return nil }
+    switch problem {
+    case .unknownSize: return L.text(.problemUnknownSize, italian: italian)
+    case .emptySummary: return L.text(.problemEmptySummary, italian: italian)
+    case .noItems: return L.text(.problemNoItems, italian: italian)
+    case .emptyCaption(let id): return L.format(.problemEmptyCaption, number(of: id), italian: italian)
+    case .emptyText(let id): return L.format(.problemEmptyText, number(of: id), italian: italian)
+    }
+  }
+
+  /// Il numero con cui l'elemento compare sull'etichetta (la posizione nell'elenco, da 1).
+  private func number(of id: Int) -> Int { (document.items.firstIndex { $0.id == id } ?? 0) + 1 }
+
+  /// La posizione di un elemento come la mostra la scheda: `[y0, x0, y1, x1]` in pixel dal centro; vuota senza dimensione.
+  func positionText(of id: Int) -> String {
+    guard let item = document.items.first(where: { $0.id == id }), let size = generationSize, size.isUsable else { return "" }
+    return "[" + MossGeometry.centered(item.box, in: size).map(String.init).joined(separator: ", ") + "]"
+  }
+
+  /// L'utente ha scritto una posizione: se si legge, il box cambia; altrimenti resta com'è.
+  func setPosition(_ text: String, of id: Int) {
+    guard let size = generationSize, size.isUsable, let item = document.items.first(where: { $0.id == id }),
+      let box = MossGeometry.parseCentered(text, current: item.box, size: size)
+    else { return }
+    update(item: id) { $0.box = box }
+  }
+
+  // MARK: Rivedi JSON
+
+  /// Il testo di «Rivedi JSON»: quello modificato a mano, altrimenti quello dei campi (vuoto senza dimensione).
+  var jsonText: String { currentJSON() ?? "" }
+
+  var hasEditedJSON: Bool { reviewOverride != nil }
+
+  /// L'utente ha scritto nella finestra: un testo diverso da quello dei campi è una modifica a mano.
+  func editJSON(_ text: String) {
+    let generated = generatedJSON()
+    reviewOverride = (text == generated) ? nil : text
+  }
+
+  /// Torna al testo dei campi.
+  func restoreJSON() { reviewOverride = nil }
+
+  private func generatedJSON() -> String? {
     guard let size = generationSize, size.isUsable else { return nil }
     return MossComposer.json(document, catalog: catalog, size: size)
   }
