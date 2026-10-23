@@ -122,14 +122,15 @@ private struct ElementCard: View {
       .buttonStyle(.plain).foregroundStyle(.secondary).disabled(!enabled).help(help)
   }
 
+  // I campi si leggono dallo stato, non da `element`, la copia con cui questa scheda è stata disegnata (`F3State.elementBinding`).
   private var details: some View {
     VStack(alignment: .leading, spacing: 8) {
       NoteField(
-        text: Binding(get: { element.desc }, set: { value in state.update(element: element.id) { $0.desc = value } }),
+        text: state.elementBinding(element.id, \.desc, fallback: element.desc),
         placeholder: L.text(.elementPlaceholder, italian: state.italian), minHeight: 56, maxHeight: 110)
       FieldLabel(text: L.text(.position, italian: state.italian))
       BBoxField(
-        box: Binding(get: { element.box }, set: { value in state.update(element: element.id) { $0.box = value } }),
+        box: state.elementBinding(element.id, \.box, fallback: element.box),
         italian: state.italian)
     }
   }
