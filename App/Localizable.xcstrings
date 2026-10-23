@@ -7464,6 +7464,23 @@
         }
       }
     },
+    "results.rebuild": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rebuild History from Folder"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ricostruisci la cronologia dalla cartella"
+          }
+        }
+      }
+    },
     "results.trash": {
       "extractionState": "manual",
       "localizations": {
