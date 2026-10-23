@@ -1,0 +1,22 @@
+{
+ "width": 1024,
+ "height": 1024,
+ "bbox_coord_space": "abs",
+ "bbox_format": "xyxy",
+ "summary": {
+  "canvas": "single",
+  "caption": "One plain object."
+ },
+ "items": [
+  {
+   "label": "object",
+   "caption": "A ceramic cup.",
+   "bbox": [
+    256,
+    256,
+    768,
+    768
+   ]
+  }
+ ]
+}
