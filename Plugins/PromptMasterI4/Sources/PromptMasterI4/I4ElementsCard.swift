@@ -162,10 +162,9 @@ private struct ElementCard: View {
       .buttonStyle(.plain).foregroundStyle(.secondary).disabled(!enabled).help(help)
   }
 
+  /// The field is read from the state, not from `element`, the copy this card was drawn with (see `I4State.elementBinding`).
   private func binding<T>(_ keyPath: WritableKeyPath<I4Element, T>) -> Binding<T> {
-    Binding(
-      get: { element[keyPath: keyPath] },
-      set: { value in state.document.updateElement(element.id) { $0[keyPath: keyPath] = value } })
+    state.elementBinding(element.id, keyPath, fallback: element[keyPath: keyPath])
   }
 
   private var details: some View {
@@ -176,7 +175,7 @@ private struct ElementCard: View {
         minHeight: 56, maxHeight: 110)
       if element.type == .text {
         FieldLabel(text: L.text(.lettering, italian: state.italian))
-        Picker("", selection: Binding(get: { element.lettering ?? "" }, set: { value in
+        Picker("", selection: Binding(get: { state.document.elements.first { $0.id == element.id }?.lettering ?? element.lettering ?? "" }, set: { value in
           state.document.updateElement(element.id) { $0.lettering = value.isEmpty ? nil : value }
         })) {
           Text(L.text(.none, italian: state.italian)).tag("")
