@@ -160,6 +160,15 @@ final class F3State: ObservableObject {
 
   func moveElement(_ id: String, by step: Int) { document.moveElement(id, by: step) }
 
+  /// Il binding di un campo di un elemento. Legge dallo stato, non dalla copia dell'elemento con cui la scheda è stata disegnata:
+  /// una copia in ritardo ridà all'editor il testo di prima tra due battute e il cursore salta in fondo. `fallback` vale solo se
+  /// l'elemento è sparito nel frattempo.
+  func elementBinding<T>(_ id: String, _ keyPath: WritableKeyPath<F3Element, T>, fallback: T) -> Binding<T> {
+    Binding(
+      get: { [unowned self] in document.element(id)?[keyPath: keyPath] ?? fallback },
+      set: { [unowned self] value in update(element: id) { $0[keyPath: keyPath] = value } })
+  }
+
   func update(element id: String, _ change: (inout F3Element) -> Void) {
     guard let index = document.elements.firstIndex(where: { $0.id == id }) else { return }
     change(&document.elements[index])
