@@ -48,12 +48,12 @@ struct PromptsTests {
     let system = EditPrompts.system(in: EditPrompts.folder(dataFolder: root))
     #expect(system.contains("NEVER change") && system.contains("ref_image_") && system.contains("## prose"))
     // The syntax summary, the Context list and the examples for every kind of element.
-    #expect(system.contains("src_bbox") && system.contains("Context") && system.contains("NEVER say \"preserving\""))
-    #expect(system.contains("Second example (move, remove, keep)"))
-    // An object taken from a reference: only the named object is described, and it is adapted to the main picture.
-    #expect(system.contains("describe ONLY the object the user's text names"))
-    #expect(system.contains("size, lighting, cast shadows and focus must match"))
-    #expect(system.contains("ignore all of that"))
+    #expect(system.contains("src_bbox") && system.contains("Context") && system.contains("Never say it is new, generated or invented"))
+    #expect(system.contains("Second example (move, remove, change, keep)"))
+    // An object taken from a reference: only the named object is described, and it is made to look at home in the main picture.
+    #expect(system.contains("describe ONLY the object the text names"))
+    #expect(system.contains("in scale with something visible in the start picture"))
+    #expect(system.contains("ignore whatever a box encloses besides the named object"))
     #expect(EditPrompts.problems(in: EditPrompts.folder(dataFolder: root)).isEmpty)
   }
 
@@ -70,5 +70,50 @@ struct PromptsTests {
     let file = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
       .appendingPathComponent("Data/master-prompt.md")
     #expect(try String(contentsOf: file, encoding: .utf8).trimmingCharacters(in: .newlines) == EmbeddedData.masterPrompt.trimmingCharacters(in: .newlines))
+  }
+}
+
+/// Il master prompt v5 (spec «Flux3 Editing: l'LLM vede le immagini»): l'insieme prima dei pezzi, e una regola per ogni tipo di id.
+struct MasterPromptV5Tests {
+  private var body: String { EmbeddedData.masterPrompt }
+
+  @Test func itIsTheFifthEditionAndNotTooLongForASmallModel() {
+    #expect(body.hasPrefix("---\nversion: 5\n---\n"))
+    let words = body.split { $0.isWhitespace }.count
+    #expect(words < 1600, "\(words) words: a small model follows fewer rules better")
+  }
+
+  @Test func itTellsTheModelToTreatTheTextsAsOneScene() {
+    #expect(body.contains("The prose speaks about the whole picture"))
+    #expect(body.contains("Each element block speaks only about its own element"))
+    #expect(body.contains("once"))  // the shared integration sentence goes in the prose once, not in every element
+  }
+
+  @Test func itExplainsThePicturesAndTheBoxesAndForbidsMentioningThem() {
+    #expect(body.contains("picture 1") && body.contains("canvas of the result"))
+    #expect(body.contains("dashed") && body.contains("solid"))
+    #expect(body.contains("never mention the pictures"))
+    #expect(!body.contains("is a crop of the object"))  // the v4 text about crops is gone
+  }
+
+  @Test func itHasARuleForEachKindOfElement() {
+    for heading in [
+      "An object taken from <ref_image_N>", "A new object", "Already in <ref_image_0>, kept or changed", "Moved", "Removed",
+    ] {
+      #expect(body.contains(heading), Comment(rawValue: heading))
+    }
+  }
+
+  @Test func theRuleForObjectsTakenFromAReferenceDescribesTheIntegratedResultInPositiveWords() {
+    #expect(body.contains("as it must look in the result"))
+    #expect(body.contains("same focus") && body.contains("scale") && body.contains("shadow"))
+    #expect(body.contains("never use the words pasted, cutout or collage"))
+  }
+
+  @Test func itKeepsTheRulesTheCodeChecks() {
+    #expect(body.contains("MUST be in English"))
+    #expect(body.contains("between < and >"))
+    #expect(body.contains("quotation marks"))
+    #expect(body.contains("Correct reply"))
   }
 }
