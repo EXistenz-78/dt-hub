@@ -24,7 +24,7 @@ struct PromptLibraryInstallTests {
     for id in EmbeddedPrompts.families.keys { #expect(exists("family/\(id).md", in: dir), Comment(rawValue: id)) }
     #expect(exists("rules/enhance.md", in: dir) && exists("rules/describe.md", in: dir))
     #expect(exists("custom/families.txt", in: dir))
-    #expect(try FileManager.default.contentsOfDirectory(atPath: dir.appendingPathComponent("family").path).count == 13)
+    #expect(try FileManager.default.contentsOfDirectory(atPath: dir.appendingPathComponent("family").path).count == 15)
   }
 
   @Test func installKeepsAFileWithTheSameOrHigherVersion() throws {

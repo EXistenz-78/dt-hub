@@ -103,6 +103,25 @@ Model notes:
 - No negative prompt and no numeric weights: turn "avoid" terms into positive description. Never use quality tags.
 - Exact colors can be given as hex codes (#RRGGBB). Text in the image goes in double quotes, with font, color and position.
 """#,
+    "flux3_5b": #"""
+---
+label: FLUX.3 [klein]
+maxWords: 500
+negative: false
+version: 1
+words: 60-250
+---
+The final prompt must be written exclusively in English, whatever the language of the input. Reply with the prompt only: no title, no quotation marks around it, no explanation, no comments, no markdown, no alternatives.
+
+Model notes:
+- Length: aim for {words} words. When the description and the terms need more room, go on, but never beyond {maxWords} words: the text encoder reads 8192 tokens and drops the rest, but a prompt that long is rarely better. Under 20 words is under-specified.
+- Write natural prose, as a descriptive caption: no tags and no keyword lists. Order: subject and action, location, composition and framing, style or medium, camera, light, colors, additional details.
+- No negative prompt and no numeric weights: turn "avoid" terms into positive description ("an empty street at dawn", not "no cars"). Never use quality tags.
+- Give light a direction and a quality ("soft window light from the left"). For a photograph name camera, lens and film or look ("Fujifilm X-T5, 35mm f/1.4, visible grain") instead of "professional photo".
+- Text in the image goes in double quotes, exactly as it must read (language, capitals, punctuation), with weight, color, alignment and position; \n inside the quotes is a line break. Exact colors can be given as hex codes (#RRGGBB), tied to one named object.
+- Reference pictures are called "image 1", "image 2", each with its role (subject, product, setting, style).
+- Never write bounding boxes or JSON. If the input has tags in angle brackets, keep them unchanged.
+"""#,
     "hidream_i1": #"""
 ---
 label: HiDream-I1
@@ -133,6 +152,26 @@ Model notes:
 - Write natural prose. The model has an aesthetic of its own (depth of field, color grading, rim light): do not over-specify technical parameters, and keep the subject layer and the style layer in separate sentences.
 - Numeric weights are read as literal text: never use them.
 - A negative prompt is supported but must stay minimal and targeted, naming only specific artifacts or objects to avoid.
+"""#,
+    "moss_image": #"""
+---
+label: MOSS Image
+maxWords: 400
+negative: true
+version: 1
+words: 60-200
+---
+The final prompt must be written exclusively in English, whatever the language of the input. Reply with a JSON object and nothing else, in this shape: {"prompt": "...", "negative": "..."}. "prompt" is the final prompt; "negative" lists only what to avoid, short and targeted. Both values are in English. No explanation, no comments, no markdown.
+
+Model notes:
+- Length: aim for {words} words. When the description and the terms need more room, go on, but never beyond {maxWords} words: the text encoder reads 4096 tokens and drops the rest, but a prompt that long is rarely better. A very short prompt is less stable.
+- Write natural prose in English: the model reads Chinese too, but has more training data in English. Text to render stays in the language it must appear in.
+- Write tags only when the input is already a tag list, in this order: quality, score, meta, year, character, series, artist, general (for example "best quality, highres, 1girl, blue hair").
+- Order for prose: subject and action, setting, composition, style or medium, light and color, camera and lens.
+- Text in the image goes in double quotes, exactly as it must read; \n inside the quotes is a line break (the model wraps long text by itself, so add it only where wanted).
+- Numeric weights are read as literal text: never use them.
+- The negative is short and targeted: start from "nsfw, worst quality, bad anatomy, watermark, jpeg artifact" and add only specific artifacts or objects to avoid.
+- Never write bounding boxes or JSON layouts.
 """#,
     "qwen_image": #"""
 ---
