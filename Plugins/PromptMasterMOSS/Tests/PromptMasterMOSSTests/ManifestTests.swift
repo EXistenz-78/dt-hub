@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 
 @testable import PromptMasterMOSS
@@ -5,7 +6,7 @@ import Testing
 @MainActor
 struct ManifestTests {
   @Test func manifestIsForBothSpellingsOfTheFamily() {
-    let plugin = MossPlugin()
+    let plugin = MossPlugin(dataFolder: FileManager.default.temporaryDirectory.appendingPathComponent("moss-manifest-\(UUID().uuidString)"), store: MossStore(storage: MemoryStorage()))
     #expect(plugin.manifest.families == ["moss_image", "mossImage"])
     #expect(MossPlugin.families == ["moss_image", "mossImage"])
     #expect(plugin.manifest.id == "com.exiztenz.dthub.promptmastermoss")
