@@ -1,0 +1,67 @@
+{
+ "width": 1024,
+ "height": 640,
+ "bbox_coord_space": "abs",
+ "bbox_format": "xyxy",
+ "summary": {
+  "meta": [
+   "photograph",
+   "cinematic"
+  ],
+  "canvas": "single",
+  "palette": [
+   "#2F4F4F",
+   "#B22222"
+  ],
+  "caption": "A Japanese girl in a red kimono in a bamboo forest."
+ },
+ "items": [
+  {
+   "label": "character",
+   "caption": "Dark hair pinned up, hands on the umbrella handle.",
+   "bbox": [
+    380,
+    200,
+    650,
+    640
+   ],
+   "tags": [
+    "hair pinned up"
+   ]
+  },
+  {
+   "label": "object",
+   "caption": "A paper umbrella of bamboo and rice paper.",
+   "bbox": [
+    150,
+    30,
+    800,
+    330
+   ],
+   "tags": [
+    "umbrella",
+    "rice paper"
+   ],
+   "palette": [
+    "#F5F5DC"
+   ]
+  },
+  {
+   "label": "text",
+   "caption": "Small white serif lettering, lower left.",
+   "text": "Kyoto\nArashiyama",
+   "bbox": [
+    40,
+    540,
+    300,
+    610
+   ],
+   "tags": [
+    "lettering"
+   ],
+   "palette": [
+    "#FFFFFF"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,35 @@
+{
+ "width": 1536,
+ "height": 1024,
+ "bbox_coord_space": "abs",
+ "bbox_format": "xyxy",
+ "summary": {
+  "meta": [
+   "photograph"
+  ],
+  "canvas": "single",
+  "caption": "Fractional pixel edges."
+ },
+ "items": [
+  {
+   "label": "object",
+   "caption": "A lantern near the left edge.",
+   "bbox": [
+    100.5,
+    50.25,
+    700.75,
+    400.5
+   ]
+  },
+  {
+   "label": "object",
+   "caption": "A stone path.",
+   "bbox": [
+    0.5,
+    500.5,
+    1535.5,
+    1023.5
+   ]
+  }
+ ]
+}

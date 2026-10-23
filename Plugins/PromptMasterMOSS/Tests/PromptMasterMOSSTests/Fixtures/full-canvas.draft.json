@@ -1,0 +1,22 @@
+{
+ "width": 1024,
+ "height": 640,
+ "bbox_coord_space": "abs",
+ "bbox_format": "xyxy",
+ "summary": {
+  "canvas": "single",
+  "caption": "A backdrop covering the whole canvas."
+ },
+ "items": [
+  {
+   "label": "object",
+   "caption": "The whole backdrop, tall green culms in soft haze.",
+   "bbox": [
+    0,
+    0,
+    1024,
+    640
+   ]
+  }
+ ]
+}
