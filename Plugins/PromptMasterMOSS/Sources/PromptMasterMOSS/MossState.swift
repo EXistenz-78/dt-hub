@@ -72,12 +72,20 @@ final class MossState: ObservableObject {
   /// L'app ha detto la dimensione della Generazione. Stesso rapporto: si ricalcolano le coordinate in silenzio. Rapporto
   /// diverso: i box restano nelle stesse frazioni e compare l'avviso.
   func update(generationSize new: PixelSize?) {
-    defer { generationSize = new }
-    guard let old = generationSize, let new, old != new, old.width > 0, old.height > 0, new.width > 0, new.height > 0 else { return }
+    let old = generationSize
+    generationSize = new
+    guard let old, let new, old != new, old.width > 0, old.height > 0, new.width > 0, new.height > 0 else { return }
+    var notices: [String] = []
     let oldRatio = Double(old.width) / Double(old.height), newRatio = Double(new.width) / Double(new.height)
     if abs(oldRatio - newRatio) > 0.005 {
-      sizeNotice = L.format(.sizeRatioChanged, old.width, old.height, new.width, new.height, italian: italian)
+      notices.append(L.format(.sizeRatioChanged, old.width, old.height, new.width, new.height, italian: italian))
     }
+    // Il JSON modificato a mano ha pixel dal centro calcolati per la dimensione di prima: non si manda con un'altra.
+    if reviewOverride != nil {
+      reviewOverride = nil
+      notices.append(L.text(.reviewDiscarded, italian: italian))
+    }
+    if !notices.isEmpty { sizeNotice = notices.joined(separator: " ") }
   }
 
   func dismissSizeNotice() { sizeNotice = nil }
@@ -281,6 +289,9 @@ final class MossState: ObservableObject {
   }
 
   var negativeText: String { MossComposer.negative(document, catalog: catalog) }
+
+  /// Le righe sotto i pulsanti: l'ultimo messaggio e, finché «Invia» è disattivato, perché lo è.
+  var statusLines: [String] { [status, canSend ? nil : sendHint].compactMap { $0 }.filter { !$0.isEmpty } }
 
   /// Il plug-in è attivo, non si sta inviando né scrivendo e non ci sono problemi.
   var canSend: Bool { active && !isSending && !isWriting && problems.isEmpty }

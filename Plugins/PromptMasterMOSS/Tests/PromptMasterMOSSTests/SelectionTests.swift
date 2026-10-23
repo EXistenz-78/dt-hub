@@ -107,4 +107,17 @@ struct SelectionTests {
     state.restoreJSON()
     #expect(!state.hasEditedJSON && state.jsonText == generated)
   }
+
+  @Test func theReasonSendIsDisabledStaysEvenAfterAStatusMessage() {
+    let state = state()
+    state.active = true
+    state.status = "Prompt sent."
+    #expect(state.statusLines == ["Prompt sent.", L.text(.problemEmptySummary, italian: false)])
+    state.document.description = "x"
+    state.addItem(label: .object, box: FracBox(x0: 0.1, y0: 0.1, x1: 0.5, y1: 0.5))
+    state.update(item: 1) { $0.caption = "c" }
+    #expect(state.statusLines == ["Prompt sent."])
+    state.status = ""
+    #expect(state.statusLines.isEmpty)
+  }
 }

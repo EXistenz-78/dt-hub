@@ -17,12 +17,12 @@ struct MossWriteResult: Sendable {
 
 /// Il controllo nel codice dell'ordine tassativo (spec §7): le parole tra virgolette non si toccano.
 enum MossCheck {
-  /// Le parole tra virgolette dritte o ricurve.
+  /// Le parole tra virgolette dritte, ricurve o caporali.
   static func quoted(_ text: String) -> [String] {
-    guard let regex = try? NSRegularExpression(pattern: "\"([^\"]+)\"|“([^”]+)”") else { return [] }
+    guard let regex = try? NSRegularExpression(pattern: "\"([^\"]+)\"|“([^”]+)”|«([^»]+)»|‘([^’]+)’") else { return [] }
     let range = NSRange(text.startIndex..., in: text)
     return regex.matches(in: text, range: range).compactMap { match in
-      for group in 1...2 {
+      for group in 1...4 {
         if let r = Range(match.range(at: group), in: text) { return String(text[r]) }
       }
       return nil
@@ -61,7 +61,9 @@ struct MossWriter {
     var problems: [String] = []
     for part in parts {
       var candidate = parsed[part.kind]
-      if candidate == nil || !acceptable(candidate!, for: part) {
+      // Ripiego solo per le parti mancanti o scartate: se la richiesta è fallita del tutto (timeout, modello non caricato) non si
+      // riprova per ogni parte, ognuna con la sua attesa.
+      if failureText == nil, candidate == nil || !acceptable(candidate!, for: part) {
         // Ripiego: la sola parte, con l'ordine ripetuto.
         if case .text(let text) = await ask(MossBrief.message([part], reminder: Self.reminder), system, options) {
           answer += "\n\n" + text
@@ -87,6 +89,8 @@ struct MossWriter {
 
   /// Un testo ancora italiano non vale (si riprova); la prosa deve conservare le parole tra virgolette.
   private func acceptable(_ text: String, for part: MossPart) -> Bool {
+    // Una risposta senza parole (il «...» della forma da riempire) non vale.
+    if text.filter(\.isLetter).count < 3 { return false }
     if MossLanguage.looksItalian(text) { return false }
     switch part.kind {
     case .summary, .item: return MossCheck.preservesQuoted(original: part.text, rewritten: text)
