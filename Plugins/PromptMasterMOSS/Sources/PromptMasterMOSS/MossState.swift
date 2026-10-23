@@ -27,8 +27,6 @@ final class MossState: ObservableObject {
   @Published private(set) var generationSize: PixelSize?
   /// Avviso sopra il canvas quando il RAPPORTO della dimensione è cambiato (i box restano nelle stesse frazioni).
   @Published private(set) var sizeNotice: String?
-  /// Il JSON modificato a mano in «Rivedi JSON»: se c'è, è quello che parte con «Invia».
-  @Published var reviewOverride: String?
   /// Dove si leggono il master prompt e quello dell'utente (a ogni scrittura).
   let promptFolder: DTHubPromptFolder
   /// La cartella del progetto aperto (dove stanno `state.json` e `llm/`); nil finché l'app non ha detto il progetto.
@@ -79,11 +77,6 @@ final class MossState: ObservableObject {
     let oldRatio = Double(old.width) / Double(old.height), newRatio = Double(new.width) / Double(new.height)
     if abs(oldRatio - newRatio) > 0.005 {
       notices.append(L.format(.sizeRatioChanged, old.width, old.height, new.width, new.height, italian: italian))
-    }
-    // Il JSON modificato a mano ha pixel dal centro calcolati per la dimensione di prima: non si manda con un'altra.
-    if reviewOverride != nil {
-      reviewOverride = nil
-      notices.append(L.text(.reviewDiscarded, italian: italian))
     }
     if !notices.isEmpty { sizeNotice = notices.joined(separator: " ") }
   }
@@ -171,6 +164,15 @@ final class MossState: ObservableObject {
     selectedItem = id
   }
 
+  /// Il binding di un campo di testo di un elemento. Legge dal documento, non dalla copia con cui la scheda è stata disegnata: una
+  /// copia in ritardo restituisce all'editor il testo di prima tra due battute e il cursore salta alla fine. `fallback` vale solo
+  /// se l'elemento è sparito nel frattempo.
+  func itemBinding(_ id: Int, _ keyPath: WritableKeyPath<MossItem, String>, fallback: String) -> Binding<String> {
+    Binding(
+      get: { [unowned self] in document.items.first { $0.id == id }?[keyPath: keyPath] ?? fallback },
+      set: { [unowned self] value in update(item: id) { $0[keyPath: keyPath] = value } })
+  }
+
   func setLabel(_ label: MossLabel, for id: Int) { update(item: id) { $0.label = label } }
 
   func update(item id: Int, _ change: (inout MossItem) -> Void) {
@@ -231,9 +233,8 @@ final class MossState: ObservableObject {
 
   var problems: [MossProblem] { MossComposer.problems(document, catalog: catalog, size: generationSize) }
 
-  /// Il JSON che «Invia» manda: quello modificato a mano, altrimenti quello dei campi; nil senza una dimensione utilizzabile.
+  /// Il JSON che «Invia» manda; nil senza una dimensione utilizzabile.
   func currentJSON() -> String? {
-    if let reviewOverride { return reviewOverride }
     guard let size = generationSize, size.isUsable else { return nil }
     return MossComposer.json(document, catalog: catalog, size: size)
   }
@@ -265,27 +266,6 @@ final class MossState: ObservableObject {
       let box = MossGeometry.parseCentered(text, current: item.box, size: size)
     else { return }
     update(item: id) { $0.box = box }
-  }
-
-  // MARK: Rivedi JSON
-
-  /// Il testo di «Rivedi JSON»: quello modificato a mano, altrimenti quello dei campi (vuoto senza dimensione).
-  var jsonText: String { currentJSON() ?? "" }
-
-  var hasEditedJSON: Bool { reviewOverride != nil }
-
-  /// L'utente ha scritto nella finestra: un testo diverso da quello dei campi è una modifica a mano.
-  func editJSON(_ text: String) {
-    let generated = generatedJSON()
-    reviewOverride = (text == generated) ? nil : text
-  }
-
-  /// Torna al testo dei campi.
-  func restoreJSON() { reviewOverride = nil }
-
-  private func generatedJSON() -> String? {
-    guard let size = generationSize, size.isUsable else { return nil }
-    return MossComposer.json(document, catalog: catalog, size: size)
   }
 
   var negativeText: String { MossComposer.negative(document, catalog: catalog) }
@@ -380,7 +360,6 @@ final class MossState: ObservableObject {
     openGroups = Set(session.openGroups)
     openCategories = Set(session.openCategories)
     selectedItem = nil
-    reviewOverride = nil
     sizeNotice = nil
     isRestoring = false
   }

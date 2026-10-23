@@ -98,12 +98,4 @@ struct RenderTests {
     let rep = try render(state, dark: true, name: "tab-menu-dark.png")
     #expect(distinctColors(rep) > 20)
   }
-
-  @Test func theJSONEditorLeavesTheQuotesStraightAndTheTextAsTyped() {
-    let view = NSTextView()
-    JSONEditor.configure(view)
-    #expect(!view.isAutomaticQuoteSubstitutionEnabled && !view.isAutomaticDashSubstitutionEnabled)
-    #expect(!view.isAutomaticTextReplacementEnabled && !view.isAutomaticSpellingCorrectionEnabled)
-    #expect(!view.isRichText && view.allowsUndo)
-  }
 }
