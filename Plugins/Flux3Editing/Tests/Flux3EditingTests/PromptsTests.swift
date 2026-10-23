@@ -73,14 +73,14 @@ struct PromptsTests {
   }
 }
 
-/// Il master prompt v5 (spec «Flux3 Editing: l'LLM vede le immagini»): l'insieme prima dei pezzi, e una regola per ogni tipo di id.
-struct MasterPromptV5Tests {
+/// Il master prompt v6 (v5 + correzioni del banco ninja; spec «Flux3 Editing: l'LLM vede le immagini»): l'insieme prima dei pezzi, e una regola per ogni tipo di id.
+struct MasterPromptV6Tests {
   private var body: String { EmbeddedData.masterPrompt }
 
-  @Test func itIsTheFifthEditionAndNotTooLongForASmallModel() {
-    #expect(body.hasPrefix("---\nversion: 5\n---\n"))
+  @Test func itIsTheSixthEditionAndNotTooLongForASmallModel() {
+    #expect(body.hasPrefix("---\nversion: 6\n---\n"))
     let words = body.split { $0.isWhitespace }.count
-    #expect(words < 1600, "\(words) words: a small model follows fewer rules better")
+    #expect(words < 1800, "\(words) words: a small model follows fewer rules better")
   }
 
   @Test func itTellsTheModelToTreatTheTextsAsOneScene() {
@@ -108,6 +108,19 @@ struct MasterPromptV5Tests {
     #expect(body.contains("as it must look in the result"))
     #expect(body.contains("same focus") && body.contains("scale") && body.contains("shadow"))
     #expect(body.contains("never use the words pasted, cutout or collage"))
+  }
+
+  @Test func itNamesEveryObjectAndLetsTheBoxWinOverTheProse() {
+    #expect(body.contains("Always name the object in its own block"))
+    #expect(body.contains("never write \"the element\""))
+    #expect(body.contains("follow the box"))
+  }
+
+  @Test func anObjectFromAReferenceAdaptsItsPoseAndKeepsOnlyIdentityOutfitAndGear() {
+    #expect(body.contains("identity, outfit and gear are kept"))
+    #expect(!body.contains("exact design, shape and visible details are kept"))
+    #expect(body.contains("Adapt its pose to the scene"))
+    #expect(body.contains("shadow beneath it"))
   }
 
   @Test func itKeepsTheRulesTheCodeChecks() {
