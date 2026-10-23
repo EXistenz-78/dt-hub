@@ -55,13 +55,6 @@ struct PluginTests {
     #expect(payload?.negative == "worst quality, bad anatomy")
   }
 
-  @Test func theReviewedTextIsWhatIsSent() async {
-    let plugin = plugin()
-    await ready(plugin)
-    plugin.state.editJSON("{\"edited\":true}")
-    #expect(plugin.sendPayload()?.json == "{\"edited\":true}")
-  }
-
   @Test func nothingIsSentWithoutASizeAnElementOrAnActiveTab() async {
     let plugin = plugin()
     #expect(plugin.sendPayload() == nil)  // inattivo

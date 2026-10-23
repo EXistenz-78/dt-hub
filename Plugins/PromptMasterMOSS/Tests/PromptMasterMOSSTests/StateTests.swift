@@ -78,17 +78,6 @@ struct StateTests {
     #expect(state.document.items[0] == expected)
   }
 
-  @Test func theReviewedTextReplacesTheJSONUntilItIsCleared() {
-    let state = state()
-    ready(state)
-    let generated = state.currentJSON()
-    #expect(generated?.hasPrefix("{\"summary\"") == true)
-    state.reviewOverride = "{\"edited\":true}"
-    #expect(state.currentJSON() == "{\"edited\":true}")
-    state.reviewOverride = nil
-    #expect(state.currentJSON() == generated)
-  }
-
   @Test func theSizeIsNotRememberedAcrossRuns_theSnapshotIs() {
     let storage = MemoryStorage()
     let first = state(storage: storage)
@@ -106,23 +95,10 @@ struct StateTests {
     session.document.description = "del progetto"
     MossStore(storage: FileStorage(folder: folder)).save(session)
     let state = state()
-    state.reviewOverride = "{}"
     state.update(generationSize: PixelSize(width: 1024, height: 640))
     state.update(generationSize: PixelSize(width: 1024, height: 1024))
     state.switchProject(folder: folder, adoptLegacy: false)
     #expect(state.document.description == "del progetto")
-    #expect(state.reviewOverride == nil && state.sizeNotice == nil && state.selectedItem == nil)
-  }
-
-  @Test func aHandEditedJSONIsDiscardedWhenTheGenerationSizeChanges() {
-    let state = state()
-    ready(state)
-    state.editJSON("{\"mine\":1}")
-    state.update(generationSize: PixelSize(width: 1024, height: 640))  // la stessa dimensione: niente cambia
-    #expect(state.reviewOverride == "{\"mine\":1}")
-    state.update(generationSize: PixelSize(width: 1536, height: 960))  // le sue coordinate erano per la dimensione di prima
-    #expect(state.reviewOverride == nil)
-    #expect(state.sizeNotice == L.text(.reviewDiscarded, italian: false))
-    #expect(state.currentJSON()?.hasPrefix("{\"summary\"") == true)
+    #expect(state.sizeNotice == nil && state.selectedItem == nil)
   }
 }

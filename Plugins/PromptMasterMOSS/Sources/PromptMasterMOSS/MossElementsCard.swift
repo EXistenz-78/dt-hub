@@ -2,12 +2,11 @@ import DTHubDesign
 import SwiftUI
 
 /// La card di destra in basso: gli elementi, una scheda ciascuno (quella nuova si apre da sola), e in fondo Annulla, Scrivi con LLM,
-/// Rivedi JSON, Invia.
+/// Invia.
 struct MossElementsCard: View {
   @ObservedObject var state: MossState
   let send: () -> Void
   let write: () -> Void
-  @State private var reviewing = false
 
   var body: some View {
     VStack(spacing: 0) {
@@ -39,7 +38,6 @@ struct MossElementsCard: View {
       .padding(DS.panelPadding)
     }
     .dsPanel()
-    .sheet(isPresented: $reviewing) { MossReviewSheet(state: state, close: { reviewing = false }) }
   }
 
   private var buttons: some View {
@@ -65,13 +63,6 @@ struct MossElementsCard: View {
       }
       .buttonStyle(DSPillButtonStyle())
       .disabled(!state.canWrite)
-      Button { reviewing = true } label: {
-        HStack(spacing: DS.pillIconGap) {
-          Image(systemName: "doc.text")
-          Text(L.text(.reviewJSON, italian: state.italian))
-        }
-      }
-      .buttonStyle(DSPillButtonStyle())
       Spacer(minLength: 0)
       Button(action: send) {
         HStack(spacing: DS.pillIconGap) {
@@ -146,7 +137,7 @@ private struct ItemCard: View {
       .pickerStyle(.segmented).labelsHidden()
       FieldLabel(text: L.text(.captionLabel, italian: state.italian))
       NoteField(
-        text: Binding(get: { item.caption }, set: { value in state.update(item: item.id) { $0.caption = value } }),
+        text: state.itemBinding(item.id, \.caption, fallback: item.caption),
         placeholder: L.text(.captionPlaceholder, italian: state.italian), minHeight: 56, maxHeight: 110)
       if item.label == .text {
         HStack {
@@ -154,11 +145,11 @@ private struct ItemCard: View {
           Text(L.text(.verbatim, italian: state.italian)).font(.caption).foregroundStyle(.secondary)
         }
         NoteField(
-          text: Binding(get: { item.text }, set: { value in state.update(item: item.id) { $0.text = value } }),
+          text: state.itemBinding(item.id, \.text, fallback: item.text),
           placeholder: L.text(.textPlaceholder, italian: state.italian), minHeight: 44, maxHeight: 90)
       }
       FieldLabel(text: L.text(.tagsLabel, italian: state.italian))
-      TextField("", text: Binding(get: { item.tags }, set: { value in state.update(item: item.id) { $0.tags = value } }))
+      TextField("", text: state.itemBinding(item.id, \.tags, fallback: item.tags))
         .textFieldStyle(.roundedBorder)
       FieldLabel(text: L.text(.position, italian: state.italian))
       PositionField(state: state, item: item)

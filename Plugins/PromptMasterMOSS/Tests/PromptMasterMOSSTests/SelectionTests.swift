@@ -93,21 +93,6 @@ struct SelectionTests {
     #expect(state.document.items[0].box == FracBox(x0: 0, y0: 0, x1: 0.5, y1: 0.5))
   }
 
-  @Test func theReviewTextIsTheGeneratedJSONUntilEditedByHand() {
-    let state = state()
-    state.document.description = "A."
-    state.addItem(label: .object, box: FracBox(x0: 0.1, y0: 0.1, x1: 0.5, y1: 0.5))
-    state.update(item: 1) { $0.caption = "c" }
-    let generated = state.jsonText
-    #expect(generated.hasPrefix("{\"summary\"") && !state.hasEditedJSON)
-    state.editJSON(generated)  // lo stesso testo non è una modifica
-    #expect(state.reviewOverride == nil && !state.hasEditedJSON)
-    state.editJSON("{\"mine\":1}")
-    #expect(state.hasEditedJSON && state.jsonText == "{\"mine\":1}" && state.currentJSON() == "{\"mine\":1}")
-    state.restoreJSON()
-    #expect(!state.hasEditedJSON && state.jsonText == generated)
-  }
-
   @Test func theReasonSendIsDisabledStaysEvenAfterAStatusMessage() {
     let state = state()
     state.active = true
@@ -119,5 +104,20 @@ struct SelectionTests {
     #expect(state.statusLines == ["Prompt sent."])
     state.status = ""
     #expect(state.statusLines.isEmpty)
+  }
+
+  @Test func anItemFieldReadsTheCurrentTextEvenWhenTheCardHoldsAStaleCopy() {
+    let state = state()
+    state.addItem(label: .text, box: FracBox(x0: 0.1, y0: 0.1, x1: 0.5, y1: 0.5))
+    let stale = state.document.items[0]  // la copia con cui la scheda è stata disegnata
+    let caption = state.itemBinding(1, \.caption, fallback: stale.caption)
+    caption.wrappedValue = "uno"
+    state.update(item: 1) { $0.caption = "uno due" }  // un'altra battuta: la copia della scheda non è ancora stata ridisegnata
+    #expect(stale.caption == "")
+    #expect(caption.wrappedValue == "uno due")  // legge dal documento, non dalla copia: il cursore non salta
+    caption.wrappedValue = "uno due tre"
+    #expect(state.document.items[0].caption == "uno due tre")
+    state.removeItem(1)  // l'elemento sparito: si ripiega sulla copia, senza errore
+    #expect(state.itemBinding(1, \.tags, fallback: "x").wrappedValue == "x")
   }
 }

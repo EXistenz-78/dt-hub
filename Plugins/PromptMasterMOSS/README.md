@@ -23,10 +23,9 @@ Plain natural-language prompts for MOSS are covered by the app's own Family prom
 
 MOSS reads each box as `[y0, x0, y1, x1]` in **pixels from the centre** of the picture, so the boxes only make sense for the size they were calculated for: with a bigger canvas the picture is drawn at the original size with blank space around it, with a smaller one the excess is cut off, and there is no error either way. The plug-in keeps the boxes as fractions of the canvas and converts them with the **current** Generation size when you press **Send** (the size must be a multiple of 16). If the *shape* of the Generation changes after you drew, a notice appears above the canvas and the boxes keep their fractions (they are stretched).
 
-## Write with LLM, Undo, Review JSON, Send
+## Write with LLM, Undo, Send
 
 - **Write with LLM** sends the description (with the picked terms), the free `meta` tags, and the caption and tags of each element as Markdown blocks in one request, and replaces the texts in the fields. The reply is checked in code: quoted words unchanged, English not Italian; a part that fails keeps your original. The literal text of Text elements, the positions and the colours are never sent. **Undo** puts the previous texts back (the last writing only). The request, the raw answer and the previous texts are saved in `llm/` next to `state.json` in the project.
-- **Review JSON** opens the one-line JSON: copy it or edit it by hand; if you change it, that edited text is what **Send** sends, until you restore it from the fields.
 - **Send** is disabled, with the reason shown, when the description is empty, there are no elements, an element has no caption (or a Text element no text), or the Generation size is unknown.
 
 ## Data

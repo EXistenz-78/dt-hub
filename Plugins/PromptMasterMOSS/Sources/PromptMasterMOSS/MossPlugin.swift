@@ -51,7 +51,7 @@ final class MossPlugin: DTHubPlugin {
     }
   }
 
-  /// Quello che «Invia» manda: il JSON (quello modificato a mano, se c'è) e il negativo; nil se non si può inviare.
+  /// Quello che «Invia» manda: il JSON e il negativo; nil se non si può inviare.
   func sendPayload() -> (json: String, negative: String)? {
     guard state.canSend, let json = state.currentJSON() else { return nil }
     return (json, state.negativeText)
