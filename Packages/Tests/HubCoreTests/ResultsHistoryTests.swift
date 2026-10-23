@@ -32,13 +32,14 @@ struct ResultsHistoryTests {
     return session
   }
 
-  @Test func theStoreKeepsTheNewestFiftyInOrder() {
+  @Test func theStoreRemembersMoreThanTheStripShows() {
     let store = ResultsHistoryStore(fileURL: folder().appendingPathComponent("results.json"))
-    store.save((0..<60).map(entry))
+    store.save((0..<2100).map(entry))
     let loaded = store.load()
-    #expect(loaded.count == 50)
+    #expect(loaded.count == ResultsHistoryStore.storedLimit)
+    #expect(ResultsHistoryStore.displayLimit == 100)
     #expect(loaded.first == entry(0))
-    #expect(loaded.last == entry(49))
+    #expect(loaded.last == entry(ResultsHistoryStore.storedLimit - 1))
   }
 
   @Test func aMissingOrDamagedFileHasNoHistory() throws {
@@ -118,5 +119,37 @@ struct ResultsHistoryTests {
     #expect(session.results.last?.isRestored == true)
     // And what is saved lists both.
     #expect(ResultsHistoryStore(fileURL: root.appendingPathComponent("results.json")).load().count == 2)
+  }
+
+  @Test func theStripHoldsAHundredAndTheFileKeepsTheRest() async {
+    let root = folder()
+    let session = await sessionWithResults(in: root, count: 104)
+    #expect(session.results.count == 100)
+    #expect(ResultsHistoryStore(fileURL: root.appendingPathComponent("results.json")).load().count == 104)
+  }
+
+  @Test func removingPicturesBringsOlderOnesBack() async throws {
+    let root = folder()
+    let session = await sessionWithResults(in: root, count: 104)
+    let gone = Set(session.results.prefix(3).map(\.id))
+    session.remove(gone)
+    for _ in 0..<100 where session.results.count < 100 { try await Task.sleep(for: .milliseconds(50)) }
+    #expect(session.results.count == 100)
+    #expect(Set(session.results.map(\.id)).isDisjoint(with: gone))
+    #expect(ResultsHistoryStore(fileURL: root.appendingPathComponent("results.json")).load().count == 101)
+  }
+
+  @Test func rebuildingFindsPicturesTheFileForgot() async {
+    let root = folder()
+    let session = await sessionWithResults(in: root, count: 5)
+    let file = root.appendingPathComponent("results.json")
+    try? FileManager.default.removeItem(at: file)
+    let fresh = GenerationSession(store: PNGImageStore(folder: root.appendingPathComponent("out")), history: ResultsHistoryStore(fileURL: file))
+    let added = await fresh.rebuildHistory(from: root.appendingPathComponent("out"))
+    #expect(added == 5)
+    #expect(fresh.results.count == 5)
+    #expect(ResultsHistoryStore(fileURL: file).load().count == 5)
+    #expect(session.results.count == 5)
+    #expect(await fresh.rebuildHistory(from: root.appendingPathComponent("out")) == 0)
   }
 }

@@ -14,8 +14,14 @@ public struct ResultsHistoryEntry: Codable, Equatable, Sendable {
 /// The strip of the Results window, kept across launches (`results.json`, spec §11): the paths of
 /// the last results, newest first. The images stay where they were saved; the job of each one is
 /// read back from its PNG.
+///
+/// The file remembers far more pictures than the strip shows (`storedLimit` against `displayLimit`), so that
+/// removing pictures from the strip brings older ones back in their place.
 public struct ResultsHistoryStore: Sendable {
-  public static let limit = 50
+  /// The most pictures the strip holds.
+  public static let displayLimit = 100
+  /// The most entries the file remembers.
+  public static let storedLimit = 2000
   public let fileURL: URL
 
   public init(fileURL: URL) {
@@ -34,15 +40,15 @@ public struct ResultsHistoryStore: Sendable {
     guard let data = try? Data(contentsOf: fileURL),
       let entries = try? JSONDecoder().decode([ResultsHistoryEntry].self, from: data)
     else { return [] }
-    return Array(entries.prefix(Self.limit))
+    return Array(entries.prefix(Self.storedLimit))
   }
 
-  /// Writes the newest `limit` entries; a failure only loses the restore at the next launch.
+  /// Writes the newest `storedLimit` entries; a failure only loses the restore at the next launch.
   public func save(_ entries: [ResultsHistoryEntry]) {
     do {
       try FileManager.default.createDirectory(
         at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-      try JSONEncoder().encode(Array(entries.prefix(Self.limit))).write(to: fileURL, options: .atomic)
+      try JSONEncoder().encode(Array(entries.prefix(Self.storedLimit))).write(to: fileURL, options: .atomic)
     } catch {
     }
   }

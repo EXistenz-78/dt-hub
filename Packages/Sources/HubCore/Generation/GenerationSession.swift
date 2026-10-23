@@ -140,7 +140,9 @@ public final class GenerationSession {
               let seconds = Double(took.components.seconds) + Double(took.components.attoseconds) / 1e18
               let saved = await Self.save(images, of: job, elapsed: seconds / Double(max(images.count, 1)), in: store)
               results.insert(contentsOf: saved, at: 0)
+              // Saved before the strip is cut: what leaves the strip stays in the history file.
               persistHistory()
+              trimStrip()
             }
           }
         }
@@ -174,19 +176,48 @@ public final class GenerationSession {
     phase = .failed(error)
   }
 
-  /// Brings back the strip of the last launches: the saved results that are still on disk and
-  /// still carry their job, small and away from the main actor. What is already in the strip
-  /// (a RUN that finished meanwhile) stays ahead and is not listed twice.
+  /// Brings back the strip of the last launches, or fills it again after pictures left it: the saved results that
+  /// are still on disk and still carry their job, small and away from the main actor, up to the strip's limit.
+  /// What is already in the strip (a RUN that finished meanwhile) stays ahead and is not listed twice.
   public func restoreHistory() async {
     guard let history else { return }
+    let needed = ResultsHistoryStore.displayLimit - results.count
+    guard needed > 0 else { return }
     let entries = history.load()
+    let present = Set(results.compactMap(\.fileURL))
     let restored = await Task.detached(priority: .utility) {
-      entries.compactMap { Self.restoredImage($0) }
+      Self.restoredImages(entries, skipping: present, upTo: needed)
     }.value
     // The project may have changed while the pictures were read: they belong to the old strip then.
     guard self.history?.fileURL == history.fileURL else { return }
-    let present = Set(results.compactMap(\.fileURL))
-    results.append(contentsOf: restored.filter { $0.fileURL.map { !present.contains($0) } ?? false })
+    let now = Set(results.compactMap(\.fileURL))
+    let room = ResultsHistoryStore.displayLimit - results.count
+    results.append(contentsOf: restored.filter { $0.fileURL.map { !now.contains($0) } ?? false }.prefix(max(room, 0)))
+  }
+
+  /// Lists again the pictures of `folder` (a project's `yyyy-MM-dd` folders) that carry their job and that the history
+  /// does not know, for example ones that left the file when it was shorter. Returns how many were added; the strip
+  /// then fills up to its limit.
+  @discardableResult
+  public func rebuildHistory(from folder: URL) async -> Int {
+    guard let history else { return 0 }
+    let known = Set(history.load().map(\.path))
+    let found = await Task.detached(priority: .utility) {
+      ProjectImages.allImages(in: folder).filter {
+        !known.contains($0.url.path) && PNGImageStore.job(in: $0.url) != nil
+      }
+    }.value
+    guard self.history?.fileURL == history.fileURL, !found.isEmpty else { return 0 }
+    let merged = history.load() + found.map { ResultsHistoryEntry(path: $0.url.path, date: $0.date) }
+    history.save(merged.sorted { $0.date > $1.date })
+    await restoreHistory()
+    return found.count
+  }
+
+  /// Keeps the strip within its limit: the older pictures stay in the history file and come back when room is made.
+  private func trimStrip() {
+    let limit = ResultsHistoryStore.displayLimit
+    if results.count > limit { results.removeLast(results.count - limit) }
   }
 
   /// The strip of another project: empties the strip, takes that project's list and reads its pictures back. Refused
@@ -196,6 +227,17 @@ public final class GenerationSession {
     results = []
     self.history = history
     await restoreHistory()
+  }
+
+  private nonisolated static func restoredImages(
+    _ entries: [ResultsHistoryEntry], skipping present: Set<URL>, upTo count: Int
+  ) -> [GeneratedImage] {
+    var images: [GeneratedImage] = []
+    for entry in entries where !present.contains(URL(fileURLWithPath: entry.path)) {
+      if let image = restoredImage(entry) { images.append(image) }
+      if images.count >= count { break }
+    }
+    return images
   }
 
   private nonisolated static func restoredImage(_ entry: ResultsHistoryEntry) -> GeneratedImage? {
@@ -243,6 +285,8 @@ public final class GenerationSession {
     guard !gone.isEmpty else { return failures }
     results.removeAll { gone.contains($0.id) }
     persistHistory(removing: removedPaths)
+    // Older pictures of the history take the places that were freed.
+    Task { await restoreHistory() }
     return failures
   }
 
@@ -296,6 +340,7 @@ public final class GenerationSession {
     guard let adopted else { return false }
     results.insert(adopted, at: 0)
     persistHistory()
+    trimStrip()
     return true
   }
 

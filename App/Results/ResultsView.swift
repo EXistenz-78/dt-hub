@@ -88,6 +88,13 @@ struct ResultsView: View {
       }
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .contextMenu {
+      // Lists again the project's pictures the history file forgot (it keeps the last 2000, the strip shows 100).
+      if let folder = controller.projectFolder {
+        Button("results.rebuild") { Task { await session.rebuildHistory(from: folder) } }
+          .disabled(session.isRunning)
+      }
+    }
     .overlay(alignment: .topTrailing) {
       Button {
         sidebarOpen.toggle()
