@@ -347,4 +347,22 @@ struct PromptAssistantImagesTests {
     _ = await assistant(log, profile: profile).enhance(current, family: "qwen_image_2.1", images: images)
     #expect(log.calls.first?.0 == PromptBrief.enhance(current, ownSystem: "I2I RULES", generation: nil, images: images).prompt)
   }
+
+  @Test func aPupModelGetsItsOwnT2iPromptWithoutPicturesAndTheI2iOneWithThem() async {
+    let log = Log()
+    let profile = LanguageModelProfile(pup: .init(t2i: "T2I SYS", i2i: "I2I SYS"))
+    let plain = await assistant(log, profile: profile).enhance(current, family: "flux3_5b")
+    #expect(plain != nil)
+    #expect(log.calls.first?.0 == PromptBrief.enhance(current, pup: .init(t2i: "T2I SYS", i2i: "I2I SYS"), images: EnhanceImages()).prompt)
+    let images = EnhanceImages(start: a)
+    _ = await assistant(log, profile: profile).enhance(current, family: "flux3_5b", images: images)
+    #expect(log.calls.last?.0 == PromptBrief.enhance(current, pup: .init(t2i: "T2I SYS", i2i: "I2I SYS"), images: images).prompt)
+  }
+
+  @Test func aPupModelAlwaysDescribesWithI2i() async {
+    let log = Log()
+    let profile = LanguageModelProfile(pup: .init(t2i: "T2I SYS", i2i: "I2I SYS"))
+    _ = await assistant(log, profile: profile).describe(imageAt: a, current: current, family: "flux3_5b")
+    #expect(log.calls.first?.0 == PromptBrief.describe(imageAt: a, current: current, pup: .init(t2i: "T2I SYS", i2i: "I2I SYS")).prompt)
+  }
 }

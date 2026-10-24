@@ -66,6 +66,7 @@ public final class PromptAssistant {
     }
     return await run(.enhance, current: current, family: family, withImages: !images.isEmpty) { choice, withImages in
       let attached = withImages ? images : EnhanceImages()
+      if let pup = choice.profile.pup { return PromptBrief.enhance(current, pup: pup, images: attached) }
       return choice.profile.systemPrompt(for: .enhance, withImages: withImages).map {
         PromptBrief.enhance(current, ownSystem: $0, generation: choice.profile.generation, images: attached, library: library)
       } ?? PromptBrief.enhance(current, family: family, images: attached, library: library)
@@ -79,7 +80,8 @@ public final class PromptAssistant {
       return nil
     }
     return await run(.describe, current: current, family: family, withImages: true) { choice, _ in
-      choice.profile.systemPrompt(for: .describe).map {
+      if let pup = choice.profile.pup { return PromptBrief.describe(imageAt: url, current: current, pup: pup) }
+      return choice.profile.systemPrompt(for: .describe).map {
         PromptBrief.describe(imageAt: url, ownSystem: $0, generation: choice.profile.generation, library: library)
       } ?? PromptBrief.describe(imageAt: url, family: family, library: library)
     }

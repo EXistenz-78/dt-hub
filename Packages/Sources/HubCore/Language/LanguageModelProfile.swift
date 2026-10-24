@@ -1,7 +1,8 @@
 import Foundation
 import HubKit
 
-/// What an LLM's own folder says about how to use it: its system prompt and sampling values.
+/// What an LLM's own folder says about how to use it: its system prompt and sampling values (and, for BFL's prompt upsampler,
+/// its official prompts).
 /// Unreadable, empty or broken files count as missing.
 public struct LanguageModelProfile: Equatable, Sendable {
   public struct Generation: Equatable, Sendable {
@@ -16,16 +17,31 @@ public struct LanguageModelProfile: Equatable, Sendable {
     }
   }
 
+  /// The official prompts of Black Forest Labs' prompt upsampler (`flux-3-image-klein-pup`), from the `system_prompts.json` that
+  /// ships with the model: `t2i` for a request without pictures, `i2i` for one with pictures (and for Generate).
+  public struct Pup: Equatable, Sendable {
+    public var t2i: String
+    public var i2i: String
+
+    public init(t2i: String, i2i: String) {
+      self.t2i = t2i
+      self.i2i = i2i
+    }
+  }
+
   public var generation: Generation?
+  /// Set when the folder has the PUP's `system_prompts.json`: the model then writes prompts in its own formats.
+  public var pup: Pup?
   private var enhancePrompt: String?
   private var enhanceWithImagesPrompt: String?
   private var describePrompt: String?
 
   public init(
     generation: Generation? = nil, enhancePrompt: String? = nil, describePrompt: String? = nil,
-    enhanceWithImagesPrompt: String? = nil
+    enhanceWithImagesPrompt: String? = nil, pup: Pup? = nil
   ) {
     self.generation = generation
+    self.pup = pup
     self.enhancePrompt = enhancePrompt
     self.describePrompt = describePrompt
     self.enhanceWithImagesPrompt = enhanceWithImagesPrompt
@@ -62,10 +78,18 @@ public struct LanguageModelProfile: Equatable, Sendable {
         topP: (object["top_p"] as? NSNumber)?.doubleValue, topK: (object["top_k"] as? NSNumber)?.intValue)
       if found != Generation() { generation = found }
     }
+    var pup: Pup?
+    if let data = read(folder.appendingPathComponent("system_prompts.json")),
+      let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+      let t2i = (object["t2i"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines), !t2i.isEmpty,
+      let i2i = (object["i2i"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines), !i2i.isEmpty
+    {
+      pup = Pup(t2i: t2i, i2i: i2i)
+    }
     let generic = text("system_prompt.txt")
     return LanguageModelProfile(
       generation: generation, enhancePrompt: text("system_prompt_t2i.txt") ?? generic,
       describePrompt: text("system_prompt_i2i.txt") ?? generic,
-      enhanceWithImagesPrompt: text("system_prompt_i2i.txt") ?? generic)
+      enhanceWithImagesPrompt: text("system_prompt_i2i.txt") ?? generic, pup: pup)
   }
 }

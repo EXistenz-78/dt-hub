@@ -65,4 +65,16 @@ struct LanguageModelProfileTests {
     let onlyT = LanguageModelProfile.load(folder: try folder(["system_prompt_t2i.txt": "T"]))
     #expect(onlyT.systemPrompt(for: .enhance, withImages: true) == nil)
   }
+
+  @Test func theOfficialPupPromptsAreReadFromSystemPromptsJson() throws {
+    let json = #"{"t2i":"T2I TEXT","i2i":"I2I TEXT","t2i_bbox":"x","i2i_bbox":"y"}"#
+    let p = LanguageModelProfile.load(folder: try folder(["system_prompts.json": json]))
+    #expect(p.pup == LanguageModelProfile.Pup(t2i: "T2I TEXT", i2i: "I2I TEXT"))
+  }
+
+  @Test func aSystemPromptsJsonWithoutBothPromptsIsNotAPup() throws {
+    #expect(LanguageModelProfile.load(folder: try folder(["system_prompts.json": #"{"t2i":"only"}"#])).pup == nil)
+    #expect(LanguageModelProfile.load(folder: try folder(["system_prompts.json": "not json"])).pup == nil)
+    #expect(LanguageModelProfile.load(folder: try folder([:])).pup == nil)
+  }
 }
