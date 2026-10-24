@@ -10,6 +10,7 @@ enum L {
     case descriptionTitle, compositionTitle, canvasTitle, elementsTitle, descriptionPlaceholder, photo, art, shuffle
     case compositionPlaceholder, compositionHint, duplicateWarning, generation, canvasHint, elementPlaceholder, position, positionInvalid
     case moveUp, moveDown, removeElement, undo, writeWithLLM, writing, send, sending, noElements, noDescription, clearAll
+    case improvedWith, improvedStandard, modePup, modeStandard, pupFailedWith, pupUnusable
     case nothingToWrite, writtenCount, failedParts, idsChanged, changedMeanwhile, undone, sent, sentWithConflicts, notAnswered
   }
 
@@ -40,6 +41,8 @@ enum L {
     .moveUp: "Move up", .moveDown: "Move down", .removeElement: "Remove this element (and its <id> from the text)",
     .undo: "Undo", .writeWithLLM: "Write with LLM", .writing: "Writing…", .send: "Send", .sending: "Sending…",
     .noElements: "No elements yet.", .noDescription: "(no description)", .clearAll: "Clear",
+    .improvedWith: "Improved with %@ (%@).", .improvedStandard: "Improved (%@).", .modePup: "PUP mode", .modeStandard: "standard mode",
+    .pupFailedWith: "%@ could not improve the prompt: %@", .pupUnusable: "%@ did not give a usable answer: your texts are unchanged.",
     .nothingToWrite: "Nothing to write yet.", .writtenCount: "%d text(s) written.",
     .failedParts: "Not rewritten (the original stays): %@.", .idsChanged: "the LLM changed the ids of the composition",
     .changedMeanwhile: "Changed while writing, so kept as it is: %@.", .undone: "Previous texts restored.",
@@ -59,6 +62,8 @@ enum L {
     .moveUp: "Sposta su", .moveDown: "Sposta giù", .removeElement: "Rimuovi questo elemento (e il suo <id> dal testo)",
     .undo: "Annulla", .writeWithLLM: "Scrivi con LLM", .writing: "Scrivo…", .send: "Invia", .sending: "Invio…",
     .noElements: "Ancora nessun elemento.", .noDescription: "(senza descrizione)", .clearAll: "Svuota",
+    .improvedWith: "Migliorato con %@ (%@).", .improvedStandard: "Migliorato (%@).", .modePup: "modalità PUP", .modeStandard: "modalità standard",
+    .pupFailedWith: "%@ non è riuscito a migliorare il prompt: %@", .pupUnusable: "%@ non ha dato una risposta utilizzabile: i tuoi testi restano come erano.",
     .nothingToWrite: "Non c'è ancora niente da scrivere.", .writtenCount: "%d testo/i scritto/i.",
     .failedParts: "Non riscritti (resta l'originale): %@.", .idsChanged: "l'LLM ha cambiato gli id della composizione",
     .changedMeanwhile: "Cambiati mentre scrivevo, restano come sono: %@.", .undone: "Testi precedenti ripristinati.",

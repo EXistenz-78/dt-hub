@@ -35,6 +35,19 @@ final class F3State: ObservableObject {
   private(set) var pendingSync: Task<Void, Never>?
   /// Dove si leggono il master prompt e quello dell'utente (a ogni scrittura).
   let promptFolder: DTHubPromptFolder
+  /// I modelli di linguaggio e la famiglia del modello d'immagine, per scegliere come scrive «Scrivi con LLM».
+  private(set) var languageModels: [DTHubLanguageModel] = []
+  private(set) var contextFamily: String?
+
+  var writeMode: F3WriteMode {
+    F3ModelChoice.mode(family: contextFamily, models: languageModels) { try? Data(contentsOf: URL(fileURLWithPath: $0)) }
+  }
+
+  func update(models: [DTHubLanguageModel], family: String?) {
+    languageModels = models
+    contextFamily = family
+  }
+
   /// La cartella del progetto aperto (dove stanno `state.json` e `llm/`); nil finché l'app non ha detto il progetto.
   private(set) var projectFolder: URL?
 
@@ -253,6 +266,40 @@ final class F3State: ObservableObject {
     case .composition: return document.composition.trimmingCharacters(in: .whitespacesAndNewlines)
     case .element(let id): return document.element(id)?.desc.trimmingCharacters(in: .whitespacesAndNewlines)
     }
+  }
+
+  /// Mette nei campi il risultato del PUP: il paragrafo diventa la composizione (la descrizione e le voci vi sono già dentro, quindi si
+  /// svuotano), gli id nuovi nascono come elementi con il riquadro e la descrizione del modello, i nostri elementi tengono il riquadro e
+  /// prendono la descrizione. Se l'utente ha cambiato descrizione, voci o composizione mentre il modello scriveva, non si tocca niente.
+  func applyPup(_ result: F3PupResult, original: F3Snapshot) {
+    guard result.succeeded, let caption = result.caption else {
+      status = result.status
+      return
+    }
+    func same(_ a: String, _ b: String) -> Bool { a.trimmingCharacters(in: .whitespacesAndNewlines) == b.trimmingCharacters(in: .whitespacesAndNewlines) }
+    guard same(document.description, original.description), same(document.composition, original.composition), document.selection == original.selection
+    else {
+      status = L.format(.changedMeanwhile, [F3Part.Kind.description.title, F3Part.Kind.composition.title].joined(separator: ", "), italian: italian)
+      return
+    }
+    document.snapshot = F3Snapshot.take(from: document)
+    document.description = ""
+    document.selection = []
+    document.composition = caption
+    commitComposition()
+    for row in result.addedRows {
+      update(element: row.id) { element in
+        element.desc = row.desc
+        if let box = row.bbox, box.count == 4, let normalized = BBox.normalized(y0: box[0], x0: box[1], y1: box[2], x1: box[3]) {
+          element.box = normalized
+        }
+      }
+    }
+    for (id, text) in result.descriptions {
+      guard let element = document.element(id), same(element.desc, original.descs[id] ?? element.desc) else { continue }
+      update(element: id) { $0.desc = text }
+    }
+    status = result.status
   }
 
   /// «Annulla»: rimette i testi di prima (solo l'ultima scrittura) e riallinea gli elementi agli id del testo.
