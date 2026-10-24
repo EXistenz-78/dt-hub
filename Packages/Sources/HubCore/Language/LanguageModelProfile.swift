@@ -22,10 +22,15 @@ public struct LanguageModelProfile: Equatable, Sendable {
   public struct Pup: Equatable, Sendable {
     public var t2i: String
     public var i2i: String
+    /// The prompts for a prompt that carries a table of boxes (`t2i_bbox`, `i2i_bbox`); nil when the file lacks them.
+    public var t2iBbox: String?
+    public var i2iBbox: String?
 
-    public init(t2i: String, i2i: String) {
+    public init(t2i: String, i2i: String, t2iBbox: String? = nil, i2iBbox: String? = nil) {
       self.t2i = t2i
       self.i2i = i2i
+      self.t2iBbox = t2iBbox
+      self.i2iBbox = i2iBbox
     }
   }
 
@@ -84,7 +89,11 @@ public struct LanguageModelProfile: Equatable, Sendable {
       let t2i = (object["t2i"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines), !t2i.isEmpty,
       let i2i = (object["i2i"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines), !i2i.isEmpty
     {
-      pup = Pup(t2i: t2i, i2i: i2i)
+      func optional(_ key: String) -> String? {
+        let value = (object[key] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return value?.isEmpty == false ? value : nil
+      }
+      pup = Pup(t2i: t2i, i2i: i2i, t2iBbox: optional("t2i_bbox"), i2iBbox: optional("i2i_bbox"))
     }
     let generic = text("system_prompt.txt")
     return LanguageModelProfile(
