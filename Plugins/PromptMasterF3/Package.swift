@@ -15,6 +15,6 @@ let package = Package(
         .product(name: "DTHubPluginKit", package: "PluginKit", moduleAliases: ["DTHubPluginKit": "PromptMasterF3Kit"]),
         .product(name: "DTHubDesign", package: "PluginKit", moduleAliases: ["DTHubDesign": "PromptMasterF3Design"]),
       ]),
-    .testTarget(name: "PromptMasterF3Tests", dependencies: ["PromptMasterF3"]),
+    .testTarget(name: "PromptMasterF3Tests", dependencies: ["PromptMasterF3"], exclude: ["Fixtures"]),
   ]
 )

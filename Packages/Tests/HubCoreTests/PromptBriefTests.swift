@@ -138,4 +138,35 @@ struct PromptBriefImagesTests {
     #expect(request.images == [a, b])
     #expect(request.options == PromptBrief.enhance(current, ownSystem: "S", generation: g).options)
   }
+
+  // MARK: The official PUP (system_prompts.json)
+
+  private let pup = LanguageModelProfile.Pup(t2i: "T2I SYS", i2i: "I2I SYS")
+  private let pupOptions = { (system: String, penalty: Double) in
+    LanguageModelOptions(system: system, temperature: 0, topP: 0.95, topK: 20, presencePenalty: penalty, maxTokens: 3584, thinking: false)
+  }
+
+  @Test func pupEnhanceWithoutPicturesUsesT2iAndTheRawPrompt() {
+    let request = PromptBrief.enhance(PromptPair(prompt: "a cat on a roof", negative: "ugly"), pup: pup, images: EnhanceImages())
+    #expect(request.prompt == "a cat on a roof" && request.images.isEmpty)
+    #expect(request.options == pupOptions("T2I SYS", 1.5))
+  }
+
+  @Test func pupEnhanceWithPicturesUsesI2iTheScaffoldAndEveryPictureInOrder() {
+    let start = URL(fileURLWithPath: "/s.png"), ref = URL(fileURLWithPath: "/r.png")
+    let request = PromptBrief.enhance(
+      PromptPair(prompt: "add a ninja", negative: ""), pup: pup, images: EnhanceImages(start: start, references: [ref]))
+    #expect(request.prompt == "Reference images follow in order (the first image, the second image, ...).\nUser request: add a ninja\nOutput the caption.")
+    #expect(request.images == [start, ref])
+    #expect(request.options == pupOptions("I2I SYS", 0))
+  }
+
+  @Test func pupDescribeUsesI2iWithTheTextOrADefaultRequest() {
+    let url = URL(fileURLWithPath: "/i.png")
+    let withText = PromptBrief.describe(imageAt: url, current: PromptPair(prompt: "same scene at night", negative: ""), pup: pup)
+    #expect(withText.prompt.contains("User request: same scene at night\n") && withText.images == [url])
+    let empty = PromptBrief.describe(imageAt: url, current: PromptPair(prompt: "  ", negative: ""), pup: pup)
+    #expect(empty.prompt.contains("User request: Describe this image as a detailed prompt to recreate it.\n"))
+    #expect(empty.options == pupOptions("I2I SYS", 0))
+  }
 }

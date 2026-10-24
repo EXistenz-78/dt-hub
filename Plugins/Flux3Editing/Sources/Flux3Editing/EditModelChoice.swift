@@ -19,7 +19,7 @@ enum EditModelChoice {
   /// `readFile` legge il file di un percorso (iniettabile nei test).
   static func mode(family: String?, models: [DTHubLanguageModel], readFile: (String) -> Data?) -> WriteMode {
     func first(_ wanted: String) -> DTHubLanguageModel? {
-      models.filter { $0.family == wanted }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }.first
+      models.filter { $0.family == wanted && $0.use != "describe" }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }.first
     }
     let chosen = family.flatMap(first) ?? first("*")
     guard let chosen else { return .standard(model: nil) }
