@@ -46,6 +46,14 @@ final class EditState: ObservableObject {
 
   // MARK: Cosa dice l'app
 
+  /// I modelli di linguaggio e la famiglia del modello d'immagine, per scegliere come scrive «Migliora prompt».
+  private(set) var languageModels: [DTHubLanguageModel] = []
+  private(set) var contextFamily: String?
+
+  var writeMode: WriteMode {
+    EditModelChoice.mode(family: contextFamily, models: languageModels) { try? Data(contentsOf: URL(fileURLWithPath: $0)) }
+  }
+
   func update(context: DTHubContext) {
     refs = RefNumbering.references(moodboard: context.moodboard ?? [], sizes: imageSize)
     startImage = context.startImage.map { URL(fileURLWithPath: $0) }
@@ -54,6 +62,8 @@ final class EditState: ObservableObject {
       generationSize = CGSize(width: width, height: height)
     }
     window = context.startImageWindow
+    languageModels = context.languageModels ?? []
+    contextFamily = context.family
     tempFolder = URL(fileURLWithPath: context.tempFolder, isDirectory: true)
     clampReference()
     if let id = selected, document.element(id) == nil { selected = nil }
