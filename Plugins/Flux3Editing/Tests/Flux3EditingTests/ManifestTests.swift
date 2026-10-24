@@ -10,7 +10,7 @@ struct ManifestTests {
     #expect(Flux3EditingPlugin.families == ["flux3_5b"])
     #expect(plugin.manifest.id == "com.exiztenz.dthub.flux3editing")
     #expect(plugin.manifest.name == "Flux3 Editing")
-    #expect(plugin.manifest.version == "1.0")
+    #expect(plugin.manifest.version == "1.1")
     // The same icon as Qwen 2.1 Inpainting: plug-ins that do the same for different models never show together.
     #expect(plugin.manifest.symbol == "scribble.variable")
   }

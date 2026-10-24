@@ -10,9 +10,9 @@ enum L {
     case moodboardTitle, startImageTitle, promptTitle, emptyMoodboard, needsStartImage, drawOnReferenceHint, drawOnCanvasHint
     case previousImage, nextImage, imageCounter, proseTitle, proseHint, descriptionPlaceholder, noElements, noDescription
     case kindFromReference, kindNew, kindExisting, kindMove, kindRemove, moveUp, moveDown, removeElement, idLabel
-    case undo, writeWithLLM, writing, send, sending, sent, sentWithConflicts, notAnswered
+    case undo, improvePrompt, improving, send, sending, sent, sentWithConflicts, notAnswered
     case problemNoStart, problemNoElements, problemEmptyID, problemEmptyDescription, problemRepeatedID, problemImageMissing
-    case sendImages, sendImagesHelp, imagesNotSent
+    case imagesNotSent, picturesLeftOut, improvedWith, improvedStandard, modePup, modeStandard, pupFailedWith, pupUnusable, pupNoPictures, extraRowsTitle, removeExtraRow
     case clearHelp, clearTitle, clearAction
     case nothingToWrite, writtenCount, failedParts, tagsChanged, changedMeanwhile
     case warningIDNotInProse, warningUnknownReference, warningTooManyImages, imageGone, generationCanvas
@@ -48,7 +48,7 @@ enum L {
     .noDescription: "(no description)",
     .kindFromReference: "From reference", .kindNew: "New", .kindExisting: "Existing", .kindMove: "Move", .kindRemove: "Remove",
     .moveUp: "Move up", .moveDown: "Move down", .removeElement: "Remove this element", .idLabel: "id",
-    .undo: "Undo", .writeWithLLM: "Write with LLM", .writing: "Writing…", .send: "Send", .sending: "Sending…",
+    .undo: "Undo", .improvePrompt: "Improve prompt", .improving: "Improving…", .send: "Send", .sending: "Sending…",
     .sent: "Prompt sent.", .sentWithConflicts: "Prompt sent. %d conflict(s) waiting in the app.",
     .notAnswered: "The app did not answer.",
     .problemNoStart: "A start image is needed.", .problemNoElements: "Draw at least one box.",
@@ -57,8 +57,11 @@ enum L {
     .warningIDNotInProse: "%@ is not cited in the text as <%@>.", .warningUnknownReference: "The text cites <ref_image_%d>, which is not in the Moodboard.",
     .warningTooManyImages: "FLUX.3 reads at most ten pictures: the start image and nine from the Moodboard.",
     .imageGone: "Its picture is no longer in the Moodboard.", .generationCanvas: "Canvas %d × %d",
-    .sendImages: "Send the cropped pictures to the LLM",
-    .sendImagesHelp: "Attaches, for each box drawn on a Moodboard picture, the crop of that box. It needs a model that can read images; otherwise the texts are written without them.",
+    .picturesLeftOut: "Too many pictures for the model: left out %@.",
+    .improvedWith: "Improved with %@ (%@).", .improvedStandard: "Improved (%@).", .modePup: "PUP mode", .modeStandard: "standard mode",
+    .pupFailedWith: "%@ could not improve the prompt: %@", .pupUnusable: "%@ did not give a usable answer: your texts are unchanged.",
+    .pupNoPictures: "%@ needs the pictures and they could not be prepared: your texts are unchanged.",
+    .extraRowsTitle: "Rows the model added", .removeExtraRow: "Remove",
     .imagesNotSent: "The model could not take the pictures: written from the texts only.",
     .clearHelp: "Clear the text and all the boxes", .clearTitle: "Clear the text and all the boxes?", .clearAction: "Clear",
     .nothingToWrite: "Nothing to write yet.", .writtenCount: "%d text(s) written.",
@@ -81,7 +84,7 @@ enum L {
     .noDescription: "(senza descrizione)",
     .kindFromReference: "Da riferimento", .kindNew: "Nuovo", .kindExisting: "Esistente", .kindMove: "Sposta", .kindRemove: "Togli",
     .moveUp: "Sposta su", .moveDown: "Sposta giù", .removeElement: "Elimina questo elemento", .idLabel: "id",
-    .undo: "Annulla", .writeWithLLM: "Scrivi con LLM", .writing: "Scrivo…", .send: "Invia", .sending: "Invio…",
+    .undo: "Annulla", .improvePrompt: "Migliora prompt", .improving: "Miglioro…", .send: "Invia", .sending: "Invio…",
     .sent: "Prompt inviato.", .sentWithConflicts: "Prompt inviato. %d conflitto/i in attesa nell'app.",
     .notAnswered: "L'app non ha risposto.",
     .problemNoStart: "Serve un'immagine di partenza.", .problemNoElements: "Disegna almeno un riquadro.",
@@ -90,8 +93,11 @@ enum L {
     .warningIDNotInProse: "%@ non è citato nel testo come <%@>.", .warningUnknownReference: "Il testo cita <ref_image_%d>, che non è nel Moodboard.",
     .warningTooManyImages: "FLUX.3 legge al massimo dieci immagini: quella di partenza e nove del Moodboard.",
     .imageGone: "La sua immagine non è più nel Moodboard.", .generationCanvas: "Canvas %d × %d",
-    .sendImages: "Manda i ritagli all'LLM",
-    .sendImagesHelp: "Allega, per ogni riquadro disegnato su un'immagine del Moodboard, il ritaglio di quel riquadro. Serve un modello che legga le immagini; altrimenti i testi si scrivono senza.",
+    .picturesLeftOut: "Troppe immagini per il modello: lasciate fuori %@.",
+    .improvedWith: "Migliorato con %@ (%@).", .improvedStandard: "Migliorato (%@).", .modePup: "modalità PUP", .modeStandard: "modalità standard",
+    .pupFailedWith: "%@ non è riuscito a migliorare il prompt: %@", .pupUnusable: "%@ non ha dato una risposta utilizzabile: i tuoi testi restano come erano.",
+    .pupNoPictures: "%@ ha bisogno delle immagini e non si sono potute preparare: i tuoi testi restano come erano.",
+    .extraRowsTitle: "Righe aggiunte dal modello", .removeExtraRow: "Togli",
     .imagesNotSent: "Il modello non ha potuto prendere le immagini: scritto dai soli testi.",
     .clearHelp: "Pulisci il testo e tutti i riquadri", .clearTitle: "Pulire il testo e tutti i riquadri?", .clearAction: "Pulisci",
     .nothingToWrite: "Non c'è ancora niente da scrivere.", .writtenCount: "%d testo/i scritto/i.",

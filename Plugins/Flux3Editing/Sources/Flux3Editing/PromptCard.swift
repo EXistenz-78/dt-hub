@@ -1,7 +1,7 @@
 import DTHubDesign
 import SwiftUI
 
-/// La card Prompt: il testo, le mini-card dei riquadri, e in fondo Annulla, Scrivi con LLM e Invia.
+/// La card Prompt: il testo, le mini-card dei riquadri, e in fondo Annulla, Migliora prompt e Invia.
 struct PromptCard: View {
   @ObservedObject var state: EditState
   let send: () -> Void
@@ -28,6 +28,7 @@ struct PromptCard: View {
           }
         }
         .scrollIndicators(.hidden).frame(minHeight: 120, maxHeight: 360)
+        extraRows
         buttons
         lines
       }
@@ -39,14 +40,26 @@ struct PromptCard: View {
     }
   }
 
+  /// Le righe che il PUP ha aggiunto: sola lettura, con «Togli». Vanno nel prompt finale dopo i nostri elementi.
+  @ViewBuilder private var extraRows: some View {
+    if let rows = state.document.extraRows, !rows.isEmpty {
+      VStack(alignment: .leading, spacing: 4) {
+        FieldLabel(text: L.text(.extraRowsTitle, italian: state.italian))
+        ForEach(rows) { row in
+          HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(verbatim: row.id).font(.caption.monospaced())
+            Text(verbatim: row.desc).font(.caption).foregroundStyle(.secondary).lineLimit(2).textSelection(.enabled)
+            Spacer(minLength: 0)
+            Button(L.text(.removeExtraRow, italian: state.italian)) { state.removeExtraRow(row.id) }
+              .buttonStyle(.plain).font(.caption).foregroundStyle(DS.remove)
+          }
+        }
+      }
+    }
+  }
+
   private var buttons: some View {
     VStack(alignment: .leading, spacing: DS.controlGap) {
-      if state.hasCrops {
-        Toggle(
-          isOn: Binding(get: { state.document.sendsImages }, set: { state.document.llmImages = $0 })
-        ) { Text(L.text(.sendImages, italian: state.italian)).font(.callout) }
-        .toggleStyle(DSCheckboxToggleStyle()).help(L.text(.sendImagesHelp, italian: state.italian))
-      }
       actionRow
     }
   }
@@ -64,10 +77,10 @@ struct PromptCard: View {
         HStack(spacing: DS.pillIconGap) {
           if state.isWriting {
             ProgressView().controlSize(.small)
-            Text(L.text(.writing, italian: state.italian))
+            Text(L.text(.improving, italian: state.italian))
           } else {
             Image(systemName: "sparkles")
-            Text(L.text(.writeWithLLM, italian: state.italian))
+            Text(L.text(.improvePrompt, italian: state.italian))
           }
         }
       }

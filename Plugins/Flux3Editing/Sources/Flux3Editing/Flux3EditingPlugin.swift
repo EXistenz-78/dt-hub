@@ -9,7 +9,7 @@ final class Flux3EditingPlugin: DTHubPlugin {
   static let families = ["flux3_5b"]
 
   let manifest = DTHubManifest(
-    id: "com.exiztenz.dthub.flux3editing", name: "Flux3 Editing", version: "1.0", symbol: "scribble.variable",
+    id: "com.exiztenz.dthub.flux3editing", name: "Flux3 Editing", version: "1.1", symbol: "scribble.variable",
     families: Flux3EditingPlugin.families)
   private let state = EditState()
   private var host: DTHubHost?
@@ -51,21 +51,35 @@ final class Flux3EditingPlugin: DTHubPlugin {
   private func write() {
     guard state.canWrite, let host else { return }
     state.isWriting = true
-    state.status = L.text(.writing, italian: state.italian)
+    state.status = L.text(.improving, italian: state.italian)
     let document = state.document
     let (allowed, system, refs) = (state.allowedTags, state.writeSystem, state.refs)
-    let attachments = state.llmAttachments()
-    let writer = EditWriter(
-      ask: { prompt, system, options, images in
-        await host.askLanguageModelAnswer(prompt, images: images, system: system, options: options)
+    let mode = state.writeMode
+    var pupPictures: [EditPicture] = []
+    if case .pup = mode { pupPictures = state.pupPictures() }
+    let drawn = state.llmPictures()
+    let leftOut = state.droppedPictures
+    let improver = EditImprover(
+      ask: { prompt, system, options, images, model in
+        await host.askLanguageModelAnswer(prompt, images: images, system: system, model: model, options: options)
       },
       italian: state.italian)
     Task {
-      let result = await writer.write(document: document, refs: refs, allowedTags: allowed, attachments: attachments, system: system, options: EditPrompts.options)
+      let outcome = await improver.improve(
+        document: document, refs: refs, allowedTags: allowed, mode: mode, pupPictures: pupPictures, drawnPictures: drawn,
+        standardSystem: system)
       let before = EditSnapshot.take(from: document)
-      state.apply(result)
-      if let folder = state.projectFolder, !result.request.isEmpty {
-        EditWorkFolder(folder: folder).write(request: result.request, answer: result.answer, before: before)
+      if let pup = outcome.pup {
+        state.applyPup(pup, original: before)
+      } else if let standard = outcome.standard {
+        state.apply(standard)
+        if !leftOut.isEmpty {
+          state.status += " " + L.format(.picturesLeftOut, leftOut.map { "<ref_image_\($0)>" }.joined(separator: ", "), italian: state.italian)
+        }
+      }
+      if !outcome.note.isEmpty { state.status += " " + outcome.note }
+      if let folder = state.projectFolder, !outcome.request.isEmpty {
+        EditWorkFolder(folder: folder).write(request: outcome.request, answer: outcome.answer, before: before)
       }
       state.isWriting = false
     }
