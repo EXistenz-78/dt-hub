@@ -7,6 +7,7 @@ import Testing
 @MainActor
 struct ImproveTests {
   final class Calls {
+    var prompts = 0
     var models: [String?] = []
     var systems: [String] = []
     var images: [[String]] = []
@@ -34,6 +35,7 @@ struct ImproveTests {
   private func improver(_ calls: Calls) -> EditImprover {
     EditImprover(
       ask: { _, system, _, images, model in
+        calls.prompts += 1
         calls.systems.append(system)
         calls.images.append(images)
         calls.models.append(model)
@@ -69,18 +71,24 @@ struct ImproveTests {
     #expect(calls.models == [nil] && outcome.note == "Improved (standard mode).")
   }
 
-  @Test func aPupFailureFallsBackToStandardWithTheSameModel() async {
-    let calls = Calls([.text("nothing"), .text("nothing again"), standardAnswer])
+  @Test func aPupAnswerThatIsNotUsableLeavesTheTextsAndSaysSo() async {
+    let calls = Calls([.text("nothing"), .text("nothing again")])
     let outcome = await run(calls, mode: .pup(name: "pup", systemPrompt: "SYSTEM"))
-    #expect(outcome.pup == nil && outcome.standard?.rewrites.isEmpty == false)
-    #expect(calls.models == ["pup", "pup", "pup"] && calls.systems.last == "STANDARD")
-    #expect(outcome.note == "Improved with pup (standard mode).")
+    #expect(outcome.pup == nil && outcome.standard?.rewrites.isEmpty == true)
+    #expect(calls.models == ["pup", "pup"] && calls.systems == ["SYSTEM", "SYSTEM"])  // the PUP is never asked with the master E: it answers in its own format
+    #expect(outcome.standard?.status.contains("pup") == true && outcome.note.isEmpty)
   }
 
-  @Test func withoutPupPicturesTheModelGoesStraightToStandard() async {
-    let calls = Calls([standardAnswer])
+  @Test func aPupFailureShowsTheAppsReasonVerbatim() async {
+    let calls = Calls([.failure("The model was loaded without its vision part, so it cannot read pictures: X")])
+    let outcome = await run(calls, mode: .pup(name: "pup", systemPrompt: "SYSTEM"))
+    #expect(outcome.standard?.status.contains("without its vision part") == true && calls.prompts == 1)
+  }
+
+  @Test func withoutPupPicturesThePupIsNotUsedAndTheUserIsTold() async {
+    let calls = Calls([])
     let outcome = await run(calls, mode: .pup(name: "pup", systemPrompt: "SYSTEM"), pupPictures: [])
-    #expect(calls.systems == ["STANDARD"] && calls.models == ["pup"] && outcome.standard != nil)
+    #expect(calls.models.isEmpty && outcome.standard?.rewrites.isEmpty == true && outcome.standard?.status.isEmpty == false)
   }
 
   @Test func whenNothingIsWrittenThereIsNoNote() async {

@@ -14,7 +14,8 @@ struct EditImproveOutcome: Sendable {
 }
 
 /// «Migliora prompt» (spec «Migliora prompt» §3–§5): sceglie il flusso dalla modalità. PUP: una richiesta nel suo formato con le
-/// immagini grezze; se non va, o non ci sono le immagini, il flusso standard con lo **stesso** modello e le immagini con i riquadri.
+/// immagini grezze; se non va si dice perché e i testi restano (il PUP risponde nel suo formato qualunque system prompt: niente
+/// ripiego standard con lui). Standard: il master E, a parti, con le immagini coi riquadri.
 @MainActor
 struct EditImprover {
   /// prompt, system prompt, opzioni, immagini, nome del modello (nil: quello che sceglie l'app).
@@ -26,17 +27,25 @@ struct EditImprover {
     drawnPictures: [EditPicture], standardSystem: String
   ) async -> EditImproveOutcome {
     var modelName: String?
-    var pupRequest = "", pupAnswer = ""
     if case .standard(let model) = mode { modelName = model }
     if case .pup(let name, let systemPrompt) = mode {
       modelName = name
+      // Il PUP risponde nel suo formato qualunque system prompt gli si dia: con lui non c'è un ripiego standard. Si dice perché non
+      // è andata e i testi restano.
+      func stop(_ status: String, _ request: String = "", _ answer: String = "") -> EditImproveOutcome {
+        EditImproveOutcome(
+          pup: nil, standard: EditWriteResult(rewrites: [], status: status, request: request, answer: answer), note: "", request: request,
+          answer: answer)
+      }
+      guard !pupPictures.isEmpty else { return stop(L.format(.pupNoPictures, name, italian: italian)) }
       let writer = EditPupWriter(ask: { prompt, system, options, images, model in await ask(prompt, system, options, images, model) }, italian: italian)
       let result = await writer.write(document: document, refs: refs, pictures: pupPictures, model: name, systemPrompt: systemPrompt)
       if result.succeeded {
         let note = L.format(.improvedWith, name, L.text(.modePup, italian: italian), italian: italian)
         return EditImproveOutcome(pup: result, standard: nil, note: note, request: result.request, answer: result.answer)
       }
-      (pupRequest, pupAnswer) = (result.request, result.answer)
+      if !result.status.isEmpty { return stop(L.format(.pupFailedWith, name, result.status, italian: italian), result.request, result.answer) }
+      return stop(L.format(.pupUnusable, name, italian: italian), result.request, result.answer)
     }
     let model = modelName
     let writer = EditWriter(ask: { prompt, system, options, images in await ask(prompt, system, options, images, model) }, italian: italian)
@@ -47,8 +56,6 @@ struct EditImprover {
       let standard = L.text(.modeStandard, italian: italian)
       note = modelName.map { L.format(.improvedWith, $0, standard, italian: italian) } ?? L.format(.improvedStandard, standard, italian: italian)
     }
-    let request = pupRequest.isEmpty ? result.request : pupRequest + "\n\n---\n\n" + result.request
-    let answer = pupAnswer.isEmpty ? result.answer : pupAnswer + "\n\n---\n\n" + result.answer
-    return EditImproveOutcome(pup: nil, standard: result, note: note, request: request, answer: answer)
+    return EditImproveOutcome(pup: nil, standard: result, note: note, request: result.request, answer: result.answer)
   }
 }
