@@ -30,6 +30,7 @@ When a run is finished the picture stays in the plug-in. Click a tile in the pre
 **Where to get the LoRAs** (put the file in Draw Things' LoRA folder, or import it from Draw Things; the names above are the ones Draw Things gives them):
 
 - `f2_ultra_real_v5_pro_lora_f16` — *UltraReal* v5 Pro for FLUX.2 klein 9B by vizsumit: [Civitai](https://civitai.com/models/2462105?modelVersionId=3370879).
+- `f3_image_klein_restore_lora_f16` — *FLUX.3 Klein Restore LoRA* by ausboss, for FLUX.3 [klein]: [Hugging Face](https://huggingface.co/ausboss/FLUX-3-Image-Klein-Restore-LoRA).
 - `q21_detail_fix_2.0_lora_f16` — *Qwen Image 2.1 Fix* v2.0 by _Envy_: [Hugging Face](https://huggingface.co/e-n-v-y/Qwen-Image-2.1-Fix-v2.0).
 
 Strength 1 for all. The FLUX prompt is fixed here and the trigger word of the LoRA on the server is not used: it says «face», «expression», «figure» and «pose», and on a tile with no face the model adds one. Turbo is told from the other Qwen by "turbo" in the model's file name. The LoRA strength (−4 to 4, as in the generation tab) is remembered **per preset** and per project. The plug-in never changes the model: it is the one in the header. The values are in `TUPreset.swift`.
