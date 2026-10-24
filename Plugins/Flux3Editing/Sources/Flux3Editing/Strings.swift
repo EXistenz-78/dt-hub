@@ -12,7 +12,7 @@ enum L {
     case kindFromReference, kindNew, kindExisting, kindMove, kindRemove, moveUp, moveDown, removeElement, idLabel
     case undo, improvePrompt, improving, send, sending, sent, sentWithConflicts, notAnswered
     case problemNoStart, problemNoElements, problemEmptyID, problemEmptyDescription, problemRepeatedID, problemImageMissing
-    case imagesNotSent, picturesLeftOut, improvedWith, improvedStandard, modePup, modeStandard, extraRowsTitle, removeExtraRow
+    case imagesNotSent, picturesLeftOut, improvedWith, improvedStandard, modePup, modeStandard, pupFailedWith, pupUnusable, pupNoPictures, extraRowsTitle, removeExtraRow
     case clearHelp, clearTitle, clearAction
     case nothingToWrite, writtenCount, failedParts, tagsChanged, changedMeanwhile
     case warningIDNotInProse, warningUnknownReference, warningTooManyImages, imageGone, generationCanvas
@@ -59,6 +59,8 @@ enum L {
     .imageGone: "Its picture is no longer in the Moodboard.", .generationCanvas: "Canvas %d × %d",
     .picturesLeftOut: "Too many pictures for the model: left out %@.",
     .improvedWith: "Improved with %@ (%@).", .improvedStandard: "Improved (%@).", .modePup: "PUP mode", .modeStandard: "standard mode",
+    .pupFailedWith: "%@ could not improve the prompt: %@", .pupUnusable: "%@ did not give a usable answer: your texts are unchanged.",
+    .pupNoPictures: "%@ needs the pictures and they could not be prepared: your texts are unchanged.",
     .extraRowsTitle: "Rows the model added", .removeExtraRow: "Remove",
     .imagesNotSent: "The model could not take the pictures: written from the texts only.",
     .clearHelp: "Clear the text and all the boxes", .clearTitle: "Clear the text and all the boxes?", .clearAction: "Clear",
@@ -93,6 +95,8 @@ enum L {
     .imageGone: "La sua immagine non è più nel Moodboard.", .generationCanvas: "Canvas %d × %d",
     .picturesLeftOut: "Troppe immagini per il modello: lasciate fuori %@.",
     .improvedWith: "Migliorato con %@ (%@).", .improvedStandard: "Migliorato (%@).", .modePup: "modalità PUP", .modeStandard: "modalità standard",
+    .pupFailedWith: "%@ non è riuscito a migliorare il prompt: %@", .pupUnusable: "%@ non ha dato una risposta utilizzabile: i tuoi testi restano come erano.",
+    .pupNoPictures: "%@ ha bisogno delle immagini e non si sono potute preparare: i tuoi testi restano come erano.",
     .extraRowsTitle: "Righe aggiunte dal modello", .removeExtraRow: "Togli",
     .imagesNotSent: "Il modello non ha potuto prendere le immagini: scritto dai soli testi.",
     .clearHelp: "Pulisci il testo e tutti i riquadri", .clearTitle: "Pulire il testo e tutti i riquadri?", .clearAction: "Pulisci",
