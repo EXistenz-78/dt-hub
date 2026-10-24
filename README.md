@@ -121,6 +121,16 @@ DT Hub looks for MLX models (Hugging Face format: a folder with `config.json` an
 
 Each installed LLM can be assigned to a model family and a use (enhance, generate, both, plug-ins only); a dedicated LLM's own `system_prompt.txt` is used when present. With a single LLM installed nothing needs to be set up.
 
+### The FLUX.3 prompt upsampler (PUP)
+
+If the LLM assigned to a family is Black Forest Labs' own prompt upsampler (`black-forest-labs/flux-3-image-klein-pup`, or a converted copy such as `mlx-community/flux-3-image-klein-pup-8bit`: the folder has a `system_prompts.json`), DT Hub uses the model's **official prompts** instead of the family prompts above:
+
+- *Enhance Prompt* uses `t2i` when the Control tab has no pictures, and `i2i` when it has: the start image and the Moodboard pictures that are on go to the model, in that order. A prompt that ends with a table of boxes (as Prompt Master F3 and Flux3 Editing write it) goes through `t2i_bbox` / `i2i_bbox`, and your boxes and ids are put back into the answer.
+- *Generate Prompt* always uses `i2i`, with the start image. **Whatever is in the prompt field goes along as the request**, so a prompt left over from another image will mix with what the model sees: clear the field first for a pure description of the picture (an empty field asks the model to describe the image as a detailed prompt).
+- The model decodes as BFL does (greedy, top-p 0.95, top-k 20), no thinking.
+
+Prompt Master F3 and Flux3 Editing do the same with their own prompts (`t2i_bbox` and `i2i_bbox`). Without the PUP everything works as before. A converted PUP whose `preprocessor_config.json` lacks `processor_class` is fixed by DT Hub when it loads the model.
+
 ### The prompts that guide the LLM
 
 What *Enhance Prompt* and *Generate Prompt* tell the LLM is not hidden in the code: it is a set of Markdown files in `~/Library/Application Support/DT Hub/Data/DTHub/`, written by the app at launch and read at every request.
