@@ -97,6 +97,26 @@ final class EditState: ObservableObject {
     }
   }
 
+  /// Le immagini per il PUP: l'immagine di partenza come la tela di uscita e **tutte** le reference fino all'ultima usata, grezze (senza
+  /// riquadri) e preparate come fa BFL. Devono essere contigue da 0: l'ordine di allegato è il numero di `<ref_image_N>`. Vuoto se manca
+  /// qualcosa (senza immagine di partenza, o una che non si legge): il PUP non si può usare.
+  func pupPictures() -> [EditPicture] {
+    guard let tempFolder, let startImage else { return [] }
+    let lastUsed = document.elements.filter { $0.kind == .fromReference }
+      .compactMap { $0.refFile.flatMap { RefNumbering.number(ofFile: $0, in: refs) } }.max() ?? 0
+    var sources: [(number: Int, path: String)] = []
+    if let path = EditOverlay.render(imagePath: startImage.path, geometry: startGeometry, boxes: [], to: tempFolder, name: "pup-0") {
+      sources.append((RefNumbering.startImageNumber, path))
+    }
+    for ref in refs where ref.number <= lastUsed {
+      if let path = EditOverlay.render(imagePath: ref.path, geometry: referenceGeometry(of: ref), boxes: [], to: tempFolder, name: "pup-\(ref.number)") {
+        sources.append((ref.number, path))
+      }
+    }
+    let pictures = PupImages.prepare(sources: sources, to: tempFolder)
+    return pictures.count == 1 + refs.filter({ $0.number <= lastUsed }).count && pictures.count <= PupImages.maxImages ? pictures : []
+  }
+
   /// Un'app che non manda `startImageWindow`: si dice, non si nasconde (spec §4).
   var windowNote: String? { startImage != nil && window == nil ? L.text(.noWindow, italian: italian) : nil }
 

@@ -29,9 +29,10 @@ enum EditComposer {
     return element.refFile.flatMap { RefNumbering.number(ofFile: $0, in: refs) } == nil
   }
 
-  private static func object(of element: EditElement, refs: [RefImage]) -> String {
-    let from: String?
+  /// Da dove viene e dove sta un elemento nel prompt finale: `from` nil è un oggetto nuovo.
+  private static func parts(of element: EditElement, refs: [RefImage]) -> (from: String?, src: BBox?, tgt: BBox?) {
     var source = element.src, target = element.tgt
+    let from: String?
     switch element.kind {
     case .fromReference:
       from = "ref_image_\(element.refFile.flatMap { RefNumbering.number(ofFile: $0, in: refs) } ?? 0)"
@@ -47,6 +48,20 @@ enum EditComposer {
       from = "ref_image_\(RefNumbering.startImageNumber)"
       target = nil
     }
+    return (from, source, target)
+  }
+
+  /// Le righe «bloccate» per il PUP: quelle del prompt finale, con `target` per un oggetto nuovo (come scrive BFL).
+  static func lockedRows(_ doc: EditDocument, refs: [RefImage]) -> [PupRow] {
+    doc.elements.filter { !isMissing($0, refs: refs) }.map { element in
+      let p = parts(of: element, refs: refs)
+      func ints(_ box: BBox?) -> [Int]? { box.map { [$0.y0, $0.x0, $0.y1, $0.x1] } }
+      return PupRow(id: element.id, from: p.from ?? "target", src: ints(p.src), tgt: ints(p.tgt), desc: element.desc)
+    }
+  }
+
+  private static func object(of element: EditElement, refs: [RefImage]) -> String {
+    let (from, source, target) = parts(of: element, refs: refs)
     let lines = [
       "    \"id\": \(quoted(element.id))",
       "    \"from\": \(from.map(quoted) ?? "null")",
