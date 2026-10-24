@@ -5,11 +5,15 @@ import SwiftUI
 @MainActor
 final class TiledUpscalePlugin: DTHubPlugin {
   /// Edit and in-context models only: the tile is the picture the model changes. For now the plug-in has a preset for
-  /// FLUX.2 klein 9B only (`TUPresetTable`).
+  /// The families `TUPresetTable` knows.
   let manifest = DTHubManifest(
-    id: "com.exiztenz.dthub.tiledupscale", name: "Tiled Upscale", version: "1.2", symbol: "square.grid.3x3",
+    id: "com.exiztenz.dthub.tiledupscale", name: "Tiled Upscale", version: "1.3", symbol: "square.grid.3x3",
     families: nil, requiresEditModel: true)
-  private let state = TUState(store: TUStore(folder: nil))
+  private let state: TUState = {
+    let state = TUState(store: TUStore(folder: nil))
+    state.presetFolder = TUPresetFile.appFolder
+    return state
+  }()
   private var host: DTHubHost?
 
   func makeViewController() -> NSViewController {

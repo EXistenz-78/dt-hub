@@ -1,7 +1,6 @@
 import Foundation
 
-/// How a tile is regenerated for one family of models (spec §2). Only FLUX.2 klein 9B for now; Qwen Image 2.1 is one more
-/// entry in `TUPresetTable` when its LoRAs are tried.
+/// How a tile is regenerated for one family of models (spec §2). FLUX.2 klein 9B, FLUX.3 klein and Qwen Image 2.1.
 struct TUPreset: Equatable, Sendable {
   /// The name the preset has in DT Hub's Preset menu (`TUP ·` is this plug-in's tag, like `SLR ·`).
   let name: String
@@ -34,6 +33,19 @@ struct TUPreset: Equatable, Sendable {
   func loras(weight: Double) -> [[String: Any]] {
     [["file": loraFile, "weight": weight]]
   }
+
+  /// The `fields` of a pass: nothing, so the app runs the preset as the user saved it; only when the user wrote instructions,
+  /// the prompt of the preset (the file's, else the table's) followed by them.
+  func passFields(extra: String, file: TUPresetFile?) -> [String: Any] {
+    let added = extra.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !added.isEmpty else { return [:] }
+    return ["prompt": TUPrompt.compose(file?.prompt ?? prompt(trigger: ""), extra: added)]
+  }
+
+  /// The LoRA of a pass: the preset's own (the first of the file, else the table's) with the strength of the slider.
+  func passLoras(weight: Double, file: TUPresetFile?) -> [[String: Any]] {
+    [["file": file?.loraFile ?? loraFile, "weight": weight]]
+  }
 }
 
 enum TUPresetTable {
@@ -45,6 +57,12 @@ enum TUPresetTable {
   static let loraWeightRange: ClosedRange<Double> = -4...4
 
   static let fluxKlein9BName = "TUP · FLUX.2 klein 9B"
+  static let flux3KleinName = "TUP · FLUX.3 klein"
+
+  /// The restore LoRA of FLUX.3 klein and the prompt of its preset (the trigger phrase of the LoRA, fixed here like the others).
+  static let flux3LoRA = "f3_image_klein_restore_lora_f16.ckpt"
+  static let flux3Prompt =
+    "restore the photo: remove blur, noise and compression artifacts and recover sharp, natural detail, keeping the same composition, people and colors."
 
   /// The prompt of every tile of FLUX.2 klein 9B. It is fixed here, not the trigger word of the LoRA on the server: that one
   /// says "face", "expression", "figure" and "pose", and on a tile with no face the model adds one. It holds no description
@@ -66,6 +84,10 @@ enum TUPresetTable {
         name: fluxKlein9BName, steps: 4, guidanceScale: 1, sampler: 16, shift: 3, strength: 1,
         loraFile: "f2_ultra_real_v5_pro_lora_f16.ckpt", defaultLoRAWeight: 1, resolutionDependentShift: false,
         fixedPrompt: fluxPrompt)
+    case "flux3_5b":
+      return TUPreset(
+        name: flux3KleinName, steps: 16, guidanceScale: 1, sampler: 16, shift: 16, strength: 1,
+        loraFile: flux3LoRA, defaultLoRAWeight: 1, resolutionDependentShift: false, fixedPrompt: flux3Prompt)
     case "qwen_image_2.1":
       guard let model else { return nil }
       if model.lowercased().contains("turbo") {

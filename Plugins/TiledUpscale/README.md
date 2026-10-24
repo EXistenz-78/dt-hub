@@ -2,7 +2,7 @@
 
 A plug-in for DT Hub that enlarges a picture **2× or 4×** and gives it new detail tile by tile, with an edit model: the picture is enlarged once (bilinear), cut into overlapping tiles, and each tile is regenerated with a preset and a LoRA. Every result is put back into the picture before the next tile is cut, so the part a tile shares with its neighbour is already enlarged, and a mask, a fade of the join and a correction of the brightness keep the join invisible.
 
-**Works with:** edit and in-context models, with a preset for **FLUX.2 [klein] 9B**, **Qwen Image 2.1 Turbo** and **Qwen Image 2.1** (see *Models*); any other model shows a notice and the *Prepare* button stays off. **Needs DT Hub 0.3.6 or later** (0.3.2 works, but the last tile is then missing from the preview and from the picture) (the pipeline a plug-in guides, see `PluginKit/README.md`). No network.
+**Works with:** edit and in-context models, with a preset for **FLUX.2 [klein] 9B**, **FLUX.3 [klein]**, **Qwen Image 2.1 Turbo** and **Qwen Image 2.1** (see *Models*); any other model shows a notice and the *Prepare* button stays off. **Needs DT Hub 0.3.6 or later** (0.3.2 works, but the last tile is then missing from the preview and from the picture) (the pipeline a plug-in guides, see `PluginKit/README.md`). No network.
 
 ## How it works
 
@@ -17,13 +17,15 @@ When a run is finished the picture stays in the plug-in. Click a tile in the pre
 
 ## Models
 
-| | FLUX.2 [klein] 9B | Qwen Image 2.1 Turbo | Qwen Image 2.1 |
-| --- | --- | --- | --- |
-| Steps / guidance / sampler | 4 / 1 / 16 | 8 / 1 / 16 | 33 / 1 / 16 |
-| Shift | 3 | 6.5 | 1 |
-| Shift worked out from the size | no | no | yes |
-| LoRA (default strength) | `f2_ultra_real_v5_pro_lora_f16` (1) | `q21_detail_fix_2.0_lora_f16` (2.5) | `q21_detail_fix_2.0_lora_f16` (2.5) |
-| Prompt | one fixed prompt: «make this photo high-quality. preserve details. preserve overall composition of this photo. Preserve colors and lights.» | one fixed prompt: «Upscale this image to a substantially higher resolution with a decisive gain in clarity…» | the same |
+| | FLUX.2 [klein] 9B | FLUX.3 [klein] | Qwen Image 2.1 Turbo | Qwen Image 2.1 |
+| --- | --- | --- | --- | --- |
+| Steps / guidance / sampler | 4 / 1 / 16 | 16 / 1 / 16 | 8 / 1 / 16 | 33 / 1 / 16 |
+| Shift | 3 | 16 | 6.5 | 1 |
+| Shift worked out from the size | no | no | no | yes |
+| LoRA (default strength) | `f2_ultra_real_v5_pro_lora_f16` (1) | `f3_image_klein_restore_lora_f16` (1) | `q21_detail_fix_2.0_lora_f16` (2.5) | `q21_detail_fix_2.0_lora_f16` (2.5) |
+| Prompt | one fixed prompt: «make this photo high-quality. preserve details. preserve overall composition of this photo. Preserve colors and lights.» | one fixed prompt, the trigger of its LoRA: «restore the photo: remove blur, noise and compression artifacts and recover sharp, natural detail, keeping the same composition, people and colors.» | one fixed prompt: «Upscale this image to a substantially higher resolution with a decisive gain in clarity…» | the same |
+
+**The presets are yours.** The first time you press *Prepare*, the plug-in adds the preset of the model (`TUP · FLUX.3 klein`, …) to DT Hub's Preset menu with the values above; after that it never touches it. Every run reads the saved preset, so you can change steps, guidance, sampler, shift or the prompt there (Preset menu, or the file in `~/Library/Application Support/DT Hub/Presets/`) and the next tile uses them. The plug-in decides only the picture, the mask, the size, the **LoRA strength** (the slider) and your additional instructions, which are added after the preset's prompt. To get the original values back, delete the preset: it is made again at the next *Prepare*.
 
 **Where to get the LoRAs** (put the file in Draw Things' LoRA folder, or import it from Draw Things; the names above are the ones Draw Things gives them):
 
