@@ -28,6 +28,7 @@ struct PromptCard: View {
           }
         }
         .scrollIndicators(.hidden).frame(minHeight: 120, maxHeight: 360)
+        extraRows
         buttons
         lines
       }
@@ -36,6 +37,24 @@ struct PromptCard: View {
     .dsPanel()
     .confirmationDialog(L.text(.clearTitle, italian: state.italian), isPresented: $confirmClear) {
       Button(L.text(.clearAction, italian: state.italian), role: .destructive) { state.clear() }
+    }
+  }
+
+  /// Le righe che il PUP ha aggiunto: sola lettura, con «Togli». Vanno nel prompt finale dopo i nostri elementi.
+  @ViewBuilder private var extraRows: some View {
+    if let rows = state.document.extraRows, !rows.isEmpty {
+      VStack(alignment: .leading, spacing: 4) {
+        FieldLabel(text: L.text(.extraRowsTitle, italian: state.italian))
+        ForEach(rows) { row in
+          HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(verbatim: row.id).font(.caption.monospaced())
+            Text(verbatim: row.desc).font(.caption).foregroundStyle(.secondary).lineLimit(2).textSelection(.enabled)
+            Spacer(minLength: 0)
+            Button(L.text(.removeExtraRow, italian: state.italian)) { state.removeExtraRow(row.id) }
+              .buttonStyle(.plain).font(.caption).foregroundStyle(DS.remove)
+          }
+        }
+      }
     }
   }
 
