@@ -10,6 +10,7 @@ struct PresetBar: View {
   @Bindable var controller: GenerationController
   let connection: DrawThingsConnection
   @State private var saving = false
+  @State private var confirmingUpdate = false
   @State private var managing = false
   @State private var creatingPipeline = false
   @State private var editingJSON = false
@@ -53,6 +54,16 @@ struct PresetBar: View {
         } label: {
           Text("preset.saveAs")
         }
+        Button {
+          confirmingUpdate = true
+        } label: {
+          if let active = controller.presets.activeName {
+            Text(String(format: String(localized: "preset.update"), active))
+          } else {
+            Text("preset.update.none")
+          }
+        }
+        .disabled(controller.presets.activeName == nil)
         Button {
           creatingPipeline = true
         } label: {
@@ -108,6 +119,22 @@ struct PresetBar: View {
     .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
       controller.presets.refresh()
       controller.userPipelines.refresh()
+    }
+    .confirmationDialog(
+      String(format: String(localized: "preset.update.confirm"), controller.presets.activeName ?? ""),
+      isPresented: $confirmingUpdate, titleVisibility: .visible
+    ) {
+      Button(String(localized: "preset.update.button"), role: .destructive) {
+        do throws(PresetError) {
+          try controller.updateActivePreset(with: connection)
+          importMessage = nil
+        } catch {
+          importMessage = Self.text(of: error)
+        }
+      }
+      Button(String(localized: "sheet.cancel"), role: .cancel) {}
+    } message: {
+      Text("preset.update.message")
     }
     .sheet(isPresented: $creatingPipeline) {
       CreatePipelineSheet(controller: controller)

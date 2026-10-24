@@ -9095,6 +9095,91 @@
           }
         }
       }
+    },
+    "preset.update": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update preset “%@”…"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aggiorna preset “%@”…"
+          }
+        }
+      }
+    },
+    "preset.update.none": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update preset"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aggiorna preset"
+          }
+        }
+      }
+    },
+    "preset.update.confirm": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Replace the preset “%@”?"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sovrascrivere il preset “%@”?"
+          }
+        }
+      }
+    },
+    "preset.update.message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "It will get the parameters, model, prompt and negative prompt of the tab as they are now (not the size)."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Riceverà parametri, modello, prompt e prompt negativo della scheda come sono ora (non la dimensione)."
+          }
+        }
+      }
+    },
+    "preset.update.button": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Replace"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sovrascrivi"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

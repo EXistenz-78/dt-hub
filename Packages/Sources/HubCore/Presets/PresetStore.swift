@@ -21,6 +21,8 @@ public enum PresetError: Error, Equatable, Sendable {
 public final class PresetStore {
   /// The names of the presets, sorted; read from the folder by `refresh()`.
   public private(set) var names: [String] = []
+  /// The preset the user loaded last, as asked for; `activeName` is the name its file has now.
+  @ObservationIgnored private var loaded: String?
   @ObservationIgnored private let files: NamedJSONFolder
 
   public init(folder: URL, move: @escaping (URL, URL) throws -> Void = { try FileManager.default.moveItem(at: $0, to: $1) }) {
@@ -63,6 +65,12 @@ public final class PresetStore {
     return preset
   }
 
+  /// Remembers that this preset was put on the tab, so "update preset" knows which file to replace. Kept for the session only.
+  public func markLoaded(_ name: String) { loaded = name }
+
+  /// The preset on the tab, under the name of its file; nil when none was loaded or its file is gone (deleted, or renamed by hand).
+  public var activeName: String? { loaded.flatMap { existingName(for: $0) } }
+
   /// The preset, or nil when there is none or its file cannot be read.
   public func preset(named name: String) -> Preset? { try? load(named: name) }
 
@@ -81,7 +89,9 @@ public final class PresetStore {
   /// Renames the file. Changing only the capitals of a name is allowed.
   public func rename(_ old: String, to newName: String) throws(PresetError) {
     defer { refresh() }
+    let wasActive = activeName == old
     try files.rename(old, to: newName)
+    if wasActive { loaded = newName.trimmingCharacters(in: .whitespacesAndNewlines) }
   }
 
   /// Adds imported presets, each under a free name ("Name", "Name (2)", …); a "/" or ":" in a name becomes "-".
