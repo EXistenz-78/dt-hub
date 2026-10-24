@@ -69,15 +69,16 @@ final class Flux3EditingPlugin: DTHubPlugin {
         document: document, refs: refs, allowedTags: allowed, mode: mode, pupPictures: pupPictures, drawnPictures: drawn,
         standardSystem: system)
       let before = EditSnapshot.take(from: document)
+      var wrote = false
       if let pup = outcome.pup {
-        state.applyPup(pup, original: before)
+        wrote = state.applyPup(pup, original: before)
       } else if let standard = outcome.standard {
-        state.apply(standard)
+        wrote = state.apply(standard)
         if !leftOut.isEmpty {
           state.status += " " + L.format(.picturesLeftOut, leftOut.map { "<ref_image_\($0)>" }.joined(separator: ", "), italian: state.italian)
         }
       }
-      if !outcome.note.isEmpty { state.status += " " + outcome.note }
+      if wrote { state.addNote(outcome.note) }
       if let folder = state.projectFolder, !outcome.request.isEmpty {
         EditWorkFolder(folder: folder).write(request: outcome.request, answer: outcome.answer, before: before)
       }

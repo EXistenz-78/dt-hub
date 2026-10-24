@@ -66,6 +66,7 @@ public final class PromptAssistant {
     }
     return await run(.enhance, current: current, family: family, withImages: !images.isEmpty) { choice, withImages in
       let attached = withImages ? images : EnhanceImages()
+      if let pup = choice.profile.pup { return PromptBrief.enhance(current, pup: pup, images: attached) }
       return choice.profile.systemPrompt(for: .enhance, withImages: withImages).map {
         PromptBrief.enhance(current, ownSystem: $0, generation: choice.profile.generation, images: attached, library: library)
       } ?? PromptBrief.enhance(current, family: family, images: attached, library: library)
@@ -79,7 +80,8 @@ public final class PromptAssistant {
       return nil
     }
     return await run(.describe, current: current, family: family, withImages: true) { choice, _ in
-      choice.profile.systemPrompt(for: .describe).map {
+      if let pup = choice.profile.pup { return PromptBrief.describe(imageAt: url, current: current, pup: pup) }
+      return choice.profile.systemPrompt(for: .describe).map {
         PromptBrief.describe(imageAt: url, ownSystem: $0, generation: choice.profile.generation, library: library)
       } ?? PromptBrief.describe(imageAt: url, family: family, library: library)
     }
@@ -122,12 +124,20 @@ public final class PromptAssistant {
     }
     if droppedImages { note = .imagesNotSent }
     let request = request(choice, withImages)
-    let raw: String
+    var raw: String
     do {
       raw = try await respond(request.prompt, request.images, request.options, choice.model)
     } catch {
       failure = .model(error)
       return nil
+    }
+    if let locked = request.locked {
+      // The PUP answered for a prompt with a table of boxes: the user's boxes and ids go back in, or the answer is no answer.
+      guard let reconciled = PupBoxes.reconcile(raw, locked: locked) else {
+        failure = .emptyAnswer
+        return nil
+      }
+      raw = reconciled
     }
     guard let parsed = PromptBrief.parse(raw) else {
       failure = .emptyAnswer

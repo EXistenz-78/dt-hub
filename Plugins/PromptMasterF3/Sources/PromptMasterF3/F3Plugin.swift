@@ -9,7 +9,7 @@ final class F3Plugin: DTHubPlugin {
   static let families = ["flux3_5b"]
 
   let manifest = DTHubManifest(
-    id: "com.exiztenz.dthub.promptmasterf3", name: "Prompt Master F3", version: "1.0.1", symbol: "wand.and.stars",
+    id: "com.exiztenz.dthub.promptmasterf3", name: "Prompt Master F3", version: "1.1", symbol: "wand.and.stars",
     families: F3Plugin.families)
   private let state = F3State()
   private var host: DTHubHost?
@@ -30,6 +30,9 @@ final class F3Plugin: DTHubPlugin {
     switch DTHubMessage.type(of: message) {
     case "context":
       state.update(generationSize: GenerationSize.read(fromContext: message))
+      if let context = try? JSONDecoder().decode(DTHubContext.self, from: message) {
+        state.update(models: context.languageModels ?? [], family: context.family)
+      }
       return nil
     case "project":
       // La sessione del tab appartiene al progetto aperto.
@@ -54,16 +57,24 @@ final class F3Plugin: DTHubPlugin {
     state.isWriting = true
     state.status = L.text(.writing, italian: state.italian)
     let document = state.document
-    let (catalog, system, options) = (state.catalog, state.writeSystem, state.writeOptions)
-    let writer = F3Writer(
-      ask: { prompt, system, options in await host.askLanguageModelAnswer(prompt, system: system, options: options) },
+    let (catalog, system, options, mode) = (state.catalog, state.writeSystem, state.writeOptions, state.writeMode)
+    let improver = F3Improver(
+      ask: { prompt, system, options, model in
+        await host.askLanguageModelAnswer(prompt, system: system, model: model, options: options)
+      },
       italian: state.italian)
     Task {
-      let result = await writer.write(document: document, catalog: catalog, system: system, options: options)
+      let outcome = await improver.improve(document: document, catalog: catalog, mode: mode, standardSystem: system, standardOptions: options)
       let before = F3Snapshot.take(from: document)
-      state.apply(result)
-      if let folder = state.projectFolder, !result.request.isEmpty {
-        F3WorkFolder(folder: folder).write(request: result.request, answer: result.answer, before: before)
+      var wrote = false
+      if let pup = outcome.pup {
+        wrote = state.applyPup(pup, original: before)
+      } else if let standard = outcome.standard {
+        wrote = state.apply(standard)
+      }
+      if wrote { state.addNote(outcome.note) }
+      if let folder = state.projectFolder, !outcome.request.isEmpty {
+        F3WorkFolder(folder: folder).write(request: outcome.request, answer: outcome.answer, before: before)
       }
       state.isWriting = false
     }
