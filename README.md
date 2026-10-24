@@ -121,6 +121,19 @@ DT Hub looks for MLX models (Hugging Face format: a folder with `config.json` an
 
 Each installed LLM can be assigned to a model family and a use (enhance, generate, both, plug-ins only); a dedicated LLM's own `system_prompt.txt` is used when present. With a single LLM installed nothing needs to be set up.
 
+### Recommended LLMs
+
+These are the models the author uses, with the setting of **Family** and **Use** that goes with each in **Preferences › LLM**. Put each one in its own folder inside the models folder (a folder per model; one level of folders, such as `mlx-community/` or `prithivMLmods/`, is fine). All of them are MLX conversions that read pictures.
+
+| Model | Size | Family | Use | What for |
+| --- | --- | --- | --- | --- |
+| [mlx-community/Qwen3-VL-8B-Instruct-4bit](https://huggingface.co/mlx-community/Qwen3-VL-8B-Instruct-4bit) (Apache-2.0) | about 5.8 GB | **All others** | **Both** | The general LLM: Enhance Prompt, Generate Prompt, the plug-ins and the chat, for every family that has no LLM of its own. It is also the one *Download the recommended model* fetches. |
+| [mlx-community/flux-3-image-klein-pup-8bit](https://huggingface.co/mlx-community/flux-3-image-klein-pup-8bit) (Apache-2.0; also a [4-bit copy](https://huggingface.co/mlx-community/flux-3-image-klein-pup-4bit), about 6 GB) | about 10 GB | **FLUX.3 [klein]** | **Both** | BFL's own prompt upsampler [black-forest-labs/flux-3-image-klein-pup](https://huggingface.co/black-forest-labs/flux-3-image-klein-pup), dedicated to FLUX.3 [klein]. It is used by Enhance Prompt, Generate Prompt, Prompt Master F3 and Flux3 Editing with its official prompts: see below. |
+| [prithivMLmods/Qwen-Image-2.1-PE-I2I-MLX](https://huggingface.co/prithivMLmods/Qwen-Image-2.1-PE-I2I-MLX) (Qwen research licence; download the contents of its `4bit` folder) | about 6 GB | **Qwen Image 2.1** | **I2I (images in Control)** | The prompt rewriter of Qwen Image 2.1 for editing: it reads the pictures of the Control tab and the instruction. |
+| [prithivMLmods/Qwen-Image-2.1-PE-T2I-MLX](https://huggingface.co/prithivMLmods/Qwen-Image-2.1-PE-T2I-MLX) (Qwen research licence; the `4bit` folder as well) | about 6 GB | **Qwen Image 2.1** | **T2I (empty Control)** | The same rewriter for text-to-image: it turns a short request into a detailed prompt. |
+
+With this setup a FLUX.3 [klein] prompt goes to the prompt upsampler, a Qwen Image 2.1 prompt goes to the I2I or the T2I rewriter depending on whether the Control tab has pictures, and every other family goes to Qwen3-VL. An LLM on **All others** serves every family without an LLM of its own; **Plug-ins only** keeps a model away from the prompt buttons. The sizes are those of the files on Hugging Face.
+
 ### The FLUX.3 prompt upsampler (PUP)
 
 If the LLM assigned to a family is Black Forest Labs' own prompt upsampler (`black-forest-labs/flux-3-image-klein-pup`, or a converted copy such as `mlx-community/flux-3-image-klein-pup-8bit`: the folder has a `system_prompts.json`), DT Hub uses the model's **official prompts** instead of the family prompts above:

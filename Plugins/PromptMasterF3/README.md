@@ -3,6 +3,8 @@
 > **Works with:** FLUX.3 [klein] 5.6B (structured prompts with boxes), in all its variants (`flux3_5b`: Base, 8-bit, 4-bit, Exact).
 > On any other family the plug-in is switched off and its tab is hidden.
 
+> **Recommended LLM:** install **[black-forest-labs/flux-3-image-klein-pup](https://huggingface.co/black-forest-labs/flux-3-image-klein-pup)**, BFL's own prompt upsampler for FLUX.3 [klein] (Apache-2.0), and assign it to the family **FLUX.3 [klein]** with the use **Both** in DT Hub's **Preferences › LLM**. DT Hub loads MLX models: use a converted copy such as [mlx-community/flux-3-image-klein-pup-8bit](https://huggingface.co/mlx-community/flux-3-image-klein-pup-8bit) (about 10 GB) or [mlx-community/flux-3-image-klein-pup-4bit](https://huggingface.co/mlx-community/flux-3-image-klein-pup-4bit) (about 6 GB). With it **Write with LLM** writes in the model's own format, the one BFL trained it on; without it the plug-in still works with any other LLM, using its own master prompt. See [the recommended LLMs](../../README.md#recommended-llms) in DT Hub's README.
+
 A DT Hub plug-in that builds the **structured prompt of FLUX.3**: a description of the scene, a composition sentence that names the elements with `<id>` placeholders, and a JSON array that says where each element goes (`bbox`, `[top, left, bottom, right]` on a 0–1000 grid) and what it is (`desc`). The result goes to the Prompt field of the Generation tab.
 
 ```
