@@ -56,4 +56,14 @@ struct ImproveTests {
     let second = await run(unusable, mode: pupMode)
     #expect(second.standard?.status.contains("pup") == true && unusable.systems == ["SYSTEM", "SYSTEM"] && second.note.isEmpty)
   }
+
+  @Test func withoutElementsThePupIsNotAskedAndTheUserIsTold() async {
+    let calls = Calls([])
+    var doc = document()
+    doc.elements = []
+    let outcome = await F3Improver(
+      ask: { _, _, _, _ in calls.prompts += 1; return .failure("x") }, italian: false
+    ).improve(document: doc, catalog: catalog, mode: pupMode, standardSystem: "STANDARD", standardOptions: DTHubLLMOptions())
+    #expect(calls.prompts == 0 && outcome.standard?.status == "pup needs at least one element (a box) to write with: your texts are unchanged.")
+  }
 }

@@ -42,7 +42,7 @@ struct PupStateTests {
 
   @Test func applyPupWritesProseDescriptionsAndRows() {
     let s = state()
-    s.applyPup(result(), original: EditSnapshot.take(from: s.document))
+    #expect(s.applyPup(result(), original: EditSnapshot.take(from: s.document)))
     #expect(s.document.prose == "Add <el_1>." && s.document.elements[0].desc == "A new thing")
     #expect(s.document.extraRows?.map(\.id) == ["person_1"] && s.document.extraRows?[0].src == box(313, 468, 1000, 833))
     #expect(s.document.snapshot != nil)
@@ -76,7 +76,7 @@ struct PupStateTests {
   @Test func aFailedPupResultChangesNothing() {
     let s = state()
     let before = s.document
-    s.applyPup(EditPupResult.failed(status: "No answer."), original: EditSnapshot.take(from: s.document))
+    #expect(!s.applyPup(EditPupResult.failed(status: "No answer."), original: EditSnapshot.take(from: s.document)))
     #expect(s.document == before && s.status == "No answer.")
   }
 
@@ -99,5 +99,24 @@ struct PupStateTests {
     s.document.elements[1].id = "el_2"
     #expect(s.document.repeatedIDs.contains("el_2"))
     #expect(s.problems.contains(.repeatedID("el_2")))
+  }
+
+  @Test func aNoteJoinsTheStatusWithoutALeadingSpace() {
+    let s = state()
+    s.status = ""
+    s.addNote("Improved.")
+    #expect(s.status == "Improved.")
+    s.addNote("Again.")
+    #expect(s.status == "Improved. Again.")
+  }
+
+  @Test func nothingWrittenWhenEveryTextWasChangedMeanwhile() {
+    let s = state()
+    let original = EditSnapshot.take(from: s.document)
+    s.document.prose = "typed"
+    s.document.elements[0].desc = "typed too"
+    var r = result()
+    r.extraRows = []
+    #expect(!s.applyPup(r, original: original))
   }
 }

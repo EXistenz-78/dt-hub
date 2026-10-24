@@ -29,7 +29,7 @@ struct PupStateTests {
 
   @Test func applyPupFoldsTheDescriptionAndTheTermsIntoTheCompositionAndUpdatesTheElements() {
     let s = prepared()
-    s.applyPup(result(), original: F3Snapshot.take(from: s.document))
+    #expect(s.applyPup(result(), original: F3Snapshot.take(from: s.document)))
     #expect(s.document.description.isEmpty && s.document.selection.isEmpty)
     #expect(s.document.composition == "A woman <person_1> with a lantern <lantern_1> and a cat <cat_1>.")
     #expect(s.document.element("lantern_1")?.desc == "A mossy lantern." && s.document.element("lantern_1")?.box == BBox(y0: 389, x0: 807, y1: 991, x1: 956))
@@ -56,14 +56,25 @@ struct PupStateTests {
     let s = prepared()
     let original = F3Snapshot.take(from: s.document)
     s.document.composition = "typed while waiting <lantern_1> <cat_1>"
-    s.applyPup(result(), original: original)
+    #expect(!s.applyPup(result(), original: original))
     #expect(s.document.composition == "typed while waiting <lantern_1> <cat_1>" && s.document.element("person_1") == nil && !s.status.isEmpty)
   }
 
   @Test func aFailedResultChangesNothing() {
     let s = prepared()
     let before = s.document
-    s.applyPup(F3PupResult.failed(status: "No answer."), original: F3Snapshot.take(from: s.document))
+    #expect(!s.applyPup(F3PupResult.failed(status: "No answer."), original: F3Snapshot.take(from: s.document)))
     #expect(s.document == before && s.status == "No answer.")
+  }
+
+  @Test func aNoteJoinsTheStatusWithoutALeadingSpace() {
+    let s = makeState()
+    s.status = ""
+    s.addNote("Improved.")
+    #expect(s.status == "Improved.")
+    s.addNote("Again.")
+    #expect(s.status == "Improved. Again.")
+    s.addNote("")
+    #expect(s.status == "Improved. Again.")
   }
 }

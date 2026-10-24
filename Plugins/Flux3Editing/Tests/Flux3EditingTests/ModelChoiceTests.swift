@@ -75,4 +75,9 @@ struct ModelChoiceTests {
     s.update(context: try JSONDecoder().decode(DTHubContext.self, from: Data(#"{"type":"context","tempFolder":"/tmp"}"#.utf8)))
     #expect(s.writeMode == .standard(model: nil))
   }
+
+  @Test func aModelAssignedOnlyForDescribeIsNotACandidate() {
+    let describeOnly = DTHubLanguageModel(name: "vl", path: "/m/vl", supportsImages: true, family: "flux3_5b", use: "describe")
+    #expect(EditModelChoice.mode(family: "flux3_5b", models: [describeOnly, model("qwen", family: "*")], readFile: { _ in nil }) == .standard(model: "qwen"))
+  }
 }
