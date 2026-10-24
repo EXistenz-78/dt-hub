@@ -30,6 +30,7 @@ struct F3Improver {
           pup: nil, standard: F3WriteResult(rewrites: [], status: status, request: request, answer: answer), note: "", request: request,
           answer: answer)
       }
+      guard !document.elements.isEmpty else { return stop(L.format(.pupNeedsElements, name, italian: italian)) }
       let writer = F3PupWriter(ask: { prompt, system, options, model in await ask(prompt, system, options, model) }, italian: italian)
       let terms = catalog.termNames(document.selection, mode: document.mode)
       let result = await writer.write(document: document, terms: terms, model: name, systemPrompt: systemPrompt)

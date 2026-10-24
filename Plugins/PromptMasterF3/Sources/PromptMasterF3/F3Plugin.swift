@@ -66,12 +66,13 @@ final class F3Plugin: DTHubPlugin {
     Task {
       let outcome = await improver.improve(document: document, catalog: catalog, mode: mode, standardSystem: system, standardOptions: options)
       let before = F3Snapshot.take(from: document)
+      var wrote = false
       if let pup = outcome.pup {
-        state.applyPup(pup, original: before)
+        wrote = state.applyPup(pup, original: before)
       } else if let standard = outcome.standard {
-        state.apply(standard)
+        wrote = state.apply(standard)
       }
-      if !outcome.note.isEmpty { state.status += " " + outcome.note }
+      if wrote { state.addNote(outcome.note) }
       if let folder = state.projectFolder, !outcome.request.isEmpty {
         F3WorkFolder(folder: folder).write(request: outcome.request, answer: outcome.answer, before: before)
       }

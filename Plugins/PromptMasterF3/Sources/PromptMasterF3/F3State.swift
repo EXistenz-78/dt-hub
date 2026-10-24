@@ -236,7 +236,8 @@ final class F3State: ObservableObject {
 
   /// Mette nei campi i testi riscritti. Un testo che l'utente ha cambiato mentre l'LLM scriveva resta com'è. Prima si
   /// fotografa lo stato (solo l'ultima fotografia), per «Annulla».
-  func apply(_ result: F3WriteResult) {
+  @discardableResult
+  func apply(_ result: F3WriteResult) -> Bool {
     var applicable: [F3Rewrite] = []
     var kept: [String] = []
     for rewrite in result.rewrites {
@@ -258,6 +259,7 @@ final class F3State: ObservableObject {
     }
     if !kept.isEmpty { lines.append(L.format(.changedMeanwhile, kept.joined(separator: ", "), italian: italian)) }
     status = lines.filter { !$0.isEmpty }.joined(separator: " ")
+    return !applicable.isEmpty
   }
 
   private func currentText(of kind: F3Part.Kind) -> String? {
@@ -271,16 +273,17 @@ final class F3State: ObservableObject {
   /// Mette nei campi il risultato del PUP: il paragrafo diventa la composizione (la descrizione e le voci vi sono già dentro, quindi si
   /// svuotano), gli id nuovi nascono come elementi con il riquadro e la descrizione del modello, i nostri elementi tengono il riquadro e
   /// prendono la descrizione. Se l'utente ha cambiato descrizione, voci o composizione mentre il modello scriveva, non si tocca niente.
-  func applyPup(_ result: F3PupResult, original: F3Snapshot) {
+  @discardableResult
+  func applyPup(_ result: F3PupResult, original: F3Snapshot) -> Bool {
     guard result.succeeded, let caption = result.caption else {
       status = result.status
-      return
+      return false
     }
     func same(_ a: String, _ b: String) -> Bool { a.trimmingCharacters(in: .whitespacesAndNewlines) == b.trimmingCharacters(in: .whitespacesAndNewlines) }
     guard same(document.description, original.description), same(document.composition, original.composition), document.selection == original.selection
     else {
       status = L.format(.changedMeanwhile, [F3Part.Kind.description.title, F3Part.Kind.composition.title].joined(separator: ", "), italian: italian)
-      return
+      return false
     }
     document.snapshot = F3Snapshot.take(from: document)
     document.description = ""
@@ -300,6 +303,12 @@ final class F3State: ObservableObject {
       update(element: id) { $0.desc = text }
     }
     status = result.status
+    return true
+  }
+
+  /// Aggiunge una nota alla riga di stato (con uno spazio solo se c'è già qualcosa).
+  func addNote(_ note: String) {
+    status = [status, note].filter { !$0.isEmpty }.joined(separator: " ")
   }
 
   /// «Annulla»: rimette i testi di prima (solo l'ultima scrittura) e riallinea gli elementi agli id del testo.

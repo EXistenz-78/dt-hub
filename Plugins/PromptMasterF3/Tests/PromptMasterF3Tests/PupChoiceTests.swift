@@ -29,9 +29,9 @@ struct PupChoiceTests {
     #expect(mode == .standard(model: "qwen"))
   }
 
-  @Test func aModelOfAnotherFamilyOrWithoutVisionOrTheKeyIsNotUsedAsPup() {
+  @Test func aModelOfAnotherFamilyOrWithoutTheKeyIsNotUsedAsPup() {
     #expect(F3ModelChoice.mode(family: "flux3_5b", models: [model("pup", family: "other")], readFile: read(pups: ["pup"])) == .standard(model: nil))
-    #expect(F3ModelChoice.mode(family: "flux3_5b", models: [model("pup", family: "flux3_5b", vision: false)], readFile: read(pups: ["pup"])) == .standard(model: "pup"))
+    #expect(F3ModelChoice.mode(family: "flux3_5b", models: [model("pup", family: "flux3_5b", vision: false)], readFile: read(pups: ["pup"])) == .pup(name: "pup", systemPrompt: "OFFICIAL T2I BBOX"))  // t2i_bbox is text only
     #expect(F3ModelChoice.mode(family: "flux3_5b", models: [model("x", family: "flux3_5b")], readFile: { _ in Data(#"{"t2i":"a"}"#.utf8) }) == .standard(model: "x"))
     #expect(F3ModelChoice.mode(family: "flux3_5b", models: [], readFile: { _ in nil }) == .standard(model: nil))
   }
@@ -43,5 +43,10 @@ struct PupChoiceTests {
     #expect(F3PupRequest.message(prose: "p", locked: [], reminder: "REMIND").hasSuffix("\nREMIND"))
     let o = F3PupRequest.options
     #expect(o.temperature == 0 && o.topP == 0.95 && o.topK == 20 && o.presencePenalty == 1.5 && o.maxTokens == 3584 && o.thinking == false)
+  }
+
+  @Test func aModelAssignedOnlyForDescribeIsNotACandidate() {
+    let describeOnly = DTHubLanguageModel(name: "vl", path: "/m/vl", supportsImages: true, family: "flux3_5b", use: "describe")
+    #expect(F3ModelChoice.mode(family: "flux3_5b", models: [describeOnly, model("qwen", family: "*")], readFile: { _ in nil }) == .standard(model: "qwen"))
   }
 }

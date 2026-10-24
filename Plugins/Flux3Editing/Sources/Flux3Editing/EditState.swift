@@ -239,7 +239,8 @@ final class EditState: ObservableObject {
 
   /// Mette nei campi i testi riscritti. Un testo che l'utente ha cambiato mentre l'LLM scriveva resta com'è. Prima si
   /// fotografa lo stato (solo l'ultima fotografia), per «Annulla».
-  func apply(_ result: EditWriteResult) {
+  @discardableResult
+  func apply(_ result: EditWriteResult) -> Bool {
     var applicable: [EditRewrite] = []
     var kept: [String] = []
     for rewrite in result.rewrites {
@@ -257,19 +258,23 @@ final class EditState: ObservableObject {
     }
     if !kept.isEmpty { lines.append(L.format(.changedMeanwhile, kept.joined(separator: ", "), italian: italian)) }
     status = lines.filter { !$0.isEmpty }.joined(separator: " ")
+    return !applicable.isEmpty
   }
 
   /// Mette nei campi il risultato del PUP: la prosa e le descrizioni (solo quelle che l'utente non ha cambiato mentre il modello
   /// scriveva, confrontandole con `original`) e le righe aggiunte, che sostituiscono quelle di prima. Prima si fotografa lo stato.
-  func applyPup(_ result: EditPupResult, original: EditSnapshot) {
+  @discardableResult
+  func applyPup(_ result: EditPupResult, original: EditSnapshot) -> Bool {
     guard result.succeeded, let prose = result.prose else {
       status = result.status
-      return
+      return false
     }
-    takeSnapshot()
     var kept: [String] = []
+    var wrote = false
+    let snapshot = EditSnapshot.take(from: document)
     if document.prose.trimmingCharacters(in: .whitespacesAndNewlines) == original.prose.trimmingCharacters(in: .whitespacesAndNewlines) {
       document.prose = prose
+      wrote = true
     } else {
       kept.append(EditPart.Kind.prose.title)
     }
@@ -277,24 +282,35 @@ final class EditState: ObservableObject {
       guard let current = document.element(id)?.desc.trimmingCharacters(in: .whitespacesAndNewlines) else { continue }
       if current == (original.descriptions[id] ?? "").trimmingCharacters(in: .whitespacesAndNewlines) {
         update(element: id) { $0.desc = text }
+        wrote = true
       } else {
         kept.append(EditPart.Kind.element(id: id).title)
       }
     }
-    // Le righe di prima restano (con la descrizione aggiornata dal modello); quelle nuove si accodano.
-    var rows = document.extraRows ?? []
-    for index in rows.indices { if let text = result.descriptions[rows[index].id] { rows[index].desc = text } }
-    for row in result.extraRows where !rows.contains(where: { $0.id == row.id }) {
-      func box(_ values: [Int]?) -> BBox? {
-        guard let values, values.count == 4 else { return nil }
-        return BBox(y0: values[0], x0: values[1], y1: values[2], x1: values[3])
+    if wrote {
+      // Le righe di prima restano (con la descrizione aggiornata dal modello); quelle nuove si accodano. Solo se qualcosa è stato
+      // scritto: righe nuove senza il paragrafo che le cita non servono.
+      var rows = document.extraRows ?? []
+      for index in rows.indices { if let text = result.descriptions[rows[index].id] { rows[index].desc = text } }
+      for row in result.extraRows where !rows.contains(where: { $0.id == row.id }) {
+        func box(_ values: [Int]?) -> BBox? {
+          guard let values, values.count == 4 else { return nil }
+          return BBox(y0: values[0], x0: values[1], y1: values[2], x1: values[3])
+        }
+        rows.append(ExtraRow(id: row.id, from: row.from ?? "target", src: box(row.src), tgt: box(row.tgt), desc: row.desc))
       }
-      rows.append(ExtraRow(id: row.id, from: row.from ?? "target", src: box(row.src), tgt: box(row.tgt), desc: row.desc))
+      document.extraRows = rows.isEmpty ? nil : rows
+      document.snapshot = snapshot
     }
-    document.extraRows = rows.isEmpty ? nil : rows
     var lines = [result.status]
     if !kept.isEmpty { lines.append(L.format(.changedMeanwhile, kept.joined(separator: ", "), italian: italian)) }
     status = lines.filter { !$0.isEmpty }.joined(separator: " ")
+    return wrote
+  }
+
+  /// Aggiunge una nota alla riga di stato (con uno spazio solo se c'è già qualcosa).
+  func addNote(_ note: String) {
+    status = [status, note].filter { !$0.isEmpty }.joined(separator: " ")
   }
 
   /// «Togli» una riga aggiunta dal modello.
