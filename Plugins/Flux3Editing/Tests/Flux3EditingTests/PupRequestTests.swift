@@ -108,4 +108,18 @@ struct PupRequestTests {
     s.drawOnReference(box(100, 100, 600, 600))
     #expect(s.pupPictures().isEmpty)
   }
+
+  @Test func aTransparentReferenceReachesTheModelOnWhiteNotOnGrey() throws {
+    let folder = try temporaryFolder()
+    defer { try? FileManager.default.removeItem(at: folder) }
+    let start = try picture(width: 300, height: 200, in: folder), ref = try picture(width: 300, height: 200, in: folder)  // fully transparent
+    let s = EditState(store: EditStore(storage: MemoryStorage()), italian: false)
+    let json = #"{"type":"context","tempFolder":"\#(folder.path)","startImage":"\#(start.path)","moodboard":["\#(ref.path)"]}"#
+    s.update(context: try JSONDecoder().decode(DTHubContext.self, from: Data(json.utf8)))
+    s.drawOnReference(box(100, 100, 600, 600))
+    let pictures = s.pupPictures()
+    let image = try #require(NSBitmapImageRep(data: try Data(contentsOf: URL(fileURLWithPath: pictures[1].path))))
+    let color = try #require(image.colorAt(x: image.pixelsWide / 2, y: image.pixelsHigh / 2)?.usingColorSpace(.sRGB))
+    #expect(color.redComponent > 0.95 && color.greenComponent > 0.95 && color.blueComponent > 0.95)
+  }
 }

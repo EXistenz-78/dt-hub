@@ -5,8 +5,9 @@ import Foundation
 enum WriteMode: Equatable, Sendable {
   /// Il PUP ufficiale di BFL: il system prompt è l'`i2i_bbox` del suo `system_prompts.json`.
   case pup(name: String, systemPrompt: String)
-  /// Qualsiasi altro LLM: il master prompt E e il flusso a parti.
-  case standard
+  /// Qualsiasi altro LLM: il master prompt E e il flusso a parti. `model` è il modello scelto (la richiesta lo nomina, così risponde
+  /// proprio lui); nil se l'app non dice quali modelli ha.
+  case standard(model: String?)
 }
 
 /// Quale modalità usare, dai modelli che l'app dice di avere. Stessa regola dell'app (`LanguageModelRouter`): il primo per nome
@@ -21,11 +22,12 @@ enum EditModelChoice {
       models.filter { $0.family == wanted }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }.first
     }
     let chosen = family.flatMap(first) ?? first("*")
-    guard let chosen, chosen.supportsImages,
+    guard let chosen else { return .standard(model: nil) }
+    guard chosen.supportsImages,
       let data = readFile(chosen.path + "/" + promptsFile),
       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
       let system = json[promptKey] as? String, !system.isEmpty
-    else { return .standard }
+    else { return .standard(model: chosen.name) }
     return .pup(name: chosen.name, systemPrompt: system)
   }
 }

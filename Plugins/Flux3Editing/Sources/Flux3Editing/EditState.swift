@@ -105,13 +105,13 @@ final class EditState: ObservableObject {
     let lastUsed = document.elements.filter { $0.kind == .fromReference }
       .compactMap { $0.refFile.flatMap { RefNumbering.number(ofFile: $0, in: refs) } }.max() ?? 0
     var sources: [(number: Int, path: String)] = []
-    if let path = EditOverlay.render(imagePath: startImage.path, geometry: startGeometry, boxes: [], to: tempFolder, name: "pup-0") {
+    // La tela con più pixel del tetto del PUP (che poi la riduce); le reference vanno dritte al PUP: senza il fondo grigio dei margini,
+    // così un PNG con trasparenza arriva su bianco come in BFL.
+    if let path = EditOverlay.render(imagePath: startImage.path, geometry: startGeometry, boxes: [], to: tempFolder, name: "pup-0", maxPixel: 2048) {
       sources.append((RefNumbering.startImageNumber, path))
     }
     for ref in refs where ref.number <= lastUsed {
-      if let path = EditOverlay.render(imagePath: ref.path, geometry: referenceGeometry(of: ref), boxes: [], to: tempFolder, name: "pup-\(ref.number)") {
-        sources.append((ref.number, path))
-      }
+      sources.append((ref.number, ref.path))
     }
     let pictures = PupImages.prepare(sources: sources, to: tempFolder)
     return pictures.count == 1 + refs.filter({ $0.number <= lastUsed }).count && pictures.count <= PupImages.maxImages ? pictures : []
@@ -281,12 +281,15 @@ final class EditState: ObservableObject {
         kept.append(EditPart.Kind.element(id: id).title)
       }
     }
-    let rows = result.extraRows.compactMap { row -> ExtraRow? in
+    // Le righe di prima restano (con la descrizione aggiornata dal modello); quelle nuove si accodano.
+    var rows = document.extraRows ?? []
+    for index in rows.indices { if let text = result.descriptions[rows[index].id] { rows[index].desc = text } }
+    for row in result.extraRows where !rows.contains(where: { $0.id == row.id }) {
       func box(_ values: [Int]?) -> BBox? {
         guard let values, values.count == 4 else { return nil }
         return BBox(y0: values[0], x0: values[1], y1: values[2], x1: values[3])
       }
-      return ExtraRow(id: row.id, from: row.from ?? "target", src: box(row.src), tgt: box(row.tgt), desc: row.desc)
+      rows.append(ExtraRow(id: row.id, from: row.from ?? "target", src: box(row.src), tgt: box(row.tgt), desc: row.desc))
     }
     document.extraRows = rows.isEmpty ? nil : rows
     var lines = [result.status]

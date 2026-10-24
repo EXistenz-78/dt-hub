@@ -28,8 +28,10 @@ struct EditPupWriter {
   var italian: Bool = L.systemIsItalian
 
   func write(document: EditDocument, refs: [RefImage], pictures: [EditPicture], model: String, systemPrompt: String) async -> EditPupResult {
-    let locked = EditComposer.lockedRows(document, refs: refs)
-    guard !locked.isEmpty, !pictures.isEmpty else { return .failed() }
+    let ours = EditComposer.lockedRows(document, refs: refs)
+    guard !ours.isEmpty, !pictures.isEmpty else { return .failed() }
+    // Le righe che il modello aveva aggiunto in una prova di prima restano bloccate: se no riprogetterebbe i loro riquadri.
+    let locked = ours + (document.extraRows ?? []).map(PupRow.init)
     var request = "", answer = ""
     for attempt in 0..<2 {
       request = PupRequest.message(prose: document.prose, locked: locked, reminder: attempt == 0 ? nil : EditWriter.reminder)
@@ -39,7 +41,7 @@ struct EditPupWriter {
       case .text(let text):
         answer += (answer.isEmpty ? "" : "\n\n") + text
         let reconciled = PupReconcile.reconcile(text, locked: locked)
-        if acceptable(reconciled, locked: locked, document: document) {
+        if acceptable(reconciled, ours: ours, locked: locked, refs: refs, document: document) {
           let descriptions = Dictionary(reconciled.rows.map { ($0.id, $0.desc) }, uniquingKeysWith: { first, _ in first })
           return EditPupResult(
             prose: reconciled.caption, descriptions: descriptions, extraRows: reconciled.added, status: "", request: request,
@@ -51,9 +53,13 @@ struct EditPupWriter {
   }
 
   /// Ogni nostro id citato come `<id>`, le parole tra virgolette di ingresso ancora presenti, e niente italiano.
-  private func acceptable(_ result: PupReconciled, locked: [PupRow], document: EditDocument) -> Bool {
+  private func acceptable(_ result: PupReconciled, ours: [PupRow], locked: [PupRow], refs: [RefImage], document: EditDocument) -> Bool {
     let caption = result.caption
-    guard !caption.isEmpty, locked.allSatisfy({ caption.contains("<\($0.id)>") }) else { return false }
+    // Senza tabella in fondo (un blocco troncato, solo testo) la risposta non vale; ogni nostro elemento è citato; nessun segnaposto
+    // fuori dai nostri, dalle righe aggiunte valide e dalle immagini che ci sono.
+    guard result.hadList, !caption.isEmpty, ours.allSatisfy({ caption.contains("<\($0.id)>") }) else { return false }
+    let allowed = Set(locked.map(\.id) + result.added.map(\.id) + (0...refs.count).map { "ref_image_\($0)" })
+    guard EditTags.tags(in: caption).allSatisfy(allowed.contains) else { return false }
     let output = ([caption] + result.rows.map(\.desc) + result.added.map(\.desc)).joined(separator: "\n")
     let input = ([document.prose] + document.elements.map(\.desc))
     guard input.flatMap(EditTags.quoted).allSatisfy({ output.contains($0) }) else { return false }
