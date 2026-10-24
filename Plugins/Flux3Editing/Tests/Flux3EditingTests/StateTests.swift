@@ -131,7 +131,7 @@ struct StateTests {
     return url
   }
 
-  @Test func thePicturesGoOnlyWhenTheBoxIsOn_theStartAsTheCanvasAndTheUsedReferencesWhole() throws {
+  @Test func thePicturesAlwaysGo_theStartAsTheCanvasAndTheUsedReferencesWhole() throws {
     let temp = FileManager.default.temporaryDirectory.appendingPathComponent("f3e-tmp-\(UUID().uuidString)")
     try FileManager.default.createDirectory(at: temp, withIntermediateDirectories: true)
     defer { try? FileManager.default.removeItem(at: temp) }
@@ -142,8 +142,6 @@ struct StateTests {
     s.update(context: try JSONDecoder().decode(DTHubContext.self, from: Data(json.utf8)))
     s.drawOnReference(box(100, 100, 600, 600))  // sulla prima reference
     s.drawOnCanvas(box(0, 0, 100, 100))
-    #expect(s.canSendImages && s.llmPictures().isEmpty)  // the box is off
-    s.document.llmImages = true
     let pictures = s.llmPictures()
     #expect(pictures.map(\.number) == [0, 1])  // the second reference is not used: it stays home
     #expect(pictures.map(\.role) == [.start, .reference])
@@ -161,9 +159,7 @@ struct StateTests {
     let json = #"{"type":"context","tempFolder":"\#(temp.path)","startImage":"/nonexistent/start.png","moodboard":["\#(ref.path)"]}"#
     s.update(context: try JSONDecoder().decode(DTHubContext.self, from: Data(json.utf8)))
     s.drawOnReference(box(100, 100, 600, 600))
-    s.document.llmImages = true
     #expect(s.llmPictures().map(\.number) == [1])  // the unreadable start picture is skipped
-    #expect(s.canSendImages)
   }
 
   @Test func tooManyReferencesAreLeftOutAndNamed() throws {
@@ -188,12 +184,11 @@ struct StateTests {
     #expect(s.tagColors == ["el_1": 0, "el_2": 1])
   }
 
-  @Test func anOldStateFileWithoutTheImagesSwitchStillLoads() throws {
+  @Test func anOldStateFileWithTheImagesSwitchStillLoads() throws {
     let storage = MemoryStorage()
-    let old = #"{"schema":1,"document":{"prose":"kept","elements":[],"referenceIndex":0}}"#
+    let old = #"{"schema":1,"document":{"prose":"kept","elements":[],"referenceIndex":0,"llmImages":true}}"#
     storage.set(Data(old.utf8), forKey: EditStore.key)
     #expect(state(storage).document.prose == "kept")
-    #expect(!state(storage).document.sendsImages)
   }
 
   @Test func clearingTheTabLeavesItAsNew() throws {

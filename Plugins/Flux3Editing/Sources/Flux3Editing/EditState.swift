@@ -24,7 +24,7 @@ final class EditState: ObservableObject {
   @Published var selected: String?
   @Published var status = ""
   @Published var isSending = false
-  /// «Scrivi con LLM» è in corso.
+  /// «Migliora prompt» è in corso.
   @Published var isWriting = false
   @Published var active = false
   /// La cartella del progetto aperto (dove stanno `state.json` e `llm/`); nil finché l'app non ha detto il progetto.
@@ -62,18 +62,15 @@ final class EditState: ObservableObject {
   /// Il colore di ogni id nel testo (lo stesso del riquadro e della scheda).
   var tagColors: [String: Int] { Dictionary(document.elements.map { ($0.id, $0.colorIndex) }, uniquingKeysWith: { first, _ in first }) }
 
-  /// Ci sono immagini da mandare all'LLM: quella di partenza, o almeno un riquadro disegnato sul Moodboard.
-  var canSendImages: Bool { startImage != nil || document.elements.contains { $0.kind == .fromReference } }
-
   private var picturePlan: EditPicturePlan { EditPictures.plan(document: document, refs: refs, hasStartImage: startImage != nil) }
 
   /// I numeri delle reference usate che non entrano nel tetto delle immagini (partenza più cinque).
   var droppedPictures: [Int] { picturePlan.dropped }
 
-  /// Le immagini da mandare all'LLM (solo se la casella è accesa): quella di partenza come la tela di uscita e le reference
+  /// Le immagini da mandare all'LLM (sempre): quella di partenza come la tela di uscita e le reference
   /// usate intere, con i riquadri disegnati, scritte nella cartella temporanea. Un'immagine che non si legge si salta.
   func llmPictures() -> [EditPicture] {
-    guard document.sendsImages, let tempFolder else { return [] }
+    guard let tempFolder else { return [] }
     return picturePlan.pictures.compactMap { planned in
       let source: (path: String, geometry: StageGeometry)
       if planned.role == .start {
@@ -159,7 +156,7 @@ final class EditState: ObservableObject {
     status = ""
   }
 
-  /// «Scrivi con LLM» ha qualcosa da scrivere: un testo o la descrizione di un riquadro.
+  /// «Migliora prompt» ha qualcosa da scrivere: un testo o la descrizione di un riquadro.
   var hasWritableContent: Bool {
     proseIsEdited
       || document.elements.contains { !$0.desc.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }

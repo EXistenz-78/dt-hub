@@ -15,7 +15,7 @@ struct EditWriteResult: Sendable {
   var answer: String
 }
 
-/// «Scrivi con LLM» (spec §7): una richiesta con tutte le parti, il ripiego per le mancanti, il controllo dei segnaposto.
+/// «Migliora prompt» (spec §7): una richiesta con tutte le parti, il ripiego per le mancanti, il controllo dei segnaposto.
 @MainActor
 struct EditWriter {
   var ask: (String, String, DTHubLLMOptions, [String]) async -> DTHubLLMAnswer

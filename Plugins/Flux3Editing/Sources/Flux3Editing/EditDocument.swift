@@ -42,15 +42,10 @@ struct EditDocument: Codable, Equatable, Sendable {
   var snapshot: EditSnapshot?
   /// Quale immagine del Moodboard mostra la prima tela (0 = la prima accesa).
   var referenceIndex = 0
-  /// «Manda i ritagli all'LLM». Facoltativo nel file: uno stato di prima non lo ha.
-  var llmImages: Bool?
-
-  var sendsImages: Bool { llmImages ?? false }
-
   static let maxTargetSide = 300
   static let targetGap = 20
 
-  /// «Pulisci»: via i riquadri e il testo (torna la frase di partenza). La casella dei ritagli è una preferenza, resta.
+  /// «Pulisci»: via i riquadri e il testo (torna la frase di partenza). 
   mutating func clear() {
     elements = []
     prose = Self.defaultProse
