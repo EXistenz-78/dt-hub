@@ -51,7 +51,7 @@ final class Flux3EditingPlugin: DTHubPlugin {
   private func write() {
     guard state.canWrite, let host else { return }
     state.isWriting = true
-    state.status = L.text(.writing, italian: state.italian)
+    state.status = L.text(.improving, italian: state.italian)
     let document = state.document
     let (allowed, system, refs) = (state.allowedTags, state.writeSystem, state.refs)
     let pictures = state.llmPictures()
@@ -65,7 +65,7 @@ final class Flux3EditingPlugin: DTHubPlugin {
       let result = await writer.write(document: document, refs: refs, allowedTags: allowed, pictures: pictures, system: system, options: EditPrompts.options)
       let before = EditSnapshot.take(from: document)
       state.apply(result)
-      if state.document.sendsImages, !leftOut.isEmpty {
+      if !leftOut.isEmpty {
         state.status += " " + L.format(.picturesLeftOut, leftOut.map { "<ref_image_\($0)>" }.joined(separator: ", "), italian: state.italian)
       }
       if let folder = state.projectFolder, !result.request.isEmpty {
