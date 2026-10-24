@@ -54,22 +54,32 @@ final class Flux3EditingPlugin: DTHubPlugin {
     state.status = L.text(.improving, italian: state.italian)
     let document = state.document
     let (allowed, system, refs) = (state.allowedTags, state.writeSystem, state.refs)
-    let pictures = state.llmPictures()
+    let mode = state.writeMode
+    var pupPictures: [EditPicture] = []
+    if case .pup = mode { pupPictures = state.pupPictures() }
+    let drawn = state.llmPictures()
     let leftOut = state.droppedPictures
-    let writer = EditWriter(
-      ask: { prompt, system, options, images in
-        await host.askLanguageModelAnswer(prompt, images: images, system: system, options: options)
+    let improver = EditImprover(
+      ask: { prompt, system, options, images, model in
+        await host.askLanguageModelAnswer(prompt, images: images, system: system, model: model, options: options)
       },
       italian: state.italian)
     Task {
-      let result = await writer.write(document: document, refs: refs, allowedTags: allowed, pictures: pictures, system: system, options: EditPrompts.options)
+      let outcome = await improver.improve(
+        document: document, refs: refs, allowedTags: allowed, mode: mode, pupPictures: pupPictures, drawnPictures: drawn,
+        standardSystem: system)
       let before = EditSnapshot.take(from: document)
-      state.apply(result)
-      if !leftOut.isEmpty {
-        state.status += " " + L.format(.picturesLeftOut, leftOut.map { "<ref_image_\($0)>" }.joined(separator: ", "), italian: state.italian)
+      if let pup = outcome.pup {
+        state.applyPup(pup, original: before)
+      } else if let standard = outcome.standard {
+        state.apply(standard)
+        if !leftOut.isEmpty {
+          state.status += " " + L.format(.picturesLeftOut, leftOut.map { "<ref_image_\($0)>" }.joined(separator: ", "), italian: state.italian)
+        }
       }
-      if let folder = state.projectFolder, !result.request.isEmpty {
-        EditWorkFolder(folder: folder).write(request: result.request, answer: result.answer, before: before)
+      if !outcome.note.isEmpty { state.status += " " + outcome.note }
+      if let folder = state.projectFolder, !outcome.request.isEmpty {
+        EditWorkFolder(folder: folder).write(request: outcome.request, answer: outcome.answer, before: before)
       }
       state.isWriting = false
     }

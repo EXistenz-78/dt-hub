@@ -12,7 +12,7 @@ enum L {
     case kindFromReference, kindNew, kindExisting, kindMove, kindRemove, moveUp, moveDown, removeElement, idLabel
     case undo, improvePrompt, improving, send, sending, sent, sentWithConflicts, notAnswered
     case problemNoStart, problemNoElements, problemEmptyID, problemEmptyDescription, problemRepeatedID, problemImageMissing
-    case imagesNotSent, picturesLeftOut
+    case imagesNotSent, picturesLeftOut, improvedWith, improvedStandard, modePup, modeStandard, extraRowsTitle, removeExtraRow
     case clearHelp, clearTitle, clearAction
     case nothingToWrite, writtenCount, failedParts, tagsChanged, changedMeanwhile
     case warningIDNotInProse, warningUnknownReference, warningTooManyImages, imageGone, generationCanvas
@@ -58,6 +58,8 @@ enum L {
     .warningTooManyImages: "FLUX.3 reads at most ten pictures: the start image and nine from the Moodboard.",
     .imageGone: "Its picture is no longer in the Moodboard.", .generationCanvas: "Canvas %d × %d",
     .picturesLeftOut: "Too many pictures for the model: left out %@.",
+    .improvedWith: "Improved with %@ (%@).", .improvedStandard: "Improved (%@).", .modePup: "PUP mode", .modeStandard: "standard mode",
+    .extraRowsTitle: "Rows the model added", .removeExtraRow: "Remove",
     .imagesNotSent: "The model could not take the pictures: written from the texts only.",
     .clearHelp: "Clear the text and all the boxes", .clearTitle: "Clear the text and all the boxes?", .clearAction: "Clear",
     .nothingToWrite: "Nothing to write yet.", .writtenCount: "%d text(s) written.",
@@ -90,6 +92,8 @@ enum L {
     .warningTooManyImages: "FLUX.3 legge al massimo dieci immagini: quella di partenza e nove del Moodboard.",
     .imageGone: "La sua immagine non è più nel Moodboard.", .generationCanvas: "Canvas %d × %d",
     .picturesLeftOut: "Troppe immagini per il modello: lasciate fuori %@.",
+    .improvedWith: "Migliorato con %@ (%@).", .improvedStandard: "Migliorato (%@).", .modePup: "modalità PUP", .modeStandard: "modalità standard",
+    .extraRowsTitle: "Righe aggiunte dal modello", .removeExtraRow: "Togli",
     .imagesNotSent: "Il modello non ha potuto prendere le immagini: scritto dai soli testi.",
     .clearHelp: "Pulisci il testo e tutti i riquadri", .clearTitle: "Pulire il testo e tutti i riquadri?", .clearAction: "Pulisci",
     .nothingToWrite: "Non c'è ancora niente da scrivere.", .writtenCount: "%d testo/i scritto/i.",
