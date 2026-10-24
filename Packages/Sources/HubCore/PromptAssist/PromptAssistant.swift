@@ -124,12 +124,20 @@ public final class PromptAssistant {
     }
     if droppedImages { note = .imagesNotSent }
     let request = request(choice, withImages)
-    let raw: String
+    var raw: String
     do {
       raw = try await respond(request.prompt, request.images, request.options, choice.model)
     } catch {
       failure = .model(error)
       return nil
+    }
+    if let locked = request.locked {
+      // The PUP answered for a prompt with a table of boxes: the user's boxes and ids go back in, or the answer is no answer.
+      guard let reconciled = PupBoxes.reconcile(raw, locked: locked) else {
+        failure = .emptyAnswer
+        return nil
+      }
+      raw = reconciled
     }
     guard let parsed = PromptBrief.parse(raw) else {
       failure = .emptyAnswer

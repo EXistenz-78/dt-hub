@@ -17,6 +17,8 @@ public struct PromptRequest: Equatable, Sendable {
   public let prompt: String
   public let images: [URL]
   public let options: LanguageModelOptions
+  /// The rows of a table of boxes the PUP must not change: the answer is reconciled with them before it is read.
+  public var locked: [PupBoxRow]?
 }
 
 /// The pictures that go with Enhance Prompt: the start image of the Control tab and the Moodboard pictures that are on,
@@ -140,13 +142,26 @@ public enum PromptBrief {
   }
 
   /// Enhance with the PUP: `t2i` and the prompt as it is without pictures; `i2i` with the pictures (the start image first,
-  /// then the references, as Draw Things numbers them) and the prompt as the request.
+  /// then the references, as Draw Things numbers them, at most ten) and the prompt as the request. A prompt that ends with a table
+  /// of boxes goes to `t2i_bbox` / `i2i_bbox` with the rows locked (the model's file has those prompts, or the usual way applies).
   public static func enhance(_ current: PromptPair, pup: LanguageModelProfile.Pup, images: EnhanceImages) -> PromptRequest {
-    guard !images.isEmpty else {
+    let attached = Array(images.all.prefix(10))
+    if let found = PupBoxes.detect(current.prompt) {
+      if attached.isEmpty, let system = pup.t2iBbox {
+        return PromptRequest(
+          prompt: PupBoxes.upsamplingInput(prompt: found.prompt, rows: found.rows), images: [],
+          options: pupOptions(system: system, presencePenalty: 1.5), locked: found.rows)
+      }
+      if !attached.isEmpty, let system = pup.i2iBbox {
+        return PromptRequest(
+          prompt: PupBoxes.editScaffold(PupBoxes.upsamplingInput(prompt: found.prompt, rows: found.rows)), images: attached,
+          options: pupOptions(system: system, presencePenalty: 0), locked: found.rows)
+      }
+    }
+    guard !attached.isEmpty else {
       return PromptRequest(prompt: current.prompt, images: [], options: pupOptions(system: pup.t2i, presencePenalty: 1.5))
     }
-    return PromptRequest(
-      prompt: pupScaffold(current.prompt), images: images.all, options: pupOptions(system: pup.i2i, presencePenalty: 0))
+    return PromptRequest(prompt: pupScaffold(current.prompt), images: attached, options: pupOptions(system: pup.i2i, presencePenalty: 0))
   }
 
   /// Generate with the PUP: always `i2i`; the text in the field is the request, or a default one when it is empty.

@@ -69,7 +69,7 @@ struct LanguageModelProfileTests {
   @Test func theOfficialPupPromptsAreReadFromSystemPromptsJson() throws {
     let json = #"{"t2i":"T2I TEXT","i2i":"I2I TEXT","t2i_bbox":"x","i2i_bbox":"y"}"#
     let p = LanguageModelProfile.load(folder: try folder(["system_prompts.json": json]))
-    #expect(p.pup == LanguageModelProfile.Pup(t2i: "T2I TEXT", i2i: "I2I TEXT"))
+    #expect(p.pup == LanguageModelProfile.Pup(t2i: "T2I TEXT", i2i: "I2I TEXT", t2iBbox: "x", i2iBbox: "y"))
   }
 
   @Test func aSystemPromptsJsonWithoutBothPromptsIsNotAPup() throws {
