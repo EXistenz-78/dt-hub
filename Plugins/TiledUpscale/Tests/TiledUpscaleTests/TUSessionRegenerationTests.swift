@@ -80,7 +80,7 @@ struct TUSessionRegenerationTests {
     let size = try #require(first["size"] as? [String: Int])
     let previous = try result((1, 1, 1), size: size, folder: folder, name: "a.png")
     let second = try answer(s.next(TUNextRequest(index: 2, count: s.plan.count, previous: previous)))
-    #expect((second["fields"] as? [String: Any])?["prompt"] as? String == TUPresetTable.fluxPrompt)
+    #expect((second["fields"] as? [String: Any])?.isEmpty == true)
   }
 
   @Test func aTileMadeAgainStartsFromTheOriginalAndKeepsTheJoin() throws {

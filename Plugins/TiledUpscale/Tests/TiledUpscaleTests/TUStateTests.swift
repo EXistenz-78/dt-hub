@@ -110,7 +110,7 @@ struct TUStateTests {
     let session = try #require(s.makeSession())
     let answer = try #require(
       JSONSerialization.jsonObject(with: session.next(TUNextRequest(index: 1, count: 1, previous: nil))) as? [String: Any])
-    #expect((answer["fields"] as? [String: Any])?["prompt"] as? String == TUPresetTable.fluxPrompt, "the trigger of the server is not used")
+    #expect((answer["fields"] as? [String: Any])?.isEmpty == true, "the trigger of the server is not used")
   }
 
   @Test func theChoicesAreKeptPerProject() {
@@ -300,9 +300,7 @@ struct TUStateTests {
     var sent: [String: Any] = [:]
     await s.prepare(confirmed: true, contribute: { sent = $0; return ["type": "ok"] }, registerPreset: { _ in nil })
     let estimate = try #require((sent["pipeline"] as? [String: Any])?["estimate"] as? [String: Any])
-    let fields = try #require(estimate["fields"] as? [String: Any])
-    let prompt = try #require(fields["prompt"] as? String)
-    #expect(prompt.hasPrefix("Upscale this image") && !prompt.contains("SHOULD NOT APPEAR"))
+    #expect((estimate["fields"] as? [String: Any])?.isEmpty == true, "the preset has the prompt")
     let lora = try #require((estimate["loras"] as? [[String: Any]])?.first)
     #expect(lora["file"] as? String == "q21_detail_fix_2.0_lora_f16.ckpt" && lora["weight"] as? Double == 2.5)
     #expect(estimate["preset"] as? String == "TUP · Qwen Image 2.1 Turbo")

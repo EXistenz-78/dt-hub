@@ -113,8 +113,7 @@ struct TUSessionTests {
     let s = session(weight: 0.8, trigger: "TRIG")
     let answer = object(s.next(request(1)))
     let fields = answer["fields"] as? [String: Any]
-    #expect(fields?["prompt"] as? String == TUPresetTable.fluxPrompt, "the trigger of the server is not used")
-    #expect(fields?["steps"] as? Int == 4)
+    #expect(fields?.isEmpty == true, "no prompt, steps or shift: the preset the user saved decides them")
     let lora = (answer["loras"] as? [[String: Any]])?.first
     #expect(lora?["file"] as? String == "f2_ultra_real_v5_pro_lora_f16.ckpt")
     #expect(lora?["weight"] as? Double == 0.8)

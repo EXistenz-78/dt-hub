@@ -15,6 +15,16 @@ struct TUPresetTests {
     #expect(preset.defaultLoRAWeight == 1)
   }
 
+  @Test func flux3KleinHasThePresetOfTheSavedFile() throws {
+    let preset = try #require(TUPresetTable.preset(forFamily: "flux3_5b", model: "flux_3_klein_i8x.ckpt"))
+    #expect(preset.name == "TUP · FLUX.3 klein")
+    #expect(preset.steps == 16 && preset.guidanceScale == 1 && preset.sampler == 16 && preset.shift == 16 && preset.strength == 1)
+    #expect(preset.resolutionDependentShift == false)
+    #expect(preset.loraFile == "f3_image_klein_restore_lora_f16.ckpt" && preset.defaultLoRAWeight == 1)
+    #expect(preset.prompt(trigger: "ANYTHING").hasPrefix("restore the photo:"))
+    #expect(preset.fields(prompt: "p")["shift"] as? Double == 16)
+  }
+
   @Test func unknownFamiliesHaveNoPreset() {
     #expect(TUPresetTable.preset(forFamily: "flux2") == nil)
     #expect(TUPresetTable.preset(forFamily: nil) == nil)

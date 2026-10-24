@@ -105,6 +105,8 @@ final class TUState: ObservableObject {
   @Published var model: String?
   /// The folder the app lends for picture files; nil until the first `context`.
   var tempFolder: String?
+  /// The app's presets folder (the plug-in sets it; a test leaves it nil and gets the table's values).
+  var presetFolder: URL?
   /// The trigger word of each LoRA of the server, by file (`context.loraCatalog`).
   var loraTriggers: [String: String] = [:]
   /// Sends a `contribute` message to the app (the plug-in gives it at start; a test gives its own).
@@ -337,7 +339,8 @@ final class TUState: ObservableObject {
       .appendingPathComponent("tiled-upscale", isDirectory: true)
     return TUSession(
       source: image, factor: factor, overlap: overlap, settings: settings, loraWeight: loraWeight,
-      trigger: loraTriggers[preset.loraFile] ?? "", extraPrompt: extraPrompt, preset: preset, tempFolder: folder)
+      trigger: loraTriggers[preset.loraFile] ?? "", extraPrompt: extraPrompt, preset: preset, presetFolder: presetFolder,
+      tempFolder: folder)
   }
 
   /// Registers the preset and proposes the guided pipeline to the app; the user then presses RUN. `contribute` and
@@ -353,11 +356,14 @@ final class TUState: ObservableObject {
       return
     }
     guard let session = makeSession() else { return }
-    let fields = preset.fields(prompt: session.prompt)
-    let loras = preset.loras(weight: loraWeight)
-    _ = await registerPreset(["name": preset.name, "fields": fields, "loras": loras])
+    // The app adds the preset only if it is not there yet (a saved one is the user's); a pass names it and changes only the
+    // LoRA strength and the user's instructions.
+    _ = await registerPreset([
+      "name": preset.name, "fields": preset.fields(prompt: preset.prompt(trigger: "")), "loras": preset.loras(weight: loraWeight),
+    ])
     let estimate: [String: Any] = [
-      "preset": preset.name, "fields": fields, "loras": loras,
+      "preset": preset.name, "fields": preset.passFields(extra: extraPrompt, file: session.presetFile),
+      "loras": preset.passLoras(weight: loraWeight, file: session.presetFile),
       "size": [
         "width": min(settings.tile, summary.width), "height": min(settings.tile, summary.height),
       ],
@@ -460,11 +466,12 @@ final class TUState: ObservableObject {
       regeneratingTile = nil
       return
     }
-    let fields = preset.fields(prompt: session.prompt)
-    let loras = preset.loras(weight: weight)
-    _ = await registerPreset(["name": preset.name, "fields": fields, "loras": loras])
+    _ = await registerPreset([
+      "name": preset.name, "fields": preset.fields(prompt: preset.prompt(trigger: "")), "loras": preset.loras(weight: weight),
+    ])
     let estimate: [String: Any] = [
-      "preset": preset.name, "fields": fields, "loras": loras,
+      "preset": preset.name, "fields": preset.passFields(extra: promptExtra, file: session.presetFile),
+      "loras": preset.passLoras(weight: weight, file: session.presetFile),
       "size": ["width": tile.rect.width, "height": tile.rect.height],
     ]
     let pipeline: [String: Any] = ["name": "Tiled Upscale", "guided": true, "passes": 1, "estimate": estimate]

@@ -20,6 +20,8 @@ final class TUSession: @unchecked Sendable {
   /// Read at every tile, so a change made while the pipeline waits or runs reaches the next tile.
   var extraPrompt: String
   let preset: TUPreset
+  /// The folder of the app's presets: the preset file is read at every tile (the user may change it meanwhile). Nil: the table only.
+  private let presetFolder: URL?
   private let tempFolder: URL
   private var canvas: TUCanvas?
   /// The enlarged source alone, kept only when the join is faded (the fade mixes it with what the neighbours made).
@@ -40,7 +42,7 @@ final class TUSession: @unchecked Sendable {
 
   init(
     source: CGImage, factor: Int, overlap: TileOverlap, settings: TUSettings, loraWeight: Double, trigger: String,
-    extraPrompt: String = "", preset: TUPreset, tempFolder: URL
+    extraPrompt: String = "", preset: TUPreset, presetFolder: URL? = nil, tempFolder: URL
   ) {
     self.extraPrompt = extraPrompt
     self.overlap = overlap
@@ -55,12 +57,16 @@ final class TUSession: @unchecked Sendable {
     self.loraWeight = loraWeight
     self.trigger = trigger
     self.preset = preset
+    self.presetFolder = presetFolder
     self.tempFolder = tempFolder
     self.lastTile = plan.count
   }
 
   /// The prompt of every tile: the preset's, then the user's instructions.
   var prompt: String { TUPrompt.compose(preset.prompt(trigger: trigger), extra: extraPrompt) }
+
+  /// The preset as the user has it now.
+  var presetFile: TUPresetFile? { TUPresetFile.read(named: preset.name, in: presetFolder) }
 
   /// Makes the next run a single tile of the finished picture: it starts from the original, not from the result that is there.
   /// False when there is no finished picture or no such tile.
@@ -116,10 +122,11 @@ final class TUSession: @unchecked Sendable {
       return TUMessages.done
     }
     let tileURL = tempFolder.appendingPathComponent("tile-\(tile.index).png")
+    let file = presetFile
     var answer: [String: Any] = [
       "title": "Tile \(Self.name(of: tile))", "startImage": ["path": tileURL.path, "name": "tile-\(tile.index)"],
       "size": ["width": tile.rect.width, "height": tile.rect.height], "preset": preset.name,
-      "fields": preset.fields(prompt: prompt), "loras": preset.loras(weight: loraWeight),
+      "fields": preset.passFields(extra: extraPrompt, file: file), "loras": preset.passLoras(weight: loraWeight, file: file),
       "strength": preset.strength,
     ]
     do {
