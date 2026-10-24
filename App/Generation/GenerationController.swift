@@ -209,6 +209,14 @@ final class GenerationController {
       Preset(
         name: name, model: connection.selection.selectedFile ?? "", prompt: prompt, negativePrompt: negativePrompt,
         parameters: parameters))
+    // What was just saved is the preset on the tab now.
+    presets.markLoaded(name.trimmingCharacters(in: .whitespacesAndNewlines))
+  }
+
+  /// Replaces the file of the preset on the tab (the last one loaded or saved) with the tab as it is now. No-op without one.
+  func updateActivePreset(with connection: DrawThingsConnection) throws(PresetError) {
+    guard let name = presets.activeName else { return }
+    try savePreset(named: name, with: connection)
   }
 
   /// Puts a preset on the tab: its parameters (the canvas size stays), its prompt and negative prompt when it
@@ -216,7 +224,9 @@ final class GenerationController {
   /// The preset's file is read now; nil when it was loaded, the reason when it was not.
   func loadPreset(named name: String, with connection: DrawThingsConnection) -> PresetError? {
     do {
-      load(try presets.load(named: name), with: connection)
+      let preset = try presets.load(named: name)
+      load(preset, with: connection)
+      presets.markLoaded(preset.name)
       return nil
     } catch {
       return error
