@@ -94,6 +94,64 @@ struct ProcessorConfigFixTests {
     #expect(try String(contentsOf: folder.appendingPathComponent("preprocessor_config.json"), encoding: .utf8) == "mine")
   }
 
+  @Test func aFlatFileWithoutProcessorClassGainsOnlyThatKey() throws {
+    let folder = try makeFolder()
+    defer { try? FileManager.default.removeItem(at: folder) }
+    try Self.nested.write(to: folder.appendingPathComponent("processor_config.json"), atomically: true, encoding: .utf8)
+    let original = #"{"image_mean": [0.1, 0.2, 0.3], "patch_size": 14, "size": {"longest_edge": 9, "shortest_edge": 3}}"#
+    let flatURL = folder.appendingPathComponent("preprocessor_config.json")
+    try original.write(to: flatURL, atomically: true, encoding: .utf8)
+    #expect(ProcessorConfigFix.addFlatFileIfNeeded(in: folder))
+    let written = try object(try Data(contentsOf: flatURL))
+    #expect(written["processor_class"] as? String == "Qwen3VLProcessor")
+    #expect(written["image_mean"] as? [Double] == [0.1, 0.2, 0.3])
+    #expect(written["patch_size"] as? Int == 14)
+    #expect(written["size"] as? [String: Int] == ["longest_edge": 9, "shortest_edge": 3])
+    #expect(written.count == 4)
+    // The file as it was is kept next to it.
+    let backup = folder.appendingPathComponent("preprocessor_config.json.orig")
+    #expect(try String(contentsOf: backup, encoding: .utf8) == original)
+    // A second call finds the key and does nothing.
+    #expect(!ProcessorConfigFix.addFlatFileIfNeeded(in: folder))
+  }
+
+  @Test func aFlatFileThatAlreadyHasProcessorClassIsUntouched() throws {
+    let folder = try makeFolder()
+    defer { try? FileManager.default.removeItem(at: folder) }
+    try Self.nested.write(to: folder.appendingPathComponent("processor_config.json"), atomically: true, encoding: .utf8)
+    let flatURL = folder.appendingPathComponent("preprocessor_config.json")
+    let mine = #"{"processor_class": "Other", "image_mean": [0.5]}"#
+    try mine.write(to: flatURL, atomically: true, encoding: .utf8)
+    #expect(!ProcessorConfigFix.addFlatFileIfNeeded(in: folder))
+    #expect(try String(contentsOf: flatURL, encoding: .utf8) == mine)
+    #expect(!FileManager.default.fileExists(atPath: folder.appendingPathComponent("preprocessor_config.json.orig").path))
+  }
+
+  @Test func aFlatFileWithoutProcessorClassIsLeftWhenTheNestedOneHasNone() throws {
+    let folder = try makeFolder()
+    defer { try? FileManager.default.removeItem(at: folder) }
+    try #"{"image_processor": {"image_mean": [0.5]}}"#.write(
+      to: folder.appendingPathComponent("processor_config.json"), atomically: true, encoding: .utf8)
+    let flatURL = folder.appendingPathComponent("preprocessor_config.json")
+    try #"{"image_mean": [0.5]}"#.write(to: flatURL, atomically: true, encoding: .utf8)
+    #expect(!ProcessorConfigFix.addFlatFileIfNeeded(in: folder))
+    #expect(try String(contentsOf: flatURL, encoding: .utf8) == #"{"image_mean": [0.5]}"#)
+  }
+
+  @Test func aFlatFileThatCannotBeUpdatedIsLeftAsItIs() throws {
+    let folder = try makeFolder()
+    defer {
+      try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: folder.path)
+      try? FileManager.default.removeItem(at: folder)
+    }
+    try Self.nested.write(to: folder.appendingPathComponent("processor_config.json"), atomically: true, encoding: .utf8)
+    let flatURL = folder.appendingPathComponent("preprocessor_config.json")
+    try #"{"image_mean": [0.5]}"#.write(to: flatURL, atomically: true, encoding: .utf8)
+    try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: folder.path)
+    #expect(!ProcessorConfigFix.addFlatFileIfNeeded(in: folder))
+    #expect(try String(contentsOf: flatURL, encoding: .utf8) == #"{"image_mean": [0.5]}"#)
+  }
+
   @Test func nothingIsAddedWithoutANestedProcessorConfig() throws {
     let folder = try makeFolder()
     defer { try? FileManager.default.removeItem(at: folder) }
