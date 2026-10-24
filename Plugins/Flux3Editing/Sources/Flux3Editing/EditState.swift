@@ -259,6 +259,48 @@ final class EditState: ObservableObject {
     status = lines.filter { !$0.isEmpty }.joined(separator: " ")
   }
 
+  /// Mette nei campi il risultato del PUP: la prosa e le descrizioni (solo quelle che l'utente non ha cambiato mentre il modello
+  /// scriveva, confrontandole con `original`) e le righe aggiunte, che sostituiscono quelle di prima. Prima si fotografa lo stato.
+  func applyPup(_ result: EditPupResult, original: EditSnapshot) {
+    guard result.succeeded, let prose = result.prose else {
+      status = result.status
+      return
+    }
+    takeSnapshot()
+    var kept: [String] = []
+    if document.prose.trimmingCharacters(in: .whitespacesAndNewlines) == original.prose.trimmingCharacters(in: .whitespacesAndNewlines) {
+      document.prose = prose
+    } else {
+      kept.append(EditPart.Kind.prose.title)
+    }
+    for (id, text) in result.descriptions.sorted(by: { $0.key < $1.key }) {
+      guard let current = document.element(id)?.desc.trimmingCharacters(in: .whitespacesAndNewlines) else { continue }
+      if current == (original.descriptions[id] ?? "").trimmingCharacters(in: .whitespacesAndNewlines) {
+        update(element: id) { $0.desc = text }
+      } else {
+        kept.append(EditPart.Kind.element(id: id).title)
+      }
+    }
+    let rows = result.extraRows.compactMap { row -> ExtraRow? in
+      func box(_ values: [Int]?) -> BBox? {
+        guard let values, values.count == 4 else { return nil }
+        return BBox(y0: values[0], x0: values[1], y1: values[2], x1: values[3])
+      }
+      return ExtraRow(id: row.id, from: row.from ?? "target", src: box(row.src), tgt: box(row.tgt), desc: row.desc)
+    }
+    document.extraRows = rows.isEmpty ? nil : rows
+    var lines = [result.status]
+    if !kept.isEmpty { lines.append(L.format(.changedMeanwhile, kept.joined(separator: ", "), italian: italian)) }
+    status = lines.filter { !$0.isEmpty }.joined(separator: " ")
+  }
+
+  /// «Togli» una riga aggiunta dal modello.
+  func removeExtraRow(_ id: String) {
+    guard var rows = document.extraRows else { return }
+    rows.removeAll { $0.id == id }
+    document.extraRows = rows.isEmpty ? nil : rows
+  }
+
   private func currentText(of kind: EditPart.Kind) -> String? {
     switch kind {
     case .prose: return document.prose.trimmingCharacters(in: .whitespacesAndNewlines)

@@ -5,6 +5,18 @@ struct EditSnapshot: Codable, Equatable, Sendable {
   var prose: String
   /// La `desc` di ogni elemento, per id.
   var descriptions: [String: String]
+  /// Le righe aggiunte dal modello, com'erano. Facoltativo nel file: una fotografia di prima non le ha.
+  var extraRows: [ExtraRow]?
+}
+
+/// Una riga che il PUP ha aggiunto alla tabella (per esempio la ragazza come elemento ancora): va nel prompt finale dopo i nostri
+/// elementi, e si mostra in sola lettura. `from` è `ref_image_N` o `target`.
+struct ExtraRow: Codable, Equatable, Identifiable, Sendable {
+  var id: String
+  var from: String
+  var src: BBox?
+  var tgt: BBox?
+  var desc: String
 }
 
 extension EditSnapshot {
@@ -12,12 +24,14 @@ extension EditSnapshot {
   static func take(from document: EditDocument) -> EditSnapshot {
     EditSnapshot(
       prose: document.prose,
-      descriptions: Dictionary(document.elements.map { ($0.id, $0.desc) }, uniquingKeysWith: { first, _ in first }))
+      descriptions: Dictionary(document.elements.map { ($0.id, $0.desc) }, uniquingKeysWith: { first, _ in first }),
+      extraRows: document.extraRows)
   }
 
   /// Rimette i testi (la prosa e le descrizioni degli elementi che ci sono ancora) e spegne Annulla.
   func restore(into document: inout EditDocument) {
     document.prose = prose
+    document.extraRows = extraRows
     for index in document.elements.indices {
       if let text = descriptions[document.elements[index].id] { document.elements[index].desc = text }
     }
@@ -42,6 +56,8 @@ struct EditDocument: Codable, Equatable, Sendable {
   var snapshot: EditSnapshot?
   /// Quale immagine del Moodboard mostra la prima tela (0 = la prima accesa).
   var referenceIndex = 0
+  /// Le righe che il PUP ha aggiunto (facoltativo nel file: uno stato di prima non le ha).
+  var extraRows: [ExtraRow]?
   static let maxTargetSide = 300
   static let targetGap = 20
 
@@ -50,6 +66,7 @@ struct EditDocument: Codable, Equatable, Sendable {
     elements = []
     prose = Self.defaultProse
     snapshot = nil
+    extraRows = nil
     referenceIndex = 0
   }
 
