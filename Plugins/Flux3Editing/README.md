@@ -3,6 +3,8 @@
 > **Works with:** FLUX.3 [klein] 5.6B (editing with reference pictures and boxes), in all its variants (`flux3_5b`: Base, 8-bit, 4-bit, Exact).
 > On any other family the plug-in is switched off and its tab is hidden. It needs **DT Hub 0.4.0 or later** (the number is provisional) and a **start image** in the Control tab.
 
+> **Recommended LLM:** install **[black-forest-labs/flux-3-image-klein-pup](https://huggingface.co/black-forest-labs/flux-3-image-klein-pup)**, BFL's own prompt upsampler for FLUX.3 [klein] (Apache-2.0), and assign it to the family **FLUX.3 [klein]** with the use **Both** in DT Hub's **Preferences › LLM**. DT Hub loads MLX models: use a converted copy such as [mlx-community/flux-3-image-klein-pup-8bit](https://huggingface.co/mlx-community/flux-3-image-klein-pup-8bit) (about 10 GB) or [mlx-community/flux-3-image-klein-pup-4bit](https://huggingface.co/mlx-community/flux-3-image-klein-pup-4bit) (about 6 GB). With it **Improve prompt** writes in the model's own format, the one BFL trained it on; without it the plug-in still works with any other LLM, using its own master prompt. See [the recommended LLMs](../../README.md#recommended-llms) in DT Hub's README.
+
 A DT Hub plug-in that builds the **editing prompt of FLUX.3 with reference pictures**: a short text that cites the pictures (`<ref_image_0>`, `<ref_image_1>`…) and the elements (`<id>`), and a JSON array that says, for each element, **where to take it from** and **where to put it**. You draw the boxes on the real pictures; the result goes to the Prompt field of the Generation tab.
 
 ```
