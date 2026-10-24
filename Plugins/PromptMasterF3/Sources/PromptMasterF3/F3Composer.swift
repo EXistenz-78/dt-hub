@@ -19,12 +19,23 @@ enum F3Problem: Equatable, Sendable {
 /// Il testo che «Invia» manda nel Prompt (spec §5): descrizione, composizione, array JSON dei riquadri.
 enum F3Composer {
   static func text(description: String, terms: [String], composition: String, elements: [F3Element]) -> String {
+    [firstBlock(description: description, terms: terms), composition.trimmingCharacters(in: .whitespacesAndNewlines), jsonArray(elements)]
+      .joined(separator: "\n\n")
+  }
+
+  /// Il testo prima dell'array: la descrizione con la frase delle voci, e la composizione. È l'«ORIGINAL PROMPT» che va al PUP.
+  static func prose(description: String, terms: [String], composition: String) -> String {
+    [firstBlock(description: description, terms: terms), composition.trimmingCharacters(in: .whitespacesAndNewlines)]
+      .filter { !$0.isEmpty }.joined(separator: "\n\n")
+  }
+
+  private static func firstBlock(description: String, terms: [String]) -> String {
     var first = description.trimmingCharacters(in: .whitespacesAndNewlines)
     if !terms.isEmpty {
       let sentence = terms.joined(separator: ", ") + "."
       first = first.isEmpty ? sentence : first + " " + sentence
     }
-    return [first, composition.trimmingCharacters(in: .whitespacesAndNewlines), jsonArray(elements)].joined(separator: "\n\n")
+    return first
   }
 
   /// `[ {id, bbox, desc} ]` indentato di due spazi, nell'ordine delle schede.
