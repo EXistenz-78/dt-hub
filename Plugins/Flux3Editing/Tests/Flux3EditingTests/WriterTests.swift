@@ -64,37 +64,50 @@ struct WriterTests {
     #expect(context.contains("el_4: already in <ref_image_0>; removed"))
   }
 
-  @Test func theCropsAreAttachedAndNamedBeforeTheBlocks() async {
+  private let pictures = [
+    EditPicture(number: 0, role: .start, path: "/t/s.png"), EditPicture(number: 1, role: .reference, path: "/t/r1.png"),
+  ]
+
+  @Test func thePicturesAreAttachedInOrderAndNamedBeforeTheBlocks() async {
     let log = Log()
-    let attachments = [EditAttachment(elementID: "lamp_1", path: "/t/lamp_1.png")]
     _ = await writer([.text("## prose\nModify <ref_image_0>.")], log: log)
-      .write(document: document(), refs: [], allowedTags: allowed, attachments: attachments, system: "S", options: options)
-    #expect(log.images[0] == ["/t/lamp_1.png"])
-    #expect(log.requests[0].contains("picture 1: lamp_1"))
+      .write(document: document(), refs: [], allowedTags: allowed, pictures: pictures, system: "S", options: options)
+    #expect(log.images[0] == ["/t/s.png", "/t/r1.png"])
+    #expect(log.requests[0].contains("- picture 1: <ref_image_0>, the picture being edited"))
+    #expect(log.requests[0].contains("- picture 2: <ref_image_1>, a reference picture"))
   }
 
   @Test func aModelThatCannotTakePicturesIsAskedAgainWithoutThem() async {
     let log = Log()
-    let attachments = [EditAttachment(elementID: "lamp_1", path: "/t/lamp_1.png")]
     let result = await writer(
       [
         .failure("This model cannot read images."),
         .text("## prose\nModify <ref_image_0> by adding <lamp_1> from <ref_image_1>.\n\n## element: lamp_1\nA brass table lamp."),
       ], log: log
-    ).write(document: document(), refs: [], allowedTags: allowed, attachments: attachments, system: "S", options: options)
-    #expect(log.images == [["/t/lamp_1.png"], []])
-    #expect(!log.requests[1].contains("picture 1"))
+    ).write(document: document(), refs: [], allowedTags: allowed, pictures: pictures, system: "S", options: options)
+    #expect(log.images == [["/t/s.png", "/t/r1.png"], []])
+    #expect(!log.requests[1].contains("Attached pictures") && !log.requests[1].contains("in picture"))
     #expect(result.rewrites.count == 2 && result.status.contains(L.text(.imagesNotSent, italian: false)))
   }
 
-  @Test func onlyTheCropsOfTheAskedPartsAreAttached() async {
+  @Test func aRetryOfASinglePartKeepsAllThePicturesBecauseTheyAreNeededToUnderstandIt() async {
     let log = Log()
-    var doc = document()
-    doc.prose = ""
-    let attachments = [EditAttachment(elementID: "lamp_1", path: "/t/a.png"), EditAttachment(elementID: "gone_9", path: "/t/b.png")]
-    _ = await writer([.text("## element: lamp_1\nA lamp.")], log: log)
-      .write(document: doc, refs: [], allowedTags: allowed, attachments: attachments, system: "S", options: options)
-    #expect(log.images[0] == ["/t/a.png"])
+    _ = await writer(
+      [
+        .text("## prose\nModify <ref_image_0> by adding <lamp_1> from <ref_image_1>."),  // the element block is missing
+        .text("## element: lamp_1\nA brass table lamp."),
+      ], log: log
+    ).write(document: document(), refs: [], allowedTags: allowed, pictures: pictures, system: "S", options: options)
+    #expect(log.images == [["/t/s.png", "/t/r1.png"], ["/t/s.png", "/t/r1.png"]])
+    #expect(log.requests[1].contains("## element: lamp_1") && !log.requests[1].contains("## prose\nModify"))
+  }
+
+  @Test func theLegendOnlyNamesThePicturesThatReallyGoAlong() async {
+    let log = Log()
+    _ = await writer([.text("## prose\nModify <ref_image_0>.")], log: log)
+      .write(document: document(), refs: [], allowedTags: allowed, pictures: [pictures[0]], system: "S", options: options)
+    #expect(log.images[0] == ["/t/s.png"])
+    #expect(log.requests[0].contains("picture 1: <ref_image_0>") && !log.requests[0].contains("picture 2"))
   }
 
   @Test func theContextIsNeverTakenForAnAnswer() {

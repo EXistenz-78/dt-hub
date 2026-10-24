@@ -15,6 +15,6 @@ let package = Package(
         .product(name: "DTHubPluginKit", package: "PluginKit", moduleAliases: ["DTHubPluginKit": "Flux3EditingKit"]),
         .product(name: "DTHubDesign", package: "PluginKit", moduleAliases: ["DTHubDesign": "Flux3EditingDesign"]),
       ]),
-    .testTarget(name: "Flux3EditingTests", dependencies: ["Flux3Editing"]),
+    .testTarget(name: "Flux3EditingTests", dependencies: ["Flux3Editing"], exclude: ["Fixtures"]),
   ]
 )

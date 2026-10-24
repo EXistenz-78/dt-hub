@@ -24,7 +24,7 @@ final class EditState: ObservableObject {
   @Published var selected: String?
   @Published var status = ""
   @Published var isSending = false
-  /// «Scrivi con LLM» è in corso.
+  /// «Migliora prompt» è in corso.
   @Published var isWriting = false
   @Published var active = false
   /// La cartella del progetto aperto (dove stanno `state.json` e `llm/`); nil finché l'app non ha detto il progetto.
@@ -46,6 +46,14 @@ final class EditState: ObservableObject {
 
   // MARK: Cosa dice l'app
 
+  /// I modelli di linguaggio e la famiglia del modello d'immagine, per scegliere come scrive «Migliora prompt».
+  private(set) var languageModels: [DTHubLanguageModel] = []
+  private(set) var contextFamily: String?
+
+  var writeMode: WriteMode {
+    EditModelChoice.mode(family: contextFamily, models: languageModels) { try? Data(contentsOf: URL(fileURLWithPath: $0)) }
+  }
+
   func update(context: DTHubContext) {
     refs = RefNumbering.references(moodboard: context.moodboard ?? [], sizes: imageSize)
     startImage = context.startImage.map { URL(fileURLWithPath: $0) }
@@ -54,6 +62,8 @@ final class EditState: ObservableObject {
       generationSize = CGSize(width: width, height: height)
     }
     window = context.startImageWindow
+    languageModels = context.languageModels ?? []
+    contextFamily = context.family
     tempFolder = URL(fileURLWithPath: context.tempFolder, isDirectory: true)
     clampReference()
     if let id = selected, document.element(id) == nil { selected = nil }
@@ -62,20 +72,49 @@ final class EditState: ObservableObject {
   /// Il colore di ogni id nel testo (lo stesso del riquadro e della scheda).
   var tagColors: [String: Int] { Dictionary(document.elements.map { ($0.id, $0.colorIndex) }, uniquingKeysWith: { first, _ in first }) }
 
-  /// C'è almeno un riquadro disegnato sul Moodboard: solo allora i ritagli hanno senso.
-  var hasCrops: Bool { document.elements.contains { $0.kind == .fromReference } }
+  private var picturePlan: EditPicturePlan { EditPictures.plan(document: document, refs: refs, hasStartImage: startImage != nil) }
 
-  /// I ritagli da mandare all'LLM (solo se la casella è accesa): per ogni coppia «da riferimento» la parte dell'immagine che
-  /// il riquadro indica, scritta nella cartella temporanea.
-  func llmAttachments() -> [EditAttachment] {
-    guard document.sendsImages, let tempFolder else { return [] }
-    return document.elements.compactMap { element in
-      guard element.kind == .fromReference, let file = element.refFile, let box = element.src,
-        let ref = refs.first(where: { $0.fileName == file }),
-        let path = EditCrops.crop(path: ref.path, box: box, to: tempFolder, name: element.id)
+  /// I numeri delle reference usate che non entrano nel tetto delle immagini (partenza più cinque).
+  var droppedPictures: [Int] { picturePlan.dropped }
+
+  /// Le immagini da mandare all'LLM (sempre): quella di partenza come la tela di uscita e le reference
+  /// usate intere, con i riquadri disegnati, scritte nella cartella temporanea. Un'immagine che non si legge si salta.
+  func llmPictures() -> [EditPicture] {
+    guard let tempFolder else { return [] }
+    return picturePlan.pictures.compactMap { planned in
+      let source: (path: String, geometry: StageGeometry)
+      if planned.role == .start {
+        guard let startImage else { return nil }
+        source = (startImage.path, startGeometry)
+      } else {
+        guard let ref = refs.first(where: { $0.number == planned.number }) else { return nil }
+        source = (ref.path, referenceGeometry(of: ref))
+      }
+      guard let path = EditOverlay.render(
+        imagePath: source.path, geometry: source.geometry, boxes: planned.boxes, to: tempFolder, name: "\(planned.number)")
       else { return nil }
-      return EditAttachment(elementID: element.id, path: path)
+      return EditPicture(number: planned.number, role: planned.role, path: path)
     }
+  }
+
+  /// Le immagini per il PUP: l'immagine di partenza come la tela di uscita e **tutte** le reference fino all'ultima usata, grezze (senza
+  /// riquadri) e preparate come fa BFL. Devono essere contigue da 0: l'ordine di allegato è il numero di `<ref_image_N>`. Vuoto se manca
+  /// qualcosa (senza immagine di partenza, o una che non si legge): il PUP non si può usare.
+  func pupPictures() -> [EditPicture] {
+    guard let tempFolder, let startImage else { return [] }
+    let lastUsed = document.elements.filter { $0.kind == .fromReference }
+      .compactMap { $0.refFile.flatMap { RefNumbering.number(ofFile: $0, in: refs) } }.max() ?? 0
+    var sources: [(number: Int, path: String)] = []
+    // La tela con più pixel del tetto del PUP (che poi la riduce); le reference vanno dritte al PUP: senza il fondo grigio dei margini,
+    // così un PNG con trasparenza arriva su bianco come in BFL.
+    if let path = EditOverlay.render(imagePath: startImage.path, geometry: startGeometry, boxes: [], to: tempFolder, name: "pup-0", maxPixel: 2048) {
+      sources.append((RefNumbering.startImageNumber, path))
+    }
+    for ref in refs where ref.number <= lastUsed {
+      sources.append((ref.number, ref.path))
+    }
+    let pictures = PupImages.prepare(sources: sources, to: tempFolder)
+    return pictures.count == 1 + refs.filter({ $0.number <= lastUsed }).count && pictures.count <= PupImages.maxImages ? pictures : []
   }
 
   /// Un'app che non manda `startImageWindow`: si dice, non si nasconde (spec §4).
@@ -147,7 +186,7 @@ final class EditState: ObservableObject {
     status = ""
   }
 
-  /// «Scrivi con LLM» ha qualcosa da scrivere: un testo o la descrizione di un riquadro.
+  /// «Migliora prompt» ha qualcosa da scrivere: un testo o la descrizione di un riquadro.
   var hasWritableContent: Bool {
     proseIsEdited
       || document.elements.contains { !$0.desc.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
@@ -218,6 +257,51 @@ final class EditState: ObservableObject {
     }
     if !kept.isEmpty { lines.append(L.format(.changedMeanwhile, kept.joined(separator: ", "), italian: italian)) }
     status = lines.filter { !$0.isEmpty }.joined(separator: " ")
+  }
+
+  /// Mette nei campi il risultato del PUP: la prosa e le descrizioni (solo quelle che l'utente non ha cambiato mentre il modello
+  /// scriveva, confrontandole con `original`) e le righe aggiunte, che sostituiscono quelle di prima. Prima si fotografa lo stato.
+  func applyPup(_ result: EditPupResult, original: EditSnapshot) {
+    guard result.succeeded, let prose = result.prose else {
+      status = result.status
+      return
+    }
+    takeSnapshot()
+    var kept: [String] = []
+    if document.prose.trimmingCharacters(in: .whitespacesAndNewlines) == original.prose.trimmingCharacters(in: .whitespacesAndNewlines) {
+      document.prose = prose
+    } else {
+      kept.append(EditPart.Kind.prose.title)
+    }
+    for (id, text) in result.descriptions.sorted(by: { $0.key < $1.key }) {
+      guard let current = document.element(id)?.desc.trimmingCharacters(in: .whitespacesAndNewlines) else { continue }
+      if current == (original.descriptions[id] ?? "").trimmingCharacters(in: .whitespacesAndNewlines) {
+        update(element: id) { $0.desc = text }
+      } else {
+        kept.append(EditPart.Kind.element(id: id).title)
+      }
+    }
+    // Le righe di prima restano (con la descrizione aggiornata dal modello); quelle nuove si accodano.
+    var rows = document.extraRows ?? []
+    for index in rows.indices { if let text = result.descriptions[rows[index].id] { rows[index].desc = text } }
+    for row in result.extraRows where !rows.contains(where: { $0.id == row.id }) {
+      func box(_ values: [Int]?) -> BBox? {
+        guard let values, values.count == 4 else { return nil }
+        return BBox(y0: values[0], x0: values[1], y1: values[2], x1: values[3])
+      }
+      rows.append(ExtraRow(id: row.id, from: row.from ?? "target", src: box(row.src), tgt: box(row.tgt), desc: row.desc))
+    }
+    document.extraRows = rows.isEmpty ? nil : rows
+    var lines = [result.status]
+    if !kept.isEmpty { lines.append(L.format(.changedMeanwhile, kept.joined(separator: ", "), italian: italian)) }
+    status = lines.filter { !$0.isEmpty }.joined(separator: " ")
+  }
+
+  /// «Togli» una riga aggiunta dal modello.
+  func removeExtraRow(_ id: String) {
+    guard var rows = document.extraRows else { return }
+    rows.removeAll { $0.id == id }
+    document.extraRows = rows.isEmpty ? nil : rows
   }
 
   private func currentText(of kind: EditPart.Kind) -> String? {
