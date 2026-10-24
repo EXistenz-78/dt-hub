@@ -27,6 +27,7 @@ struct EditImprover {
   ) async -> EditImproveOutcome {
     var modelName: String?
     var pupRequest = "", pupAnswer = ""
+    if case .standard(let model) = mode { modelName = model }
     if case .pup(let name, let systemPrompt) = mode {
       modelName = name
       let writer = EditPupWriter(ask: { prompt, system, options, images, model in await ask(prompt, system, options, images, model) }, italian: italian)

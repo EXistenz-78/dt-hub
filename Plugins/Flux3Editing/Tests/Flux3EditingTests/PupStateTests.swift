@@ -80,11 +80,24 @@ struct PupStateTests {
     #expect(s.document == before && s.status == "No answer.")
   }
 
-  @Test func aNewRunReplacesTheOldRows() {
+  @Test func aSecondRunKeepsTheLockedRowsUpdatesTheirDescAndAddsNewOnes() {
     let s = state()
     s.applyPup(result(), original: EditSnapshot.take(from: s.document))
     let other = PupRow(id: "tree_1", from: "ref_image_0", src: [1, 1, 500, 500], tgt: [1, 1, 500, 500], desc: "A tree")
-    s.applyPup(result(prose: "Again <el_1>.", rows: [other]), original: EditSnapshot.take(from: s.document))
-    #expect(s.document.extraRows?.map(\.id) == ["tree_1"])
+    var second = result(prose: "Again <el_1>.", rows: [other])
+    second.descriptions["person_1"] = "A woman, updated"
+    s.applyPup(second, original: EditSnapshot.take(from: s.document))
+    #expect(s.document.extraRows?.map(\.id) == ["person_1", "tree_1"])
+    #expect(s.document.extraRows?[0].desc == "A woman, updated")
+  }
+
+  @Test func newIdsSkipTheExtraRowsAndACollisionIsReported() {
+    let s = state()
+    s.document.extraRows = [ExtraRow(id: "el_2", from: "target", src: nil, tgt: BBox(y0: 1, x0: 1, y1: 50, x1: 50), desc: "x")]
+    s.document.draw(onCanvas: BBox(y0: 300, x0: 300, y1: 400, x1: 400))
+    #expect(s.document.elements.map(\.id) == ["el_1", "el_3"])
+    s.document.elements[1].id = "el_2"
+    #expect(s.document.repeatedIDs.contains("el_2"))
+    #expect(s.problems.contains(.repeatedID("el_2")))
   }
 }

@@ -63,7 +63,7 @@ struct PupWriterTests {
     _ = await run(calls)
     #expect(calls.models == ["pup"] && calls.systems == ["SYSTEM"] && calls.images == [["/t/0.jpg", "/t/1.jpg"]])
     #expect(calls.options == [PupRequest.options])
-    #expect(calls.prompts[0].contains("LOCKED BOUNDING-BOX ANNOTATIONS") && calls.prompts[0].contains(#""from":"ref_image_1""#))
+    #expect(calls.prompts[0].contains("LOCKED BOUNDING-BOX ANNOTATIONS") && calls.prompts[0].contains(#""from": "ref_image_1""#))
   }
 
   @Test func aMissingCitationTriggersOneRetryWithTheReminder() async throws {
@@ -104,5 +104,42 @@ struct PupWriterTests {
     let calls = Calls([.text("x")])
     let result = await writer(calls).write(document: document(), refs: [ref], pictures: [], model: "pup", systemPrompt: "SYSTEM")
     #expect(!result.succeeded && calls.prompts.isEmpty)
+  }
+
+  @Test func anAnswerWithoutAListIsRejected() async {
+    let calls = Calls([.text("Add the ninja <el_2> to the scene."), .text("Add the ninja <el_2> to the scene.")])
+    let result = await run(calls)
+    #expect(!result.succeeded && calls.prompts.count == 2)
+  }
+
+  @Test func aTruncatedListIsRejected() async {
+    let cut = #"Add the ninja <el_2> to the scene. [{"id": "el_2", "from": "ref_image_1", "src_bbox": [78, 92, 974, 950], "tgt_bbox": [488, 67, 952, 379], "desc": "A ni"#
+    let calls = Calls([.text(cut), .text(cut)])
+    let result = await run(calls)
+    #expect(!result.succeeded)
+  }
+
+  @Test func aFencedAnswerIsAcceptedAndTheProseHasNoFence() async throws {
+    let fenced = "```\n" + (try PupFixture.text("pup_blur.txt")) + "\n```"
+    let calls = Calls([.text(fenced)])
+    let result = await run(calls)
+    #expect(result.succeeded && result.prose?.contains("`") == false)
+  }
+
+  @Test func aCaptionCitingAnUnknownPlaceholderIsRejected() async {
+    let row = #"[{"id": "el_2", "from": "ref_image_1", "src_bbox": [78, 92, 974, 950], "tgt_bbox": [488, 67, 952, 379], "desc": "A ninja warrior in black gear."}]"#
+    let calls = Calls([.text("Add the ninja <el_2> next to the tree <tree_1> from <ref_image_4>. " + row), .text("Add the ninja <el_2> beside <tree_1>. " + row)])
+    let result = await run(calls)
+    #expect(!result.succeeded && calls.prompts.count == 2)
+  }
+
+  @Test func extraRowsAreLockedOnTheNextRun() async throws {
+    var doc = document()
+    doc.extraRows = [ExtraRow(id: "person_1", from: "ref_image_0", src: BBox(y0: 313, x0: 468, y1: 1000, x1: 833), tgt: BBox(y0: 313, x0: 468, y1: 1000, x1: 833), desc: "A woman")]
+    let calls = Calls([.text(try PupFixture.text("pup_blur.txt"))])
+    let result = await run(calls, doc: doc)
+    #expect(calls.prompts[0].contains(#""id": "person_1""#))
+    #expect(result.succeeded && result.extraRows.isEmpty)  // person_1 was ours already: it is not a new row
+    #expect(result.descriptions["person_1"]?.hasPrefix("A young East Asian woman") == true)
   }
 }

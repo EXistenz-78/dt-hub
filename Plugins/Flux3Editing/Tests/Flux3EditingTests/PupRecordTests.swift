@@ -78,8 +78,19 @@ struct PupRecordTests {
     #expect(!PupReconcile.validBox([50, 50, 40, 60]) && !PupReconcile.validBox(nil) && PupReconcile.validBox([0, 0, 1000, 1000]))
   }
 
-  @Test func jsonIsOneLineWithExplicitNulls() {
+  @Test func jsonIsOneLineWithExplicitNullsAndPythonsSpacing() {
     let line = PupRecord.json([PupRow(id: "a", from: nil, src: nil, tgt: [1, 2, 30, 40], desc: "x \"y\" /z")])
-    #expect(line == #"[{"id":"a","from":null,"src_bbox":null,"tgt_bbox":[1,2,30,40],"desc":"x \"y\" /z"}]"#)
+    #expect(line == #"[{"id": "a", "from": null, "src_bbox": null, "tgt_bbox": [1, 2, 30, 40], "desc": "x \"y\" /z"}]"#)
+  }
+
+  @Test func splitSkipsAListOfNumbersAndFindsTheRealTable() {
+    let text = #"Edit <el_2>. [{"id": "el_2", "from": null, "src_bbox": null, "tgt_bbox": [1, 2, 30, 40], "desc": "d"}] [1, 2, 3, 4]"#
+    #expect(PupRecord.split(text).rows == nil)  // the last list holds numbers, and the real one is not at the end
+  }
+
+  @Test func splitStripsCodeFences() {
+    let text = "Edit <el_2>.\n```json\n[{\"id\": \"el_2\", \"from\": null, \"src_bbox\": null, \"tgt_bbox\": [1, 2, 30, 40], \"desc\": \"d\"}]\n```"
+    let (caption, rows) = PupRecord.split(text)
+    #expect(caption == "Edit <el_2>." && rows?.map(\.id) == ["el_2"])
   }
 }

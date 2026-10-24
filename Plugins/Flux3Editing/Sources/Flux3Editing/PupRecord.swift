@@ -11,15 +11,29 @@ struct PupRow: Equatable, Sendable {
   var desc: String
 }
 
+extension PupRow {
+  /// Una riga aggiunta dal modello in una scrittura di prima, come riga «bloccata».
+  init(_ row: ExtraRow) {
+    func ints(_ box: BBox?) -> [Int]? { box.map { [$0.y0, $0.x0, $0.y1, $0.x1] } }
+    self.init(id: row.id, from: row.from, src: ints(row.src), tgt: ints(row.tgt), desc: row.desc)
+  }
+}
+
 enum PupRecord {
   /// «paragrafo [righe]»: la `[` più a destra da cui il resto è un elenco JSON valido. Non una regex: le `desc` possono avere parentesi.
-  static func split(_ text: String) -> (caption: String, rows: [PupRow]?) {
+  static func split(_ original: String) -> (caption: String, rows: [PupRow]?) {
+    // Alcuni modelli chiudono la tabella in un blocco di codice: le righe con ``` si tolgono.
+    let text = original.split(separator: "\n", omittingEmptySubsequences: false)
+      .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("```") }.joined(separator: "\n")
     let characters = Array(text)
     var index = characters.count - 1
     while index >= 0 {
       if characters[index] == "[" {
         let rest = String(characters[index...])
-        if let object = try? JSONSerialization.jsonObject(with: Data(rest.utf8)), let list = object as? [Any] {
+        // Solo un elenco di dizionari è una tabella (come `detect` di BFL): `[1, 2, 3, 4]` in coda è un riquadro, non la tabella.
+        if let object = try? JSONSerialization.jsonObject(with: Data(rest.utf8)), let list = object as? [Any],
+          list.allSatisfy({ $0 is [String: Any] })
+        {
           let caption = String(characters[..<index]).trimmingCharacters(in: .whitespacesAndNewlines)
           return (caption, list.compactMap { ($0 as? [String: Any]).map(row) })
         }
@@ -47,11 +61,12 @@ enum PupRecord {
       encoder.outputFormatting = [.withoutEscapingSlashes]
       return (try? encoder.encode(value)).flatMap { String(data: $0, encoding: .utf8) } ?? "\"\""
     }
-    func box(_ box: [Int]?) -> String { box.map { "[" + $0.map(String.init).joined(separator: ",") + "]" } ?? "null" }
+    func box(_ box: [Int]?) -> String { box.map { "[" + $0.map(String.init).joined(separator: ", ") + "]" } ?? "null" }
+    // Gli stessi separatori di `json.dumps` di Python (", " e ": "), che sono quelli con cui il modello è stato addestrato.
     let items = rows.map { row in
-      "{\"id\":\(text(row.id)),\"from\":\(row.from.map(text) ?? "null"),\"src_bbox\":\(box(row.src)),\"tgt_bbox\":\(box(row.tgt)),\"desc\":\(text(row.desc))}"
+      "{\"id\": \(text(row.id)), \"from\": \(row.from.map(text) ?? "null"), \"src_bbox\": \(box(row.src)), \"tgt_bbox\": \(box(row.tgt)), \"desc\": \(text(row.desc))}"
     }
-    return "[" + items.joined(separator: ",") + "]"
+    return "[" + items.joined(separator: ", ") + "]"
   }
 }
 
@@ -62,6 +77,8 @@ struct PupReconciled: Equatable, Sendable {
   var rows: [PupRow]
   /// Le righe che il modello ha aggiunto e sono valide.
   var added: [PupRow]
+  /// La risposta aveva una tabella in fondo (un elenco di dizionari).
+  var hadList: Bool = true
 }
 
 enum PupReconcile {
@@ -96,7 +113,7 @@ enum PupReconcile {
       else { continue }
       added.append(valid)
     }
-    return PupReconciled(caption: caption, rows: own, added: added)
+    return PupReconciled(caption: caption, rows: own, added: added, hadList: rows != nil)
   }
 
   /// Una riga che il modello ha aggiunto: vale se l'id è citato come `<id>` nel paragrafo e la riga è ben fatta.

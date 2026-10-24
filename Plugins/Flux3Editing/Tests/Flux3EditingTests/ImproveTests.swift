@@ -55,12 +55,18 @@ struct ImproveTests {
     #expect(outcome.note == "Improved with pup (PUP mode).")
   }
 
-  @Test func standardModeAsksWithoutAModelAndWithTheDrawnPictures() async {
+  @Test func standardModeAsksTheChosenModelWithTheDrawnPictures() async {
     let calls = Calls([standardAnswer])
-    let outcome = await run(calls, mode: .standard)
+    let outcome = await run(calls, mode: .standard(model: "qwen"))
     #expect(outcome.pup == nil && outcome.standard?.rewrites.isEmpty == false)
-    #expect(calls.models == [nil] && calls.systems.first == "STANDARD" && calls.images.first == ["/t/drawn-0.png", "/t/drawn-1.png"])
-    #expect(outcome.note == "Improved (standard mode).")
+    #expect(calls.models == ["qwen"] && calls.systems.first == "STANDARD" && calls.images.first == ["/t/drawn-0.png", "/t/drawn-1.png"])
+    #expect(outcome.note == "Improved with qwen (standard mode).")
+  }
+
+  @Test func standardModeWithoutAKnownModelAsksTheAppsChoice() async {
+    let calls = Calls([standardAnswer])
+    let outcome = await run(calls, mode: .standard(model: nil))
+    #expect(calls.models == [nil] && outcome.note == "Improved (standard mode).")
   }
 
   @Test func aPupFailureFallsBackToStandardWithTheSameModel() async {
@@ -79,7 +85,7 @@ struct ImproveTests {
 
   @Test func whenNothingIsWrittenThereIsNoNote() async {
     let calls = Calls([.failure("No model chosen.")])
-    let outcome = await run(calls, mode: .standard)
+    let outcome = await run(calls, mode: .standard(model: nil))
     #expect(outcome.note.isEmpty)
   }
 }

@@ -94,7 +94,7 @@ struct EditDocument: Codable, Equatable, Sendable {
 
   private func freeID() -> String {
     var number = 1
-    while elements.contains(where: { $0.id == "el_\(number)" }) { number += 1 }
+    while elements.contains(where: { $0.id == "el_\(number)" }) || (extraRows ?? []).contains(where: { $0.id == "el_\(number)" }) { number += 1 }
     return "el_\(number)"
   }
 
@@ -154,6 +154,8 @@ struct EditDocument: Codable, Equatable, Sendable {
   var repeatedIDs: Set<String> {
     var seen = Set<String>(), repeated = Set<String>()
     for element in elements where !seen.insert(element.id).inserted { repeated.insert(element.id) }
+    // Un id che è anche quello di una riga aggiunta dal modello: due righe uguali nel prompt.
+    for row in extraRows ?? [] where seen.contains(row.id) { repeated.insert(row.id) }
     return repeated
   }
 }
