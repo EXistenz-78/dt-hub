@@ -18,6 +18,7 @@ enum EditComposer {
 
   static func text(_ doc: EditDocument, refs: [RefImage]) -> String {
     let objects = doc.elements.filter { !isMissing($0, refs: refs) }.map { object(of: $0, refs: refs) }
+      + (doc.extraRows ?? []).map { extraObject($0) }
     let array = objects.isEmpty ? "[]" : "[\n" + objects.joined(separator: ",\n") + "\n]"
     let prose = doc.prose.trimmingCharacters(in: .whitespacesAndNewlines)
     return prose.isEmpty ? array : prose + "\n\n" + array
@@ -60,14 +61,20 @@ enum EditComposer {
     }
   }
 
+  private static func extraObject(_ row: ExtraRow) -> String { render(id: row.id, from: row.from, source: row.src, target: row.tgt, desc: row.desc) }
+
   private static func object(of element: EditElement, refs: [RefImage]) -> String {
     let (from, source, target) = parts(of: element, refs: refs)
+    return render(id: element.id, from: from, source: source, target: target, desc: element.desc)
+  }
+
+  private static func render(id: String, from: String?, source: BBox?, target: BBox?, desc: String) -> String {
     let lines = [
-      "    \"id\": \(quoted(element.id))",
+      "    \"id\": \(quoted(id))",
       "    \"from\": \(from.map(quoted) ?? "null")",
       "    \"src_bbox\": \(source.map(array) ?? "null")",
       "    \"tgt_bbox\": \(target.map(array) ?? "null")",
-      "    \"desc\": \(quoted(element.desc))",
+      "    \"desc\": \(quoted(desc))",
     ]
     return "  {\n" + lines.joined(separator: ",\n") + "\n  }"
   }
