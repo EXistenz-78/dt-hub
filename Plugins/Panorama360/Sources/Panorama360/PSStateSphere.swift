@@ -4,7 +4,7 @@ import Foundation
 extension PSState {
   /// What the sphere view lets the pointer do: with the canvas as the source, the stickers (move, scale, rotate); in every case, turning the view
   /// by dragging the empty part. With the result as the source the view only turns.
-  private var editsStickers: Bool { doc.source == .canvas }
+  private var editsStickers: Bool { effectiveSource == .canvas }
 
   private static let grabRadius = 12.0
 

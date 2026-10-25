@@ -130,6 +130,8 @@ struct PSSphereTests {
   @Test func inTheResultNothingIsEditableButTheViewStillLooksAround() {
     let s = sticker()
     let state = state([s], source: .result)
+    let result = TestImages.file(TestImages.solid(256, 128, 1, 2, 3), in: TestImages.tempFolder(), name: "r.png", type: "public.png")
+    state.apply(context: Data(#"{"type":"context","tempFolder":"/t","lastResult":{"path":"\#(result.path)","name":"r.png"}}"#.utf8))
     let before = state.doc.stickers
     state.spherePointerDown(at: centre, size: size)
     state.spherePointerDragged(to: CGPoint(x: 612, y: 384), size: size, shift: false)
@@ -147,5 +149,15 @@ struct PSSphereTests {
     state.spherePointerUp()
     state.resetCamera()
     #expect(state.doc.camera == PSCamera())
+  }
+
+  @Test func aCameraAtThePoleStillSeesAStickerThereAndItsOutlineIsFinite() throws {
+    for pitch in [85.0, -85.0] {
+      let camera = PSCamera(yaw: 0, pitch: pitch >= 0 ? 89 : -89, fov: 90)
+      let s = sticker(yaw: 0, pitch: pitch, hfov: 40)
+      let lines = PSSphere.outline(of: s, aspect: 1.5, camera: camera, size: size)
+      #expect(!lines.isEmpty && lines.allSatisfy { $0.allSatisfy { $0.x.isFinite && $0.y.isFinite } })
+      #expect(PSSphere.hit(at: centre, stickers: [(s, 1.5)], camera: camera, size: size) == s.id)
+    }
   }
 }

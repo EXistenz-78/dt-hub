@@ -39,10 +39,6 @@ struct PSSphereView: View {
           Spacer(minLength: 0)
         }
         .padding(8).allowsHitTesting(false)
-        if state.doc.source == .result && state.resultImage == nil {
-          Text(state.text(.noResultYet)).multilineTextAlignment(.center).foregroundStyle(.white)
-            .frame(maxWidth: .infinity, maxHeight: .infinity).background(Color.black.opacity(0.45)).allowsHitTesting(false)
-        }
       }
       .frame(width: size.width, height: size.height)
       .clipShape(RoundedRectangle(cornerRadius: DS.boxRadius))
@@ -60,8 +56,10 @@ struct PSSphereView: View {
     .aspectRatio(Self.aspect, contentMode: .fit)
     .onAppear {
       state.refreshPreview(scale: 1)
+      guard scrollMonitor == nil else { return }
       scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { event in
-        guard hovering else { return event }
+        // Only the wheel or the trackpad turning over the view, not the momentum of a scroll that began on the page.
+        guard hovering, event.momentumPhase.isEmpty else { return event }
         state.sphereZoom(by: -Double(event.scrollingDeltaY) * (event.hasPreciseScrollingDeltas ? 0.004 : 0.04))
         return nil
       }
@@ -121,7 +119,7 @@ enum PSSphereOverlay {
       }
       context.stroke(horizon, with: .color(.white.opacity(0.4)), style: StrokeStyle(lineWidth: 1, dash: [6, 6]))
     }
-    guard state.doc.source == .canvas else { return }
+    guard state.effectiveSource == .canvas else { return }
     for sticker in state.doc.stickers where sticker.visible {
       let selected = sticker.id == state.doc.selectedID
       var path = Path()

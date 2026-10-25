@@ -30,11 +30,11 @@ struct PSCutoutTests {
   func size(of url: URL) -> (Int, Int)? { PSCutout.pixelSize(of: url).map { ($0.width, $0.height) } }
 
   @Test func theCutoutSizeIsFourByThreeInMultiplesOf64() {
-    for (mp, expected) in [(1.0, (1152, 896)), (0.25, (576, 448)), (4.0, (2304, 1728))] {
+    for (mp, expected) in [(1.0, (1280, 960)), (0.25, (512, 384)), (4.0, (2304, 1728))] {
       let s = PSCutout.size(megapixels: mp)
       #expect(s.width == expected.0 && s.height == expected.1, "\(mp) MP → \(s)")
       #expect(s.width % 64 == 0 && s.height % 64 == 0)
-      #expect(abs(Double(s.width) / Double(s.height) - 4.0 / 3.0) < 0.06)
+      #expect(s.width * 3 == s.height * 4, "exactly 4:3: \(s)")
     }
     #expect(PSCutout.size(megapixels: 0).width == PSCutout.size(megapixels: 0.25).width)
     #expect(PSCutout.size(megapixels: 99).width == PSCutout.size(megapixels: 4).width)
@@ -45,10 +45,10 @@ struct PSCutoutTests {
     let state = readyState(result: result)
     state.mutate { $0.cutoutMegapixels = 0.25 }
     let image = try state.extractCutout()
-    #expect(image.width == 576 && image.height == 448)
+    #expect(image.width == 512 && image.height == 384)
     #expect(TestImages.pixel(image, 288, 224).r > 150, "the sticker is in the middle of the view")
     let memory = try #require(state.doc.lastCutout)
-    #expect(memory.yaw == 20 && memory.pitch == 0 && memory.fov == 70 && memory.width == 576 && memory.height == 448)
+    #expect(memory.yaw == 20 && memory.pitch == 0 && memory.fov == 70 && memory.width == 512 && memory.height == 384)
     #expect(memory.resultPathAtExtraction == result.path && memory.patchPath == nil)
     #expect(state.cutoutImage != nil)
   }
@@ -63,9 +63,13 @@ struct PSCutoutTests {
 
   @Test func startImageAndMoodboardBodiesNameThePng() throws {
     let url = URL(fileURLWithPath: "/tmp/c.png")
-    let start = PSCutoutActions.startImageBody(file: url)
+    let start = PSCutoutActions.startImageBody(file: url, width: 1280, height: 960)
     let image = try #require(start["startImage"] as? [String: Any])
     #expect(image["path"] as? String == "/tmp/c.png" && image["name"] as? String == "panorama-360-cutout.png")
+    // The retouch RUN is made at the size of the cutout, not at the 2:1 size of the panorama.
+    let fields = try #require(start["fields"] as? [String: Any])
+    #expect(fields["width"] as? Int == 1280 && fields["height"] as? Int == 960)
+    #expect(fields["prompt"] == nil, "the prompt is the user's: the cutout does not write one")
     let mood = PSCutoutActions.moodboardBody(file: url)
     let list = try #require(mood["moodboard"] as? [[String: Any]])
     #expect(list.count == 1 && list[0]["path"] as? String == "/tmp/c.png")
@@ -82,35 +86,37 @@ struct PSCutoutTests {
     await state.sendCutoutAsStartImage(contribute: send)
     await state.addCutoutToMoodboard(contribute: send)
     #expect(bodies.count == 2 && bodies[0]["startImage"] != nil && bodies[1]["moodboard"] != nil)
+    let sent = try #require(bodies[0]["fields"] as? [String: Any])
+    #expect(sent["width"] as? Int == 1280 && sent["height"] as? Int == 960)
     let path = try #require((bodies[0]["startImage"] as? [String: Any])?["path"] as? String)
-    #expect(size(of: URL(fileURLWithPath: path))! == (1152, 896))
+    #expect(size(of: URL(fileURLWithPath: path))! == (1280, 960))
   }
 
   // MARK: Put back — when it is allowed
 
   @Test func putBackIsOffWithoutACutoutOrWithTheSameResult() {
     let r = URL(fileURLWithPath: "/r/a.png")
-    let memory = PSCutoutMemory(yaw: 0, pitch: 0, fov: 70, width: 1152, height: 896, resultPathAtExtraction: "/r/a.png", patchPath: nil)
-    #expect(PSCutout.putBackReason(memory: nil, lastResult: r, imageSize: { _ in (1152, 896) }) == .noCutout)
-    #expect(PSCutout.putBackReason(memory: memory, lastResult: nil, imageSize: { _ in (1152, 896) }) == .noPatch)
-    #expect(PSCutout.putBackReason(memory: memory, lastResult: r, imageSize: { _ in (1152, 896) }) == .noPatch)
+    let memory = PSCutoutMemory(yaw: 0, pitch: 0, fov: 70, width: 1280, height: 960, resultPathAtExtraction: "/r/a.png", patchPath: nil)
+    #expect(PSCutout.putBackReason(memory: nil, lastResult: r, imageSize: { _ in (1280, 960) }) == .noCutout)
+    #expect(PSCutout.putBackReason(memory: memory, lastResult: nil, imageSize: { _ in (1280, 960) }) == .noPatch)
+    #expect(PSCutout.putBackReason(memory: memory, lastResult: r, imageSize: { _ in (1280, 960) }) == .noPatch)
   }
 
   @Test func putBackIsOffForAnotherProportion() {
-    let memory = PSCutoutMemory(yaw: 0, pitch: 0, fov: 70, width: 1152, height: 896, resultPathAtExtraction: "/r/a.png", patchPath: nil)
+    let memory = PSCutoutMemory(yaw: 0, pitch: 0, fov: 70, width: 1280, height: 960, resultPathAtExtraction: "/r/a.png", patchPath: nil)
     let b = URL(fileURLWithPath: "/r/b.png")
     #expect(PSCutout.putBackReason(memory: memory, lastResult: b, imageSize: { _ in (2048, 1024) }) == .wrongProportion)
-    #expect(PSCutout.putBackReason(memory: memory, lastResult: b, imageSize: { _ in (1152, 896) }) == nil)
-    #expect(PSCutout.putBackReason(memory: memory, lastResult: b, imageSize: { _ in (1175, 896) }) == nil, "within 2 %")
-    #expect(PSCutout.putBackReason(memory: memory, lastResult: b, imageSize: { _ in (1280, 896) }) == .wrongProportion)
+    #expect(PSCutout.putBackReason(memory: memory, lastResult: b, imageSize: { _ in (1280, 960) }) == nil)
+    #expect(PSCutout.putBackReason(memory: memory, lastResult: b, imageSize: { _ in (1300, 960) }) == nil, "within 2 %")
+    #expect(PSCutout.putBackReason(memory: memory, lastResult: b, imageSize: { _ in (1400, 960) }) == .wrongProportion)
     #expect(PSCutout.putBackReason(memory: memory, lastResult: b, imageSize: { _ in nil }) == .patchMissing)
   }
 
   @Test func putBackStaysAvailableOnTheSameRetouchAfterTheMontage() {
-    var memory = PSCutoutMemory(yaw: 0, pitch: 0, fov: 70, width: 1152, height: 896, resultPathAtExtraction: "/r/a.png", patchPath: "/r/retouch.png")
+    var memory = PSCutoutMemory(yaw: 0, pitch: 0, fov: 70, width: 1280, height: 960, resultPathAtExtraction: "/r/a.png", patchPath: "/r/retouch.png")
     let montage = URL(fileURLWithPath: "/r/montage.png")
     // The newest result is now the 2:1 montage; the retouch (4:3) is the one that counts.
-    let sizes: (URL) -> (Int, Int)? = { $0.lastPathComponent == "retouch.png" ? (1152, 896) : (2048, 1024) }
+    let sizes: (URL) -> (Int, Int)? = { $0.lastPathComponent == "retouch.png" ? (1280, 960) : (2048, 1024) }
     #expect(PSCutout.putBackReason(memory: memory, lastResult: montage, imageSize: sizes) == nil)
     #expect(PSCutout.patch(memory: memory, lastResult: montage)?.path == "/r/retouch.png")
     memory.patchPath = nil
@@ -122,7 +128,7 @@ struct PSCutoutTests {
   @Test func putBackAsStickerPlacesThePatchAtThePoseOfTheExtraction() throws {
     let state = readyState(result: file(256, 128, (10, 120, 200), name: "r.png"))
     _ = try state.extractCutout()
-    let retouch = file(1152, 896, (30, 200, 60), name: "retouch.png")
+    let retouch = file(1280, 960, (30, 200, 60), name: "retouch.png")
     state.apply(context: context(retouch))
     #expect(state.putBackReason == nil)
     state.mutate { $0.viewMode = .sphere }
@@ -140,7 +146,7 @@ struct PSCutoutTests {
     let state = readyState(result: panorama)
     _ = try state.extractCutout()
     state.mutate { $0.camera = PSCamera(yaw: 20, pitch: 0, fov: 70) }
-    let retouch = file(1152, 896, (200, 30, 30), name: "retouch.png")
+    let retouch = file(1280, 960, (200, 30, 30), name: "retouch.png")
     state.apply(context: context(retouch))
     nonisolated(unsafe) var body: [String: Any] = [:]
     await state.putBackInPanorama { sent in
@@ -163,7 +169,7 @@ struct PSCutoutTests {
   @Test func aFailedContributeShowsTheProblemsAndKeepsThePatchFree() async throws {
     let state = readyState(result: file(256, 128, (10, 120, 200), name: "r.png"))
     _ = try state.extractCutout()
-    state.apply(context: context(file(1152, 896, (200, 30, 30), name: "retouch.png")))
+    state.apply(context: context(file(1280, 960, (200, 30, 30), name: "retouch.png")))
     await state.putBackInPanorama { _ in ["type": "ok", "problems": ["result: no model"]] }
     #expect(state.error?.contains("no model") == true && state.doc.lastCutout?.patchPath == nil)
   }
@@ -171,7 +177,7 @@ struct PSCutoutTests {
   @Test func putBackInThePanoramaNeedsAPanoramaToComposeOn() throws {
     let state = readyState()  // no result when the cutout was taken
     _ = try state.extractCutout()
-    state.apply(context: context(file(1152, 896, (200, 30, 30), name: "retouch.png")))
+    state.apply(context: context(file(1280, 960, (200, 30, 30), name: "retouch.png")))
     #expect(state.putBackReason == nil)
     #expect(state.putBackInPanoramaReason == .noPanorama)
   }
@@ -179,7 +185,7 @@ struct PSCutoutTests {
   @Test func aNewExtractionResetsThePatch() throws {
     let state = readyState(result: file(256, 128, (10, 120, 200), name: "r.png"))
     _ = try state.extractCutout()
-    state.apply(context: context(file(1152, 896, (200, 30, 30), name: "retouch.png")))
+    state.apply(context: context(file(1280, 960, (200, 30, 30), name: "retouch.png")))
     state.putBackAsSticker()
     #expect(state.doc.lastCutout?.patchPath != nil)
     state.mutate { $0.viewMode = .sphere }
@@ -192,8 +198,50 @@ struct PSCutoutTests {
     _ = try state.extractCutout()
     let target = TestImages.tempFolder().appendingPathComponent("saved.png")
     try state.saveCutout(to: target)
-    #expect(size(of: target)! == (1152, 896))
+    #expect(size(of: target)! == (1280, 960))
     let empty = PSState(italian: false)
     #expect(throws: PSCutoutError.nothingExtracted) { try empty.saveCutout(to: target) }
+  }
+
+  @Test func aMontageDoesNotTouchTheNextProject() async throws {
+    let state = readyState(result: file(256, 128, (10, 120, 200), name: "r.png"))
+    _ = try state.extractCutout()
+    state.apply(context: context(file(1280, 960, (200, 30, 30), name: "retouch.png")))
+    // The next project has a cutout of its own: the old project's retouch must not be written into it.
+    let other = TestImages.tempFolder()
+    var theirs = PanoState()
+    theirs.lastCutout = PSCutoutMemory(yaw: 5, pitch: 5, fov: 50, width: 512, height: 384, resultPathAtExtraction: nil, patchPath: nil)
+    try theirs.save(to: other)
+    await state.putBackInPanorama { _ in
+      state.switchProject(folder: other)
+      return ["type": "ok"]
+    }
+    #expect(state.doc.lastCutout?.patchPath == nil)
+    #expect(PanoState.load(from: other).lastCutout?.patchPath == nil)
+  }
+
+  @Test func theMontageKeepsTheSizeOfALargeResult() async throws {
+    let big = file(4200, 2100, (10, 120, 200), name: "big.png")
+    let state = readyState(result: big)
+    _ = try state.extractCutout()
+    state.apply(context: context(file(1280, 960, (200, 30, 30), name: "retouch.png")))
+    nonisolated(unsafe) var path = ""
+    await state.putBackInPanorama { body in
+      path = ((body["result"] as? [String: Any])?["path"] as? String) ?? ""
+      return ["type": "ok"]
+    }
+    let size = try #require(PSCutout.pixelSize(of: URL(fileURLWithPath: path)))
+    #expect(size.width == 4200 && size.height == 2100)
+  }
+
+  @Test func aPanoramaDeletedAfterTheExtractionIsSaidSo() throws {
+    let panorama = file(256, 128, (10, 120, 200), name: "r.png")
+    let state = readyState(result: panorama)
+    _ = try state.extractCutout()
+    state.apply(context: context(file(1280, 960, (200, 30, 30), name: "retouch.png")))
+    #expect(state.putBackInPanoramaReason == nil)
+    try FileManager.default.removeItem(at: panorama)
+    #expect(state.putBackInPanoramaReason == .panoramaMissing)
+    #expect(state.putBackReason == nil, "the sticker button does not need the panorama")
   }
 }

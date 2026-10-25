@@ -77,6 +77,7 @@ struct PanoState: Codable, Equatable, Sendable {
     viewMode = (try? c.decodeIfPresent(PSViewMode.self, forKey: .viewMode)) ?? .plane
     source = (try? c.decodeIfPresent(PSSource.self, forKey: .source)) ?? .canvas
     camera = (try? c.decodeIfPresent(PSCamera.self, forKey: .camera)) ?? PSCamera()
+    camera.clamp()
     cutoutMegapixels = (try? c.decodeIfPresent(Double.self, forKey: .cutoutMegapixels)) ?? 1
     lastCutout = (try? c.decodeIfPresent(PSCutoutMemory.self, forKey: .lastCutout)) ?? nil
   }

@@ -88,6 +88,8 @@ final class PSState: ObservableObject {
   }
 
   private func setLastResult(_ path: String?) {
+    // A result that was deleted or moved after it was loaded is no longer there to show.
+    if let path, resultImage != nil, !FileManager.default.fileExists(atPath: path) { resultImage = nil }
     if path != lastResultPath || (path != nil && resultImage == nil) {
       lastResultPath = path
       resultImage = path.flatMap { PSResultLoader.load(URL(fileURLWithPath: $0)) }

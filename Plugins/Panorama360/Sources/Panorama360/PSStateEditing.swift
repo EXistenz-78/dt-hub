@@ -80,7 +80,7 @@ extension PSState {
   /// The keys of the canvas and of the sphere view: arrows nudge the selected sticker (Shift: 5°), ⌫ deletes it, ⌘D duplicates it. Nothing
   /// is edited while the result is shown.
   func handleKey(_ press: KeyPress) -> KeyPress.Result {
-    guard doc.source == .canvas || doc.viewMode == .plane else { return .ignored }
+    guard effectiveSource == .canvas || doc.viewMode == .plane else { return .ignored }
     let step = press.modifiers.contains(.shift) ? 5.0 : 1.0
     switch press.key {
     case .leftArrow: nudge(yaw: -step, pitch: 0)

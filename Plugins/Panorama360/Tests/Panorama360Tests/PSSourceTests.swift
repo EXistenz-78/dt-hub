@@ -120,4 +120,34 @@ struct PSSourceTests {
     let p = TestImages.pixel(image, 512, 384)
     #expect(abs(p.r - 10) <= 2 && abs(p.g - 120) <= 2 && abs(p.b - 200) <= 2, "\(p)")
   }
+
+  @Test func aResultDeletedAfterItWasLoadedIsNoticedAtTheNextContext() throws {
+    let state = PSState(italian: false)
+    let url = picture(256, 128)
+    state.apply(context: context(result: url))
+    state.mutate { $0.source = .result }
+    try FileManager.default.removeItem(at: url)
+    state.apply(context: context(result: url))
+    #expect(state.resultImage == nil && state.resultNotice != nil && state.doc.source == .canvas)
+  }
+
+  @Test func withTheResultChosenButNotThereTheCanvasIsWhatCountsEverywhere() {
+    // A project saved with «Result» opened before the app has said which result there is (or in a project with none).
+    let folder = PSModelsTests.folder()
+    var saved = PanoState()
+    saved.source = .result
+    saved.viewMode = .sphere
+    try? saved.save(to: folder)
+    let state = PSState(italian: false)
+    state.switchProject(folder: folder)
+    #expect(state.doc.source == .result, "the choice is kept for when the result arrives")
+    #expect(state.effectiveSource == .canvas)
+    let s = Sticker(name: "s", file: "s.png")
+    state.mutate { $0.stickers = [s]; $0.selectedID = s.id }
+    state.setImage(TestImages.solid(60, 40, 200, 50, 50), for: s.id)
+    state.spherePointerDown(at: CGPoint(x: 512, y: 384), size: CGSize(width: 1024, height: 768))
+    state.spherePointerDragged(to: CGPoint(x: 612, y: 384), size: CGSize(width: 1024, height: 768), shift: false)
+    state.spherePointerUp()
+    #expect(state.doc.stickers[0].yaw != 0, "editable: what is shown is the canvas")
+  }
 }

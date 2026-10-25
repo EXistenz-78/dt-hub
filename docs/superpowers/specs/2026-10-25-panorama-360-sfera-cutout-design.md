@@ -60,10 +60,10 @@ Nuovi campi con valore predefinito, letti con `decodeIfPresent`: `viewMode` (`pl
 Le due aggiunte già fatte (`presets[]` con `model`/`advanced`, `contribute.preset`) restano: in tutto il contratto 1 ne guadagna quattro per questa release.
 
 ## 6. Cutout
-- **Dimensione:** `megapixel` (0,25…4, predefinito 1,0): `w = round(√(MP·10⁶·4/3)/64)·64`, `h = round(w·3/4/64)·64` (1,0 MP → 1152 × 896). Il FOV dell'immagine è quello della camera; la proporzione è quella dell'area (4:3).
+- **Dimensione:** `megapixel` (0,25…4, predefinito 1,0): larghezza `w = max(2, round(√(MP·10⁶·4/3)/256))·256`, altezza `h = w·3/4` (esattamente 4:3; 1,0 MP → 1280 × 960, 0,25 → 512 × 384, 4 → 2304 × 1728). Il FOV dell'immagine è quello della camera; la proporzione è quella dell'area (4:3).
 - **Estrai:** renderizza la vista corrente (con la sorgente scelta: Canvas = sticker su verde; Risultato = il panorama) a `w × h` e la tiene in memoria con la posa della camera. Memoria nello stato: `lastCutout`.
 - **Azioni** sul ritaglio estratto (icone con tooltip):
-  1. **Usa come immagine di partenza** — `contribute.startImage` (PNG nella `tempFolder`).
+  1. **Usa come immagine di partenza** — `contribute.startImage` (PNG nella `tempFolder`) e `fields.width/height` = dimensione del ritaglio, perché il RUN del ritocco esca nella stessa proporzione.
   2. **Aggiungi al Moodboard** — `contribute.moodboard`.
   3. **Salva…** — pannello di salvataggio, PNG.
   4. **Rimetti come sticker** — crea uno sticker con l'ultimo risultato (il ritocco) alla posa dell'estrazione (`yaw`, `pitch`, `fov`, `rot 0`), lo seleziona, passa a Piano + canvas.

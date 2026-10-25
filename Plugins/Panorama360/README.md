@@ -26,10 +26,10 @@ The view, the source and where you look are saved with the project.
 
 ## Cutout: take a piece, retouch it, put it back
 
-In the sphere view the **Cutout** panel takes what you see as a flat 4:3 picture (**Extract**; the size is in megapixels, 1.0 by default, sides in multiples of 64). Then:
+In the sphere view the **Cutout** panel takes what you see as a flat 4:3 picture (**Extract**; the size is in megapixels, 1.0 by default, always exactly 4:3 with sides in multiples of 64: 1.0 MP is 1280 × 960). Then:
 
-1. **Use as start image** or **Add to Moodboard** send the picture to the Generation tab, so you can retouch it with an edit model; **Save…** writes a PNG.
-2. Run the retouch (the model must keep the framing and the 4:3 proportion). When the RUN ends its result is the retouch, and two buttons come on:
+1. **Use as start image** (it also sets the size of the Generation tab to the cutout's) or **Add to Moodboard** send the picture to the Generation tab, so you can retouch it with an edit model; **Save…** writes a PNG.
+2. Run the retouch. Before you do, **switch the 360 LoRA off** (and pick another preset): the last «Send to Generation» left it on the tab, and its trigger phrase would be put in front of your prompt. The model must keep the framing and the size. When the RUN ends its result is the retouch, and two buttons come on:
    - **Put back as a sticker** places it on the canvas exactly where the cutout was taken (same yaw, pitch and angle), so **Send to Generation** can redraw the panorama around it.
    - **Put back in the panorama** pastes it, with a soft edge, on the panorama the cutout was taken from and sends the new panorama to DT Hub's **Results** (it becomes the latest result; the source **Result** shows it). Nothing else is generated.
 3. Both buttons stay on for the same retouch until you extract again. If one is off, its tooltip says why: no cutout yet, no retouch yet, the retouch is not 4:3, its file cannot be read, or (for the panorama) there was no result when the cutout was taken.

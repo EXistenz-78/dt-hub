@@ -20,8 +20,8 @@ extension PSState {
   /// The same for the montage, which also needs the panorama the cutout was taken from.
   var putBackInPanoramaReason: PSCutout.PutBackReason? {
     if let reason = putBackReason { return reason }
-    guard let path = doc.lastCutout?.resultPathAtExtraction, FileManager.default.fileExists(atPath: path) else { return .noPanorama }
-    return nil
+    guard let path = doc.lastCutout?.resultPathAtExtraction else { return .noPanorama }
+    return FileManager.default.fileExists(atPath: path) ? nil : .panoramaMissing
   }
 
   // MARK: Extracting
@@ -62,7 +62,10 @@ extension PSState {
     return nil
   }
 
-  func sendCutoutAsStartImage(contribute: PSContribute) async { await sendCutout(contribute: contribute, body: PSCutoutActions.startImageBody) }
+  func sendCutoutAsStartImage(contribute: PSContribute) async {
+    let size = cutoutImage.map { (width: $0.width, height: $0.height) }
+    await sendCutout(contribute: contribute) { PSCutoutActions.startImageBody(file: $0, width: size?.width ?? 0, height: size?.height ?? 0) }
+  }
 
   func addCutoutToMoodboard(contribute: PSContribute) async { await sendCutout(contribute: contribute, body: PSCutoutActions.moodboardBody) }
 
@@ -115,7 +118,7 @@ extension PSState {
   func putBackInPanorama(contribute: PSContribute) async {
     error = nil
     guard putBackInPanoramaReason == nil, let memory = doc.lastCutout, let patchURL = PSCutout.patch(memory: memory, lastResult: lastResultURL),
-      let backgroundPath = memory.resultPathAtExtraction, let background = PSResultLoader.load(URL(fileURLWithPath: backgroundPath)),
+      let backgroundPath = memory.resultPathAtExtraction, let background = PSResultLoader.load(URL(fileURLWithPath: backgroundPath), maxSide: nil),
       let patch = PSResultLoader.load(patchURL)
     else {
       error = text(.putBackOff)
@@ -123,6 +126,7 @@ extension PSState {
     }
     isSending = true
     defer { isSending = false }
+    let folder = projectFolder
     do {
       let place = Sticker(name: "patch", file: "", yaw: memory.yaw, pitch: memory.pitch, rot: 0, hfov: memory.fov)
       var layer = PSLayer(
@@ -133,7 +137,8 @@ extension PSState {
       let description = text(.montageDescription, memory.yaw, memory.pitch, memory.fov)
       if let message = problem(in: await contribute(PSCutoutActions.montageBody(file: file, description: description))) {
         error = message
-      } else {
+      } else if projectFolder == folder {
+        // Only in the project the montage was made in: the app answered while the user may have opened another one.
         mutate { $0.lastCutout?.patchPath = patchURL.path }
       }
     } catch {

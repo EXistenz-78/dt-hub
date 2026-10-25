@@ -29,7 +29,7 @@ struct PSView: View {
 
   private var isSphere: Bool { state.doc.viewMode == .sphere }
   /// In the sphere, with the result as the source, the canvas is only looked at.
-  private var viewOnly: Bool { isSphere && state.doc.source == .result }
+  private var viewOnly: Bool { isSphere && state.effectiveSource == .result }
 
   private var canvasCard: some View {
     VStack(spacing: 0) {
@@ -42,7 +42,7 @@ struct PSView: View {
           }
           .pickerStyle(.segmented).labelsHidden().frame(maxWidth: 220)
           if isSphere {
-            Picker("", selection: Binding(get: { state.doc.source }, set: { state.setSource($0) })) {
+            Picker("", selection: Binding(get: { state.effectiveSource }, set: { state.setSource($0) })) {
               Text(state.text(.sourceCanvas)).tag(PSSource.canvas)
               Text(state.text(.sourceResult)).tag(PSSource.result)
             }

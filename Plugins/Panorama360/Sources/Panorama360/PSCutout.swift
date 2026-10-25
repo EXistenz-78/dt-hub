@@ -11,12 +11,12 @@ enum PSCutoutError: Error, Equatable {
 enum PSCutout {
   static let megapixelRange = 0.25...4.0
 
-  /// The picture's size: 4:3, the width rounded to a multiple of 64 and the height too (1.0 MP → 1152 × 896).
+  /// The picture's size: exactly 4:3, like the view it is taken from, with both sides multiples of 64. A width that is a multiple of 256 gives
+  /// a height that is a multiple of 192, so 1.0 MP → 1280 × 960 (0.25 MP → 512 × 384, 4 MP → 2304 × 1728).
   static func size(megapixels: Double) -> (width: Int, height: Int) {
     let mp = min(megapixelRange.upperBound, max(megapixelRange.lowerBound, megapixels))
-    let width = Int((mp * 1_000_000 * 4 / 3).squareRoot() / 64 + 0.5) * 64
-    let height = Int(Double(width) * 3 / 4 / 64 + 0.5) * 64
-    return (width, height)
+    let width = max(2, Int((mp * 1_000_000 * 4 / 3).squareRoot() / 256 + 0.5)) * 256
+    return (width, width * 3 / 4)
   }
 
   /// Why «put back» is off; nil when it is on.
@@ -31,6 +31,8 @@ enum PSCutout {
     case patchMissing
     /// There was no result to compose a montage on when the cutout was taken (only «put back in the panorama»).
     case noPanorama
+    /// The panorama the cutout was taken from has been deleted or moved since.
+    case panoramaMissing
   }
 
   /// The picture to put back: the retouch already used once (so both buttons keep working on it after the montage became the newest result),
@@ -65,7 +67,11 @@ enum PSCutoutActions {
   static let pictureName = "panorama-360-cutout.png"
   static let montageName = "panorama-360-montage.png"
 
-  static func startImageBody(file: URL) -> [String: Any] { ["startImage": ["path": file.path, "name": pictureName]] }
+  /// The picture as the start image, and the Generation tab's size set to its own: the retouch is made at the size of the cutout, so its result
+  /// has the same proportion and can be put back.
+  static func startImageBody(file: URL, width: Int, height: Int) -> [String: Any] {
+    ["startImage": ["path": file.path, "name": pictureName], "fields": ["width": width, "height": height]]
+  }
 
   static func moodboardBody(file: URL) -> [String: Any] { ["moodboard": [["path": file.path, "name": pictureName]]] }
 

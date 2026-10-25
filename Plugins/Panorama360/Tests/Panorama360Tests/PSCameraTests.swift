@@ -73,4 +73,12 @@ struct PSCameraTests {
     let camera = PSCamera(yaw: 12, pitch: -7, fov: 75)
     #expect(try JSONDecoder().decode(PSCamera.self, from: JSONEncoder().encode(camera)) == camera)
   }
+
+  @Test func aCameraOutOfRangeInTheFileIsClampedOnLoad() throws {
+    let folder = PSModelsTests.folder()
+    try Data(#"{"version":1,"stickers":[],"description":"","mode":"normal","guides":true,"camera":{"yaw":400,"pitch":120,"fov":0}}"#.utf8)
+      .write(to: folder.appendingPathComponent("state.json"))
+    let camera = PanoState.load(from: folder).camera
+    #expect(camera.fov == 20 && camera.pitch == 89 && abs(camera.yaw - 40) < 1e-9)
+  }
 }

@@ -15,7 +15,7 @@
 - Everything of the first plan still holds (ERP 2048×1024 on `#00ff00`, the trigger phrase never in the prompt, texts in Italian and English in `L`, fields read the state, no captions, files added by name, commits end with `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`, no merge or push without the user's word).
 - Camera: yaw wrapped to (−180, 180], pitch ±89°, horizontal FOV 20…120°, default `0, 0, 90`. The sphere view is **4:3**, 1024 × 768 internal points; half resolution while dragging.
 - Sphere + Result is view only: no handles, no outlines, `+`, trash and keyboard editing off. Plane has no source (it is the Canvas).
-- Cutout: always 4:3 of what is seen; `megapixels` 0.25…4 (default 1.0); `w = round(√(MP·10⁶·4/3)/64)·64`, `h = round(w·3/4/64)·64` (1.0 MP → 1152 × 896). No frame, no aspect menu.
+- Cutout: always 4:3 of what is seen; `megapixels` 0.25…4 (default 1.0); `w = max(2, round(√(MP·10⁶·4/3)/256))·256`, `h = w·3/4`, exactly 4:3 (1.0 MP → 1280 × 960; 0.25 → 512 × 384; 4 → 2304 × 1728). No frame, no aspect menu.
 - «Put back» (sticker or panorama) is enabled only with a cutout in memory, a last result that is different from `resultPathAtExtraction` or equal to `patchPath`, and whose width/height is 4:3 within 2 %.
 - The montage goes to Results with `contribute.result` (PNG in `tempFolder`, description «Montaggio · ritaglio rimesso a yaw …° pitch …° FOV …°»), feather 3 % of the patch side; there is no «Montage» source.
 - New `state.json` keys are optional with defaults; `version` stays 1; a file from before still loads.

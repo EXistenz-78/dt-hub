@@ -70,6 +70,7 @@ struct PSCutoutPanel: View {
       case .wrongProportion: .putBackWrongProportion
       case .patchMissing: .putBackPatchMissing
       case .noPanorama: .putBackNoPanorama
+      case .panoramaMissing: .putBackPanoramaMissing
       }
     return state.text(key) + " — " + state.text(why)
   }

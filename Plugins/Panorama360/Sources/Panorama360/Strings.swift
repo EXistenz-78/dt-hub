@@ -8,7 +8,7 @@ enum L {
     case stickersTitle, yaw, pitch, rotation, fieldOfView, verticalFieldOfView, opacity, duplicate, delete, add, toggleVisible
     case croppedPhoto, unreadableFile, openProjectFirst, dropHere
     case cutoutSize, extract, actionStart, actionMoodboard, actionSave, actionSticker, actionPanorama, cutoutNothing, putBackOff, montageDescription
-    case putBackNoCutout, putBackNoPatch, putBackWrongProportion, putBackPatchMissing, putBackNoPanorama, megapixels
+    case putBackNoCutout, putBackNoPatch, putBackWrongProportion, putBackPatchMissing, putBackNoPanorama, putBackPanoramaMissing, megapixels
     case viewPlane, viewSphere, sourceCanvas, sourceResult, resetView, noResultYet, resultUnreadable, resultNotTwoToOne
     case modeNormal, modeFast, send, noVisibleSticker, sendFailed, noAnswerFromApp, notBaseWarning
     case promptTitle, promptPlaceholder, improve, improving, undo, words, emptyDescription, answerNotEnglish, answerRejected, improveStale
@@ -37,8 +37,9 @@ enum L {
     .cutoutNothing: "Extract the view first.", .putBackOff: "The retouch cannot be put back.",
     .montageDescription: "Montage · cutout put back at yaw %.0f° pitch %.0f° FOV %.0f°",
     .putBackNoCutout: "Extract a view first.", .putBackNoPatch: "Make the retouch first: a RUN on the cutout.",
-    .putBackWrongProportion: "The retouch is not 4:3 like the cutout.", .putBackPatchMissing: "The retouch's file cannot be read.",
-    .putBackNoPanorama: "There was no result when the cutout was taken, so there is no panorama to paste it on.", .megapixels: "MP",
+    .putBackWrongProportion: "The retouch is not 4:3 like the cutout: make it at the size of the cutout.", .putBackPatchMissing: "The retouch's file cannot be read.",
+    .putBackNoPanorama: "There was no result when the cutout was taken, so there is no panorama to paste it on.",
+    .putBackPanoramaMissing: "The panorama the cutout was taken from is not there any more.", .megapixels: "MP",
     .viewPlane: "Plane", .viewSphere: "Sphere", .sourceCanvas: "Canvas", .sourceResult: "Result", .resetView: "Look straight ahead",
     .noResultYet: "No result yet.\nRUN and it will show here.", .resultUnreadable: "The last result's file cannot be read.",
     .resultNotTwoToOne: "The last result is not 2:1: it is shown as a panorama all the same.",
@@ -65,8 +66,9 @@ enum L {
     .cutoutNothing: "Estrai prima la vista.", .putBackOff: "Il ritocco non si può rimettere.",
     .montageDescription: "Montaggio · ritaglio rimesso a yaw %.0f° pitch %.0f° FOV %.0f°",
     .putBackNoCutout: "Estrai prima una vista.", .putBackNoPatch: "Fai prima il ritocco: un RUN sul ritaglio.",
-    .putBackWrongProportion: "Il ritocco non è 4:3 come il ritaglio.", .putBackPatchMissing: "Il file del ritocco non si legge.",
-    .putBackNoPanorama: "Quando hai estratto non c'era un risultato: non c'è un panorama su cui incollarlo.", .megapixels: "MP",
+    .putBackWrongProportion: "Il ritocco non è 4:3 come il ritaglio: fallo alla dimensione del ritaglio.", .putBackPatchMissing: "Il file del ritocco non si legge.",
+    .putBackNoPanorama: "Quando hai estratto non c'era un risultato: non c'è un panorama su cui incollarlo.",
+    .putBackPanoramaMissing: "Il panorama da cui hai estratto non c'è più.", .megapixels: "MP",
     .viewPlane: "Piano", .viewSphere: "Sfera", .sourceCanvas: "Canvas", .sourceResult: "Risultato", .resetView: "Riporta la vista davanti",
     .noResultYet: "Nessun risultato ancora.\nFai un RUN e comparirà qui.", .resultUnreadable: "Il file dell'ultimo risultato non si legge.",
     .resultNotTwoToOne: "L'ultimo risultato non è 2:1: lo mostro lo stesso come panorama.",

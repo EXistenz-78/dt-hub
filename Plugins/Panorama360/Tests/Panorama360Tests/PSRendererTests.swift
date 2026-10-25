@@ -255,4 +255,15 @@ struct PSRendererTests {
       #expect(darkest <= 30, "\(name) darkest \(darkest)")
     }
   }
+
+  @Test func metalMatchesTheCPUAtThePole() throws {
+    guard let metal = try? PSMetalRenderer() else { return }
+    let layers = [TestImages.layer(TestImages.gradient(60, 40, seed: 1), yaw: 30, pitch: 86, hfov: 50)]
+    let camera = PSCamera(yaw: 0, pitch: 89, fov: 100)
+    let a = PSPixels.rgba(of: try PSCPURenderer().renderView(.layers(layers), camera: camera, width: 128, height: 96)).bytes
+    let b = PSPixels.rgba(of: try metal.renderView(.layers(layers), camera: camera, width: 128, height: 96)).bytes
+    var total = 0
+    for i in 0..<a.count { total += abs(Int(a[i]) - Int(b[i])) }
+    #expect(Double(total) / Double(a.count) < 2)
+  }
 }
