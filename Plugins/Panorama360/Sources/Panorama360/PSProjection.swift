@@ -132,3 +132,59 @@ enum PSProjection {
     (b.forward + b.right * (x * b.tanX) + b.up * (y * b.tanY)).normalized
   }
 }
+
+/// The viewer inside the sphere: where it looks and how wide (horizontal field of view). A view `w × h` shows `fov` across `w` and the
+/// matching angle down `h`; the view is 4:3 in the plug-in but nothing here depends on it.
+struct PSCamera: Codable, Equatable, Sendable {
+  var yaw = 0.0
+  var pitch = 0.0
+  var fov = 90.0
+
+  static let fovRange = 20.0...120.0
+
+  /// Yaw into (−180, 180], pitch to ±89°, field of view to 20…120°.
+  mutating func clamp() {
+    yaw = PSProjection.wrapYaw(yaw)
+    pitch = min(89, max(-89, pitch))
+    fov = min(Self.fovRange.upperBound, max(Self.fovRange.lowerBound, fov))
+  }
+
+  var basis: (forward: Vec3, right: Vec3, up: Vec3, tanX: Double) {
+    let y = yaw * PSProjection.degrees, p = pitch * PSProjection.degrees
+    let forward = Vec3(x: sin(y) * cos(p), y: sin(p), z: cos(y) * cos(p))
+    let right = Vec3(x: cos(y), y: 0, z: -sin(y))
+    return (forward, right, forward.cross(right), tan(fov * PSProjection.degrees / 2))
+  }
+
+  /// The direction seen at the point (`x`, `y`) of a `width × height` view (0, 0 is the top left corner).
+  func ray(x: Double, y: Double, width: Double, height: Double) -> Vec3 {
+    let b = basis
+    let tanY = b.tanX * height / width
+    let sx = (2 * x / width - 1) * b.tanX, sy = (1 - 2 * y / height) * tanY
+    return (b.forward + b.right * sx + b.up * sy).normalized
+  }
+
+  /// Where a direction falls in a `width × height` view; nil when it is behind the camera (or at the edge of the half space).
+  func screenPoint(of d: Vec3, width: Double, height: Double) -> CGPoint? {
+    let b = basis
+    let dz = d.dot(b.forward)
+    guard dz > 1e-4 else { return nil }
+    let tanY = b.tanX * height / width
+    return CGPoint(
+      x: (d.dot(b.right) / dz / b.tanX * 0.5 + 0.5) * width, y: (0.5 - d.dot(b.up) / dz / tanY * 0.5) * height)
+  }
+
+  /// Dragging the view by (`dx`, `dy`) points drags the scene with it: the camera turns the other way.
+  mutating func look(dx: Double, dy: Double, width: Double) {
+    let k = fov / width
+    yaw -= dx * k
+    pitch += dy * k
+    clamp()
+  }
+
+  /// `delta` is a fraction: 0.1 widens the field of view by a tenth, −0.1 narrows it.
+  mutating func zoom(by delta: Double) {
+    fov *= 1 + delta
+    clamp()
+  }
+}

@@ -23,6 +23,24 @@ struct Sticker: Codable, Equatable, Hashable, Identifiable, Sendable {
   }
 }
 
+enum PSViewMode: String, Codable, Sendable { case plane, sphere }
+
+/// What the sphere view shows: the canvas (stickers on green, editable) or the last result of the project (view only).
+enum PSSource: String, Codable, Sendable { case canvas, result }
+
+/// The last cutout: where it was taken, how big, and which pictures it is tied to, so «put back» can place a retouched version.
+struct PSCutoutMemory: Codable, Equatable, Sendable {
+  var yaw: Double
+  var pitch: Double
+  var fov: Double
+  var width: Int
+  var height: Int
+  /// The result that was the newest when the cutout was taken; a retouch is a result that differs from it.
+  var resultPathAtExtraction: String?
+  /// The retouched picture already put back once: both «put back» buttons keep working on it after the montage became the newest result.
+  var patchPath: String?
+}
+
 /// Normal runs the preset without the refiner, Fast the one with it.
 enum PanoMode: String, Codable, Sendable { case normal, fast }
 
@@ -37,6 +55,31 @@ struct PanoState: Codable, Equatable, Sendable {
   var description = ""
   var mode = PanoMode.normal
   var guides = true
+  var viewMode = PSViewMode.plane
+  var source = PSSource.canvas
+  var camera = PSCamera()
+  var cutoutMegapixels = 1.0
+  var lastCutout: PSCutoutMemory?
+
+  init() {}
+
+  /// Every field has a default and the new ones are read leniently: a file from before the sphere view loads, and a malformed new field falls back
+  /// without costing the rest.
+  init(from decoder: any Decoder) throws {
+    let c = try decoder.container(keyedBy: CodingKeys.self)
+    version = try c.decode(Int.self, forKey: .version)
+    // The fields of the first version are strict, as they always were: a damaged file is set aside as `.bak`, never read half.
+    stickers = try c.decode([Sticker].self, forKey: .stickers)
+    selectedID = try c.decodeIfPresent(UUID.self, forKey: .selectedID)
+    description = try c.decode(String.self, forKey: .description)
+    mode = try c.decode(PanoMode.self, forKey: .mode)
+    guides = try c.decode(Bool.self, forKey: .guides)
+    viewMode = (try? c.decodeIfPresent(PSViewMode.self, forKey: .viewMode)) ?? .plane
+    source = (try? c.decodeIfPresent(PSSource.self, forKey: .source)) ?? .canvas
+    camera = (try? c.decodeIfPresent(PSCamera.self, forKey: .camera)) ?? PSCamera()
+    cutoutMegapixels = (try? c.decodeIfPresent(Double.self, forKey: .cutoutMegapixels)) ?? 1
+    lastCutout = (try? c.decodeIfPresent(PSCutoutMemory.self, forKey: .lastCutout)) ?? nil
+  }
 
   /// The file of the folder, or an empty state: a missing file is just empty; one that cannot be read, or that a newer plug-in wrote,
   /// is set aside as `state.json.bak` (replacing an older backup) and the state starts empty.
