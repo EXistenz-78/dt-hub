@@ -34,7 +34,11 @@ struct RenderTests {
   @Test func rendersTheTab() async throws {
     guard let dir = ProcessInfo.processInfo.environment["PANORAMA360_RENDER_DIR"] else { return }
     let state = Self.sampleState()
-    state.preview = try state.renderedERP(width: 1024, height: 512)
+    state.preview = try state.renderPreview(scale: 1)
     try Self.render(PSView(state: state).content, to: dir, name: "tab.png")
+    state.setView(.sphere)
+    state.mutate { $0.camera = PSCamera(yaw: -10, pitch: 4, fov: 80) }
+    state.preview = try state.renderPreview(scale: 1)
+    try Self.render(PSView(state: state).content, to: dir, name: "tab-sphere.png", height: 1000)
   }
 }

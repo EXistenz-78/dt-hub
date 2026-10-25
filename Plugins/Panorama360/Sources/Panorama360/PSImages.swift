@@ -21,3 +21,19 @@ final class PSImageCache {
     return image
   }
 }
+
+/// Reads the last result of the project: upright, at most 4096 px on the long side (the plug-in only looks at it).
+enum PSResultLoader {
+  static let maxSide = 4096
+
+  static func load(_ url: URL) -> CGImage? {
+    guard let source = CGImageSourceCreateWithURL(url as CFURL, nil), CGImageSourceGetCount(source) > 0 else { return nil }
+    let options: [CFString: Any] = [
+      kCGImageSourceCreateThumbnailFromImageAlways: true, kCGImageSourceCreateThumbnailWithTransform: true,
+      kCGImageSourceThumbnailMaxPixelSize: maxSide, kCGImageSourceShouldCacheImmediately: true,
+    ]
+    guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary), image.width > 0, image.height > 0
+    else { return nil }
+    return image
+  }
+}

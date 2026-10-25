@@ -44,19 +44,55 @@ extension PSState {
     try PSRendererFactory.make().render(layers(), width: width, height: height, uOffset: uOffset)
   }
 
+  /// The drawing of the canvas picture for the view now chosen, ready to run anywhere: the ERP in the plane, the view from the camera in the
+  /// sphere (the stickers over green, or the last result).
+  func previewJob(scale: Double) -> @Sendable () throws -> CGImage {
+    let renderer = PSRendererFactory.make()
+    switch doc.viewMode {
+    case .plane:
+      let layers = layers()
+      let w = Int(Self.planeSize.width * scale), h = Int(Self.planeSize.height * scale)
+      return { try renderer.render(layers, width: w, height: h, uOffset: 0) }
+    case .sphere:
+      let camera = doc.camera
+      let w = Int(Self.sphereSize.width * scale), h = Int(Self.sphereSize.height * scale)
+      let source: PSViewSource = effectiveSource == .result ? .panorama(resultImage!) : .layers(layers())
+      return { try renderer.renderView(source, camera: camera, width: w, height: h) }
+    }
+  }
+
+  func renderPreview(scale: Double) throws -> CGImage { try previewJob(scale: scale)() }
+
   /// Draws the canvas picture in the background; a newer request makes an older answer be dropped.
   func refreshPreview(scale: Double) {
     previewGeneration += 1
     let generation = previewGeneration
-    let layers = layers()
-    let width = Int(1024 * scale), height = Int(512 * scale)
+    let job = previewJob(scale: scale)
     Task.detached(priority: .userInitiated) { [weak self] in
-      let image = try? PSRendererFactory.make().render(layers, width: width, height: height, uOffset: 0)
+      let image = try? job()
       await MainActor.run {
         guard let self, self.previewGeneration == generation, let image else { return }
         self.preview = image
       }
     }
+  }
+
+  /// The keys of the canvas and of the sphere view: arrows nudge the selected sticker (Shift: 5°), ⌫ deletes it, ⌘D duplicates it. Nothing
+  /// is edited while the result is shown.
+  func handleKey(_ press: KeyPress) -> KeyPress.Result {
+    guard doc.source == .canvas || doc.viewMode == .plane else { return .ignored }
+    let step = press.modifiers.contains(.shift) ? 5.0 : 1.0
+    switch press.key {
+    case .leftArrow: nudge(yaw: -step, pitch: 0)
+    case .rightArrow: nudge(yaw: step, pitch: 0)
+    case .upArrow: nudge(yaw: 0, pitch: step)
+    case .downArrow: nudge(yaw: 0, pitch: -step)
+    case .delete, .deleteForward: deleteSelected()
+    default:
+      guard press.modifiers.contains(.command) else { return .ignored }
+      duplicateSelected()
+    }
+    return .handled
   }
 
   // MARK: Writing

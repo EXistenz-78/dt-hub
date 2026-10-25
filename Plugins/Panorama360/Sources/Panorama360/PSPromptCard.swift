@@ -28,7 +28,7 @@ struct PSPromptCard: View {
           Spacer(minLength: 0)
           Text(state.text(.words, wordCount)).font(.caption.monospaced()).foregroundStyle(.secondary)
         }
-        if let message = state.error ?? state.warning ?? state.notice {
+        if let message = state.error ?? state.warning ?? (state.doc.viewMode == .sphere ? state.resultNotice : nil) ?? state.notice {
           Text(message).font(.callout).foregroundStyle(DS.remove).frame(maxWidth: .infinity, alignment: .leading)
             .padding(DS.boxPadding)
             .background(RoundedRectangle(cornerRadius: DS.minorRadius).fill(DS.remove.opacity(0.12)))

@@ -32,6 +32,12 @@ final class PSState: ObservableObject {
   var drag: PSDrag? { didSet { isDragging = drag != nil } }
   var previewGeneration = 0
   let italian: Bool
+  /// The size the canvas pictures are drawn at (the ERP, and the 4:3 view from the camera).
+  static let planeSize = CGSize(width: 1024, height: 512)
+  static let sphereSize = CGSize(width: 1024, height: 768)
+  /// The newest result of the project, from the app's context, and the picture read from its file.
+  @Published private(set) var lastResultPath: String?
+  @Published private(set) var resultImage: CGImage?
   /// Brings a picture file into the project folder (the real store; a test puts another here).
   var addPicture: (URL, URL) throws -> PSStickerAdded = { try PSStickerStore.add(contentsOf: $0, into: $1) }
 
@@ -65,6 +71,33 @@ final class PSState: ObservableObject {
     guard let context = try? JSONDecoder().decode(DTHubContext.self, from: context) else { return }
     modelFile = context.model
     tempFolder = context.tempFolder
+    setLastResult(context.lastResult?.path)
+  }
+
+  /// The source the view really shows: the result only when there is a result to show.
+  var effectiveSource: PSSource { doc.source == .result && resultImage != nil ? .result : .canvas }
+
+  /// What is wrong with the result, in words (nil when there is none or it is fine): a file that cannot be read, or a picture that is not 2:1.
+  var resultNotice: String? {
+    guard lastResultPath != nil else { return nil }
+    guard let image = resultImage else { return text(.resultUnreadable) }
+    return abs(Double(image.width) / Double(image.height) - 2) > 0.04 ? text(.resultNotTwoToOne) : nil
+  }
+
+  private func setLastResult(_ path: String?) {
+    if path != lastResultPath || (path != nil && resultImage == nil) {
+      lastResultPath = path
+      resultImage = path.flatMap { PSResultLoader.load(URL(fileURLWithPath: $0)) }
+    }
+    // Without a result to show, the canvas is what the view shows.
+    if resultImage == nil, doc.source == .result { mutate { $0.source = .canvas } }
+  }
+
+  func setView(_ mode: PSViewMode) { mutate { $0.viewMode = mode } }
+
+  func setSource(_ source: PSSource) {
+    guard source == .canvas || resultImage != nil else { return }
+    mutate { $0.source = source }
   }
 
   func mutate(_ change: (inout PanoState) -> Void) {

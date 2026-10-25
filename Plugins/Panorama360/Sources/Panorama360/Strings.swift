@@ -7,6 +7,7 @@ enum L {
     case canvasTitle, guides, clearAll, clearConfirm, clearConfirmMessage, cancel
     case stickersTitle, yaw, pitch, rotation, fieldOfView, verticalFieldOfView, opacity, duplicate, delete, add, toggleVisible
     case croppedPhoto, unreadableFile, openProjectFirst, dropHere
+    case viewPlane, viewSphere, sourceCanvas, sourceResult, resetView, noResultYet, resultUnreadable, resultNotTwoToOne
     case modeNormal, modeFast, send, noVisibleSticker, sendFailed, noAnswerFromApp, notBaseWarning
     case promptTitle, promptPlaceholder, improve, improving, undo, words, emptyDescription, answerNotEnglish, answerRejected, improveStale
   }
@@ -29,6 +30,9 @@ enum L {
     .verticalFieldOfView: "Vertical FOV (°)", .opacity: "Opacity", .duplicate: "Duplicate", .delete: "Delete", .add: "Add picture",
     .toggleVisible: "Show or hide", .croppedPhoto: "“%@” looks cropped: its focal length was not used.",
     .unreadableFile: "“%@” could not be read.", .openProjectFirst: "Open a project first.", .dropHere: "Drop pictures here",
+    .viewPlane: "Plane", .viewSphere: "Sphere", .sourceCanvas: "Canvas", .sourceResult: "Result", .resetView: "Look straight ahead",
+    .noResultYet: "No result yet.\nRUN and it will show here.", .resultUnreadable: "The last result's file cannot be read.",
+    .resultNotTwoToOne: "The last result is not 2:1: it is shown as a panorama all the same.",
     .modeNormal: "Normal", .modeFast: "Fast", .send: "Send to Generation",
     .noVisibleSticker: "Add at least one visible sticker.", .sendFailed: "The panorama could not be drawn.",
     .noAnswerFromApp: "No answer from DT Hub.",
@@ -47,6 +51,9 @@ enum L {
     .verticalFieldOfView: "FOV verticale (°)", .opacity: "Opacità", .duplicate: "Duplica", .delete: "Elimina", .add: "Aggiungi immagine",
     .toggleVisible: "Mostra o nascondi", .croppedPhoto: "«%@» sembra ritagliata: la focale non è stata usata.",
     .unreadableFile: "«%@» non si può leggere.", .openProjectFirst: "Apri prima un progetto.", .dropHere: "Rilascia le immagini qui",
+    .viewPlane: "Piano", .viewSphere: "Sfera", .sourceCanvas: "Canvas", .sourceResult: "Risultato", .resetView: "Riporta la vista davanti",
+    .noResultYet: "Nessun risultato ancora.\nFai un RUN e comparirà qui.", .resultUnreadable: "Il file dell'ultimo risultato non si legge.",
+    .resultNotTwoToOne: "L'ultimo risultato non è 2:1: lo mostro lo stesso come panorama.",
     .modeNormal: "Normale", .modeFast: "Veloce", .send: "Invia a Generazione",
     .noVisibleSticker: "Aggiungi almeno uno sticker visibile.", .sendFailed: "Non è stato possibile disegnare il panorama.",
     .noAnswerFromApp: "Nessuna risposta da DT Hub.",

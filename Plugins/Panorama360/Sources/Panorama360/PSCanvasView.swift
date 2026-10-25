@@ -7,7 +7,6 @@ struct PSCanvasView: View {
   @ObservedObject var state: PSState
   @State private var pressed = false
   @FocusState private var focused: Bool
-  @State private var dropTargeted = false
 
   var body: some View {
     GeometryReader { geometry in
@@ -23,25 +22,11 @@ struct PSCanvasView: View {
       .frame(width: size.width, height: size.height)
       .clipShape(RoundedRectangle(cornerRadius: DS.boxRadius))
       .overlay(RoundedRectangle(cornerRadius: DS.boxRadius).stroke(Color.primary.opacity(0.18)))
-      .overlay {
-        if dropTargeted {
-          ZStack {
-            RoundedRectangle(cornerRadius: DS.boxRadius).fill(DS.accent.opacity(0.25))
-            RoundedRectangle(cornerRadius: DS.boxRadius).strokeBorder(DS.accent, style: StrokeStyle(lineWidth: 3, dash: [8, 6]))
-            Text(state.text(.dropHere)).font(.headline)
-          }
-        }
-      }
-      .onDrop(of: PSDrop.types, isTargeted: $dropTargeted) { providers in
-        let temp = URL(fileURLWithPath: state.tempFolder.isEmpty ? NSTemporaryDirectory() : state.tempFolder, isDirectory: true)
-        PSDrop.collect(providers, tempFolder: temp) { state.addStickers(from: $0) }
-        return true
-      }
       .focusable()
       .focusEffectDisabled()
       .focused($focused)
       .onKeyPress(keys: [.leftArrow, .rightArrow, .upArrow, .downArrow, .delete, .deleteForward, KeyEquivalent("d")]) { press in
-        keyPressed(press)
+        state.handleKey(press)
       }
     }
     .aspectRatio(2, contentMode: .fit)
@@ -66,21 +51,6 @@ struct PSCanvasView: View {
         pressed = false
         state.pointerUp()
       }
-  }
-
-  private func keyPressed(_ press: KeyPress) -> KeyPress.Result {
-    let step = press.modifiers.contains(.shift) ? 5.0 : 1.0
-    switch press.key {
-    case .leftArrow: state.nudge(yaw: -step, pitch: 0)
-    case .rightArrow: state.nudge(yaw: step, pitch: 0)
-    case .upArrow: state.nudge(yaw: 0, pitch: step)
-    case .downArrow: state.nudge(yaw: 0, pitch: -step)
-    case .delete, .deleteForward: state.deleteSelected()
-    default:
-      guard press.modifiers.contains(.command) else { return .ignored }
-      state.duplicateSelected()
-    }
-    return .handled
   }
 }
 
