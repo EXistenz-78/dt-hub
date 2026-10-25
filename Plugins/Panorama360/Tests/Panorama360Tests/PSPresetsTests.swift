@@ -18,7 +18,7 @@ struct PSPresetsTests {
     let normal = PSPresets.messages()[0]
     #expect(normal["model"] as? String == "flux_2_klein_base_9b_i8x.ckpt")
     let f = fields(normal)
-    #expect(f["steps"] as? Int == 16)
+    #expect(f["steps"] as? Int == 30)
     #expect(f["guidanceScale"] as? Double == 4)
     #expect(f["sampler"] as? Int == 16)
     #expect(f["shift"] as? Double == 3)
@@ -33,13 +33,16 @@ struct PSPresetsTests {
     #expect(normal["advanced"] == nil || (normal["advanced"] as? [String: Any])?["refinerModel"] == nil)
   }
 
-  @Test func fastPresetAddsTheRefinerAndNothingElse() throws {
+  @Test func fastPresetAddsTheRefinerAndRunsFewerSteps() throws {
     let normal = PSPresets.messages()[0], fast = PSPresets.messages()[1]
     let advanced = try #require(fast["advanced"] as? [String: Any])
     #expect(advanced["refinerModel"] as? String == "flux_2_klein_9b_kv_i8x.ckpt")
     #expect(advanced["refinerStart"] as? Double == 0.25)
     #expect(fast["model"] as? String == normal["model"] as? String)
-    #expect(NSDictionary(dictionary: fields(fast)).isEqual(to: fields(normal)))
+    #expect(fields(fast)["steps"] as? Int == 16)
+    var sameButSteps = fields(fast)
+    sameButSteps["steps"] = 30
+    #expect(NSDictionary(dictionary: sameButSteps).isEqual(to: fields(normal)))
     #expect(fast["loras"] as? [[String: Any]] != nil)
   }
 

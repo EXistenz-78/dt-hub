@@ -23,7 +23,8 @@ The first time DT Hub starts with the plug-in, it adds `PAN · 360 ERP` and `PAN
 | --- | --- | --- |
 | Model | `flux_2_klein_base_9b_i8x.ckpt` | the same |
 | Refiner | none | `flux_2_klein_9b_kv_i8x.ckpt`, from 0.25 |
-| Steps / guidance / sampler / shift | 16 / 4 / 16 / 3 (shift worked out from the size) | the same |
+| Steps | 30 | 16 |
+| Guidance / sampler / shift | 4 / 16 / 3 (shift worked out from the size) | the same |
 | LoRA | `f2_360_erp_outpaint_lora_v1_lora_f16.ckpt` at 1 | the same |
 
 If the preset's model or LoRA is not installed, the plug-in shows what DT Hub says. If a model that is not a Base one ends up selected, a warning says that the LoRA works only with Base models.
