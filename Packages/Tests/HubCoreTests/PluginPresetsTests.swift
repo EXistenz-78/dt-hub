@@ -132,4 +132,23 @@ struct PluginPresetsRoutingTests {
     let load = PresetLoad.of(try #require(presets.first), current: GenerationFields(), catalog: catalog)
     #expect(load.parameters.loras.first?.trigger == "match the sun")
   }
+
+  @Test func aPresetMessageCarriesTheModelAndTheAdvancedValues() throws {
+    let json = #"""
+      {"type":"presets","presets":[
+        {"name":"PAN · A","model":"m.ckpt","fields":{"steps":16},"advanced":{"refinerModel":"r.ckpt","refinerStart":0.25}},
+        {"name":"PAN · B","fields":{"steps":4}},
+        {"name":"PAN · C","model":7,"advanced":"no"}]}
+      """#
+    let parsed = try #require(PluginPresets(message: Data(json.utf8)))
+    #expect(parsed.presets.count == 3)
+    #expect(parsed.presets[0].model == "m.ckpt")
+    #expect(parsed.presets[0].parameters.advanced.refinerModel == "r.ckpt")
+    #expect(parsed.presets[0].parameters.advanced.refinerStart == 0.25)
+    #expect(parsed.presets[0].parameters.steps == 16)
+    #expect(parsed.presets[1].model == "")
+    #expect(parsed.presets[1].parameters.advanced == AdvancedParameters.default)
+    #expect(parsed.presets[2].model == "")
+    #expect(parsed.presets[2].parameters.advanced == AdvancedParameters.default)
+  }
 }

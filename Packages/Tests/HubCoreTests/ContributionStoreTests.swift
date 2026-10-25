@@ -46,6 +46,18 @@ final class FakeContributionTarget: ContributionTarget {
 
   func setStrength(_ value: Double) { strengths.append(value) }
 
+  /// What a preset does to the fields when applied, and the reason it is refused (nil applies it).
+  var presetEffect: ((inout GenerationFields) -> Void)?
+  var presetProblem: String?
+  private(set) var appliedPresets: [String] = []
+
+  func applyPreset(named name: String) -> String? {
+    appliedPresets.append(name)
+    if let presetProblem { return presetProblem }
+    presetEffect?(&fields)
+    return nil
+  }
+
   func setPaint(_ image: PluginImageRef) throws {
     order.append("paint")
     if let paintError { throw paintError }
@@ -355,5 +367,38 @@ struct ContributionStoreTests {
       from: "qwen")
     #expect(problems.isEmpty)
     #expect(Array(target.order.suffix(2)) == ["start", "paint"])
+  }
+
+  // MARK: contribute.preset
+
+  @Test func thePresetIsAppliedBeforeTheFieldsOfTheSameMessage() {
+    target.presetEffect = { $0.parameters.steps = 16; $0.prompt = "from the preset" }
+    var message = contribution([.prompt: .text("mine")])
+    message.preset = "PAN · 360 ERP"
+    let problems = store.receive(message, from: "a")
+    #expect(problems.isEmpty)
+    #expect(target.appliedPresets == ["PAN · 360 ERP"])
+    #expect(target.fields.parameters.steps == 16)
+    #expect(target.fields.prompt == "mine")
+    #expect(store.marks[.steps]?.pluginID == "a" && store.marks[.steps]?.value == .int(16))
+    #expect(store.marks[.prompt]?.value == .text("mine"))
+  }
+
+  @Test func aRefusedPresetIsAProblemAndTheRestOfTheMessageStillApplies() {
+    target.presetProblem = "the preset is not there"
+    var message = contribution([.steps: .int(9)])
+    message.preset = "Nope"
+    let problems = store.receive(message, from: "a")
+    #expect(problems == ["preset: the preset is not there"])
+    #expect(target.fields.parameters.steps == 9)
+  }
+
+  @Test func aPresetIsNotAppliedWhileAPipelineRuns() {
+    store.pipelineLocked = true
+    var message = contribution()
+    message.preset = "PAN · 360 ERP"
+    let problems = store.receive(message, from: "a")
+    #expect(problems == ["preset: a pipeline is running."])
+    #expect(target.appliedPresets.isEmpty)
   }
 }

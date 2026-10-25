@@ -404,13 +404,14 @@ public final class DTHubHost {
   }
 
   /// Sends a `contribute` message — `fields`, `loras`, `moodboard`, `startImage`, `pipeline`; every key is
-  /// optional (see the README) — and returns the app's answer: `{"type":"ok","conflicts":n}` or an `error`.
+  /// optional (see the README; `preset` names a saved preset applied first) — and returns the app's answer: `{"type":"ok","conflicts":n}` or an `error`.
   public func contribute(_ body: [String: Any]) async -> [String: Any]? {
     await sendJSON(body.merging(["type": "contribute"]) { _, new in new })
   }
 
   /// Sends a `presets` message: presets for the app's Preset menu, each `{"name", "fields", "loras"}` (the keys of
-  /// `contribute`; the prompt and the negative prompt go in `fields`; a preset has no size and no model). A
+  /// `contribute`; the prompt and the negative prompt go in `fields`; a preset has no size), and optionally `model` (a file
+  /// name) and `advanced` (an object of advanced values such as `refinerModel` and `refinerStart`). A
   /// name that is in the menu already is never touched. The answer is `{"type":"ok","added":n,"existing":m}`.
   public func registerPresets(_ presets: [[String: Any]]) async -> [String: Any]? {
     await sendJSON(["type": "presets", "presets": presets])

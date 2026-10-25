@@ -97,6 +97,9 @@ public protocol ContributionTarget: AnyObject {
   func setPaint(_ image: PluginImageRef) throws
   /// A finished picture a plug-in made, kept as a result (project folder and Results strip).
   func addResult(_ image: PluginImageRef, description: String) throws
+  /// Loads the saved preset as the Preset menu does (parameters, prompts when it has them, its model when it names one).
+  /// nil when it was applied, the reason when it was not.
+  func applyPreset(named name: String) -> String?
 }
 
 /// Remembers what each plug-in contributed, so the tab can show it (teal, the value in brackets) and so a
@@ -127,6 +130,24 @@ public final class ContributionStore {
   public func receive(_ contribution: PluginContribution, from pluginID: String) -> [String] {
     guard let target else { return ["The app is not ready."] }
     var problems: [String] = []
+
+    // A preset goes first: what the same message says after it (fields, LoRAs, start image) is applied on top. Every field the
+    // preset changed is marked for the plug-in, as if it had sent it; no conflict, the last one to write wins.
+    if let name = contribution.preset {
+      if pipelineLocked {
+        problems.append("preset: a pipeline is running.")
+      } else {
+        let before = target.fields
+        if let reason = target.applyPreset(named: name) {
+          problems.append("preset: \(reason)")
+        } else {
+          let after = target.fields
+          for field in ContributionField.allCases where before.value(of: field) != after.value(of: field) {
+            marks[field] = FieldMark(pluginID: pluginID, value: after.value(of: field), isOverridden: false)
+          }
+        }
+      }
+    }
 
     var accepted: [ContributionField: FieldValue] = [:]
     for field in contribution.fields.fields {

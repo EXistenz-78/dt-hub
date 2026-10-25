@@ -87,6 +87,11 @@ language models of the app's models folder (`family`: the family the user assign
     `estimate` is a pass like the biggest one, so the CU meter can measure `n` of them. The user sees it on the Run
     button ("Run · n passes") and presses RUN as for any pipeline; the app then **asks the plug-in for each pass in
     turn** (see *Guided pipeline* below). While it runs, no other pipeline and no RUN can start.
+  - `preset`: the name of a saved preset (needs the DT Hub release after 0.4.3), applied **first**, as the Preset menu applies it
+    (parameters, prompt and negative prompt when it has them, its LoRAs, its advanced values, and its model when it names one); the
+    rest of the same message (`fields`, `loras`, `startImage`, `strength`…) is applied on top. The fields the preset changed turn
+    teal for the plug-in; no conflict, the last one to write wins. A name the menu does not have, or a pipeline that is
+    running, comes back in `problems` (`"preset: …"`) and changes nothing.
   The fields a plug-in filled turn teal; the user can always change them. If two plug-ins fill the same field, or
   both propose a start image or a pipeline, the user chooses in a pop-up.
 - **Guided pipeline** (app → plug-in, answered by the plug-in), for a plug-in that has to compose or choose between
@@ -115,8 +120,7 @@ language models of the app's models folder (`family`: the family the user assign
   file in the app's Presets folder, named after the preset. **Name them with your own acronym** (2–4 letters), a
   middle dot and the name — `SMP · Overcast`, `SLR · Match the sun` — because that is the only sign of where a
   preset comes from. A name cannot contain `/` or `:`, start with a dot or be longer than 120 characters (file system rules); capitals and accents do not tell two
-  names apart. `fields` has the keys of `contribute` above, the prompt and the negative prompt included; no size,
-  no model. A name the menu has already is never touched (the user may have changed it), so register them
+  names apart. `fields` has the keys of `contribute` above, the prompt and the negative prompt included; no size. Since the DT Hub release after 0.4.3 an entry may also carry `model` (a file name, such as `flux_2_klein_base_9b_i8x.ckpt`: loading the preset selects that model) and `advanced` (an object with the advanced values to set, such as `{"refinerModel":"…","refinerStart":0.25}`; keys not given stay at their default). A name the menu has already is never touched (the user may have changed it), so register them
   whenever you like. The answer is `{"type":"ok","added":n,"existing":m,"rejected":k}`.
 - `llm` — `{"prompt", "images": [paths], "system", "model", "options", "messages"}`: a question for the language model. `messages` (optional) holds the earlier turns of a conversation, oldest first: `[{"role":"user"|"assistant","text"}]`; `prompt` is the new message and `images` go with it (an entry with another role or without a text is skipped). `DTHubHost.askLanguageModel(…, history:)` sends them. The answer
   is `{"type":"llm","text":…}` (it can take a while: the model may have to load) or an `error`. Only `prompt` is

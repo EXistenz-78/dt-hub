@@ -60,7 +60,7 @@ struct DTHubApp: App {
       settings: PluginSettingsStore(fileURL: PluginSettingsStore.defaultFileURL), loader: BundlePluginLoader(),
       tempFolder: FileManager.default.temporaryDirectory.appendingPathComponent("DTHub-plugins", isDirectory: true))
     // Contributions land on the Generation tab; a plug-in's question goes to the language model.
-    generation.attach(plugins.contributions)
+    generation.attach(plugins.contributions, connection: connection)
     // `defaults write com.exiztenz.DTHub debug.keepGuidedSessionFiles -bool YES` keeps the pictures of the passes of a pipeline a
     // plug-in guides (the tiles of an enlargement) to look at them; `defaults delete …` goes back to the clean-up.
     plugins.keepsSessionFolders = UserDefaults.standard.bool(forKey: "debug.keepGuidedSessionFiles")

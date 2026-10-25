@@ -168,12 +168,15 @@ public struct PluginContribution: Equatable, Sendable {
   public var paint: PluginImageRef?
   /// A finished picture to keep as a result (a PNG in the plug-in's folder).
   public var result: PluginResult?
+  /// The name of a saved preset to apply as the Preset menu does, before the rest of the message.
+  public var preset: String?
 
   public init(
     fields: FieldOverlay = FieldOverlay(), loras: [LoRASelection] = [], moodboard: [PluginImageRef] = [],
     startImage: PluginImageRef? = nil, pipeline: PluginPipeline? = nil, strength: Double? = nil,
-    paint: PluginImageRef? = nil, result: PluginResult? = nil
+    paint: PluginImageRef? = nil, result: PluginResult? = nil, preset: String? = nil
   ) {
+    self.preset = preset
     self.result = result
     self.strength = strength
     self.paint = paint
@@ -212,7 +215,14 @@ public struct PluginContribution: Equatable, Sendable {
     self.init(
       fields: fields, loras: Self.loras(object["loras"]) ?? [], moodboard: Self.images(object["moodboard"]) ?? [],
       startImage: PluginImageRef(object["startImage"]), pipeline: pipeline, strength: Self.strength(object["strength"]),
-      paint: PluginImageRef(object["paint"]), result: Self.result(object["result"]))
+      paint: PluginImageRef(object["paint"]), result: Self.result(object["result"]), preset: Self.presetName(object["preset"]))
+  }
+
+  /// A preset name, trimmed; nothing when it is empty or not a string.
+  static func presetName(_ value: JSONValue?) -> String? {
+    guard case .string(let raw)? = value else { return nil }
+    let name = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+    return name.isEmpty ? nil : name
   }
 
   /// `{"path","name","description"}`; nothing without a path.
@@ -244,7 +254,7 @@ public struct PluginContribution: Equatable, Sendable {
   /// True when the message carries nothing the app can use.
   public var isEmpty: Bool {
     fields.isEmpty && loras.isEmpty && moodboard.isEmpty && startImage == nil && pipeline == nil && strength == nil
-      && paint == nil && result == nil
+      && paint == nil && result == nil && preset == nil
   }
 
   static func loras(_ value: JSONValue?) -> [LoRASelection]? {

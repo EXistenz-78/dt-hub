@@ -72,6 +72,8 @@ final class GenerationController {
   @ObservationIgnored var guidedChannel: GuidedPluginChannel?
   /// What the plug-ins contributed (teal fields, conflicts, the pipeline); set by `attach`.
   @ObservationIgnored private(set) var contributions: ContributionStore?
+  /// The connection a plug-in's `contribute.preset` loads the preset through (its model goes to the header's selection).
+  @ObservationIgnored private var presetConnection: DrawThingsConnection?
   /// The presets of the held pipeline, for the CU meter (see `cuPasses`).
   @ObservationIgnored private var cuPresetCache: (pipeline: PluginPipeline, names: [String], presets: [String: Preset])?
 
@@ -702,8 +704,9 @@ final class GenerationController {
   }
 
   /// The plug-ins' contributions land here; the fields leaving their value are told to the store.
-  func attach(_ store: ContributionStore) {
+  func attach(_ store: ContributionStore, connection: DrawThingsConnection) {
     contributions = store
+    presetConnection = connection
     store.target = self
     store.pipelineLocked = isPipelineRunning
   }
@@ -820,6 +823,17 @@ extension GenerationController: ContributionTarget {
   }
 
   var loraFiles: Set<String> { Set(parameters.loras.map(\.file)) }
+
+  /// A plug-in's `contribute.preset`: the saved preset loaded as the Preset menu loads it.
+  func applyPreset(named name: String) -> String? {
+    guard let connection = presetConnection else { return "the app is not ready." }
+    switch loadPreset(named: name, with: connection) {
+    case nil: return nil
+    case .notFound?: return "there is no preset named “\(name)”."
+    case .unreadable?: return "the file of the preset “\(name)” cannot be read."
+    case .some: return "the preset “\(name)” cannot be used."
+    }
+  }
 
   func addLoRA(_ lora: LoRASelection) {
     if parameters.loras.contains(where: { $0.file == lora.file }) {

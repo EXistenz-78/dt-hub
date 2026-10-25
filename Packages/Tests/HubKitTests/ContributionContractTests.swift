@@ -117,4 +117,15 @@ struct PluginPresetsTests {
     #expect(PluginPresets(message: Data("[1]".utf8)) == nil)
     #expect(PluginPresets(message: Data(#"{"presets":[]}"#.utf8))?.presets.isEmpty == true)
   }
+
+  @Test func theContributionNamesAPreset() throws {
+    let named = try #require(PluginContribution(message: Data(#"{"preset":"  PAN · 360 ERP  "}"#.utf8)))
+    #expect(named.preset == "PAN · 360 ERP")
+    #expect(!named.isEmpty)
+    let empty = try #require(PluginContribution(message: Data(#"{"preset":"  "}"#.utf8)))
+    #expect(empty.preset == nil)
+    #expect(empty.isEmpty)
+    let wrong = try #require(PluginContribution(message: Data(#"{"preset":3}"#.utf8)))
+    #expect(wrong.preset == nil)
+  }
 }
