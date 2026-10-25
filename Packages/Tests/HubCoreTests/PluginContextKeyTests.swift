@@ -41,4 +41,15 @@ struct PluginContextKeyTests {
     other.moodboardIDs = "A,B"
     #expect(base != other)
   }
+
+  @Test func aNewLastResultChangesTheContextKeySoThePluginsHearAboutIt() {
+    var first = base
+    first.lastResultID = "r1"
+    var second = base
+    second.lastResultID = "r2"
+    #expect(base != first && first != second)
+    var again = base
+    again.lastResultID = "r1"
+    #expect(first == again)
+  }
 }

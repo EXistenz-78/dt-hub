@@ -77,6 +77,18 @@ struct DTHubPluginKitTests {
     #expect(broken.startImageWindow == nil && broken.startImage == "/s.png")
   }
 
+  @Test func theLastResultIsReadAndNeverCostsTheRestOfTheContext() throws {
+    let with = try JSONDecoder().decode(
+      DTHubContext.self,
+      from: Data(#"{"type":"context","tempFolder":"/t","lastResult":{"path":"/r/p.png","name":"p.png"}}"#.utf8))
+    #expect(with.lastResult == DTHubLastResult(path: "/r/p.png", name: "p.png"))
+    let without = try JSONDecoder().decode(DTHubContext.self, from: Data(#"{"type":"context","tempFolder":"/t"}"#.utf8))
+    #expect(without.lastResult == nil)
+    let broken = try JSONDecoder().decode(
+      DTHubContext.self, from: Data(#"{"type":"context","tempFolder":"/t","startImage":"/s.png","lastResult":42}"#.utf8))
+    #expect(broken.lastResult == nil && broken.startImage == "/s.png")
+  }
+
   private func contextWithoutWindow() throws -> DTHubContext {
     try JSONDecoder().decode(DTHubContext.self, from: Data(#"{"type":"context","tempFolder":"/t"}"#.utf8))
   }

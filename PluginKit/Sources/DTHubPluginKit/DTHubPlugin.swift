@@ -114,10 +114,13 @@ public struct DTHubContext: Decodable, Sendable {
   /// pixels from the top-left (it can be larger than the image: the rest is margin). nil without a start image or from
   /// an app older than 0.4.0.
   public var startImageWindow: DTHubImageWindow?
+  /// The newest result of the open project (a file); nil when there is none or from an app older than the release after 0.4.3.
+  public var lastResult: DTHubLastResult?
 
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
     startImageWindow = (try? container.decodeIfPresent(DTHubImageWindow.self, forKey: .startImageWindow)) ?? nil
+    lastResult = (try? container.decodeIfPresent(DTHubLastResult.self, forKey: .lastResult)) ?? nil
     model = try container.decodeIfPresent(String.self, forKey: .model)
     family = try container.decodeIfPresent(String.self, forKey: .family)
     tempFolder = try container.decode(String.self, forKey: .tempFolder)
@@ -137,7 +140,18 @@ public struct DTHubContext: Decodable, Sendable {
 
   private enum CodingKeys: String, CodingKey {
     case model, family, tempFolder, startImage, moodboard, languageModels, parameters, prompt, negativePrompt, strength
-    case promptGuide, loraCatalog, startImageWindow
+    case promptGuide, loraCatalog, startImageWindow, lastResult
+  }
+}
+
+/// The newest result of the project (`DTHubContext.lastResult`).
+public struct DTHubLastResult: Decodable, Equatable, Sendable {
+  public var path: String
+  public var name: String
+
+  public init(path: String, name: String) {
+    self.path = path
+    self.name = name
   }
 }
 

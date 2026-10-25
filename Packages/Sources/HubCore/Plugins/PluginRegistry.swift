@@ -75,6 +75,8 @@ public final class PluginRegistry: PluginHosting {
   @ObservationIgnored public var startImagePath: (@MainActor () -> String?)?
   /// Where the start image sits in the canvas (the framing of the Control tab); nil without a start image.
   @ObservationIgnored public var startImageWindow: (@MainActor () -> PluginImageWindow?)?
+  /// The file of the newest result of the project, for `lastResult` in the context.
+  @ObservationIgnored public var lastResultPath: (@MainActor () -> String?)?
   /// The paths of the Moodboard pictures that are on; read whenever a context is sent.
   @ObservationIgnored public var moodboardPaths: (@MainActor () -> [String])?
   /// The language models of the models folder; read whenever a context is sent.
@@ -313,7 +315,8 @@ public final class PluginRegistry: PluginHosting {
       startImage: startImagePath?(), moodboard: moodboardPaths.flatMap { $0().nilIfEmpty },
       languageModels: languageModels?(), prompt: currentPrompts?().prompt, negativePrompt: currentPrompts?().negativePrompt,
       strength: startImageStrength?(), promptGuide: promptGuide?(),
-      loraCatalog: loraCatalog?().map(PluginCatalogLoRA.init), startImageWindow: startImageWindow?())
+      loraCatalog: loraCatalog?().map(PluginCatalogLoRA.init), startImageWindow: startImageWindow?(),
+      lastResult: lastResultPath?().map { PluginLastResult(path: $0, name: URL(fileURLWithPath: $0).lastPathComponent) })
     guard let data = try? JSONEncoder().encode(context) else { return }
     send(data, to: identifier)
   }

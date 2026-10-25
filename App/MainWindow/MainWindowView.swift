@@ -19,7 +19,8 @@ struct MainWindowView: View {
       model: model?.file, family: model?.family, isEditModel: model?.capabilities.isEditModel, startImageID: generation.control.inputs.image?.id.uuidString,
       moodboardIDs: moodboard, width: generation.parameters.width, height: generation.parameters.height,
       framingZoom: generation.control.inputs.framing.zoom, framingOffsetX: generation.control.inputs.framing.offsetX,
-      framingOffsetY: generation.control.inputs.framing.offsetY)
+      framingOffsetY: generation.control.inputs.framing.offsetY,
+      lastResultID: generation.session.results.first?.id.uuidString)
   }
 
   var body: some View {

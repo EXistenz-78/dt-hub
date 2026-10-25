@@ -871,7 +871,9 @@ extension GenerationController: ContributionTarget {
   /// strip, filed under the model of the pipeline that made it, with `description` where the prompt would be. Only while
   /// a pipeline the plug-in guides is running.
   func addResult(_ image: PluginImageRef, description: String) throws {
-    guard let model = guidedModelFile else { throw ControlError.unreadable(image.name) }
+    guard let model = ResultFiling.model(guided: guidedModelFile, header: presetConnection?.selection.selectedFile) else {
+      throw ControlError.unreadable(image.name)
+    }
     let url = URL(fileURLWithPath: image.path)
     guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
       let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],

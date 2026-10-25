@@ -16,11 +16,15 @@ public struct PluginContextKey: Equatable, Sendable {
   public var framingZoom: Double
   public var framingOffsetX: Double
   public var framingOffsetY: Double
+  /// The id of the newest result of the project: a plug-in that shows it has to hear when a new one arrives.
+  public var lastResultID: String?
 
   public init(
     model: String?, family: String?, isEditModel: Bool? = nil, startImageID: String?, moodboardIDs: String, width: Int,
-    height: Int, framingZoom: Double = 0, framingOffsetX: Double = 0, framingOffsetY: Double = 0
+    height: Int, framingZoom: Double = 0, framingOffsetX: Double = 0, framingOffsetY: Double = 0,
+    lastResultID: String? = nil
   ) {
+    self.lastResultID = lastResultID
     self.framingZoom = framingZoom
     self.framingOffsetX = framingOffsetX
     self.framingOffsetY = framingOffsetY

@@ -93,6 +93,7 @@ struct DTHubApp: App {
     plugins.startImageWindow = {
       control.startImageWindow(canvasWidth: generation.parameters.width, canvasHeight: generation.parameters.height)
     }
+    plugins.lastResultPath = { generation.session.results.first?.fileURL?.path }
     plugins.moodboardPaths = { control.moodboardURLs.map(\.path) }
     plugins.languageModels = {
       languageModel.availableModels().map {

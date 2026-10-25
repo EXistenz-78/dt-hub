@@ -144,6 +144,17 @@ public struct PluginImageWindow: Codable, Equatable, Sendable {
   }
 }
 
+/// The last result of the project, as a file (`PluginContext.lastResult`).
+public struct PluginLastResult: Codable, Equatable, Sendable {
+  public var path: String
+  public var name: String
+
+  public init(path: String, name: String) {
+    self.path = path
+    self.name = name
+  }
+}
+
 /// App → plug-in: where the app stands (sent when the plug-in is activated, when the model, its parameters or the
 /// start image change, and when the user comes back to a tab).
 public struct PluginContext: Codable, Equatable, Sendable {
@@ -172,13 +183,18 @@ public struct PluginContext: Codable, Equatable, Sendable {
   /// Where the start image sits in the canvas of the Generation (the framing of the Control tab). Absent without a start
   /// image or from an older app.
   public var startImageWindow: PluginImageWindow?
+  /// The newest result of the open project (the first of the Results strip): its file. Absent when there is none or from an
+  /// older app.
+  public var lastResult: PluginLastResult?
 
   public init(
     model: String?, family: String?, parameters: GenerationParameters, tempFolder: String, startImage: String? = nil,
     moodboard: [String]? = nil, languageModels: [PluginLanguageModel]? = nil, prompt: String? = nil,
     negativePrompt: String? = nil, strength: Double? = nil, promptGuide: PluginPromptGuide? = nil,
-    loraCatalog: [PluginCatalogLoRA]? = nil, startImageWindow: PluginImageWindow? = nil
+    loraCatalog: [PluginCatalogLoRA]? = nil, startImageWindow: PluginImageWindow? = nil,
+    lastResult: PluginLastResult? = nil
   ) {
+    self.lastResult = lastResult
     self.startImageWindow = startImageWindow
     self.loraCatalog = loraCatalog
     self.promptGuide = promptGuide

@@ -151,4 +151,15 @@ struct PluginContractTests {
     let old = try JSONDecoder().decode(PluginPromptGuide.self, from: Data(#"{"label":"Q","usesNegative":true,"notes":"- n"}"#.utf8))
     #expect(old.familyPrompt == nil && old.words == nil && old.maxWords == nil)
   }
+
+  @Test func theContextCarriesTheLastResultOrNothing() throws {
+    let with = PluginContext(
+      model: nil, family: nil, parameters: GenerationParameters(), tempFolder: "/t",
+      lastResult: PluginLastResult(path: "/r/p.png", name: "p.png"))
+    let json = try #require(String(data: try JSONEncoder().encode(with), encoding: .utf8))
+    #expect(json.contains(#""lastResult""#) && json.contains("p.png"))
+    #expect(try JSONDecoder().decode(PluginContext.self, from: JSONEncoder().encode(with)) == with)
+    let without = PluginContext(model: nil, family: nil, parameters: GenerationParameters(), tempFolder: "/t")
+    #expect(!(String(data: try JSONEncoder().encode(without), encoding: .utf8) ?? "").contains("lastResult"))
+  }
 }
