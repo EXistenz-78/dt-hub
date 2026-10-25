@@ -50,10 +50,10 @@ struct PSSenderTests {
     #expect(fields["prompt"] as? String == "a quiet harbour at dawn")
   }
 
-  @Test func anEmptyDescriptionSendsNoPromptKey() throws {
+  @Test func anEmptyDescriptionSendsAnEmptyPromptSoTheTabsOldOneIsNotKept() throws {
     let body = PSSender.body(startImage: URL(fileURLWithPath: "/tmp/x.png"), description: "  \n", mode: .normal)
     let fields = try #require(body["fields"] as? [String: Any])
-    #expect(fields["prompt"] == nil)
+    #expect(fields["prompt"] as? String == "")
   }
 
   @Test func sendWritesA2048x1024PNGAndContributesOnce() async throws {

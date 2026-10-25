@@ -87,6 +87,17 @@ struct PSCanvasView: View {
 /// What is drawn over the picture.
 @MainActor
 enum PSOverlay {
+  /// The stem from the centre to the rotate handle, as segments in canvas points: the handle is taken to the side of the centre it is nearest to
+  /// and, when that leaves the canvas, the segment is repeated one width to the side, so a sticker on the seam shows its stem whole.
+  static func stem(from center: PSUV, to handle: PSUV, size: CGSize) -> [(CGPoint, CGPoint)] {
+    let a = CGPoint(x: center.u * size.width, y: center.v * size.height)
+    let b = PSState.unwrapped(CGPoint(x: handle.u * size.width, y: handle.v * size.height), near: a, width: size.width)
+    var segments = [(a, b)]
+    if min(a.x, b.x) < 0 { segments.append((CGPoint(x: a.x + size.width, y: a.y), CGPoint(x: b.x + size.width, y: b.y))) }
+    if max(a.x, b.x) > size.width { segments.append((CGPoint(x: a.x - size.width, y: a.y), CGPoint(x: b.x - size.width, y: b.y))) }
+    return segments
+  }
+
   static func draw(in context: inout GraphicsContext, size: CGSize, state: PSState) {
     func point(_ p: PSUV) -> CGPoint { CGPoint(x: p.u * size.width, y: p.v * size.height) }
     if state.doc.guides {
@@ -111,10 +122,12 @@ enum PSOverlay {
     }
     guard let selected = state.selected, selected.visible else { return }
     let handles = PSProjection.handles(of: selected, aspect: state.aspect(of: selected))
-    var stem = Path()
-    stem.move(to: point(handles.center))
-    stem.addLine(to: point(handles.rotate))
-    context.stroke(stem, with: .color(.white), lineWidth: 1.5)
+    var stemPath = Path()
+    for (from, to) in stem(from: handles.center, to: handles.rotate, size: size) {
+      stemPath.move(to: from)
+      stemPath.addLine(to: to)
+    }
+    context.stroke(stemPath, with: .color(.white), lineWidth: 1.5)
     let rotate = point(handles.rotate)
     context.fill(Path(ellipseIn: CGRect(x: rotate.x - 7, y: rotate.y - 7, width: 14, height: 14)), with: .color(DS.accent))
     context.stroke(Path(ellipseIn: CGRect(x: rotate.x - 7, y: rotate.y - 7, width: 14, height: 14)), with: .color(.white), lineWidth: 1.5)

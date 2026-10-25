@@ -50,4 +50,43 @@ struct PSStateTests {
     state.apply(context: Data(#"{"type":"context","model":"flux_2_klein_9b_q8p.ckpt","tempFolder":"/tmp/t"}"#.utf8))
     #expect(state.modelIsBase == false)
   }
+
+  @Test func switchingProjectClearsWhatBelongedToTheOldOne() {
+    let state = PSState(italian: false)
+    state.switchProject(folder: PSModelsTests.folder())
+    let sticker = Sticker(name: "s", file: "s.png")
+    state.mutate { $0.stickers = [sticker] }
+    state.setImage(TestImages.solid(10, 10, 1, 2, 3), for: sticker.id)
+    state.previousDescription = "old project's text"
+    state.error = "e"
+    state.notice = "n"
+    state.hasSent = true
+    state.switchProject(folder: PSModelsTests.folder())
+    #expect(state.previousDescription == nil && state.error == nil && state.notice == nil && !state.hasSent && !state.isDragging)
+    #expect(state.image(for: sticker) == nil)
+  }
+
+  @Test func anImproveAnswerIsDroppedWhenTheTextChangedMeanwhile() async {
+    let state = PSState(italian: false)
+    state.mutate { $0.description = "a harbour" }
+    await state.improve { _, _ in
+      state.mutate { $0.description = "typed while waiting" }
+      return .text("A quiet harbour at dawn, soft grey light and still water.")
+    }
+    #expect(state.doc.description == "typed while waiting" && state.previousDescription == nil && state.error != nil)
+  }
+
+  @Test func anImproveAnswerIsDroppedWhenTheProjectChangedMeanwhile() async throws {
+    let first = PSModelsTests.folder(), second = PSModelsTests.folder()
+    let state = PSState(italian: false)
+    state.switchProject(folder: first)
+    state.mutate { $0.description = "a harbour" }
+    await state.improve { _, _ in
+      state.switchProject(folder: second)
+      return .text("A quiet harbour at dawn, soft grey light and still water.")
+    }
+    #expect(state.doc.description == "" && state.previousDescription == nil)
+    #expect(PanoState.load(from: second).description == "")
+    #expect(PanoState.load(from: first).description == "a harbour")
+  }
 }

@@ -10,9 +10,8 @@ enum PSSender {
   static let startImageName = "panorama-360.png"
 
   static func body(startImage: URL, description: String, mode: PanoMode) -> [String: Any] {
-    var fields: [String: Any] = ["width": width, "height": height]
-    let prompt = description.trimmingCharacters(in: .whitespacesAndNewlines)
-    if !prompt.isEmpty { fields["prompt"] = prompt }
+    // The prompt is always sent, empty too: the preset has none, and the app would keep whatever the Generation tab held before.
+    let fields: [String: Any] = ["width": width, "height": height, "prompt": description.trimmingCharacters(in: .whitespacesAndNewlines)]
     return [
       "preset": mode == .fast ? PSPresets.fastName : PSPresets.normalName,
       "startImage": ["path": startImage.path, "name": startImageName],

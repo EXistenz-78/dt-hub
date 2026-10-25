@@ -37,9 +37,24 @@ struct PluginTests {
       last = presets
       return ["type": "ok"]
     }
-    await plugin.registerPresetsOnce(using: send)
-    await plugin.registerPresetsOnce(using: send)
+    await plugin.registerPresets(using: send)
+    await plugin.registerPresets(using: send)
     #expect(calls == 1 && last.count == 2)
+  }
+
+  @Test func aRefusedRegistrationIsTriedAgain() async {
+    let plugin = plugin()
+    var answers: [[String: Any]?] = [["type": "error", "text": "The plug-in is not active."], nil, ["type": "ok", "added": 2]]
+    var calls = 0
+    let send: PSPresetSender = { _ in
+      calls += 1
+      return answers.removeFirst()
+    }
+    await plugin.registerPresets(using: send)
+    await plugin.registerPresets(using: send)
+    await plugin.registerPresets(using: send)
+    await plugin.registerPresets(using: send)
+    #expect(calls == 3)
   }
 
   @Test func theProjectMessageOpensTheProjectFolder() async {

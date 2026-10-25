@@ -12,7 +12,7 @@ final class Panorama360Plugin: DTHubPlugin {
     families: Panorama360Plugin.families)
   private let state = PSState()
   private var host: DTHubHost?
-  private var presetsRegistered = false
+  private var presetsAccepted = false
   /// The folder of the open project, for the tests.
   var projectFolderForTests: URL? { state.projectFolder }
 
@@ -27,19 +27,27 @@ final class Panorama360Plugin: DTHubPlugin {
 
   func start(host: DTHubHost) {
     self.host = host
-    Task { await registerPresetsOnce(using: { await host.registerPresets($0) }) }
+    registerPresetsInBackground()
   }
 
-  /// The two presets go to the app once per launch (a name already in the menu is left alone, so the user's own copies stay).
-  func registerPresetsOnce(using send: PSPresetSender) async {
-    guard !presetsRegistered else { return }
-    presetsRegistered = true
-    _ = await PSPresets.register(using: send)
+  /// Offers the two presets until the app takes them: it refuses while the plug-in is off for the model (a non-FLUX.2 model at launch), so
+  /// it is tried again when the plug-in turns on and before each send. A name already in the menu is left alone, so repeating is harmless.
+  func registerPresets(using send: PSPresetSender) async {
+    guard !presetsAccepted else { return }
+    if await PSPresets.register(using: send)?["type"] as? String == "ok" { presetsAccepted = true }
+  }
+
+  private func registerPresetsInBackground() {
+    guard let host else { return }
+    Task { await registerPresets(using: { await host.registerPresets($0) }) }
   }
 
   private func send() {
     guard let host else { return }
-    Task { await state.send(contribute: { await host.contribute($0) }) }
+    Task {
+      await registerPresets(using: { await host.registerPresets($0) })
+      await state.send(contribute: { await host.contribute($0) })
+    }
   }
 
   private func improve() {
@@ -61,7 +69,10 @@ final class Panorama360Plugin: DTHubPlugin {
         state.switchProject(folder: URL(fileURLWithPath: project.folder, isDirectory: true))
       }
       return nil
-    case "activate", "deactivate": return nil
+    case "activate":
+      registerPresetsInBackground()
+      return nil
+    case "deactivate": return nil
     default: return DTHubMessage.bare("unsupported")
     }
   }

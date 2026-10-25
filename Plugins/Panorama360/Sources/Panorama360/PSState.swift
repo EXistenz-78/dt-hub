@@ -51,6 +51,14 @@ final class PSState: ObservableObject {
     projectFolder = folder
     doc = PanoState.load(from: folder)
     isLoading = false
+    // What belonged to the project that was open stays with it.
+    images.removeAll()
+    drag = nil
+    previousDescription = nil
+    error = nil
+    notice = nil
+    hasSent = false
+    preview = nil
   }
 
   func apply(context: Data) {

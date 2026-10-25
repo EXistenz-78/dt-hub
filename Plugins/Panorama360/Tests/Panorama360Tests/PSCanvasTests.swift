@@ -146,4 +146,61 @@ struct PSCanvasTests {
     let image = try state.renderedERP(width: 256, height: 128)
     #expect(TestImages.pixel(image, 128, 64).g == 255)
   }
+
+  // MARK: Handles across the seam
+
+  /// The pointer position `p` in canvas points, brought to the side of `centre` it is nearest to (the picture wraps sideways).
+  func unwrapped(_ p: CGPoint, near centre: CGPoint) -> CGPoint {
+    var q = p
+    if q.x - centre.x > canvas.width / 2 { q.x -= canvas.width }
+    if q.x - centre.x < -canvas.width / 2 { q.x += canvas.width }
+    return q
+  }
+
+  func wrapped(_ p: CGPoint) -> CGPoint {
+    CGPoint(x: p.x - (p.x / canvas.width).rounded(.down) * canvas.width, y: p.y)
+  }
+
+  @Test func aCornerOfAStickerOnTheSeamScalesTheRightWay() {
+    let state = state(yaws: [180])
+    let handles = PSProjection.handles(of: state.doc.stickers[0], aspect: 1.5)
+    let centre = px(handles.center)
+    for corner in handles.corners {
+      let start = px(corner)
+      let vector = CGPoint(x: unwrapped(start, near: centre).x - centre.x, y: start.y - centre.y)
+      state.update(state.doc.stickers[0].id) { $0.hfov = 60 }
+      state.select(state.doc.stickers[0].id)
+      state.pointerDown(at: uv(start), canvas: canvas)
+      let doubled = wrapped(CGPoint(x: centre.x + vector.x * 2, y: centre.y + vector.y * 2))
+      state.pointerDragged(to: uv(doubled), canvas: canvas, shift: false)
+      state.pointerUp()
+      #expect(abs(state.doc.stickers[0].hfov - 120) < 1e-6, "corner \(corner)")
+    }
+  }
+
+  @Test func theRotateHandleOfAStickerOnTheSeamRotatesAroundTheCentre() {
+    // The handle sits to the right of the centre with a rotation of 90°, to its left with −90°: one of the two is on the other edge.
+    for start in [90.0, -90.0] {
+      let state = state(yaws: [180])
+      state.update(state.doc.stickers[0].id) { $0.rot = start }
+      let handles = PSProjection.handles(of: state.doc.stickers[0], aspect: 1.5)
+      let centre = px(handles.center), handle = px(handles.rotate)
+      let v = CGPoint(x: unwrapped(handle, near: centre).x - centre.x, y: handle.y - centre.y)
+      let a = 20.0 * .pi / 180
+      let turned = CGPoint(x: v.x * cos(a) - v.y * sin(a), y: v.x * sin(a) + v.y * cos(a))
+      state.pointerDown(at: uv(handle), canvas: canvas)
+      state.pointerDragged(to: uv(wrapped(CGPoint(x: centre.x + turned.x, y: centre.y + turned.y))), canvas: canvas, shift: false)
+      state.pointerUp()
+      #expect(abs(PSProjection.wrapYaw(state.doc.stickers[0].rot - (start + 20))) < 0.5, "start \(start): rot \(state.doc.stickers[0].rot)")
+    }
+  }
+
+  @Test func theStemOfTheRotateHandleIsDrawnWithoutCrossingTheCanvas() {
+    let state = state(yaws: [180])
+    state.update(state.doc.stickers[0].id) { $0.rot = 90 }
+    let handles = PSProjection.handles(of: state.doc.stickers[0], aspect: 1.5)
+    let segments = PSOverlay.stem(from: handles.center, to: handles.rotate, size: canvas)
+    #expect(!segments.isEmpty)
+    for (a, b) in segments { #expect(abs(a.x - b.x) < canvas.width / 2) }
+  }
 }

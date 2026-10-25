@@ -108,4 +108,15 @@ struct PSRendererTests {
     #expect(mean < 2, "mean difference \(mean)")
     #expect(worst <= 12, "worst difference \(worst)")
   }
+
+  @Test func theMetalTextureCacheKeepsOnlyWhatWasDrawnLast() throws {
+    guard let metal = try? PSMetalRenderer() else { return }
+    let a = TestImages.layer(TestImages.solid(20, 20, 255, 0, 0)), b = TestImages.layer(TestImages.solid(20, 20, 0, 0, 255))
+    _ = try metal.render([a, b], width: 64, height: 32, uOffset: 0)
+    #expect(metal.cachedTextureCount == 2)
+    _ = try metal.render([b], width: 64, height: 32, uOffset: 0)
+    #expect(metal.cachedTextureCount == 1)
+    _ = try metal.render([], width: 64, height: 32, uOffset: 0)
+    #expect(metal.cachedTextureCount == 0)
+  }
 }

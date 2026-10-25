@@ -47,6 +47,13 @@ final class PSMetalRenderer: PSRendering, @unchecked Sendable {
   /// The textures made from pictures already seen; the picture is kept with its texture so its identity cannot be reused.
   private var textures: [ObjectIdentifier: (image: CGImage, texture: MTLTexture)] = [:]
 
+  /// How many textures are kept (for the tests).
+  var cachedTextureCount: Int {
+    lock.lock()
+    defer { lock.unlock() }
+    return textures.count
+  }
+
   init() throws {
     guard let device = MTLCreateSystemDefaultDevice(), let queue = device.makeCommandQueue() else {
       throw PSRenderError.metal("no Metal device")
@@ -93,6 +100,9 @@ final class PSMetalRenderer: PSRendering, @unchecked Sendable {
       encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
     }
     encoder.endEncoding()
+    // Only the pictures just drawn keep their texture: a sticker that was removed, or one of another project, frees its memory.
+    let used = Set(layers.map { ObjectIdentifier($0.image) })
+    textures = textures.filter { used.contains($0.key) }
     buffer.commit()
     buffer.waitUntilCompleted()
     guard buffer.status == .completed else { throw PSRenderError.metal("the GPU did not finish: \(buffer.status.rawValue)") }
@@ -114,7 +124,6 @@ final class PSMetalRenderer: PSRendering, @unchecked Sendable {
     texture.replace(
       region: MTLRegionMake2D(0, 0, pixels.width, pixels.height), mipmapLevel: 0, withBytes: pixels.bytes,
       bytesPerRow: pixels.width * 4)
-    if textures.count >= 64 { textures.removeAll() }
     textures[ObjectIdentifier(image)] = (image, texture)
     return texture
   }

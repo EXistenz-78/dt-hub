@@ -177,21 +177,34 @@ extension PSState {
 
   private static let grabRadius = 12.0
 
+  /// `p` in canvas points, taken to the side of `centre` it is nearest to: the picture wraps sideways, so a sticker on the seam has its
+  /// handles on both edges and distances and angles must be measured the short way round.
+  static func unwrapped(_ p: CGPoint, near centre: CGPoint, width: CGFloat) -> CGPoint {
+    var q = p
+    if q.x - centre.x > width / 2 { q.x -= width }
+    if q.x - centre.x < -width / 2 { q.x += width }
+    return q
+  }
+
   func pointerDown(at p: PSUV, canvas: CGSize) {
     drag = nil
-    let pointer = CGPoint(x: p.u * canvas.width, y: p.v * canvas.height)
     func point(_ q: PSUV) -> CGPoint { CGPoint(x: q.u * canvas.width, y: q.v * canvas.height) }
     if let s = selected, s.visible {
       let handles = PSProjection.handles(of: s, aspect: aspect(of: s))
       let center = point(handles.center)
-      if hypot(pointer.x - point(handles.rotate).x, pointer.y - point(handles.rotate).y) < Self.grabRadius {
+      let pointer = Self.unwrapped(point(p), near: center, width: canvas.width)
+      let rotate = Self.unwrapped(point(handles.rotate), near: center, width: canvas.width)
+      if hypot(pointer.x - rotate.x, pointer.y - rotate.y) < Self.grabRadius {
         drag = .rotate(s.id, center: center, startRot: s.rot, startAngle: atan2(pointer.y - center.y, pointer.x - center.x))
         return
       }
-      for corner in handles.corners where hypot(pointer.x - point(corner).x, pointer.y - point(corner).y) < Self.grabRadius {
-        drag = .scale(
-          s.id, center: center, startFOV: s.hfov, startDistance: hypot(pointer.x - center.x, pointer.y - center.y))
-        return
+      for corner in handles.corners {
+        let c = Self.unwrapped(point(corner), near: center, width: canvas.width)
+        if hypot(pointer.x - c.x, pointer.y - c.y) < Self.grabRadius {
+          drag = .scale(
+            s.id, center: center, startFOV: s.hfov, startDistance: hypot(pointer.x - center.x, pointer.y - center.y))
+          return
+        }
       }
     }
     let pairs = doc.stickers.map { (sticker: $0, aspect: aspect(of: $0)) }
@@ -202,16 +215,18 @@ extension PSState {
 
   func pointerDragged(to p: PSUV, canvas: CGSize, shift: Bool) {
     guard let drag else { return }
-    let pointer = CGPoint(x: p.u * canvas.width, y: p.v * canvas.height)
+    let raw = CGPoint(x: p.u * canvas.width, y: p.v * canvas.height)
     switch drag {
     case .move(let id, let grab):
       update(id) { $0 = PSInteraction.moved($0, to: p, grab: grab) }
     case .scale(let id, let center, let startFOV, let startDistance):
+      let pointer = Self.unwrapped(raw, near: center, width: canvas.width)
       update(id) {
         $0 = PSInteraction.scaled(
           $0, startFOV: startFOV, startDistance: startDistance, distance: hypot(pointer.x - center.x, pointer.y - center.y))
       }
     case .rotate(let id, let center, let startRot, let startAngle):
+      let pointer = Self.unwrapped(raw, near: center, width: canvas.width)
       update(id) {
         $0 = PSInteraction.rotated(
           $0, startRot: startRot, startAngle: startAngle, angle: atan2(pointer.y - center.y, pointer.x - center.x), snap: shift)

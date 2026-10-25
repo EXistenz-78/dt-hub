@@ -11,6 +11,7 @@ extension PSState {
       return
     }
     error = nil
+    let folder = projectFolder
     isImproving = true
     defer { isImproving = false }
     var request = PSPrompt.request(description: original)
@@ -18,6 +19,11 @@ extension PSState {
     if case .text(let first) = answer, PSPrompt.looksItalian(PSPrompt.clean(first)) {
       request = PSPrompt.request(description: original, reminder: true)
       answer = await ask(request.prompt, request.system)
+    }
+    // The answer comes after a wait: if the project or the text changed meanwhile it no longer fits and is dropped.
+    guard projectFolder == folder, doc.description == original else {
+      error = text(.improveStale)
+      return
     }
     switch answer {
     case .failure(let reason):

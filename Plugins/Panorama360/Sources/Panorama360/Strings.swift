@@ -8,7 +8,7 @@ enum L {
     case stickersTitle, yaw, pitch, rotation, fieldOfView, verticalFieldOfView, opacity, duplicate, delete, add, toggleVisible
     case croppedPhoto, unreadableFile, openProjectFirst, dropHere
     case modeNormal, modeFast, send, noVisibleSticker, sendFailed, noAnswerFromApp, notBaseWarning
-    case promptTitle, promptPlaceholder, improve, improving, undo, words, emptyDescription, answerNotEnglish, answerRejected
+    case promptTitle, promptPlaceholder, improve, improving, undo, words, emptyDescription, answerNotEnglish, answerRejected, improveStale
   }
 
   static var systemIsItalian: Bool { Locale.preferredLanguages.first?.hasPrefix("it") ?? false }
@@ -37,6 +37,7 @@ enum L {
     .improving: "Improving…", .undo: "Undo", .words: "%d words", .emptyDescription: "Write a description first.",
     .answerNotEnglish: "The language model did not answer in English: the description was left as it was.",
     .answerRejected: "The language model's answer could not be used: the description was left as it was.",
+    .improveStale: "The description changed while the language model was working: its answer was dropped.",
   ]
 
   private static let it: [Key: String] = [
@@ -54,5 +55,6 @@ enum L {
     .improving: "Miglioro…", .undo: "Annulla", .words: "%d parole", .emptyDescription: "Scrivi prima una descrizione.",
     .answerNotEnglish: "L'LLM non ha risposto in inglese: la descrizione è rimasta com'era.",
     .answerRejected: "La risposta dell'LLM non si può usare: la descrizione è rimasta com'era.",
+    .improveStale: "La descrizione è cambiata mentre l'LLM lavorava: la sua risposta è stata scartata.",
   ]
 }
