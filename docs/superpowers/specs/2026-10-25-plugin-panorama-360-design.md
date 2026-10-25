@@ -25,6 +25,7 @@ Non si fa: copertura 180°, risoluzioni diverse da 2048×1024, colore di sfondo 
 
 ## 2. Scelte dell'utente (registro)
 - Prima versione = canvas piatto (unwrap) con sticker; poi sfera, visore, Cutout, giunzione.
+- FOV iniziale dall'EXIF (equivalente 35 mm; senza → 60°). Niente uso delle tag `FocalPlane*` (YAGNI).
 - Sticker da: drag & drop (Finder, browser, **galleria dei Risultati**) e tasto «+».
 - Solo 360, 2048×1024.
 - Nome visibile **«Panorama 360»**; icona SF Symbol `globe` (nessun plug-in gemello da cui ereditare l'icona).
@@ -64,7 +65,7 @@ Un fragment shader per pixel: direzione, per ogni sticker visibile in ordine z, 
 
 ### 3.4 Interfaccia (mockup)
 Canvas 2:1 con guide (orizzonte, meridiani ogni 90°, interruttore), tasti `+` e cestino «cancella tutti» (con conferma). Card Sticker: elenco (anteprima, nome, z, occhio) riordinabile con il trascinamento (rilascio = dopo quella riga), duplica ed elimina; campi yaw, pitch, rotazione, FOV orizzontale, FOV verticale (sola lettura), opacità; niente slider con passo. Card Prompt: descrizione, «Migliora prompt» (testo) e Annulla, riga d'errore o avviso, switch **Normale/Veloce**, «Invia a Generazione».
-Interazioni: sposta (il puntatore→yaw/pitch con l'offset dal centro costante, attraversa la giunzione), scala dagli angoli (FOV moltiplicato per il rapporto di distanza), ruota dalla maniglia (Shift = 45°), Elimina, ⌘D, frecce 1° (Shift 5°). Più file in un drop: uno sticker per file, a cascata dal centro con 10° di yaw. I campi leggono lo stato, non la copia della scheda (regola dei campi di testo).
+Interazioni: sposta (il puntatore→yaw/pitch con l'offset dal centro costante, attraversa la giunzione), scala dagli angoli (FOV moltiplicato per il rapporto di distanza), ruota dalla maniglia (Shift = 45°), Elimina, ⌘D, frecce 1° (Shift 5°). Più file in un drop: uno sticker per file, a cascata dal centro con 10° di yaw. **FOV iniziale dall'EXIF:** se la foto ha `FocalLengthIn35mmFilm` > 0 (l'equivalente 35 mm include già il fattore di crop del sensore) lo sticker nasce con `hFOV = 2·atan(Weq / (2·f35))`, dove `Weq = 43,267 · a/√(1+a²)` (diagonale del 35 mm, `a` = larghezza/altezza dopo l'orientamento); altrimenti 60°. Se le proporzioni non coincidono con `ExifImageWidth/Height` (2%) il file è ritagliato: 60° e una nota. Il valore resta modificabile; l'arrotondamento intero della focale dà qualche grado di errore (verificato: Sony NEX-6 19 mm → 65,5° contro 63,5° reali). I campi leggono lo stato, non la copia della scheda (regola dei campi di testo).
 
 ## 4. Invio, preset ed errori
 
