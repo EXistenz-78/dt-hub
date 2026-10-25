@@ -24,6 +24,9 @@ final class PSState: ObservableObject {
   /// What went wrong in the last «Improve prompt» or send, in the words to show.
   @Published var error: String?
   @Published var isImproving = false
+  @Published var isSending = false
+  /// True after a send the app accepted: from then on the model of the preset it applied is checked (see `warning`).
+  @Published var hasSent = false
   /// The description before the last «Improve prompt», for «Undo».
   @Published var previousDescription: String?
   var drag: PSDrag? { didSet { isDragging = drag != nil } }

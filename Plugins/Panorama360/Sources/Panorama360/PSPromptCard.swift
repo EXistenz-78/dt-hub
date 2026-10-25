@@ -28,16 +28,31 @@ struct PSPromptCard: View {
           Spacer(minLength: 0)
           Text(state.text(.words, wordCount)).font(.caption.monospaced()).foregroundStyle(.secondary)
         }
-        if let message = state.error ?? state.notice {
+        if let message = state.error ?? state.warning ?? state.notice {
           Text(message).font(.callout).foregroundStyle(DS.remove).frame(maxWidth: .infinity, alignment: .leading)
             .padding(DS.boxPadding)
             .background(RoundedRectangle(cornerRadius: DS.minorRadius).fill(DS.remove.opacity(0.12)))
             .overlay(RoundedRectangle(cornerRadius: DS.minorRadius).stroke(DS.remove, lineWidth: 1))
         }
+        sendRow
       }
       .padding(DS.panelPadding)
     }
     .dsPanel()
+  }
+
+  /// Normal / Fast and «Send to Generation».
+  private var sendRow: some View {
+    HStack(spacing: DS.controlGap) {
+      Picker("", selection: Binding(get: { state.doc.mode }, set: { value in state.mutate { $0.mode = value } })) {
+        Text(state.text(.modeNormal)).tag(PanoMode.normal)
+        Text(state.text(.modeFast)).tag(PanoMode.fast)
+      }
+      .pickerStyle(.segmented).labelsHidden().frame(maxWidth: 200)
+      Spacer(minLength: 0)
+      Button { actions.send() } label: { Text(state.text(.send)).lineLimit(1) }
+        .buttonStyle(DSPillButtonStyle()).disabled(state.isSending || !state.doc.stickers.contains(where: \.visible))
+    }
   }
 
   /// A multi-line field that reads the state, never a copy, so the cursor stays where it is while typing.

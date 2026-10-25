@@ -7,6 +7,7 @@ enum L {
     case canvasTitle, guides, clearAll, clearConfirm, clearConfirmMessage, cancel
     case stickersTitle, yaw, pitch, rotation, fieldOfView, verticalFieldOfView, opacity, duplicate, delete, add, toggleVisible
     case croppedPhoto, unreadableFile, openProjectFirst, dropHere
+    case modeNormal, modeFast, send, noVisibleSticker, sendFailed, noAnswerFromApp, notBaseWarning
     case promptTitle, promptPlaceholder, improve, improving, undo, words, emptyDescription, answerNotEnglish, answerRejected
   }
 
@@ -28,6 +29,10 @@ enum L {
     .verticalFieldOfView: "Vertical FOV (°)", .opacity: "Opacity", .duplicate: "Duplicate", .delete: "Delete", .add: "Add picture",
     .toggleVisible: "Show or hide", .croppedPhoto: "“%@” looks cropped: its focal length was not used.",
     .unreadableFile: "“%@” could not be read.", .openProjectFirst: "Open a project first.", .dropHere: "Drop pictures here",
+    .modeNormal: "Normal", .modeFast: "Fast", .send: "Send to Generation",
+    .noVisibleSticker: "Add at least one visible sticker.", .sendFailed: "The panorama could not be drawn.",
+    .noAnswerFromApp: "No answer from DT Hub.",
+    .notBaseWarning: "The model is not a Base one: the 360° LoRA works only with the Base models.",
     .promptTitle: "Prompt", .promptPlaceholder: "Describe the place: light, season, style…", .improve: "Improve prompt",
     .improving: "Improving…", .undo: "Undo", .words: "%d words", .emptyDescription: "Write a description first.",
     .answerNotEnglish: "The language model did not answer in English: the description was left as it was.",
@@ -41,6 +46,10 @@ enum L {
     .verticalFieldOfView: "FOV verticale (°)", .opacity: "Opacità", .duplicate: "Duplica", .delete: "Elimina", .add: "Aggiungi immagine",
     .toggleVisible: "Mostra o nascondi", .croppedPhoto: "«%@» sembra ritagliata: la focale non è stata usata.",
     .unreadableFile: "«%@» non si può leggere.", .openProjectFirst: "Apri prima un progetto.", .dropHere: "Rilascia le immagini qui",
+    .modeNormal: "Normale", .modeFast: "Veloce", .send: "Invia a Generazione",
+    .noVisibleSticker: "Aggiungi almeno uno sticker visibile.", .sendFailed: "Non è stato possibile disegnare il panorama.",
+    .noAnswerFromApp: "Nessuna risposta da DT Hub.",
+    .notBaseWarning: "Il modello non è un Base: il LoRA 360° funziona solo con i modelli Base.",
     .promptTitle: "Prompt", .promptPlaceholder: "Descrivi il luogo: luce, stagione, stile…", .improve: "Migliora prompt",
     .improving: "Miglioro…", .undo: "Annulla", .words: "%d parole", .emptyDescription: "Scrivi prima una descrizione.",
     .answerNotEnglish: "L'LLM non ha risposto in inglese: la descrizione è rimasta com'era.",

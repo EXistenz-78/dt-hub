@@ -12,6 +12,9 @@ final class Panorama360Plugin: DTHubPlugin {
     families: Panorama360Plugin.families)
   private let state = PSState()
   private var host: DTHubHost?
+  private var presetsRegistered = false
+  /// The folder of the open project, for the tests.
+  var projectFolderForTests: URL? { state.projectFolder }
 
   /// `dataFolder` is where the master prompt is written (a test gives another one).
   init(dataFolder: URL = PSPrompt.defaultDataFolder) {
@@ -19,10 +22,25 @@ final class Panorama360Plugin: DTHubPlugin {
   }
 
   func makeViewController() -> NSViewController {
-    NSHostingController(rootView: PSView(state: state, actions: PSViewActions(improve: { [weak self] in self?.improve() })))
+    NSHostingController(rootView: PSView(state: state, actions: PSViewActions(improve: { [weak self] in self?.improve() }, send: { [weak self] in self?.send() })))
   }
 
-  func start(host: DTHubHost) { self.host = host }
+  func start(host: DTHubHost) {
+    self.host = host
+    Task { await registerPresetsOnce(using: { await host.registerPresets($0) }) }
+  }
+
+  /// The two presets go to the app once per launch (a name already in the menu is left alone, so the user's own copies stay).
+  func registerPresetsOnce(using send: PSPresetSender) async {
+    guard !presetsRegistered else { return }
+    presetsRegistered = true
+    _ = await PSPresets.register(using: send)
+  }
+
+  private func send() {
+    guard let host else { return }
+    Task { await state.send(contribute: { await host.contribute($0) }) }
+  }
 
   private func improve() {
     guard let host else { return }
