@@ -1,3 +1,4 @@
+import CoreGraphics
 import DTHubPluginKit
 import Foundation
 
@@ -13,6 +14,18 @@ final class PSState: ObservableObject {
   @Published private(set) var modelFile: String?
   private(set) var tempFolder = ""
   private var isLoading = false
+  /// The pictures of the stickers, by sticker id (loaded from the project folder when first needed).
+  let images = PSImageCache()
+  /// The panorama as the canvas shows it, and what the pointer is doing to a sticker.
+  @Published var preview: CGImage?
+  @Published private(set) var isDragging = false
+  var drag: PSDrag? { didSet { isDragging = drag != nil } }
+  var previewGeneration = 0
+  let italian: Bool
+
+  init(italian: Bool = L.systemIsItalian) { self.italian = italian }
+
+  func text(_ key: L.Key) -> String { L.text(key, italian: italian) }
 
   /// True when the chosen model is a Base one (the LoRA works only with those); nil without a model.
   var modelIsBase: Bool? {

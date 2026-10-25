@@ -10,17 +10,26 @@ final class Panorama360Plugin: DTHubPlugin {
   let manifest = DTHubManifest(
     id: "com.exiztenz.dthub.panorama360", name: "Panorama 360", version: "1.0", symbol: "globe",
     families: Panorama360Plugin.families)
+  private let state = PSState()
   private var host: DTHubHost?
 
   func makeViewController() -> NSViewController {
-    NSHostingController(rootView: Text(verbatim: "Panorama 360"))
+    NSHostingController(rootView: PSView(state: state))
   }
 
   func start(host: DTHubHost) { self.host = host }
 
   func handle(_ message: Data) async -> Data? {
     switch DTHubMessage.type(of: message) {
-    case "context", "project", "activate", "deactivate": return nil
+    case "context":
+      state.apply(context: message)
+      return nil
+    case "project":
+      if let project = try? JSONDecoder().decode(DTHubProject.self, from: message) {
+        state.switchProject(folder: URL(fileURLWithPath: project.folder, isDirectory: true))
+      }
+      return nil
+    case "activate", "deactivate": return nil
     default: return DTHubMessage.bare("unsupported")
     }
   }

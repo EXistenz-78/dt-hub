@@ -1,7 +1,7 @@
 import Foundation
 
 /// One picture placed on the panorama. The angles are in degrees; `file` is relative to the project folder.
-struct Sticker: Codable, Equatable, Identifiable, Sendable {
+struct Sticker: Codable, Equatable, Hashable, Identifiable, Sendable {
   var id = UUID()
   var name: String
   var file: String
