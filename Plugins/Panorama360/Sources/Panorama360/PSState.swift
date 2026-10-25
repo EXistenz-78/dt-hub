@@ -19,13 +19,18 @@ final class PSState: ObservableObject {
   /// The panorama as the canvas shows it, and what the pointer is doing to a sticker.
   @Published var preview: CGImage?
   @Published private(set) var isDragging = false
+  /// What the user should read after the last add or send (a bad file, a cropped photo…); nil when there is nothing.
+  @Published var notice: String?
   var drag: PSDrag? { didSet { isDragging = drag != nil } }
   var previewGeneration = 0
   let italian: Bool
+  /// Brings a picture file into the project folder (the real store; a test puts another here).
+  var addPicture: (URL, URL) throws -> PSStickerAdded = { try PSStickerStore.add(contentsOf: $0, into: $1) }
 
   init(italian: Bool = L.systemIsItalian) { self.italian = italian }
 
   func text(_ key: L.Key) -> String { L.text(key, italian: italian) }
+  func text(_ key: L.Key, _ args: CVarArg...) -> String { String(format: L.text(key, italian: italian), arguments: args) }
 
   /// True when the chosen model is a Base one (the LoRA works only with those); nil without a model.
   var modelIsBase: Bool? {

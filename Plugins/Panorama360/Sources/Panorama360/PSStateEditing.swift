@@ -63,7 +63,10 @@ extension PSState {
 
   func update(_ id: UUID, _ change: (inout Sticker) -> Void) {
     mutate { doc in
-      if let index = doc.stickers.firstIndex(where: { $0.id == id }) { change(&doc.stickers[index]) }
+      if let index = doc.stickers.firstIndex(where: { $0.id == id }) {
+        change(&doc.stickers[index])
+        doc.stickers[index].clampValues()
+      }
     }
   }
 
@@ -84,11 +87,13 @@ extension PSState {
 
   func deleteSelected() {
     guard let id = doc.selectedID, let index = doc.stickers.firstIndex(where: { $0.id == id }) else { return }
+    let removedFile = doc.stickers[index].file
     mutate {
       $0.stickers.remove(at: index)
       $0.selectedID = $0.stickers.isEmpty ? nil : $0.stickers[max(0, index - 1)].id
     }
     images.remove(id)
+    removeFileIfUnused(removedFile)
   }
 
   func duplicateSelected() {
@@ -104,11 +109,68 @@ extension PSState {
   }
 
   func clearAll() {
+    let files = Set(doc.stickers.map(\.file))
     mutate {
       $0.stickers = []
       $0.selectedID = nil
     }
     images.removeAll()
+    files.forEach(removeFileIfUnused)
+  }
+
+  /// Deletes a sticker's picture from the project unless another sticker (a duplicate) still uses it.
+  private func removeFileIfUnused(_ file: String) {
+    guard let projectFolder, !doc.stickers.contains(where: { $0.file == file }) else { return }
+    try? FileManager.default.removeItem(at: projectFolder.appendingPathComponent(file))
+  }
+
+  // MARK: Adding and arranging
+
+  /// One sticker per file, in a cascade from the centre (10° of yaw each), the last one selected. A file that cannot be read, or a photo whose
+  /// focal length no longer fits (cropped), is told in `notice`; the other files go in all the same.
+  func addStickers(from urls: [URL]) {
+    notice = nil
+    guard let folder = projectFolder else {
+      notice = text(.openProjectFirst)
+      return
+    }
+    var added: [Sticker] = []
+    var notes: [String] = []
+    for url in urls {
+      do {
+        let picture = try addPicture(url, folder)
+        added.append(
+          Sticker(
+            name: url.lastPathComponent, file: picture.file, yaw: PSProjection.wrapYaw(10 * Double(added.count)),
+            hfov: picture.suggestedHFOV ?? 60))
+        if picture.looksCropped { notes.append(text(.croppedPhoto, url.lastPathComponent)) }
+      } catch {
+        notes.append(text(.unreadableFile, url.lastPathComponent))
+      }
+    }
+    if !added.isEmpty {
+      mutate {
+        $0.stickers += added
+        $0.selectedID = added.last?.id
+      }
+    }
+    notice = notes.isEmpty ? nil : notes.joined(separator: "\n")
+  }
+
+  /// Puts a sticker just above `target` in the stack (the layer after it).
+  func moveSticker(_ id: UUID, inFrontOf target: UUID) {
+    guard id != target, let from = doc.stickers.firstIndex(where: { $0.id == id }) else { return }
+    mutate {
+      let item = $0.stickers.remove(at: from)
+      let to = $0.stickers.firstIndex(where: { $0.id == target }) ?? ($0.stickers.count - 1)
+      $0.stickers.insert(item, at: to + 1)
+    }
+  }
+
+  func setVisible(_ id: UUID, _ visible: Bool) { update(id) { $0.visible = visible } }
+
+  func verticalFOV(of sticker: Sticker) -> Double {
+    PSProjection.verticalFOV(hfov: sticker.hfov, aspect: aspect(of: sticker))
   }
 
   // MARK: The pointer (u, v are fractions of the canvas; `canvas` is its size in points)

@@ -5,6 +5,8 @@ import Foundation
 enum L {
   enum Key: CaseIterable {
     case canvasTitle, guides, clearAll, clearConfirm, clearConfirmMessage, cancel
+    case stickersTitle, yaw, pitch, rotation, fieldOfView, verticalFieldOfView, opacity, duplicate, delete, add, toggleVisible
+    case croppedPhoto, unreadableFile, openProjectFirst, dropHere
   }
 
   static var systemIsItalian: Bool { Locale.preferredLanguages.first?.hasPrefix("it") ?? false }
@@ -21,10 +23,18 @@ enum L {
   private static let en: [Key: String] = [
     .canvasTitle: "360° canvas", .guides: "Guides", .clearAll: "Remove all stickers", .clearConfirm: "Remove all",
     .clearConfirmMessage: "Remove all the stickers from the canvas?", .cancel: "Cancel",
+    .stickersTitle: "Stickers", .yaw: "Yaw (°)", .pitch: "Pitch (°)", .rotation: "Rotation (°)", .fieldOfView: "Horizontal FOV (°)",
+    .verticalFieldOfView: "Vertical FOV (°)", .opacity: "Opacity", .duplicate: "Duplicate", .delete: "Delete", .add: "Add picture",
+    .toggleVisible: "Show or hide", .croppedPhoto: "“%@” looks cropped: its focal length was not used.",
+    .unreadableFile: "“%@” could not be read.", .openProjectFirst: "Open a project first.", .dropHere: "Drop pictures here",
   ]
 
   private static let it: [Key: String] = [
     .canvasTitle: "Tela 360°", .guides: "Guide", .clearAll: "Cancella tutti gli sticker", .clearConfirm: "Cancella tutti",
     .clearConfirmMessage: "Cancellare tutti gli sticker dalla tela?", .cancel: "Annulla",
+    .stickersTitle: "Sticker", .yaw: "Yaw (°)", .pitch: "Pitch (°)", .rotation: "Rotazione (°)", .fieldOfView: "FOV orizzontale (°)",
+    .verticalFieldOfView: "FOV verticale (°)", .opacity: "Opacità", .duplicate: "Duplica", .delete: "Elimina", .add: "Aggiungi immagine",
+    .toggleVisible: "Mostra o nascondi", .croppedPhoto: "«%@» sembra ritagliata: la focale non è stata usata.",
+    .unreadableFile: "«%@» non si può leggere.", .openProjectFirst: "Apri prima un progetto.", .dropHere: "Rilascia le immagini qui",
   ]
 }

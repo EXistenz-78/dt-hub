@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import ImageIO
 
 @testable import Panorama360
 
@@ -49,5 +50,24 @@ enum TestImages {
     let sticker = Sticker(name: "t", file: "t", yaw: yaw, pitch: pitch, rot: rot, hfov: hfov)
     return PSLayer(
       image: image, basis: PSProjection.basis(for: sticker, aspect: Double(image.width) / Double(image.height)), opacity: opacity)
+  }
+}
+
+extension TestImages {
+  /// Writes a picture as a file (JPEG or PNG) with the properties given (EXIF and so on); returns its URL.
+  static func file(
+    _ image: CGImage, in folder: URL, name: String, type: String = "public.jpeg", properties: [CFString: Any] = [:]
+  ) -> URL {
+    let url = folder.appendingPathComponent(name)
+    let destination = CGImageDestinationCreateWithURL(url as CFURL, type as CFString, 1, nil)!
+    CGImageDestinationAddImage(destination, image, properties as CFDictionary)
+    CGImageDestinationFinalize(destination)
+    return url
+  }
+
+  static func tempFolder() -> URL {
+    let url = FileManager.default.temporaryDirectory.appendingPathComponent("p360-img-\(UUID())", isDirectory: true)
+    try! FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+    return url
   }
 }

@@ -12,6 +12,15 @@ struct Sticker: Codable, Equatable, Hashable, Identifiable, Sendable {
   var hfov = 60.0
   var opacity = 1.0
   var visible = true
+
+  /// Brings every value into its range: angles into (−180, 180], pitch to ±89°, field of view to 5…170°, opacity to 0…1.
+  mutating func clampValues() {
+    yaw = PSProjection.wrapYaw(yaw)
+    rot = PSProjection.wrapYaw(rot)
+    pitch = min(89, max(-89, pitch))
+    hfov = min(170, max(5, hfov))
+    opacity = min(1, max(0, opacity))
+  }
 }
 
 /// Normal runs the preset without the refiner, Fast the one with it.

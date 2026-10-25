@@ -7,6 +7,7 @@ struct PSCanvasView: View {
   @ObservedObject var state: PSState
   @State private var pressed = false
   @FocusState private var focused: Bool
+  @State private var dropTargeted = false
 
   var body: some View {
     GeometryReader { geometry in
@@ -22,6 +23,20 @@ struct PSCanvasView: View {
       .frame(width: size.width, height: size.height)
       .clipShape(RoundedRectangle(cornerRadius: DS.boxRadius))
       .overlay(RoundedRectangle(cornerRadius: DS.boxRadius).stroke(Color.primary.opacity(0.18)))
+      .overlay {
+        if dropTargeted {
+          ZStack {
+            RoundedRectangle(cornerRadius: DS.boxRadius).fill(DS.accent.opacity(0.25))
+            RoundedRectangle(cornerRadius: DS.boxRadius).strokeBorder(DS.accent, style: StrokeStyle(lineWidth: 3, dash: [8, 6]))
+            Text(state.text(.dropHere)).font(.headline)
+          }
+        }
+      }
+      .onDrop(of: PSDrop.types, isTargeted: $dropTargeted) { providers in
+        let temp = URL(fileURLWithPath: state.tempFolder.isEmpty ? NSTemporaryDirectory() : state.tempFolder, isDirectory: true)
+        PSDrop.collect(providers, tempFolder: temp) { state.addStickers(from: $0) }
+        return true
+      }
       .focusable()
       .focusEffectDisabled()
       .focused($focused)
