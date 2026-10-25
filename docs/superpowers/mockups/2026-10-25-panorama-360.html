@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panorama 360 mockup</title>
+<style>
+  :root {
+    --bg: #1b1c1f; --card: #2c3a3c; --head: #243032; --box: #1f2a2c; --line: #3d5155; --text: #f2f2f7; --secondary: #9fb0b3;
+    --accent: #3ec8c8; --accent-text: #0b1d1d; --warn: #f09837; --ok: #5bd18a;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 18px; background: var(--bg); color: var(--text);
+    font: 13px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; }
+  .tab { max-width: 1180px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  .wide { grid-column: 1 / -1; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; min-width: 0; }
+  .card > h2 { margin: 0; padding: 10px 14px; background: var(--head); font-size: 14px; font-weight: 600; text-align: center; }
+  .body { padding: 14px; }
+  .note { font-size: 11px; color: var(--secondary); margin: 8px 0 0; }
+  button, .pill { font: inherit; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: #1a2224; color: var(--text); cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button:disabled { opacity: .4; cursor: default; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+  button.icon { padding: 3px 8px; }
+  button.ib { width: 34px; height: 34px; padding: 0; display: inline-grid; place-items: center; }
+  button.ib svg, .st .eye svg { width: 18px; height: 18px; }
+  .st .eye { background: none; border: 0; padding: 2px; color: var(--secondary); }
+  .st.drop-before { box-shadow: 0 -3px 0 var(--accent); }
+  .nowrap { white-space: nowrap; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; background: #1a2224; }
+  .seg button { border: 0; border-radius: 0; background: none; padding: 6px 16px; }
+  .seg button.on { background: var(--accent); color: var(--accent-text); font-weight: 600; }
+  .err { margin-top: 14px; padding: 8px 12px; border: 1px solid var(--warn); border-radius: 12px; background: rgba(240,152,55,.12); color: #ffd7a8; font-size: 12px; }
+  .sim { max-width: 1180px; margin: 14px auto 0; font-size: 11px; color: var(--secondary); text-align: right; }
+  .sim select { font: inherit; background: #1a2224; color: var(--text); border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; }
+  .st[draggable="true"] { cursor: grab; }
+  .row { display: flex; align-items: center; gap: 8px; }
+  .spacer { flex: 1; }
+  .mono { font-family: ui-monospace, Menlo, monospace; }
+  .sec { color: var(--secondary); }
+
+  /* canvas */
+  .stage { position: relative; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #00ff00; line-height: 0; }
+  .stage canvas { width: 100%; height: auto; display: block; }
+  #ov { position: absolute; inset: 0; cursor: crosshair; }
+  .drop { position: absolute; inset: 0; display: none; place-items: center; background: rgba(62,200,200,.25); border: 3px dashed var(--accent); font-size: 16px; font-weight: 600; line-height: 1.4; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 8px; font-size: 11px; color: var(--secondary); align-items: center; }
+  .toggle { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+
+  /* sticker list */
+  .list { display: flex; flex-direction: column; gap: 6px; max-height: 210px; overflow: auto; margin-bottom: 12px; }
+  .st { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 12px; padding: 5px 8px; background: var(--box); cursor: pointer; }
+  .st.sel { border: 2px solid var(--accent); padding: 4px 7px; }
+  .st canvas { width: 46px; height: 30px; border-radius: 5px; flex: none; }
+  .st .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .st .z { font: 11px ui-monospace, Menlo, monospace; color: var(--secondary); }
+  .st.off { opacity: .45; }
+  .fields { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px 10px; }
+  .fields label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: var(--secondary); }
+  .fields input { width: 100%; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; background: #172023; color: var(--text); font: 12px ui-monospace, Menlo, monospace; }
+  .fields input:disabled { opacity: .4; }
+  textarea.main { width: 100%; height: 118px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--box); color: var(--text); font: inherit; resize: none; }
+  .empty { color: var(--secondary); padding: 14px; text-align: center; border: 1px dashed var(--line); border-radius: 12px; }
+
+  /* send */
+  .status { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--box); font-size: 12px; }
+  .chip i { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
+  .chip.warn i { background: var(--warn); }
+  .chip.warn { border-color: var(--warn); }
+  .params { font: 11px/1.5 ui-monospace, Menlo, monospace; color: var(--secondary); margin-top: 10px; }
+  .toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--accent); color: var(--accent-text); padding: 8px 16px; border-radius: 999px; font-weight: 600; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  .toast.on { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="tab">
+
+  <div class="card wide">
+    <h2>Canvas 360°</h2>
+    <div class="body">
+      <div class="row" style="margin-bottom:10px">
+        <button class="ib" id="add" title="Aggiungi immagine"><svg><use href="#i-plus"/></svg></button>
+        <button class="ib" id="clear" title="Cancella tutti gli sticker"><svg><use href="#i-trash"/></svg></button>
+        <label class="toggle sec" title="Orizzonte e meridiani ogni 90°"><input type="checkbox" id="guides" checked> Guide</label>
+        <span class="spacer"></span>
+        <span class="sec mono" id="size">2048 × 1024 · 360°</span>
+      </div>
+      <div class="stage" id="stage">
+        <canvas id="cv" width="1024" height="512"></canvas>
+        <canvas id="ov" width="1024" height="512"></canvas>
+        <div class="drop" id="drop">Rilascia le immagini<br>ogni file diventa uno sticker</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Sticker</h2>
+    <div class="body">
+      <div class="list" id="list"></div>
+      <div class="row" style="margin-bottom:10px">
+        <button class="ib" id="dup" title="Duplica (⌘D)"><svg><use href="#i-copy"/></svg></button>
+        <button class="ib" id="del" title="Elimina (⌫)"><svg><use href="#i-trash"/></svg></button>
+      </div>
+      <div class="fields">
+        <label>Yaw (°)<input id="f-yaw" type="number" step="1"></label>
+        <label>Pitch (°)<input id="f-pitch" type="number" step="1"></label>
+        <label>Rotazione (°)<input id="f-rot" type="number" step="1"></label>
+        <label>FOV orizz. (°)<input id="f-fov" type="number" step="1" min="5" max="170"></label>
+        <label>FOV vert. (°)<input id="f-vfov" type="number" disabled></label>
+        <label>Opacità<input id="f-op" type="number" step="0.05" min="0" max="1"></label>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Prompt</h2>
+    <div class="body">
+      <textarea class="main" id="prompt" placeholder="Descrivi l'ambiente (in inglese): luce, stagione, stile…">Mountain valley at sunset, warm light, detailed, photorealistic</textarea>
+      <div class="row" style="margin-top:10px">
+        <button id="enhance">Migliora prompt</button>
+        <button class="ib" id="undo" title="Annulla" disabled><svg><use href="#i-undo"/></svg></button>
+        <span class="spacer"></span>
+        <span class="sec mono" id="count">0 parole</span>
+      </div>
+      <div class="err" id="err" style="display:none"></div>
+      <div class="row" style="margin-top:14px">
+        <div class="seg" id="mode"><button class="on" data-m="n">Normale</button><button data-m="v">Veloce</button></div>
+        <span class="spacer"></span>
+        <button class="primary nowrap" id="send">Invia a Generazione</button>
+      </div>
+    </div>
+  </div>
+</div>
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+  <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 7L4 12l5 5M4 12h10a6 6 0 0 1 0 12" transform="translate(0 -4)" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="3" fill="currentColor"/></symbol>
+  <symbol id="i-eyeoff" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM4 4l16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+</svg>
+<div class="sim">solo mockup · stato simulato:
+  <select id="sim"><option value="ok">tutto a posto</option><option value="nobase">avviso: modello non Base</option>
+    <option value="nopreset">preset non trovato</option><option value="nolora">LoRA non installato</option><option value="nomodelfile">modello non installato</option></select></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const W = 1024, H = 512, D2R = Math.PI / 180;
+const cv = document.getElementById('cv'), ov = document.getElementById('ov');
+const ctx = cv.getContext('2d'), octx = ov.getContext('2d');
+
+// ---- sticker images (procedural stand-ins for dropped files)
+function makeImg(kind, w = 360, h = 240) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d');
+  if (kind === 0) { // landscape
+    let s = g.createLinearGradient(0, 0, 0, h * .5); s.addColorStop(0, '#2c5db0'); s.addColorStop(1, '#f2c690');
+    g.fillStyle = s; g.fillRect(0, 0, w, h * .5);
+    g.fillStyle = '#6a739a'; g.beginPath(); g.moveTo(0, h * .5);
+    for (let x = 0; x <= w; x += 20) g.lineTo(x, h * .5 - 12 - 26 * Math.abs(Math.sin(x * .031)));
+    g.lineTo(w, h * .5); g.fill();
+    let m = g.createLinearGradient(0, h * .5, 0, h); m.addColorStop(0, '#b79e86'); m.addColorStop(1, '#1d3b5e');
+    g.fillStyle = m; g.fillRect(0, h * .5, w, h * .5);
+  } else if (kind === 1) { // forest
+    g.fillStyle = '#9fc4a0'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 26; i++) { g.fillStyle = `hsl(${120 + i * 3},40%,${20 + (i % 5) * 6}%)`; const x = (i * 53) % w, th = 90 + (i * 37) % 110;
+      g.beginPath(); g.moveTo(x, h); g.lineTo(x - 28, h); g.lineTo(x - 14, h - th); g.fill(); }
+  } else { // city
+    g.fillStyle = '#233a5c'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 12; i++) { g.fillStyle = `hsl(215,25%,${30 + (i % 4) * 8}%)`; const bw = 28 + (i * 7) % 20, bh = 70 + (i * 41) % 130; g.fillRect(i * 30, h - bh, bw, bh); }
+    g.fillStyle = '#ffe6a0'; for (let i = 0; i < 40; i++) g.fillRect((i * 29) % w, h - 20 - (i * 17) % 120, 4, 6);
+  }
+  g.strokeStyle = 'rgba(255,255,255,.7)'; g.lineWidth = 2; g.strokeRect(1, 1, w - 2, h - 2);
+  return c;
+}
+let nextId = 1;
+function mk(name, kind, yaw, pitch, fov, rot = 0) {
+  const img = makeImg(kind); return { id: nextId++, name, img, data: img.getContext('2d').getImageData(0, 0, img.width, img.height),
+    yaw, pitch, rot, fov, op: 1, vis: true };
+}
+const stickers = [mk('paesaggio.jpg', 0, -35, 4, 70), mk('bosco.jpg', 1, 40, -6, 55, 8), mk('città.jpg', 2, 125, 12, 60, -5)];
+let sel = stickers[0].id;
+const S = id => stickers.find(s => s.id === id);
+
+// ---- math
+function basis(s) {
+  const y = s.yaw * D2R, p = s.pitch * D2R, r = s.rot * D2R;
+  const fwd = [Math.sin(y) * Math.cos(p), Math.sin(p), Math.cos(y) * Math.cos(p)];
+  let right = [Math.cos(y), 0, -Math.sin(y)];
+  const up = [fwd[1] * right[2] - fwd[2] * right[1], fwd[2] * right[0] - fwd[0] * right[2], fwd[0] * right[1] - fwd[1] * right[0]];
+  const rr = right.map((v, i) => v * Math.cos(r) - up[i] * Math.sin(r));
+  const uu = right.map((v, i) => v * Math.sin(r) + up[i] * Math.cos(r));
+  const tx = Math.tan(s.fov * D2R / 2), ty = tx * s.img.height / s.img.width;
+  return { fwd, right: rr, up: uu, tx, ty };
+}
+const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const dirAt = (x, y, w, h) => { const lon = (x / w - .5) * 2 * Math.PI, lat = (.5 - y / h) * Math.PI;
+  return [Math.sin(lon) * Math.cos(lat), Math.sin(lat), Math.cos(lon) * Math.cos(lat)]; };
+function toPx(d, w = W, h = H) { const lon = Math.atan2(d[0], d[2]), lat = Math.asin(Math.max(-1, Math.min(1, d[1])));
+  return [(lon / (2 * Math.PI) + .5) * w, (.5 - lat / Math.PI) * h]; }
+function planePoint(b, px, py) { const v = [0, 1, 2].map(i => b.fwd[i] + px * b.right[i] + py * b.up[i]); const n = Math.hypot(...v); return v.map(a => a / n); }
+// pixel -> sticker plane coords (u,v in 0..1) or null
+function hit(b, s, d) { const dz = dot(d, b.fwd); if (dz <= 1e-5) return null;
+  const u = dot(d, b.right) / dz / b.tx * .5 + .5, v = .5 - dot(d, b.up) / dz / b.ty * .5;
+  return (u >= 0 && u <= 1 && v >= 0 && v <= 1) ? [u, v] : null; }
+
+// ---- render
+function render(scale) {
+  const w = Math.round(W * scale), h = Math.round(H * scale);
+  const out = new ImageData(w, h), px = out.data;
+  const list = stickers.filter(s => s.vis).map(s => ({ s, b: basis(s) }));
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const d = dirAt(x + .5, y + .5, w, h); let r = 0, g = 255, bl = 0;
+    for (const { s, b } of list) { const t = hit(b, s, d); if (!t) continue;
+      const iw = s.img.width, ih = s.img.height, sx = Math.min(iw - 1, t[0] * iw | 0), sy = Math.min(ih - 1, t[1] * ih | 0), k = (sy * iw + sx) * 4, a = s.data.data[k + 3] / 255 * s.op;
+      r = s.data.data[k] * a + r * (1 - a); g = s.data.data[k + 1] * a + g * (1 - a); bl = s.data.data[k + 2] * a + bl * (1 - a); }
+    const o = (y * w + x) * 4; px[o] = r; px[o + 1] = g; px[o + 2] = bl; px[o + 3] = 255; }
+  const tmp = document.createElement('canvas'); tmp.width = w; tmp.height = h; tmp.getContext('2d').putImageData(out, 0, 0);
+  ctx.imageSmoothingEnabled = true; ctx.clearRect(0, 0, W, H); ctx.drawImage(tmp, 0, 0, W, H);
+}
+
+// ---- overlay
+function outlinePath(s, b, g) {
+  const pts = []; const N = 28, edges = [[-1, -1, 1, -1], [1, -1, 1, 1], [1, 1, -1, 1], [-1, 1, -1, -1]];
+  for (const [x0, y0, x1, y1] of edges) for (let i = 0; i < N; i++) { const t = i / N;
+    pts.push(toPx(planePoint(b, (x0 + (x1 - x0) * t) * b.tx, (y0 + (y1 - y0) * t) * b.ty))); }
+  g.beginPath(); pts.forEach((p, i) => { const q = pts[i - 1];
+    if (!q || Math.abs(p[0] - q[0]) > W / 2) g.moveTo(p[0], p[1]); else g.lineTo(p[0], p[1]); });
+  if (Math.abs(pts[0][0] - pts[pts.length - 1][0]) < W / 2) g.closePath();
+}
+function handles(s) { const b = basis(s);
+  return { b, c: toPx(b.fwd), corners: [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([x, y]) => toPx(planePoint(b, x * b.tx, y * b.ty))),
+    rot: toPx(planePoint(b, 0, b.ty * 1.35)) }; }
+function drawOverlay() {
+  octx.clearRect(0, 0, W, H);
+  if (document.getElementById('guides').checked) { octx.strokeStyle = 'rgba(255,255,255,.45)'; octx.lineWidth = 1; octx.setLineDash([6, 6]);
+    octx.beginPath(); octx.moveTo(0, H / 2); octx.lineTo(W, H / 2);
+    for (let i = 1; i < 4; i++) { octx.moveTo(W * i / 4, 0); octx.lineTo(W * i / 4, H); } octx.stroke(); octx.setLineDash([]);
+    octx.fillStyle = 'rgba(0,0,0,.5)'; octx.font = '600 10px ui-monospace, Menlo, monospace';
+    [['-180°', 4], ['-90°', W / 4 + 4], ['0°', W / 2 + 4], ['90°', W * .75 + 4]].forEach(([t, x]) => { octx.fillRect(x - 2, 4, 34, 14); octx.fillStyle = '#fff'; octx.fillText(t, x, 14); octx.fillStyle = 'rgba(0,0,0,.5)'; }); }
+  for (const s of stickers) { if (!s.vis) continue; const b = basis(s); const on = s.id === sel;
+    octx.lineWidth = on ? 2.5 : 1.2; octx.strokeStyle = on ? '#fff' : 'rgba(255,255,255,.4)'; outlinePath(s, b, octx); octx.stroke(); }
+  const s = S(sel); if (!s || !s.vis) return; const h = handles(s);
+  octx.strokeStyle = '#fff'; octx.lineWidth = 1.5; octx.beginPath(); octx.moveTo(...toPx(planePoint(h.b, 0, h.b.ty))); octx.lineTo(...h.rot); octx.stroke();
+  octx.fillStyle = '#3ec8c8'; octx.beginPath(); octx.arc(h.rot[0], h.rot[1], 7, 0, 7); octx.fill(); octx.stroke();
+  octx.fillStyle = '#fff'; h.corners.forEach(p => octx.fillRect(p[0] - 5, p[1] - 5, 10, 10));
+  octx.beginPath(); octx.arc(h.c[0], h.c[1], 4, 0, 7); octx.fill();
+}
+
+// ---- interaction
+let drag = null, raf = 0;
+const pos = e => { const r = ov.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H]; };
+const lonlat = p => { const d = dirAt(p[0], p[1], W, H); return [Math.atan2(d[0], d[2]) / D2R, Math.asin(d[1]) / D2R]; };
+const wrap = a => ((a + 540) % 360) - 180;
+function pickAt(p) { const d = dirAt(p[0], p[1], W, H); const order = stickers.map((s, i) => [s, i]).filter(([s]) => s.vis).reverse();
+  for (const [s] of order) { if (hit(basis(s), s, d)) return s; } return null; }
+ov.addEventListener('mousedown', e => {
+  const p = pos(e), s = S(sel);
+  if (s && s.vis) { const h = handles(s);
+    if (Math.hypot(p[0] - h.rot[0], p[1] - h.rot[1]) < 12) { drag = { mode: 'rot', c: h.c, a0: Math.atan2(p[1] - h.c[1], p[0] - h.c[0]), r0: s.rot }; return; }
+    for (const c of h.corners) if (Math.hypot(p[0] - c[0], p[1] - c[1]) < 12) { drag = { mode: 'scale', c: h.c, d0: Math.hypot(p[0] - h.c[0], p[1] - h.c[1]), f0: s.fov }; return; } }
+  const t = pickAt(p); if (!t) return; sel = t.id; const ll = lonlat(p);
+  drag = { mode: 'move', off: [wrap(ll[0] - t.yaw), ll[1] - t.pitch] }; refreshUI(); drawOverlay();
+});
+window.addEventListener('mousemove', e => {
+  if (!drag) return; const s = S(sel), p = pos(e);
+  if (drag.mode === 'move') { const ll = lonlat(p); s.yaw = wrap(ll[0] - drag.off[0]); s.pitch = Math.max(-89, Math.min(89, ll[1] - drag.off[1])); }
+  else if (drag.mode === 'rot') { let r = drag.r0 + (Math.atan2(p[1] - drag.c[1], p[0] - drag.c[0]) - drag.a0) / D2R; if (e.shiftKey) r = Math.round(r / 45) * 45; s.rot = wrap(r); }
+  else { s.fov = Math.max(5, Math.min(170, drag.f0 * Math.hypot(p[0] - drag.c[0], p[1] - drag.c[1]) / drag.d0)); }
+  syncFields(); if (!raf) raf = requestAnimationFrame(() => { raf = 0; render(.5); drawOverlay(); });
+});
+window.addEventListener('mouseup', () => { if (!drag) return; drag = null; render(1); drawOverlay(); });
+window.addEventListener('keydown', e => {
+  if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return; const s = S(sel); if (!s) return;
+  const st = e.shiftKey ? 5 : 1; let ch = true;
+  if (e.key === 'Delete' || e.key === 'Backspace') del(); else if (e.key === 'd' && e.metaKey) { e.preventDefault(); dup(); }
+  else if (e.key === 'ArrowLeft') s.yaw = wrap(s.yaw - st); else if (e.key === 'ArrowRight') s.yaw = wrap(s.yaw + st);
+  else if (e.key === 'ArrowUp') s.pitch = Math.min(89, s.pitch + st); else if (e.key === 'ArrowDown') s.pitch = Math.max(-89, s.pitch - st); else ch = false;
+  if (ch) { e.preventDefault(); syncFields(); redraw(); }
+});
+
+// ---- UI
+function redraw() { render(1); drawOverlay(); }
+function refreshUI() {
+  const L = document.getElementById('list'); L.innerHTML = '';
+  if (!stickers.length) L.innerHTML = '<div class="empty">Nessuno sticker. Trascina immagini sul canvas o premi «+ Immagine».</div>';
+  [...stickers].reverse().forEach(s => { const i = stickers.indexOf(s);
+    const d = document.createElement('div'); d.className = 'st' + (s.id === sel ? ' sel' : '') + (s.vis ? '' : ' off');
+    const c = document.createElement('canvas'); c.width = 46; c.height = 30; c.getContext('2d').drawImage(s.img, 0, 0, 46, 30); d.appendChild(c);
+    d.insertAdjacentHTML('beforeend', `<span class="nm">${s.name}</span><span class="z">z${i + 1}</span><button class="eye" data-eye title="Mostra/nascondi"><svg><use href="#${s.vis ? 'i-eye' : 'i-eyeoff'}"/></svg></button>`);
+    d.onclick = e => { if (e.target.closest('[data-eye]')) { s.vis = !s.vis; refreshUI(); redraw(); return; } sel = s.id; refreshUI(); drawOverlay(); };
+    // riordino (z) trascinando la riga: rilascio = davanti a quella riga
+    d.draggable = true;
+    d.ondragstart = e => { e.dataTransfer.setData('text/plain', 'row:' + s.id); };
+    d.ondragover = e => { e.preventDefault(); d.classList.add('drop-before'); };
+    d.ondragleave = () => d.classList.remove('drop-before');
+    d.ondrop = e => { e.preventDefault(); e.stopPropagation(); d.classList.remove('drop-before');
+      const m = /^row:(\d+)$/.exec(e.dataTransfer.getData('text/plain')); if (!m) return;
+      const from = stickers.findIndex(x => x.id === +m[1]); if (from < 0 || stickers[from] === s) return;
+      const [it] = stickers.splice(from, 1); stickers.splice(stickers.indexOf(s) + 1, 0, it); refreshUI(); redraw(); };
+    L.appendChild(d); });
+  syncFields();
+  ['dup', 'del'].forEach(i => document.getElementById(i).disabled = !S(sel));
+  checkState();
+}
+const ERR = { nopreset: 'Preset «PAN · 360 ERP» non trovato. Riavvia DT Hub o ricrealo dal menu Preset.',
+  nolora: 'LoRA «f2_360_erp_outpaint_lora_v1_lora_f16» non installato. Scaricalo e importalo in Draw Things (link nel README).',
+  nomodelfile: 'Modello «flux_2_klein_base_9b_i8x» non installato. Scegli un altro modello nel preset.' };
+const WARN = { nobase: 'Il modello del preset non è «Base»: il LoRA 360 funziona solo con i modelli Base.' };
+function checkState() {
+  const k = document.getElementById('sim').value, e = document.getElementById('err'), msg = ERR[k] || WARN[k] || '';
+  e.style.display = msg ? 'block' : 'none'; e.textContent = msg;
+  document.getElementById('send').disabled = !stickers.some(s => s.vis);
+}
+document.getElementById('sim').onchange = checkState;
+document.querySelectorAll('#mode button').forEach(b => b.onclick = () => { document.querySelectorAll('#mode button').forEach(x => x.classList.toggle('on', x === b)); });
+const F = { yaw: 'f-yaw', pitch: 'f-pitch', rot: 'f-rot', fov: 'f-fov', op: 'f-op' };
+function syncFields() { const s = S(sel);
+  for (const [k, id] of Object.entries(F)) { const el = document.getElementById(id); el.disabled = !s; if (s) el.value = k === 'op' ? s.op : Math.round(s[k] * 10) / 10; else el.value = ''; }
+  document.getElementById('f-vfov').value = s ? Math.round(2 * Math.atan(Math.tan(s.fov * D2R / 2) * s.img.height / s.img.width) / D2R * 10) / 10 : ''; }
+for (const [k, id] of Object.entries(F)) document.getElementById(id).addEventListener('input', e => { const s = S(sel); if (!s) return;
+  let v = parseFloat(e.target.value); if (isNaN(v)) return;
+  if (k === 'yaw') v = wrap(v); if (k === 'pitch') v = Math.max(-89, Math.min(89, v)); if (k === 'fov') v = Math.max(5, Math.min(170, v)); if (k === 'op') v = Math.max(0, Math.min(1, v));
+  s[k] = v; document.getElementById('f-vfov').value = Math.round(2 * Math.atan(Math.tan(s.fov * D2R / 2) * s.img.height / s.img.width) / D2R * 10) / 10; redraw(); });
+function del() { const i = stickers.findIndex(s => s.id === sel); if (i < 0) return; stickers.splice(i, 1); sel = stickers.length ? stickers[Math.max(0, i - 1)].id : 0; refreshUI(); redraw(); }
+function dup() { const s = S(sel); if (!s) return; const c = { ...s, id: nextId++, name: s.name.replace(/(\.\w+)?$/, ' copia$1'), yaw: wrap(s.yaw + 10) };
+  stickers.splice(stickers.indexOf(s) + 1, 0, c); sel = c.id; refreshUI(); redraw(); }
+document.getElementById('del').onclick = del; document.getElementById('dup').onclick = dup;
+let addN = 0;
+function addSticker() { const n = stickers.length; const s = mk(`immagine-${++addN}.jpg`, n % 3, wrap(10 * n), 0, 60); stickers.push(s); sel = s.id; refreshUI(); redraw(); }
+document.getElementById('add').onclick = addSticker;
+document.getElementById('clear').onclick = () => { if (stickers.length && confirm('Cancellare tutti gli sticker?')) { stickers.length = 0; sel = 0; refreshUI(); redraw(); } };
+document.getElementById('guides').onchange = drawOverlay;
+
+// fake drop zone
+const stage = document.getElementById('stage'), dropEl = document.getElementById('drop');
+['dragenter', 'dragover'].forEach(t => stage.addEventListener(t, e => { e.preventDefault(); dropEl.style.display = 'grid'; }));
+['dragleave', 'drop'].forEach(t => stage.addEventListener(t, e => { e.preventDefault(); dropEl.style.display = 'none'; if (t === 'drop') addSticker(); }));
+stage.addEventListener('dragstart', e => e.preventDefault());
+
+// prompt + send
+const prompt_ = document.getElementById('prompt'); let prev = null;
+const words = () => (prompt_.value.trim() ? prompt_.value.trim().split(/\s+/).length : 0);
+const upd = () => document.getElementById('count').textContent = words() + ' parole'; prompt_.oninput = upd; upd();
+document.getElementById('enhance').onclick = () => { prev = prompt_.value; prompt_.value += ', golden hour light, volumetric clouds, distant snow-capped peaks, fine haze in the valley, natural color grading, level horizon'; upd(); document.getElementById('undo').disabled = false; };
+document.getElementById('undo').onclick = () => { if (prev !== null) { prompt_.value = prev; prev = null; upd(); document.getElementById('undo').disabled = true; } };
+document.getElementById('send').onclick = () => { const t = document.getElementById('toast'); const m = document.querySelector('#mode .on').dataset.m;
+  t.textContent = `Inviato: ERP 2048 × 1024 · preset PAN · 360 ERP${m === 'v' ? ' Fast' : ''}`; t.classList.add('on'); setTimeout(() => t.classList.remove('on'), 2600); };
+
+refreshUI(); redraw();
+</script>
+</body>
+</html>
