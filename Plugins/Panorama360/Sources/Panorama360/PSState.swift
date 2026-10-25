@@ -38,6 +38,8 @@ final class PSState: ObservableObject {
   /// The newest result of the project, from the app's context, and the picture read from its file.
   @Published private(set) var lastResultPath: String?
   @Published private(set) var resultImage: CGImage?
+  /// The last picture extracted with the Cutout (kept in memory only: the actions need it, the memory in the state needs only the pose).
+  @Published var cutoutImage: CGImage?
   /// Brings a picture file into the project folder (the real store; a test puts another here).
   var addPicture: (URL, URL) throws -> PSStickerAdded = { try PSStickerStore.add(contentsOf: $0, into: $1) }
 
@@ -65,6 +67,7 @@ final class PSState: ObservableObject {
     notice = nil
     hasSent = false
     preview = nil
+    cutoutImage = nil
   }
 
   func apply(context: Data) {

@@ -5,6 +5,9 @@ import SwiftUI
 struct PSViewActions {
   var improve: () -> Void = {}
   var send: () -> Void = {}
+  var cutoutStart: () -> Void = {}
+  var cutoutMoodboard: () -> Void = {}
+  var putBackPanorama: () -> Void = {}
   static var none: PSViewActions { PSViewActions() }
 }
 

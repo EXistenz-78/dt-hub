@@ -66,6 +66,7 @@ struct PSView: View {
           Spacer(minLength: 0)
         }
         area
+        if isSphere { PSCutoutPanel(state: state, actions: actions) }
       }
       .padding(DS.panelPadding)
     }

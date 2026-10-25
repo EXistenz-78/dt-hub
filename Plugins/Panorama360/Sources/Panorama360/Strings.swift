@@ -7,6 +7,8 @@ enum L {
     case canvasTitle, guides, clearAll, clearConfirm, clearConfirmMessage, cancel
     case stickersTitle, yaw, pitch, rotation, fieldOfView, verticalFieldOfView, opacity, duplicate, delete, add, toggleVisible
     case croppedPhoto, unreadableFile, openProjectFirst, dropHere
+    case cutoutSize, extract, actionStart, actionMoodboard, actionSave, actionSticker, actionPanorama, cutoutNothing, putBackOff, montageDescription
+    case putBackNoCutout, putBackNoPatch, putBackWrongProportion, putBackPatchMissing, putBackNoPanorama, megapixels
     case viewPlane, viewSphere, sourceCanvas, sourceResult, resetView, noResultYet, resultUnreadable, resultNotTwoToOne
     case modeNormal, modeFast, send, noVisibleSticker, sendFailed, noAnswerFromApp, notBaseWarning
     case promptTitle, promptPlaceholder, improve, improving, undo, words, emptyDescription, answerNotEnglish, answerRejected, improveStale
@@ -30,6 +32,13 @@ enum L {
     .verticalFieldOfView: "Vertical FOV (°)", .opacity: "Opacity", .duplicate: "Duplicate", .delete: "Delete", .add: "Add picture",
     .toggleVisible: "Show or hide", .croppedPhoto: "“%@” looks cropped: its focal length was not used.",
     .unreadableFile: "“%@” could not be read.", .openProjectFirst: "Open a project first.", .dropHere: "Drop pictures here",
+    .cutoutSize: "Size", .extract: "Extract", .actionStart: "Use as start image", .actionMoodboard: "Add to Moodboard", .actionSave: "Save…",
+    .actionSticker: "Put back as a sticker", .actionPanorama: "Put back in the panorama (goes to the Results)",
+    .cutoutNothing: "Extract the view first.", .putBackOff: "The retouch cannot be put back.",
+    .montageDescription: "Montage · cutout put back at yaw %.0f° pitch %.0f° FOV %.0f°",
+    .putBackNoCutout: "Extract a view first.", .putBackNoPatch: "Make the retouch first: a RUN on the cutout.",
+    .putBackWrongProportion: "The retouch is not 4:3 like the cutout.", .putBackPatchMissing: "The retouch's file cannot be read.",
+    .putBackNoPanorama: "There was no result when the cutout was taken, so there is no panorama to paste it on.", .megapixels: "MP",
     .viewPlane: "Plane", .viewSphere: "Sphere", .sourceCanvas: "Canvas", .sourceResult: "Result", .resetView: "Look straight ahead",
     .noResultYet: "No result yet.\nRUN and it will show here.", .resultUnreadable: "The last result's file cannot be read.",
     .resultNotTwoToOne: "The last result is not 2:1: it is shown as a panorama all the same.",
@@ -51,6 +60,13 @@ enum L {
     .verticalFieldOfView: "FOV verticale (°)", .opacity: "Opacità", .duplicate: "Duplica", .delete: "Elimina", .add: "Aggiungi immagine",
     .toggleVisible: "Mostra o nascondi", .croppedPhoto: "«%@» sembra ritagliata: la focale non è stata usata.",
     .unreadableFile: "«%@» non si può leggere.", .openProjectFirst: "Apri prima un progetto.", .dropHere: "Rilascia le immagini qui",
+    .cutoutSize: "Dimensione", .extract: "Estrai", .actionStart: "Usa come immagine di partenza", .actionMoodboard: "Aggiungi al Moodboard",
+    .actionSave: "Salva…", .actionSticker: "Rimetti come sticker", .actionPanorama: "Rimetti nel panorama (va ai Risultati)",
+    .cutoutNothing: "Estrai prima la vista.", .putBackOff: "Il ritocco non si può rimettere.",
+    .montageDescription: "Montaggio · ritaglio rimesso a yaw %.0f° pitch %.0f° FOV %.0f°",
+    .putBackNoCutout: "Estrai prima una vista.", .putBackNoPatch: "Fai prima il ritocco: un RUN sul ritaglio.",
+    .putBackWrongProportion: "Il ritocco non è 4:3 come il ritaglio.", .putBackPatchMissing: "Il file del ritocco non si legge.",
+    .putBackNoPanorama: "Quando hai estratto non c'era un risultato: non c'è un panorama su cui incollarlo.", .megapixels: "MP",
     .viewPlane: "Piano", .viewSphere: "Sfera", .sourceCanvas: "Canvas", .sourceResult: "Risultato", .resetView: "Riporta la vista davanti",
     .noResultYet: "Nessun risultato ancora.\nFai un RUN e comparirà qui.", .resultUnreadable: "Il file dell'ultimo risultato non si legge.",
     .resultNotTwoToOne: "L'ultimo risultato non è 2:1: lo mostro lo stesso come panorama.",

@@ -22,7 +22,11 @@ final class Panorama360Plugin: DTHubPlugin {
   }
 
   func makeViewController() -> NSViewController {
-    NSHostingController(rootView: PSView(state: state, actions: PSViewActions(improve: { [weak self] in self?.improve() }, send: { [weak self] in self?.send() })))
+    NSHostingController(rootView: PSView(state: state, actions: PSViewActions(
+          improve: { [weak self] in self?.improve() }, send: { [weak self] in self?.send() },
+          cutoutStart: { [weak self] in self?.cutout { await $0.sendCutoutAsStartImage(contribute: $1) } },
+          cutoutMoodboard: { [weak self] in self?.cutout { await $0.addCutoutToMoodboard(contribute: $1) } },
+          putBackPanorama: { [weak self] in self?.cutout { await $0.putBackInPanorama(contribute: $1) } })))
   }
 
   func start(host: DTHubHost) {
@@ -40,6 +44,12 @@ final class Panorama360Plugin: DTHubPlugin {
   private func registerPresetsInBackground() {
     guard let host else { return }
     Task { await registerPresets(using: { await host.registerPresets($0) }) }
+  }
+
+  /// Runs a Cutout action with the app's `contribute`.
+  private func cutout(_ action: @escaping (PSState, PSContribute) async -> Void) {
+    guard let host else { return }
+    Task { await action(state, { await host.contribute($0) }) }
   }
 
   private func send() {

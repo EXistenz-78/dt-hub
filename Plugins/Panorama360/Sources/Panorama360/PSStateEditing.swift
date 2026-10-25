@@ -56,7 +56,7 @@ extension PSState {
     case .sphere:
       let camera = doc.camera
       let w = Int(Self.sphereSize.width * scale), h = Int(Self.sphereSize.height * scale)
-      let source: PSViewSource = effectiveSource == .result ? .panorama(resultImage!) : .layers(layers())
+      let source = viewSource()
       return { try renderer.renderView(source, camera: camera, width: w, height: h) }
     }
   }
