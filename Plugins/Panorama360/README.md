@@ -2,7 +2,7 @@
 
 A plug-in for DT Hub that makes **360° panoramas** (equirectangular, 2:1) with the *360 ERP outpaint* LoRA of FLUX.2 [klein]. You place pictures («stickers») on a canvas that shows the whole sphere unrolled, write a few words about the place, and press **Send to Generation**: the plug-in sends the canvas, with the stickers drawn on green, as the start image, and the model fills the green with the rest of the panorama.
 
-**Works with:** FLUX.2 [klein] 9B and 4B, **Base** models only. Needs a DT Hub release newer than 0.4.3 (it uses two additions to the plug-in contract: a preset can carry a model and advanced values, and a plug-in can ask for a saved preset to be applied).
+**Works with:** FLUX.2 [klein] 9B and 4B, **Base** models only. Needs a DT Hub release newer than 0.4.3 (it uses additions to the plug-in contract: a preset can carry a model and advanced values, a plug-in can ask for a saved preset to be applied, the context carries the latest result, and a plug-in can send a result to the Results at any time).
 
 ## How it works
 
@@ -14,6 +14,25 @@ A plug-in for DT Hub that makes **360° panoramas** (equirectangular, 2:1) with 
 6. **Send to Generation** applies the preset, puts the canvas as the start image (strength 1) and writes the description in the prompt and 2048 × 1024 as the size. Then press RUN in DT Hub.
 
 Only 2048 × 1024 works well: at 1024 × 512 the sky holds but water and ground come out streaky.
+
+## Looking around: the sphere view
+
+**View** at the top of the card chooses **Plane** (the unrolled canvas above) or **Sphere**: you stand in the centre and look outwards. In the sphere view the picture is 4:3, and next to it **Canvas | Result** says what you look at:
+
+- **Canvas** is your stickers on green. You can edit them from inside: drag one to move it, a corner to scale it, the round handle to turn it, exactly as on the plane. Drag the empty view to look around, the wheel or a pinch to zoom (the field of view goes from 20° to 120°), the crosshair button looks straight ahead again.
+- **Result** is the picture the last RUN made, shown as a panorama, for looking only (no handles, `+` and the bin are off). It updates by itself when a RUN ends. It is off until the project has a result.
+
+The view, the source and where you look are saved with the project.
+
+## Cutout: take a piece, retouch it, put it back
+
+In the sphere view the **Cutout** panel takes what you see as a flat 4:3 picture (**Extract**; the size is in megapixels, 1.0 by default, sides in multiples of 64). Then:
+
+1. **Use as start image** or **Add to Moodboard** send the picture to the Generation tab, so you can retouch it with an edit model; **Save…** writes a PNG.
+2. Run the retouch (the model must keep the framing and the 4:3 proportion). When the RUN ends its result is the retouch, and two buttons come on:
+   - **Put back as a sticker** places it on the canvas exactly where the cutout was taken (same yaw, pitch and angle), so **Send to Generation** can redraw the panorama around it.
+   - **Put back in the panorama** pastes it, with a soft edge, on the panorama the cutout was taken from and sends the new panorama to DT Hub's **Results** (it becomes the latest result; the source **Result** shows it). Nothing else is generated.
+3. Both buttons stay on for the same retouch until you extract again. If one is off, its tooltip says why: no cutout yet, no retouch yet, the retouch is not 4:3, its file cannot be read, or (for the panorama) there was no result when the cutout was taken.
 
 ## The presets are yours
 
