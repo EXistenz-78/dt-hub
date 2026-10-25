@@ -21,6 +21,11 @@ final class PSState: ObservableObject {
   @Published private(set) var isDragging = false
   /// What the user should read after the last add or send (a bad file, a cropped photo…); nil when there is nothing.
   @Published var notice: String?
+  /// What went wrong in the last «Improve prompt» or send, in the words to show.
+  @Published var error: String?
+  @Published var isImproving = false
+  /// The description before the last «Improve prompt», for «Undo».
+  @Published var previousDescription: String?
   var drag: PSDrag? { didSet { isDragging = drag != nil } }
   var previewGeneration = 0
   let italian: Bool

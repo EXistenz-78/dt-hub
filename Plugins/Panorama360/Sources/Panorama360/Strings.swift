@@ -7,6 +7,7 @@ enum L {
     case canvasTitle, guides, clearAll, clearConfirm, clearConfirmMessage, cancel
     case stickersTitle, yaw, pitch, rotation, fieldOfView, verticalFieldOfView, opacity, duplicate, delete, add, toggleVisible
     case croppedPhoto, unreadableFile, openProjectFirst, dropHere
+    case promptTitle, promptPlaceholder, improve, improving, undo, words, emptyDescription, answerNotEnglish, answerRejected
   }
 
   static var systemIsItalian: Bool { Locale.preferredLanguages.first?.hasPrefix("it") ?? false }
@@ -27,6 +28,10 @@ enum L {
     .verticalFieldOfView: "Vertical FOV (°)", .opacity: "Opacity", .duplicate: "Duplicate", .delete: "Delete", .add: "Add picture",
     .toggleVisible: "Show or hide", .croppedPhoto: "“%@” looks cropped: its focal length was not used.",
     .unreadableFile: "“%@” could not be read.", .openProjectFirst: "Open a project first.", .dropHere: "Drop pictures here",
+    .promptTitle: "Prompt", .promptPlaceholder: "Describe the place: light, season, style…", .improve: "Improve prompt",
+    .improving: "Improving…", .undo: "Undo", .words: "%d words", .emptyDescription: "Write a description first.",
+    .answerNotEnglish: "The language model did not answer in English: the description was left as it was.",
+    .answerRejected: "The language model's answer could not be used: the description was left as it was.",
   ]
 
   private static let it: [Key: String] = [
@@ -36,5 +41,9 @@ enum L {
     .verticalFieldOfView: "FOV verticale (°)", .opacity: "Opacità", .duplicate: "Duplica", .delete: "Elimina", .add: "Aggiungi immagine",
     .toggleVisible: "Mostra o nascondi", .croppedPhoto: "«%@» sembra ritagliata: la focale non è stata usata.",
     .unreadableFile: "«%@» non si può leggere.", .openProjectFirst: "Apri prima un progetto.", .dropHere: "Rilascia le immagini qui",
+    .promptTitle: "Prompt", .promptPlaceholder: "Descrivi il luogo: luce, stagione, stile…", .improve: "Migliora prompt",
+    .improving: "Miglioro…", .undo: "Annulla", .words: "%d parole", .emptyDescription: "Scrivi prima una descrizione.",
+    .answerNotEnglish: "L'LLM non ha risposto in inglese: la descrizione è rimasta com'era.",
+    .answerRejected: "La risposta dell'LLM non si può usare: la descrizione è rimasta com'era.",
   ]
 }

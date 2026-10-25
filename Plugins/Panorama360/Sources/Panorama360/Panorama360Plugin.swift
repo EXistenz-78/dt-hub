@@ -13,11 +13,25 @@ final class Panorama360Plugin: DTHubPlugin {
   private let state = PSState()
   private var host: DTHubHost?
 
+  /// `dataFolder` is where the master prompt is written (a test gives another one).
+  init(dataFolder: URL = PSPrompt.defaultDataFolder) {
+    PSPrompt.install(dataFolder: dataFolder)
+  }
+
   func makeViewController() -> NSViewController {
-    NSHostingController(rootView: PSView(state: state))
+    NSHostingController(rootView: PSView(state: state, actions: PSViewActions(improve: { [weak self] in self?.improve() })))
   }
 
   func start(host: DTHubHost) { self.host = host }
+
+  private func improve() {
+    guard let host else { return }
+    Task {
+      await state.improve { prompt, system in
+        await host.askLanguageModelAnswer(prompt, system: system, options: PSPrompt.options)
+      }
+    }
+  }
 
   func handle(_ message: Data) async -> Data? {
     switch DTHubMessage.type(of: message) {

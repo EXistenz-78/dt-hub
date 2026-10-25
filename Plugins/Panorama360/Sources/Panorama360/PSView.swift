@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 /// The tab, in the look of the app.
 struct PSView: View {
   @ObservedObject var state: PSState
+  var actions: PSViewActions = .none
   @State private var confirmingClear = false
   @State private var choosingFiles = false
 
@@ -17,7 +18,10 @@ struct PSView: View {
   var content: some View {
     VStack(spacing: DS.groupGap) {
       canvasCard
-      PSStickerCard(state: state)
+      HStack(alignment: .top, spacing: DS.groupGap) {
+        PSStickerCard(state: state).frame(maxWidth: .infinity)
+        PSPromptCard(state: state, actions: actions).frame(maxWidth: .infinity)
+      }
     }
     .padding(DS.groupGap)
   }
