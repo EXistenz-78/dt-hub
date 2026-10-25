@@ -92,7 +92,11 @@ enum PSProjection {
 
   /// The topmost visible sticker under the point (`stickers` in layer order: the last is on top).
   static func hitTest(u: Double, v: Double, stickers: [(sticker: Sticker, aspect: Double)], uOffset: Double = 0) -> UUID? {
-    let d = direction(u: u, v: v, uOffset: uOffset)
+    hitTest(direction: direction(u: u, v: v, uOffset: uOffset), stickers: stickers)
+  }
+
+  /// The topmost visible sticker the direction goes through.
+  static func hitTest(direction d: Vec3, stickers: [(sticker: Sticker, aspect: Double)]) -> UUID? {
     for entry in stickers.reversed() where entry.sticker.visible {
       if planeCoords(d, in: basis(for: entry.sticker, aspect: entry.aspect)) != nil { return entry.sticker.id }
     }
@@ -128,7 +132,7 @@ enum PSProjection {
   }
 
   /// The direction through the point (`x`, `y`) of the sticker's plane, in half widths and half heights (y up).
-  private static func ray(_ b: StickerBasis, x: Double, y: Double) -> Vec3 {
+  static func ray(_ b: StickerBasis, x: Double, y: Double) -> Vec3 {
     (b.forward + b.right * (x * b.tanX) + b.up * (y * b.tanY)).normalized
   }
 }

@@ -7,6 +7,8 @@ enum PSDrag {
   case move(UUID, PSInteraction.Grab)
   case scale(UUID, center: CGPoint, startFOV: Double, startDistance: Double)
   case rotate(UUID, center: CGPoint, startRot: Double, startAngle: Double)
+  /// In the sphere view, a drag on the empty view turns the camera: where it was and where the pointer started.
+  case look(camera: PSCamera, from: CGPoint)
 }
 
 extension PSState {
@@ -231,6 +233,8 @@ extension PSState {
         $0 = PSInteraction.rotated(
           $0, startRot: startRot, startAngle: startAngle, angle: atan2(pointer.y - center.y, pointer.x - center.x), snap: shift)
       }
+    case .look:
+      break
     }
   }
 
