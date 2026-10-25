@@ -1,6 +1,6 @@
 # Plug-in «Panorama 360» — spec
 
-Data: 25 ottobre 2026. Stato: **bozza da far approvare**. Percorso: architetturale (nuovo plug-in + due aggiunte al contratto 1).
+Data: 25 ottobre 2026. Stato: **approvata dall'utente (25 ott)**; esecuzione nativa. Percorso: architetturale (nuovo plug-in + due aggiunte al contratto 1).
 Mockup: `docs/superpowers/mockups/2026-10-25-panorama-360.html` (interattivo; il menu «stato simulato» in basso mostra errori e avvisi).
 Prova della ERP: `docs/superpowers/bench/panorama-erp/` (`make_erp.py`, `make_landscape.py`).
 
@@ -108,6 +108,6 @@ Si farà per ultima. Idea: il plug-in fa ruotare l'ERP generato di metà larghez
 ## 10. Rischi aperti
 - Metal nel dylib (ripiego CPU, §3.3).
 - Se i risultati chiedono un LoRA a 0,9 o una guidance diversa, si cambia il preset, non il plug-in.
-- Il refiner KV Fast non è stato provato con il LoRA 360: va provato a mano.
+- Il refiner KV del preset Fast è stato provato dall'utente con il LoRA 360 (25 ott): funziona.
 - Licenze: LoRA 9B con licenza FLUX non commerciale (v2.1), 4B Apache-2.0 nei metadati ma «segui la licenza del modello base»; nota nel README.
 - Qualità sotto i 2048 px (strisce): per questo la dimensione è fissa.
