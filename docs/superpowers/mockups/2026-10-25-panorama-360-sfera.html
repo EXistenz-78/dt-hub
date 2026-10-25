@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panorama 360 · vista a sfera e Cutout</title>
+<style>
+  :root { --bg:#1b1c1f; --card:#2c3a3c; --head:#243032; --box:#1f2a2c; --line:#3d5155; --text:#f2f2f7; --secondary:#9fb0b3; --accent:#3ec8c8; --accent-text:#0b1d1d; --warn:#f09837; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:18px; background:var(--bg); color:var(--text); font:13px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif; }
+  .tab { max-width:1000px; margin:0 auto; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:18px; overflow:hidden; }
+  .card > h2 { margin:0; padding:10px 14px; background:var(--head); font-size:14px; font-weight:600; text-align:center; }
+  .body { padding:14px; }
+  button { font:inherit; padding:6px 12px; border-radius:999px; border:1px solid var(--line); background:#1a2224; color:var(--text); cursor:pointer; }
+  button:hover:not(:disabled) { border-color:var(--accent); }
+  button:disabled { opacity:.35; cursor:default; }
+  button.ib { width:34px; height:34px; padding:0; display:inline-grid; place-items:center; }
+  button.ib svg { width:18px; height:18px; }
+  .row { display:flex; align-items:center; gap:8px; }
+  .spacer { flex:1; }
+  .sec { color:var(--secondary); }
+  .mono { font-family:ui-monospace,Menlo,monospace; }
+  .seg { display:inline-flex; border:1px solid var(--line); border-radius:999px; overflow:hidden; background:#1a2224; }
+  .seg button { border:0; border-radius:0; background:none; padding:6px 16px; display:inline-flex; gap:6px; align-items:center; }
+  .seg button.on { background:var(--accent); color:var(--accent-text); font-weight:600; }
+  .seg button svg { width:16px; height:16px; }
+  .toggle { display:inline-flex; align-items:center; gap:6px; cursor:pointer; }
+  .stage { position:relative; border:1px solid var(--line); border-radius:10px; overflow:hidden; background:#00ff00; line-height:0; margin-top:10px; }
+  .stage canvas { width:100%; height:100%; display:block; position:absolute; inset:0; }
+  .stage.plane { aspect-ratio:2/1; } .stage.sphere { aspect-ratio:4/3; }
+  #ov { cursor:crosshair; }
+  .badge { position:absolute; left:8px; top:8px; background:rgba(0,0,0,.55); padding:2px 8px; border-radius:6px; font:600 11px ui-monospace,Menlo,monospace; line-height:1.4; pointer-events:none; }
+  .empty { position:absolute; inset:0; display:grid; place-items:center; color:#fff; background:rgba(0,0,0,.45); line-height:1.4; }
+  .cut { margin-top:12px; border:1px solid var(--line); border-radius:14px; padding:12px; background:var(--box); }
+  .cut .grid { display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+  .cut input[type=number] { width:70px; padding:5px 8px; border:1px solid var(--line); border-radius:8px; background:#172023; color:var(--text); font:12px ui-monospace,Menlo,monospace; }
+  .thumb { width:96px; height:72px; border-radius:6px; border:1px solid var(--line); background:#111; }
+  .actions { display:flex; gap:8px; }
+  .sim { max-width:1000px; margin:14px auto 0; font-size:11px; color:var(--secondary); text-align:right; }
+  .sim select { font:inherit; background:#1a2224; color:var(--text); border:1px solid var(--line); border-radius:999px; padding:2px 8px; }
+  .toast { position:fixed; bottom:18px; left:50%; transform:translateX(-50%); background:var(--accent); color:var(--accent-text); padding:8px 16px; border-radius:999px; font-weight:600; opacity:0; transition:opacity .2s; pointer-events:none; }
+  .toast.on { opacity:1; }
+</style>
+</head>
+<body>
+<div class="tab"><div class="card">
+  <h2>Tela 360°</h2>
+  <div class="body">
+    <div class="row">
+      <div class="seg" id="view">
+        <button data-v="plane" class="on" title="Piano"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>Piano</button>
+        <button data-v="sphere" title="Sfera"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 12h17M12 3.5c3 3 3 14 0 17M12 3.5c-3 3-3 14 0 17" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>Sfera</button>
+      </div>
+      <div class="seg" id="source" style="display:none">
+        <button data-s="canvas" class="on">Canvas</button>
+        <button data-s="result" id="srcResult">Risultato</button>
+      </div>
+      <span class="spacer"></span>
+      <span class="sec mono" id="size">2048 × 1024 · 360°</span>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="ib" id="add" title="Aggiungi immagine"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+      <button class="ib" id="clear" title="Cancella tutti gli sticker"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button class="ib" id="reset" title="Riporta la vista davanti" style="display:none"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+      <label class="toggle sec"><input type="checkbox" id="guides" checked> Guide</label>
+    </div>
+    <div class="stage plane" id="stage">
+      <canvas id="cv" width="1024" height="512"></canvas>
+      <canvas id="ov" width="1024" height="512"></canvas>
+      <div class="badge" id="badge" style="display:none"></div>
+      <div class="empty" id="empty" style="display:none">Nessun risultato ancora.<br>Fai un RUN e comparirà qui.</div>
+    </div>
+
+    <div class="cut" id="cut" style="display:none">
+      <div class="grid">
+        <label>Dimensione <input type="number" id="mp" value="1" min="0.25" max="4" step="0.25"> MP</label>
+        <span class="sec mono" id="cutSize"></span>
+        <button id="extract">Estrai</button>
+        <canvas class="thumb" id="thumb" width="96" height="72"></canvas>
+        <div class="actions" id="actions">
+          <button class="ib" data-a="start" title="Usa come immagine di partenza"><svg viewBox="0 0 24 24"><path d="M5 4h9l5 5v11H5zM14 4v5h5M12 17v-6M9.5 13.5L12 11l2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></svg></button>
+          <button class="ib" data-a="mood" title="Aggiungi al Moodboard"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.7"/><rect x="13" y="4" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.7"/><rect x="4" y="13" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M16.5 14v6M13.5 17h6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
+          <button class="ib" data-a="save" title="Salva…"><svg viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <span style="width:10px"></span>
+          <button class="ib" data-a="sticker" title="Rimetti come sticker"><svg viewBox="0 0 24 24"><path d="M12 21s7-6 7-11a7 7 0 0 0-14 0c0 5 7 11 7 11z" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="10" r="2.4" fill="currentColor"/></svg></button>
+          <button class="ib" data-a="pano" title="Rimetti nel panorama (va ai Risultati)"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><rect x="9" y="9" width="6" height="6" rx="1" fill="currentColor"/></svg></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div></div>
+<div class="sim">solo mockup · stato simulato:
+  <select id="sim"><option value="none">nessun risultato</option><option value="has">con un risultato</option><option value="retouch">ritocco pronto (RUN dopo l'estrazione)</option></select></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const D2R = Math.PI/180, W = 1024, H = 512;
+const $ = id => document.getElementById(id);
+// ---------- stickers (procedural stand-ins)
+function makeImg(kind, w=360, h=240){ const c=document.createElement('canvas'); c.width=w; c.height=h; const g=c.getContext('2d');
+  if(kind===0){ let s=g.createLinearGradient(0,0,0,h*.5); s.addColorStop(0,'#2c5db0'); s.addColorStop(1,'#f2c690'); g.fillStyle=s; g.fillRect(0,0,w,h*.5);
+    g.fillStyle='#6a739a'; g.beginPath(); g.moveTo(0,h*.5); for(let x=0;x<=w;x+=20) g.lineTo(x,h*.5-12-26*Math.abs(Math.sin(x*.031))); g.lineTo(w,h*.5); g.fill();
+    let m=g.createLinearGradient(0,h*.5,0,h); m.addColorStop(0,'#b79e86'); m.addColorStop(1,'#1d3b5e'); g.fillStyle=m; g.fillRect(0,h*.5,w,h*.5);
+  } else if(kind===1){ g.fillStyle='#9fc4a0'; g.fillRect(0,0,w,h); for(let i=0;i<26;i++){ g.fillStyle=`hsl(${120+i*3},40%,${20+(i%5)*6}%)`; const x=(i*53)%w, th=90+(i*37)%110; g.beginPath(); g.moveTo(x,h); g.lineTo(x-28,h); g.lineTo(x-14,h-th); g.fill(); }
+  } else { g.fillStyle='#233a5c'; g.fillRect(0,0,w,h); for(let i=0;i<12;i++){ g.fillStyle=`hsl(215,25%,${30+(i%4)*8}%)`; const bw=28+(i*7)%20, bh=70+(i*41)%130; g.fillRect(i*30,h-bh,bw,bh); } g.fillStyle='#ffe6a0'; for(let i=0;i<40;i++) g.fillRect((i*29)%w,h-20-(i*17)%120,4,6); }
+  g.strokeStyle='rgba(255,255,255,.7)'; g.lineWidth=2; g.strokeRect(1,1,w-2,h-2); return c; }
+let nextId=1;
+const mk=(name,kind,yaw,pitch,fov,rot=0)=>{ const img=makeImg(kind); return {id:nextId++,name,img,data:img.getContext('2d').getImageData(0,0,img.width,img.height),yaw,pitch,rot,fov,op:1,vis:true}; };
+const stickers=[mk('paesaggio.jpg',0,-35,4,70),mk('bosco.jpg',1,40,-6,55,8),mk('città.jpg',2,125,12,60,-5)];
+let sel=stickers[0].id; const S=id=>stickers.find(s=>s.id===id);
+
+// ---------- maths
+const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+const norm=v=>{const n=Math.hypot(...v);return v.map(a=>a/n)};
+const wrap=a=>((a+540)%360)-180;
+function dirAt(x,y,w,h){const lon=(x/w-.5)*2*Math.PI,lat=(.5-y/h)*Math.PI;return [Math.sin(lon)*Math.cos(lat),Math.sin(lat),Math.cos(lon)*Math.cos(lat)];}
+function toUV(d){const lon=Math.atan2(d[0],d[2]),lat=Math.asin(Math.max(-1,Math.min(1,d[1])));return [(lon/(2*Math.PI)+.5),(.5-lat/Math.PI)];}
+function basis(s){const y=s.yaw*D2R,p=s.pitch*D2R,r=s.rot*D2R;const fwd=[Math.sin(y)*Math.cos(p),Math.sin(p),Math.cos(y)*Math.cos(p)];const right=[Math.cos(y),0,-Math.sin(y)];const up=cross(fwd,right);
+  const rr=right.map((v,i)=>v*Math.cos(r)-up[i]*Math.sin(r)), uu=right.map((v,i)=>v*Math.sin(r)+up[i]*Math.cos(r));const tx=Math.tan(s.fov*D2R/2);return{fwd,right:rr,up:uu,tx,ty:tx*s.img.height/s.img.width};}
+function hit(b,d){const dz=dot(d,b.fwd);if(dz<=1e-5)return null;const u=dot(d,b.right)/dz/b.tx*.5+.5,v=.5-dot(d,b.up)/dz/b.ty*.5;return(u>=0&&u<=1&&v>=0&&v<=1)?[u,v]:null;}
+const planePoint=(b,x,y)=>norm([0,1,2].map(i=>b.fwd[i]+x*b.tx*b.right[i]+y*b.ty*b.up[i]));
+function shade(s,t,u,v){const iw=s.img.width,ih=s.img.height,sx=Math.min(iw-1,u*iw|0),sy=Math.min(ih-1,v*ih|0),k=(sy*iw+sx)*4,a=s.data.data[k+3]/255*s.op;return [s.data.data[k]*a,s.data.data[k+1]*a,s.data.data[k+2]*a,a];}
+
+// ---------- the "result": a panorama made of a landscape with the stickers drawn on it
+const resultERP=document.createElement('canvas'); resultERP.width=1024; resultERP.height=512; let resultData=null;
+function buildResult(){const c=resultERP.getContext('2d');const sky=c.createLinearGradient(0,0,0,H/2);sky.addColorStop(0,'#3d6fc2');sky.addColorStop(1,'#f0c999');c.fillStyle=sky;c.fillRect(0,0,W,H/2);
+  const sea=c.createLinearGradient(0,H/2,0,H);sea.addColorStop(0,'#b79e86');sea.addColorStop(1,'#12304f');c.fillStyle=sea;c.fillRect(0,H/2,W,H/2);
+  c.fillStyle='rgba(95,105,150,.8)';c.beginPath();c.moveTo(0,H/2);for(let x=0;x<=W;x+=8)c.lineTo(x,H/2-10-34*Math.abs(Math.sin(x*.011))-18*Math.abs(Math.sin(x*.037)));c.lineTo(W,H/2);c.fill();
+  c.strokeStyle='rgba(255,255,255,.12)';for(let y=H/2+6;y<H;y+=7){c.beginPath();c.moveTo(0,y);for(let x=0;x<=W;x+=16)c.lineTo(x,y+Math.sin(x*.05+y)*1.5);c.stroke();}
+  const bs=stickers.map(s=>[s,basis(s)]);const id=c.getImageData(0,0,W,H);
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){const d=dirAt(x+.5,y+.5,W,H);for(const [s,b] of bs){const t=hit(b,d);if(!t)continue;const q=shade(s,0,t[0],t[1]);const o=(y*W+x)*4;id.data[o]=q[0]+id.data[o]*(1-q[3]);id.data[o+1]=q[1]+id.data[o+1]*(1-q[3]);id.data[o+2]=q[2]+id.data[o+2]*(1-q[3]);}}
+  c.putImageData(id,0,0);resultData=id;}
+
+// ---------- state
+let view='plane', source='canvas', cam={yaw:0,pitch:0,fov:90}, simState='none', cutout=null, drag=null, raf=0;
+const cv=$('cv'),ov=$('ov'),ctx=cv.getContext('2d'),octx=ov.getContext('2d');
+function camBasis(){const y=cam.yaw*D2R,p=cam.pitch*D2R;const fwd=[Math.sin(y)*Math.cos(p),Math.sin(p),Math.cos(y)*Math.cos(p)];const right=[Math.cos(y),0,-Math.sin(y)];const up=cross(fwd,right);return{fwd,right,up,tx:Math.tan(cam.fov*D2R/2)};}
+function viewDims(){return view==='plane'?[W,H]:[1024,768];}
+
+// ---------- rendering
+function renderPlane(scale){const w=W*scale|0,h=H*scale|0,out=new ImageData(w,h),px=out.data;const list=stickers.filter(s=>s.vis).map(s=>({s,b:basis(s)}));
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){const d=dirAt(x+.5,y+.5,w,h);let r=0,g=255,bl=0;for(const{s,b}of list){const t=hit(b,d);if(!t)continue;const q=shade(s,0,t[0],t[1]);r=q[0]+r*(1-q[3]);g=q[1]+g*(1-q[3]);bl=q[2]+bl*(1-q[3]);}const o=(y*w+x)*4;px[o]=r;px[o+1]=g;px[o+2]=bl;px[o+3]=255;}
+  blit(out,W,H);}
+function renderSphere(scale,w0,h0){const w=w0*scale|0,h=h0*scale|0,out=new ImageData(w,h),px=out.data,cb=camBasis(),ty=cb.tx*h/w;
+  const list=source==='canvas'?stickers.filter(s=>s.vis).map(s=>({s,b:basis(s)})):[];
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){const sx=(2*(x+.5)/w-1)*cb.tx,sy=(1-2*(y+.5)/h)*ty;const d=norm([0,1,2].map(i=>cb.fwd[i]+sx*cb.right[i]+sy*cb.up[i]));const o=(y*w+x)*4;
+    if(source==='result'&&resultData){const uv=toUV(d);const rx=Math.min(W-1,uv[0]*W|0),ry=Math.min(H-1,uv[1]*H|0),k=(ry*W+rx)*4;px[o]=resultData.data[k];px[o+1]=resultData.data[k+1];px[o+2]=resultData.data[k+2];px[o+3]=255;continue;}
+    let r=0,g=255,bl=0;for(const{s,b}of list){const t=hit(b,d);if(!t)continue;const q=shade(s,0,t[0],t[1]);r=q[0]+r*(1-q[3]);g=q[1]+g*(1-q[3]);bl=q[2]+bl*(1-q[3]);}px[o]=r;px[o+1]=g;px[o+2]=bl;px[o+3]=255;}
+  blit(out,w0,h0);}
+function blit(img,tw,th){const t=document.createElement('canvas');t.width=img.width;t.height=img.height;t.getContext('2d').putImageData(img,0,0);ctx.imageSmoothingEnabled=true;ctx.clearRect(0,0,cv.width,cv.height);ctx.drawImage(t,0,0,cv.width,cv.height);}
+function render(scale){ const[vw,vh]=viewDims(); if(cv.width!==vw||cv.height!==vh){cv.width=ov.width=vw;cv.height=ov.height=vh;} if(view==='plane') renderPlane(scale); else renderSphere(scale,1024,768); drawOverlay(); }
+
+// ---------- projection to the screen (sphere) and overlay
+function toScreen(d){ if(view==='plane'){const uv=toUV(d);return[uv[0]*W,uv[1]*H];}
+  const cb=camBasis(),dz=dot(d,cb.fwd);if(dz<=1e-4)return null;const ty=cb.tx*768/1024;return[(dot(d,cb.right)/dz/cb.tx*.5+.5)*1024,(.5-dot(d,cb.up)/dz/ty*.5)*768];}
+function outlineLines(s){const b=basis(s),N=28,c=[[-1,1],[1,1],[1,-1],[-1,-1],[-1,1]],lines=[[]];
+  for(let e=0;e<4;e++)for(let i=0;i<N;i++){const t=i/N,p=toScreen(planePoint(b,c[e][0]+(c[e+1][0]-c[e][0])*t,c[e][1]+(c[e+1][1]-c[e][1])*t));const L=lines[lines.length-1];
+    if(!p){if(L.length)lines.push([]);continue;} if(view==='plane'&&L.length&&Math.abs(L[L.length-1][0]-p[0])>W/2)lines.push([]); lines[lines.length-1].push(p);}return lines;}
+function handlesOf(s){const b=basis(s);return{c:toScreen(b.fwd),corners:[[-1,1],[1,1],[1,-1],[-1,-1]].map(([x,y])=>toScreen(planePoint(b,x,y))),rot:toScreen(planePoint(b,0,1.35))};}
+function drawOverlay(){const[w,h]=viewDims();
+  octx.clearRect(0,0,w,h);const editable=!(view==='sphere'&&source==='result');
+  if(view==='plane'&&$('guides').checked){octx.strokeStyle='rgba(255,255,255,.45)';octx.setLineDash([6,6]);octx.beginPath();octx.moveTo(0,h/2);octx.lineTo(w,h/2);for(let i=1;i<4;i++){octx.moveTo(w*i/4,0);octx.lineTo(w*i/4,h);}octx.stroke();octx.setLineDash([]);}
+  if(view==='sphere'&&$('guides').checked){octx.strokeStyle='rgba(255,255,255,.35)';octx.setLineDash([6,6]);const hz=[];for(let lon=-180;lon<180;lon+=3){hz.push(toScreen([Math.sin(lon*D2R),0,Math.cos(lon*D2R)]));}octx.beginPath();let pen=false;for(const p of hz){if(!p){pen=false;continue;}if(!pen){octx.moveTo(p[0],p[1]);pen=true;}else octx.lineTo(p[0],p[1]);}octx.stroke();octx.setLineDash([]);}
+  if(!editable)return;
+  for(const s of stickers){if(!s.vis)continue;const on=s.id===sel;octx.lineWidth=on?2.5:1.2;octx.strokeStyle=on?'#fff':'rgba(255,255,255,.4)';for(const L of outlineLines(s)){if(L.length<2)continue;octx.beginPath();octx.moveTo(L[0][0],L[0][1]);for(const p of L.slice(1))octx.lineTo(p[0],p[1]);octx.stroke();}}
+  const s=S(sel);if(!s||!s.vis)return;const hd=handlesOf(s);if(!hd.c)return;
+  if(hd.rot){octx.strokeStyle='#fff';octx.lineWidth=1.5;octx.beginPath();octx.moveTo(hd.c[0],hd.c[1]);octx.lineTo(hd.rot[0],hd.rot[1]);octx.stroke();octx.fillStyle='#3ec8c8';octx.beginPath();octx.arc(hd.rot[0],hd.rot[1],7,0,7);octx.fill();octx.stroke();}
+  octx.fillStyle='#fff';for(const p of hd.corners)if(p)octx.fillRect(p[0]-5,p[1]-5,10,10);octx.beginPath();octx.arc(hd.c[0],hd.c[1],4,0,7);octx.fill();}
+let lastFrame=true;
+
+// ---------- pointer
+const pos=e=>{const r=ov.getBoundingClientRect(),[w,h]=viewDims();return[(e.clientX-r.left)/r.width*w,(e.clientY-r.top)/r.height*h];};
+function rayAt(p){ if(view==='plane') return dirAt(p[0],p[1],W,H); const cb=camBasis(),ty=cb.tx*768/1024;const sx=(2*p[0]/1024-1)*cb.tx,sy=(1-2*p[1]/768)*ty;return norm([0,1,2].map(i=>cb.fwd[i]+sx*cb.right[i]+sy*cb.up[i]));}
+const lonlat=d=>[Math.atan2(d[0],d[2])/D2R,Math.asin(d[1])/D2R];
+ov.addEventListener('mousedown',e=>{const p=pos(e);const editable=!(view==='sphere'&&source==='result');const s=S(sel);
+  if(editable&&s&&s.vis){const hd=handlesOf(s);if(hd.c){if(hd.rot&&Math.hypot(p[0]-hd.rot[0],p[1]-hd.rot[1])<12){drag={m:'rot',c:hd.c,a0:Math.atan2(p[1]-hd.c[1],p[0]-hd.c[0]),r0:s.rot};return;}
+    for(const c of hd.corners)if(c&&Math.hypot(p[0]-c[0],p[1]-c[1])<12){drag={m:'scale',c:hd.c,d0:Math.hypot(p[0]-hd.c[0],p[1]-hd.c[1]),f0:s.fov};return;}}}
+  if(editable){const d=rayAt(p);for(const t of [...stickers].reverse()){if(t.vis&&hit(basis(t),d)){sel=t.id;const ll=lonlat(d);drag={m:'move',off:[wrap(ll[0]-t.yaw),ll[1]-t.pitch]};drawOverlay();return;}}}
+  if(view==='sphere')drag={m:'look',x:p[0],y:p[1],yaw:cam.yaw,pitch:cam.pitch};});
+window.addEventListener('mousemove',e=>{if(!drag)return;const p=pos(e),s=S(sel);
+  if(drag.m==='move'){const ll=lonlat(rayAt(p));s.yaw=wrap(ll[0]-drag.off[0]);s.pitch=Math.max(-89,Math.min(89,ll[1]-drag.off[1]));}
+  else if(drag.m==='rot'){let r=drag.r0+(Math.atan2(p[1]-drag.c[1],p[0]-drag.c[0])-drag.a0)/D2R;if(e.shiftKey)r=Math.round(r/45)*45;s.rot=wrap(r);}
+  else if(drag.m==='scale'){s.fov=Math.max(5,Math.min(170,drag.f0*Math.hypot(p[0]-drag.c[0],p[1]-drag.c[1])/drag.d0));}
+  else if(drag.m==='look'){const k=cam.fov/1024;cam.yaw=wrap(drag.yaw-(p[0]-drag.x)*k);cam.pitch=Math.max(-89,Math.min(89,drag.pitch+(p[1]-drag.y)*k));updateBadge();}
+  if(!raf)raf=requestAnimationFrame(()=>{raf=0;render(.35);});});
+window.addEventListener('mouseup',()=>{if(!drag)return;const was=drag.m;drag=null;if(was==='move'||was==='rot'||was==='scale')buildResultSoon();render(view==='sphere'?.5:1);});
+ov.addEventListener('wheel',e=>{if(view!=='sphere')return;e.preventDefault();cam.fov=Math.max(20,Math.min(120,cam.fov*(1+e.deltaY*.001)));updateBadge();render(.5);clearTimeout(wt);wt=setTimeout(()=>render(1),150);},{passive:false});let wt=0,bt=0;
+function buildResultSoon(){clearTimeout(bt);bt=setTimeout(buildResult,200);}
+function updateBadge(){$('badge').textContent=`yaw ${cam.yaw.toFixed(0)}° · pitch ${cam.pitch.toFixed(0)}° · FOV ${cam.fov.toFixed(0)}°`;}
+
+// ---------- UI
+function refreshUI(){const sphere=view==='sphere';$('stage').className='stage '+(sphere?'sphere':'plane');$('source').style.display=sphere?'inline-flex':'none';$('reset').style.display=sphere?'inline-grid':'none';$('cut').style.display=sphere?'block':'none';$('badge').style.display=sphere?'block':'none';
+  const has=simState!=='none';$('srcResult').disabled=!has;if(!has&&source==='result')source='canvas';
+  document.querySelectorAll('#view button').forEach(b=>b.classList.toggle('on',b.dataset.v===view));document.querySelectorAll('#source button').forEach(b=>b.classList.toggle('on',b.dataset.s===source));
+  $('empty').style.display=(sphere&&source==='result'&&!has)?'grid':'none';$('size').textContent=sphere?'vista 4:3 · FOV '+cam.fov.toFixed(0)+'°':'2048 × 1024 · 360°';
+  ['add','clear'].forEach(i=>$(i).disabled=sphere&&source==='result');
+  const ready=!!cutout, retouch=simState==='retouch'&&ready;document.querySelectorAll('#actions button').forEach(b=>{const a=b.dataset.a;b.disabled=!ready||((a==='sticker'||a==='pano')&&!retouch);
+    if(a==='sticker'||a==='pano')b.title=(a==='sticker'?'Rimetti come sticker':'Rimetti nel panorama (va ai Risultati)')+(retouch?'':' — serve un RUN con il ritocco, dopo l\'estrazione');});
+  updateCutSize();updateBadge();}
+function cutDims(){const mp=Math.max(.25,Math.min(4,+$('mp').value||1)),w=Math.round(Math.sqrt(mp*1e6*4/3)/64)*64,h=Math.round(w*3/4/64)*64;return[w,h];}
+function updateCutSize(){const[w,h]=cutDims();$('cutSize').textContent=`${w} × ${h} px`;}
+document.querySelectorAll('#view button').forEach(b=>b.onclick=()=>{view=b.dataset.v;refreshUI();render(view==='sphere'?.5:1);setTimeout(()=>render(1),50);});
+document.querySelectorAll('#source button').forEach(b=>b.onclick=()=>{if(b.disabled)return;source=b.dataset.s;refreshUI();render(.5);setTimeout(()=>render(1),50);});
+$('reset').onclick=()=>{cam={yaw:0,pitch:0,fov:90};refreshUI();render(1);};
+$('guides').onchange=drawOverlay;$('mp').oninput=updateCutSize;
+$('sim').onchange=e=>{simState=e.target.value;refreshUI();render(1);};
+function toast(t){const e=$('toast');e.textContent=t;e.classList.add('on');setTimeout(()=>e.classList.remove('on'),2600);}
+$('extract').onclick=()=>{const t=$('thumb'),g=t.getContext('2d');const keep=[view,source];const[w,h]=[96,72];
+  // draw the current view into the thumbnail
+  const copy=document.createElement('canvas');copy.width=cv.width;copy.height=cv.height;copy.getContext('2d').drawImage(cv,0,0);g.drawImage(copy,0,0,w,h);cutout={yaw:cam.yaw,pitch:cam.pitch,fov:cam.fov,size:cutDims()};refreshUI();toast(`Estratta: ${cutout.size[0]} × ${cutout.size[1]} px · yaw ${cam.yaw.toFixed(0)}° pitch ${cam.pitch.toFixed(0)}° FOV ${cam.fov.toFixed(0)}°`);};
+const messages={start:'Inviata come immagine di partenza',mood:'Aggiunta al Moodboard',save:'Salva… (PNG)',sticker:'Rimessa come sticker nel canvas, allo stesso punto',pano:'Montaggio inviato ai Risultati (ritaglio rimesso a yaw/pitch dell\'estrazione)'};
+document.querySelectorAll('#actions button').forEach(b=>b.onclick=()=>{if(b.disabled)return;const a=b.dataset.a;toast(messages[a]);
+  if(a==='sticker'&&cutout){const s=mk('ritocco.png',0,cutout.yaw,cutout.pitch,cutout.fov);stickers.push(s);sel=s.id;view='plane';source='canvas';refreshUI();buildResult();render(1);}
+  if(a==='pano'){simState='has';$('sim').value='has';source='result';buildResult();refreshUI();render(.5);setTimeout(()=>render(1),50);}});
+$('add').onclick=()=>{const s=mk('immagine.jpg',stickers.length%3,wrap(10*stickers.length),0,60);stickers.push(s);sel=s.id;buildResult();render(1);};
+$('clear').onclick=()=>{if(confirm('Cancellare tutti gli sticker?')){stickers.length=0;buildResult();render(1);}};
+
+buildResult();refreshUI();render(1);
+</script>
+</body>
+</html>
