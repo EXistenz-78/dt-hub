@@ -47,7 +47,7 @@ struct PSSeamSessionTests {
     #expect(size["width"] as? Int == 256 && size["height"] as? Int == 256)
     #expect(pass["preset"] as? String == "PANO Test" && pass["strength"] as? Double == 1)
     let settings = try #require(pass["maskSettings"] as? [String: Any])
-    #expect(settings["blur"] as? Int == 24 && settings["outset"] as? Int == 0 && settings["preserveOriginal"] as? Bool == true)
+    #expect(settings["blur"] as? Int == 30 && settings["outset"] as? Int == 0 && settings["preserveOriginal"] as? Bool == true)
     #expect(pass["fields"] == nil && pass["loras"] == nil, "the prompt and the parameters belong to the preset")
     #expect(pass["done"] == nil)
   }

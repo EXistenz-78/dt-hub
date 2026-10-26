@@ -36,7 +36,7 @@ enum PSSeam {
   static let presetName = "PANO Test"
   static let strength = 1.0
   /// How Draw Things treats the mask (blur 0…30, outset 0…100; the original is kept outside it).
-  static let maskBlur = 24
+  static let maskBlur = 30
   static let maskOutset = 0
   /// The band is this fraction of the square; the soft edge is `square / fadeDivisor`; the brightness is levelled with a blur of `square / toneRadiusDivisor`.
   static let bandFraction = 0.5
