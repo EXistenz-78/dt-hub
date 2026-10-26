@@ -144,9 +144,9 @@ struct PSCamera: Codable, Equatable, Sendable {
   var pitch = 0.0
   var fov = 90.0
 
-  static let fovRange = 20.0...120.0
+  static let fovRange = 20.0...160.0
 
-  /// Yaw into (−180, 180], pitch to ±89°, field of view to 20…120°.
+  /// Yaw into (−180, 180], pitch to ±89°, field of view to 20…160°.
   mutating func clamp() {
     yaw = PSProjection.wrapYaw(yaw)
     pitch = min(89, max(-89, pitch))

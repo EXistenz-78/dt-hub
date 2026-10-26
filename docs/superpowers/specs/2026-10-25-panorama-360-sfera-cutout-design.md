@@ -27,7 +27,7 @@ Tutto in `Plugins/Panorama360/`, più due aggiunte facoltative al contratto 1 (�
 
 | Unità | Compito | Nuovo/modificato |
 |---|---|---|
-| `PSCamera` | yaw, pitch (±89°), FOV orizzontale (20…120°); raggio di un pixel; posizione sullo schermo di una direzione (nil se dietro la camera) | nuovo, in `PSProjection` |
+| `PSCamera` | yaw, pitch (±89°), FOV orizzontale (20…160°); raggio di un pixel; posizione sullo schermo di una direzione (nil se dietro la camera) | nuovo, in `PSProjection` |
 | `PSRendering.renderView` | `renderView(source:camera:width:height:)`; `source` = `.layers([PSLayer])` (sticker sul verde) oppure `.panorama(CGImage)` (ERP: longitudine avvolta, latitudine tenuta ai bordi) | nuovo, Metal e CPU (riferimento) |
 | `PSRendering.render` (ERP) | accetta un `background: CGImage?` (panorama, al posto del verde) e `PSLayer.feather` (sfumatura del bordo, frazione del lato) | modificato |
 | `PSView` (card) | in cima il selettore Vista; in Sfera il selettore Sorgente, il mirino, l'area 4:3, il pannello Cutout | modificato |
@@ -77,7 +77,7 @@ Le due aggiunte già fatte (`presets[]` con `model`/`advanced`, `contribute.pres
 - Risultato non 2:1: si tratta come ERP lo stesso (u, v dirette) con un avviso nel riquadro.
 - Sorgente Risultato: `+`, cestino, maniglie e tastiera di modifica spenti.
 - Rimetti con il ritocco di proporzione diversa: azione spenta (nessun montaggio storto).
-- Camera: pitch ±89°, FOV 20…120° sempre.
+- Camera: pitch ±89°, FOV 20…160° sempre.
 - Cambio di progetto: camera, vista e sorgente tornano a quelli del progetto; `lastCutout` è per progetto.
 
 ## 8. Test

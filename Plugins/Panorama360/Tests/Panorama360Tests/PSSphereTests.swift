@@ -142,8 +142,8 @@ struct PSSphereTests {
 
   @Test func zoomAndResetWork() {
     let state = state([sticker()])
-    state.sphereZoom(by: 0.5)
-    #expect(state.doc.camera.fov == 120)
+    state.sphereZoom(by: 1)
+    #expect(state.doc.camera.fov == 160)
     state.spherePointerDown(at: CGPoint(x: 50, y: 50), size: size)
     state.spherePointerDragged(to: CGPoint(x: 150, y: 90), size: size, shift: false)
     state.spherePointerUp()

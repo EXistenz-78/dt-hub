@@ -19,7 +19,7 @@ Only 2048 × 1024 works well: at 1024 × 512 the sky holds but water and ground 
 
 **View** at the top of the card chooses **Plane** (the unrolled canvas above) or **Sphere**: you stand in the centre and look outwards. In the sphere view the picture is 4:3, and next to it **Canvas | Result** says what you look at:
 
-- **Canvas** is your stickers on green. You can edit them from inside: drag one to move it, a corner to scale it, the round handle to turn it, exactly as on the plane. Drag the empty view to look around, the wheel or a pinch to zoom (the field of view goes from 20° to 120°), the crosshair button looks straight ahead again.
+- **Canvas** is your stickers on green. You can edit them from inside: drag one to move it, a corner to scale it, the round handle to turn it, exactly as on the plane. Drag the empty view to look around, the wheel or a pinch to zoom (the field of view goes from 20° to 160°), the crosshair button looks straight ahead again.
 - **Result** is the picture the last RUN made, shown as a panorama, for looking only (no handles, `+` and the bin are off). It updates by itself when a RUN ends. It is off until the project has a result.
 
 The view, the source and where you look are saved with the project.

@@ -186,7 +186,7 @@ window.addEventListener('mousemove',e=>{if(!drag)return;const p=pos(e),s=S(sel);
   else if(drag.m==='look'){const k=cam.fov/1024;cam.yaw=wrap(drag.yaw-(p[0]-drag.x)*k);cam.pitch=Math.max(-89,Math.min(89,drag.pitch+(p[1]-drag.y)*k));updateBadge();}
   if(!raf)raf=requestAnimationFrame(()=>{raf=0;render(.35);});});
 window.addEventListener('mouseup',()=>{if(!drag)return;const was=drag.m;drag=null;if(was==='move'||was==='rot'||was==='scale')buildResultSoon();render(view==='sphere'?.5:1);});
-ov.addEventListener('wheel',e=>{if(view!=='sphere')return;e.preventDefault();cam.fov=Math.max(20,Math.min(120,cam.fov*(1+e.deltaY*.001)));updateBadge();render(.5);clearTimeout(wt);wt=setTimeout(()=>render(1),150);},{passive:false});let wt=0,bt=0;
+ov.addEventListener('wheel',e=>{if(view!=='sphere')return;e.preventDefault();cam.fov=Math.max(20,Math.min(160,cam.fov*(1+e.deltaY*.001)));updateBadge();render(.5);clearTimeout(wt);wt=setTimeout(()=>render(1),150);},{passive:false});let wt=0,bt=0;
 function buildResultSoon(){clearTimeout(bt);bt=setTimeout(buildResult,200);}
 function updateBadge(){$('badge').textContent=`yaw ${cam.yaw.toFixed(0)}° · pitch ${cam.pitch.toFixed(0)}° · FOV ${cam.fov.toFixed(0)}°`;}
 

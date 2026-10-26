@@ -14,7 +14,7 @@ extension PSState {
   /// Why the two «put back» buttons are off; nil when they are on.
   var putBackReason: PSCutout.PutBackReason? {
     PSCutout.putBackReason(
-      memory: doc.lastCutout, lastResult: lastResultURL, imageSize: { PSCutout.pixelSize(of: $0).map { ($0.width, $0.height) } })
+      memory: doc.lastCutout, lastResult: lastResultURL, imageSize: { [self] in patchSize($0) })
   }
 
   /// The same for the montage, which also needs the panorama the cutout was taken from.

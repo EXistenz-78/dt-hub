@@ -5,6 +5,13 @@ import SwiftUI
 /// The ERP: the rendered panorama with the guides, the borders of the stickers and the handles of the selected one over it.
 struct PSCanvasView: View {
   @ObservedObject var state: PSState
+  @ObservedObject private var previewBox: PSPreview
+
+  init(state: PSState) {
+    self.state = state
+    previewBox = state.previewBox
+  }
+
   @State private var pressed = false
   @FocusState private var focused: Bool
 
@@ -13,7 +20,7 @@ struct PSCanvasView: View {
       let size = CGSize(width: geometry.size.width, height: geometry.size.width / 2)
       ZStack {
         Color(red: 0, green: 1, blue: 0)
-        if let preview = state.preview {
+        if let preview = previewBox.image {
           Image(decorative: preview, scale: 1).resizable().interpolation(.high).frame(width: size.width, height: size.height)
         }
         Canvas { context, canvasSize in PSOverlay.draw(in: &context, size: canvasSize, state: state) }

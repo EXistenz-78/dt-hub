@@ -63,18 +63,28 @@ extension PSState {
 
   func renderPreview(scale: Double) throws -> CGImage { try previewJob(scale: scale)() }
 
-  /// Draws the canvas picture in the background; a newer request makes an older answer be dropped.
+  /// Draws the canvas picture in the background. One render runs at a time and only the newest request waits for it: asking again while it runs
+  /// replaces the waiting one.
   func refreshPreview(scale: Double) {
-    previewGeneration += 1
-    let generation = previewGeneration
-    let job = previewJob(scale: scale)
-    Task.detached(priority: .userInitiated) { [weak self] in
-      let image = try? job()
-      await MainActor.run {
-        guard let self, self.previewGeneration == generation, let image else { return }
-        self.preview = image
-      }
+    pendingPreview = previewJob(scale: scale)
+    guard !previewLoopRunning else { return }
+    previewLoopRunning = true
+    Task { await drainPreviews() }
+  }
+
+  private func drainPreviews() async {
+    while let job = pendingPreview {
+      pendingPreview = nil
+      let image = await Task.detached(priority: .userInitiated) { try? job() }.value
+      previewRenderCount += 1
+      if let image { preview = image }
     }
+    previewLoopRunning = false
+  }
+
+  /// Waits until the previews asked for have been drawn (for the tests).
+  func waitForPreviews() async {
+    while previewLoopRunning || pendingPreview != nil { try? await Task.sleep(for: .milliseconds(5)) }
   }
 
   /// The keys of the canvas and of the sphere view: arrows nudge the selected sticker (Shift: 5°), ⌫ deletes it, ⌘D duplicates it. Nothing

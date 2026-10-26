@@ -53,7 +53,7 @@ extension PSState {
     case .look(let camera, let from):
       var turned = camera
       turned.look(dx: Double(p.x - from.x), dy: Double(p.y - from.y), width: Double(size.width))
-      mutate { $0.camera = turned }
+      setCamera(turned)
     }
   }
 
@@ -62,10 +62,10 @@ extension PSState {
   func sphereZoom(by delta: Double) {
     var camera = doc.camera
     camera.zoom(by: delta)
-    mutate { $0.camera = camera }
+    setCamera(camera)
   }
 
-  func resetCamera() { mutate { $0.camera = PSCamera() } }
+  func resetCamera() { setCamera(PSCamera()) }
 
   /// The point of the ERP (u, v) under a point of the view.
   private func spherePoint(_ p: CGPoint, _ camera: PSCamera, _ size: CGSize) -> PSUV {

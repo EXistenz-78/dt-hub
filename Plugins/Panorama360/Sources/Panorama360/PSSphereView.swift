@@ -7,6 +7,13 @@ import SwiftUI
 struct PSSphereView: View {
   static let aspect: CGFloat = 4.0 / 3.0
   @ObservedObject var state: PSState
+  @ObservedObject private var previewBox: PSPreview
+
+  init(state: PSState) {
+    self.state = state
+    previewBox = state.previewBox
+  }
+
   @State private var pressed = false
   @State private var hovering = false
   @State private var scrollMonitor: Any?
@@ -18,7 +25,7 @@ struct PSSphereView: View {
       let size = CGSize(width: geometry.size.width, height: geometry.size.width / Self.aspect)
       ZStack {
         Color(red: 0, green: 1, blue: 0)
-        if let preview = state.preview {
+        if let preview = previewBox.image {
           Image(decorative: preview, scale: 1).resizable().interpolation(.high).frame(width: size.width, height: size.height)
         }
         Canvas { context, canvasSize in PSSphereOverlay.draw(in: &context, size: canvasSize, state: state) }

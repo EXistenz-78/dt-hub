@@ -17,7 +17,7 @@ struct PSCameraTests {
   }
 
   @Test func rayAndScreenPointAreInverse() throws {
-    for camera in [PSCamera(yaw: 40, pitch: -20, fov: 60), PSCamera(yaw: 0, pitch: 0, fov: 120)] {
+    for camera in [PSCamera(yaw: 40, pitch: -20, fov: 60), PSCamera(yaw: 0, pitch: 0, fov: 120), PSCamera(yaw: 30, pitch: 10, fov: 160)] {
       for (x, y) in [(10.0, 10.0), (512.0, 100.0), (1000.0, 700.0), (300.5, 400.25)] {
         let d = camera.ray(x: x, y: y, width: 1024, height: 768)
         let p = try #require(camera.screenPoint(of: d, width: 1024, height: 768))
@@ -30,6 +30,13 @@ struct PSCameraTests {
     let camera = PSCamera(yaw: 0, pitch: 0, fov: 90)
     let d = camera.ray(x: 1024, y: 384, width: 1024, height: 768)
     #expect(abs(atan2(d.x, d.z) * 180 / .pi - 45) < 1e-9)
+  }
+
+  @Test func theWidestViewIsHalfTheFOVToTheRightAt160() {
+    let camera = PSCamera(yaw: 0, pitch: 0, fov: 160)
+    let d = camera.ray(x: 1024, y: 384, width: 1024, height: 768)
+    #expect(abs(atan2(d.x, d.z) * 180 / .pi - 80) < 1e-9)
+    #expect(PSCamera.fovRange == 20.0...160.0)
   }
 
   @Test func aDirectionBehindTheCameraHasNoScreenPoint() {
@@ -56,7 +63,7 @@ struct PSCameraTests {
   @Test func zoomClampsTheFieldOfView() {
     var camera = PSCamera()
     camera.zoom(by: 1000)
-    #expect(camera.fov == 120)
+    #expect(camera.fov == 160)
     camera.zoom(by: -0.99)
     #expect(camera.fov == 20)
     camera.zoom(by: 0.5)
@@ -66,7 +73,7 @@ struct PSCameraTests {
   @Test func clampBringsEverythingIntoRange() {
     var camera = PSCamera(yaw: 190, pitch: 95, fov: 500)
     camera.clamp()
-    #expect(abs(camera.yaw - (-170)) < 1e-9 && camera.pitch == 89 && camera.fov == 120)
+    #expect(abs(camera.yaw - (-170)) < 1e-9 && camera.pitch == 89 && camera.fov == 160)
   }
 
   @Test func theCameraRoundTripsThroughJSON() throws {

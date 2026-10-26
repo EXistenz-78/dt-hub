@@ -2,6 +2,12 @@ import CoreGraphics
 import DTHubPluginKit
 import Foundation
 
+/// The picture of the canvas or of the sphere view, observed by the two views that draw it.
+@MainActor
+final class PSPreview: ObservableObject {
+  @Published var image: CGImage?
+}
+
 /// The tab's state: the document of the open project and what the app last said about the model.
 @MainActor
 final class PSState: ObservableObject {
@@ -17,7 +23,12 @@ final class PSState: ObservableObject {
   /// The pictures of the stickers, by sticker id (loaded from the project folder when first needed).
   let images = PSImageCache()
   /// The panorama as the canvas shows it, and what the pointer is doing to a sticker.
-  @Published var preview: CGImage?
+  /// The picture the canvas shows lives in an object of its own, so that a new frame redraws only the view that shows it, not every card of the tab.
+  let previewBox = PSPreview()
+  var preview: CGImage? {
+    get { previewBox.image }
+    set { previewBox.image = newValue }
+  }
   @Published private(set) var isDragging = false
   /// What the user should read after the last add or send (a bad file, a cropped photo…); nil when there is nothing.
   @Published var notice: String?
@@ -29,8 +40,23 @@ final class PSState: ObservableObject {
   @Published var hasSent = false
   /// The description before the last «Improve prompt», for «Undo».
   @Published var previousDescription: String?
-  var drag: PSDrag? { didSet { isDragging = drag != nil } }
-  var previewGeneration = 0
+  var drag: PSDrag? {
+    didSet {
+      isDragging = drag != nil
+      if drag == nil { flushSave() }
+    }
+  }
+  /// The next preview to draw: one render runs at a time and only the newest request waits, so a fast drag never piles up work.
+  var pendingPreview: (@Sendable () throws -> CGImage)?
+  var previewLoopRunning = false
+  var previewRenderCount = 0
+  /// How a picture file's size is read (a test counts the calls) and what was read, so a redraw does not open the same file again.
+  var imageSizeReader: (URL) -> (Int, Int)? = { PSCutout.pixelSize(of: $0).map { ($0.width, $0.height) } }
+  private var sizeMemo: [String: (Int, Int)] = [:]
+  /// A save held back: while a pointer drag goes on, or for a short while after the camera moved.
+  private var saveWaiting = false
+  private var saveTask: Task<Void, Never>?
+  private var deferNextSave = false
   let italian: Bool
   /// The size the canvas pictures are drawn at (the ERP, and the 4:3 view from the camera).
   static let planeSize = CGSize(width: 1024, height: 512)
@@ -55,6 +81,7 @@ final class PSState: ObservableObject {
   }
 
   func switchProject(folder: URL) {
+    flushSave()
     isLoading = true
     projectFolder = folder
     doc = PanoState.load(from: folder)
@@ -111,8 +138,51 @@ final class PSState: ObservableObject {
     doc = copy
   }
 
+  /// Every change is saved, except that a pointer drag saves once when it ends, and a camera move (look, zoom) a moment after the last one:
+  /// writing the file at every mouse event would not be fluid.
   private func persist() {
-    guard !isLoading, let projectFolder else { return }
+    guard !isLoading, projectFolder != nil else { return }
+    if isDragging {
+      saveWaiting = true
+    } else if deferNextSave {
+      deferNextSave = false
+      saveWaiting = true
+      saveTask?.cancel()
+      saveTask = Task { [weak self] in
+        try? await Task.sleep(for: .milliseconds(300))
+        guard !Task.isCancelled else { return }
+        self?.flushSave()
+      }
+    } else {
+      writeNow()
+    }
+  }
+
+  /// Writes what is held back, now.
+  func flushSave() {
+    saveTask?.cancel()
+    saveTask = nil
+    if saveWaiting { writeNow() }
+  }
+
+  private func writeNow() {
+    saveWaiting = false
+    guard let projectFolder else { return }
     try? doc.save(to: projectFolder)
+  }
+
+  /// Sets the camera; the file is written a moment later (see `persist`).
+  func setCamera(_ camera: PSCamera) {
+    deferNextSave = true
+    mutate { $0.camera = camera }
+  }
+
+  /// The size of a picture file, read once; nil when the file is gone.
+  func patchSize(_ url: URL) -> (Int, Int)? {
+    guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+    if let known = sizeMemo[url.path] { return known }
+    guard let size = imageSizeReader(url) else { return nil }
+    sizeMemo[url.path] = size
+    return size
   }
 }
