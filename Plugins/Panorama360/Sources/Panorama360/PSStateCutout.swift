@@ -30,7 +30,7 @@ extension PSState {
   @discardableResult
   func extractCutout() throws -> CGImage {
     let size = PSCutout.size(megapixels: doc.cutoutMegapixels)
-    let camera = doc.camera
+    let camera = self.camera
     let image = try PSRendererFactory.make().renderView(viewSource(), camera: camera, width: size.width, height: size.height)
     cutoutImage = image
     mutate {

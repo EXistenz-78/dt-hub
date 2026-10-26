@@ -54,7 +54,7 @@ extension PSState {
       let w = Int(Self.planeSize.width * scale), h = Int(Self.planeSize.height * scale)
       return { try renderer.render(layers, width: w, height: h, uOffset: 0) }
     case .sphere:
-      let camera = doc.camera
+      let camera = self.camera
       let w = Int(Self.sphereSize.width * scale), h = Int(Self.sphereSize.height * scale)
       let source = viewSource()
       return { try renderer.renderView(source, camera: camera, width: w, height: h) }
@@ -66,20 +66,31 @@ extension PSState {
   /// Draws the canvas picture in the background. One render runs at a time and only the newest request waits for it: asking again while it runs
   /// replaces the waiting one.
   func refreshPreview(scale: Double) {
-    pendingPreview = previewJob(scale: scale)
+    pendingPreview = (previewJob(scale: scale), .now)
     guard !previewLoopRunning else { return }
     previewLoopRunning = true
     Task { await drainPreviews() }
   }
 
   private func drainPreviews() async {
-    while let job = pendingPreview {
+    while let next = pendingPreview {
       pendingPreview = nil
-      let image = await Task.detached(priority: .userInitiated) { try? job() }.value
+      let job = next.job
+      let (image, took) = await Task.detached(priority: .userInitiated) { () -> (CGImage?, Double) in
+        let start = ContinuousClock.now
+        let image = try? job()
+        return (image, Self.milliseconds(start.duration(to: .now)))
+      }.value
       previewRenderCount += 1
       if let image { preview = image }
+      previewBox.renderMillis = took
+      previewBox.latencyMillis = Self.milliseconds(next.requested.duration(to: .now))
     }
     previewLoopRunning = false
+  }
+
+  nonisolated private static func milliseconds(_ d: Duration) -> Double {
+    Double(d.components.seconds) * 1000 + Double(d.components.attoseconds) / 1e15
   }
 
   /// Waits until the previews asked for have been drawn (for the tests).

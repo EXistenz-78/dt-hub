@@ -49,7 +49,7 @@ struct PSView: View {
             .pickerStyle(.segmented).labelsHidden().frame(maxWidth: 220)
           }
           Spacer(minLength: 0)
-          Text(verbatim: isSphere ? "4:3 · FOV \(Int(state.doc.camera.fov.rounded()))°" : "2048 × 1024 · 360°")
+          Text(verbatim: isSphere ? "4:3" : "2048 × 1024 · 360°")
             .font(.caption.monospaced()).foregroundStyle(.secondary)
         }
         HStack(spacing: DS.controlGap) {

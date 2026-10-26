@@ -10,7 +10,7 @@ extension PSState {
 
   func spherePointerDown(at p: CGPoint, size: CGSize) {
     drag = nil
-    let camera = doc.camera
+    let camera = self.camera
     if editsStickers {
       if let s = selected, s.visible {
         let handles = PSSphere.handles(of: s, aspect: aspect(of: s), camera: camera, size: size)
@@ -39,7 +39,7 @@ extension PSState {
     guard let drag else { return }
     switch drag {
     case .move(let id, let grab):
-      let at = spherePoint(p, doc.camera, size)
+      let at = spherePoint(p, camera, size)
       update(id) { $0 = PSInteraction.moved($0, to: at, grab: grab) }
     case .scale(let id, let center, let startFOV, let startDistance):
       update(id) {
@@ -60,9 +60,9 @@ extension PSState {
   func spherePointerUp() { drag = nil }
 
   func sphereZoom(by delta: Double) {
-    var camera = doc.camera
-    camera.zoom(by: delta)
-    setCamera(camera)
+    var zoomed = camera
+    zoomed.zoom(by: delta)
+    setCamera(zoomed)
   }
 
   func resetCamera() { setCamera(PSCamera()) }

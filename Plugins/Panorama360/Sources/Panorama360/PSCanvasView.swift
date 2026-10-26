@@ -20,9 +20,7 @@ struct PSCanvasView: View {
       let size = CGSize(width: geometry.size.width, height: geometry.size.width / 2)
       ZStack {
         Color(red: 0, green: 1, blue: 0)
-        if let preview = previewBox.image {
-          Image(decorative: preview, scale: 1).resizable().interpolation(.high).frame(width: size.width, height: size.height)
-        }
+        PSImageLayerView(previewBox: previewBox).frame(width: size.width, height: size.height)
         Canvas { context, canvasSize in PSOverlay.draw(in: &context, size: canvasSize, state: state) }
         Color.clear.contentShape(Rectangle()).gesture(pointer(size))
       }

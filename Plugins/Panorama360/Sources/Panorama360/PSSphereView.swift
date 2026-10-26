@@ -8,10 +8,12 @@ struct PSSphereView: View {
   static let aspect: CGFloat = 4.0 / 3.0
   @ObservedObject var state: PSState
   @ObservedObject private var previewBox: PSPreview
+  @ObservedObject private var cameraBox: PSCameraBox
 
   init(state: PSState) {
     self.state = state
     previewBox = state.previewBox
+    cameraBox = state.cameraBox
   }
 
   @State private var pressed = false
@@ -25,9 +27,7 @@ struct PSSphereView: View {
       let size = CGSize(width: geometry.size.width, height: geometry.size.width / Self.aspect)
       ZStack {
         Color(red: 0, green: 1, blue: 0)
-        if let preview = previewBox.image {
-          Image(decorative: preview, scale: 1).resizable().interpolation(.high).frame(width: size.width, height: size.height)
-        }
+        PSImageLayerView(previewBox: previewBox).frame(width: size.width, height: size.height)
         Canvas { context, canvasSize in PSSphereOverlay.draw(in: &context, size: canvasSize, state: state) }
         Color.clear.contentShape(Rectangle()).gesture(pointer(size))
           .simultaneousGesture(
@@ -56,9 +56,7 @@ struct PSSphereView: View {
       .onKeyPress(keys: [.leftArrow, .rightArrow, .upArrow, .downArrow, .delete, .deleteForward, KeyEquivalent("d")]) { press in
         state.handleKey(press)
       }
-      .onContinuousHover { phase in
-        if case .active = phase { hovering = true } else { hovering = false }
-      }
+      .onHover { hovering = $0 }
     }
     .aspectRatio(Self.aspect, contentMode: .fit)
     .onAppear {
@@ -76,7 +74,6 @@ struct PSSphereView: View {
       scrollMonitor = nil
     }
     .onChange(of: state.doc.stickers) { refresh() }
-    .onChange(of: state.doc.camera) { refresh() }
     .onChange(of: state.doc.source) { refresh() }
     .onChange(of: state.lastResultPath) { refresh() }
     .onChange(of: state.isDragging) { _, dragging in if !dragging { state.refreshPreview(scale: 1) } }
@@ -85,8 +82,8 @@ struct PSSphereView: View {
   private func refresh() { state.refreshPreview(scale: state.isDragging ? 0.5 : 1) }
 
   private var badge: String {
-    let c = state.doc.camera
-    return String(format: "yaw %.0f° · pitch %.0f° · FOV %.0f°", c.yaw, c.pitch, c.fov) + " · " + state.rendererName
+    let c = cameraBox.camera
+    return String(format: "yaw %.0f° · pitch %.0f° · FOV %.0f°", c.yaw, c.pitch, c.fov) + " · " + state.rendererName + String(format: " · %.0f/%.0f ms", previewBox.renderMillis, previewBox.latencyMillis)
   }
 
   private func pointer(_ size: CGSize) -> some Gesture {
@@ -111,7 +108,7 @@ struct PSSphereView: View {
 @MainActor
 enum PSSphereOverlay {
   static func draw(in context: inout GraphicsContext, size: CGSize, state: PSState) {
-    let camera = state.doc.camera
+    let camera = state.camera
     if state.doc.guides {
       var horizon = Path()
       var pen = false

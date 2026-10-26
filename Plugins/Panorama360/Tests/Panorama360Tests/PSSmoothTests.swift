@@ -43,9 +43,9 @@ struct PSSmoothTests {
     state.spherePointerDown(at: CGPoint(x: 50, y: 50), size: size)
     for i in 1...20 { state.spherePointerDragged(to: CGPoint(x: 50 + 10 * Double(i), y: 50), size: size, shift: false) }
     #expect(PanoState.load(from: folder).camera == PSCamera(), "nothing written during the drag")
-    #expect(state.doc.camera.yaw != 0)
+    #expect(state.camera.yaw != 0)
     state.spherePointerUp()
-    #expect(PanoState.load(from: folder).camera == state.doc.camera, "written when the drag ends")
+    #expect(PanoState.load(from: folder).camera == state.camera && state.doc.camera == state.camera, "written when the drag ends")
   }
 
   @Test func aStickerDragIsWrittenOnlyAtTheEndToo() throws {
@@ -67,22 +67,22 @@ struct PSSmoothTests {
     var saved = false
     for _ in 0..<200 {
       try await Task.sleep(for: .milliseconds(50))
-      if PanoState.load(from: folder).camera == state.doc.camera {
+      if PanoState.load(from: folder).camera == state.camera {
         saved = true
         break
       }
     }
-    #expect(saved && state.doc.camera.fov != 90)
+    #expect(saved && state.camera.fov != 90 && state.doc.camera == state.camera)
   }
 
   @Test func switchingProjectFlushesTheSaveThatWasWaiting() throws {
     let state = sphereState()
     let first = try #require(state.projectFolder)
     state.sphereZoom(by: 0.2)
-    let zoomed = state.doc.camera
+    let zoomed = state.camera
     state.switchProject(folder: PSModelsTests.folder())
     #expect(PanoState.load(from: first).camera == zoomed)
-    #expect(state.doc.camera == PSCamera())
+    #expect(state.camera == PSCamera() && state.doc.camera == PSCamera())
   }
 
   @Test func thePatchSizeIsReadOnceNotAtEveryRedraw() throws {
@@ -100,5 +100,75 @@ struct PSSmoothTests {
     #expect(reads == 1, "read \(reads) times")
     try FileManager.default.removeItem(at: patch)
     #expect(state.putBackReason == .patchMissing, "a file that is gone is noticed all the same")
+  }
+
+  // MARK: Looking around redraws only the view that shows it
+
+  @Test func lookingAroundDoesNotChangeTheStateEveryCardObserves() throws {
+    let state = sphereState()
+    state.spherePointerDown(at: CGPoint(x: 50, y: 50), size: size)
+    var changes = 0
+    let watch = state.objectWillChange.sink { changes += 1 }
+    for i in 1...30 { state.spherePointerDragged(to: CGPoint(x: 50 + 5 * Double(i), y: 50 + Double(i)), size: size, shift: false) }
+    #expect(state.camera.yaw != 0 && state.camera.pitch != 0)
+    #expect(changes == 0, "\(changes) changes of the state while only the camera moved")
+    #expect(state.doc.camera == PSCamera(), "the document follows when the drag ends")
+    state.spherePointerUp()
+    #expect(state.doc.camera == state.camera)
+    watch.cancel()
+  }
+
+  @Test func zoomingDoesNotChangeTheStateEveryCardObserves() {
+    let state = sphereState()
+    var changes = 0
+    let watch = state.objectWillChange.sink { changes += 1 }
+    for _ in 0..<10 { state.sphereZoom(by: 0.03) }
+    #expect(state.camera.fov != 90 && changes == 0, "\(changes) changes")
+    watch.cancel()
+  }
+
+  @Test func theLiveCameraIsTheOneThatCountsEverywhere() throws {
+    let state = sphereState()
+    state.mutate { $0.stickers[0].yaw = 0 }
+    state.sphereZoom(by: -0.5)  // 45°
+    let narrow = try state.renderPreview(scale: 0.25)
+    state.resetCamera()  // 90°
+    let wide = try state.renderPreview(scale: 0.25)
+    func redPixels(_ image: CGImage) -> Int {
+      let bytes = PSPixels.rgba(of: image).bytes
+      return stride(from: 0, to: bytes.count, by: 4).filter { bytes[$0] > 150 && bytes[$0 + 1] < 100 }.count
+    }
+    #expect(redPixels(narrow) > redPixels(wide), "a narrower view shows the sticker bigger")
+  }
+
+  @Test func aCameraSetInTheDocumentMovesTheLiveOne() {
+    let state = sphereState()
+    state.mutate { $0.camera = PSCamera(yaw: 30, pitch: 5, fov: 70) }
+    #expect(state.camera == PSCamera(yaw: 30, pitch: 5, fov: 70))
+  }
+
+  @Test func movingTheCameraAsksForTheNewFrameAtOnce() async {
+    let state = sphereState()
+    state.sphereZoom(by: -0.3)
+    await state.waitForPreviews()
+    #expect(state.preview != nil, "no view had to notice the change first")
+    #expect(state.previewRenderCount >= 1)
+  }
+
+  @Test func whileLookingTheFramesAreDrawnSmallerAndTheLastOneFull() async {
+    let state = sphereState()
+    state.spherePointerDown(at: CGPoint(x: 50, y: 50), size: size)
+    state.spherePointerDragged(to: CGPoint(x: 90, y: 60), size: size, shift: false)
+    await state.waitForPreviews()
+    #expect(state.preview?.width == 512, "half size while dragging")
+    state.spherePointerUp()
+  }
+
+  @Test func theTimeOfEachFrameIsMeasured() async {
+    let state = sphereState()
+    state.refreshPreview(scale: 0.5)
+    await state.waitForPreviews()
+    #expect(state.previewBox.renderMillis > 0)
+    #expect(state.previewBox.latencyMillis >= state.previewBox.renderMillis)
   }
 }

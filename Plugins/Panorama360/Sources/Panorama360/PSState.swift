@@ -6,6 +6,16 @@ import Foundation
 @MainActor
 final class PSPreview: ObservableObject {
   @Published var image: CGImage?
+  /// How long the last frame took to draw, and from the request to the picture being there (milliseconds): shown in the sphere view's badge.
+  var renderMillis = 0.0
+  var latencyMillis = 0.0
+}
+
+/// Where the sphere view looks, as it is moved: an object of its own, so that looking around redraws only the sphere view and not every card of the tab.
+/// The document gets the camera when the movement stops.
+@MainActor
+final class PSCameraBox: ObservableObject {
+  @Published var camera = PSCamera()
 }
 
 /// The tab's state: the document of the open project and what the app last said about the model.
@@ -13,8 +23,17 @@ final class PSPreview: ObservableObject {
 final class PSState: ObservableObject {
   /// Every change is saved in the project's folder; before the app says which project is open nothing is written.
   @Published var doc = PanoState() {
-    didSet { persist() }
+    didSet {
+      // A camera set through the document (a project loaded, a test) is the live camera too.
+      if !committingCamera, doc.camera != oldValue.camera { cameraBox.camera = doc.camera }
+      persist()
+    }
   }
+  /// The live camera of the sphere view; `doc.camera` catches up when the movement stops (`flushSave`).
+  let cameraBox = PSCameraBox()
+  var camera: PSCamera { cameraBox.camera }
+  private var cameraDirty = false
+  private var committingCamera = false
   @Published private(set) var projectFolder: URL?
   /// The chosen model's file and the folder to exchange pictures through, from the last `context`.
   @Published private(set) var modelFile: String?
@@ -46,12 +65,13 @@ final class PSState: ObservableObject {
   @Published var previousDescription: String?
   var drag: PSDrag? {
     didSet {
-      isDragging = drag != nil
+      let dragging = drag != nil
+      if isDragging != dragging { isDragging = dragging }
       if drag == nil { flushSave() }
     }
   }
   /// The next preview to draw: one render runs at a time and only the newest request waits, so a fast drag never piles up work.
-  var pendingPreview: (@Sendable () throws -> CGImage)?
+  var pendingPreview: (job: @Sendable () throws -> CGImage, requested: ContinuousClock.Instant)?
   var previewLoopRunning = false
   var previewRenderCount = 0
   /// How a picture file's size is read (a test counts the calls) and what was read, so a redraw does not open the same file again.
@@ -60,7 +80,6 @@ final class PSState: ObservableObject {
   /// A save held back: while a pointer drag goes on, or for a short while after the camera moved.
   private var saveWaiting = false
   private var saveTask: Task<Void, Never>?
-  private var deferNextSave = false
   let italian: Bool
   /// The size the canvas pictures are drawn at (the ERP, and the 4:3 view from the camera).
   static let planeSize = CGSize(width: 1024, height: 512)
@@ -142,31 +161,27 @@ final class PSState: ObservableObject {
     doc = copy
   }
 
-  /// Every change is saved, except that a pointer drag saves once when it ends, and a camera move (look, zoom) a moment after the last one:
-  /// writing the file at every mouse event would not be fluid.
+  /// Every change is saved, except that a pointer drag saves once when it ends.
   private func persist() {
     guard !isLoading, projectFolder != nil else { return }
-    if isDragging {
-      saveWaiting = true
-    } else if deferNextSave {
-      deferNextSave = false
-      saveWaiting = true
-      saveTask?.cancel()
-      saveTask = Task { [weak self] in
-        try? await Task.sleep(for: .milliseconds(300))
-        guard !Task.isCancelled else { return }
-        self?.flushSave()
-      }
-    } else {
-      writeNow()
-    }
+    if isDragging { saveWaiting = true } else { writeNow() }
   }
 
-  /// Writes what is held back, now.
+  /// Brings the document up to date with the live camera and writes what is held back, now.
   func flushSave() {
     saveTask?.cancel()
     saveTask = nil
-    if saveWaiting { writeNow() }
+    if cameraDirty {
+      cameraDirty = false
+      if doc.camera != cameraBox.camera {
+        committingCamera = true
+        var updated = doc
+        updated.camera = cameraBox.camera
+        doc = updated
+        committingCamera = false
+      }
+    }
+    if saveWaiting && !isDragging { writeNow() }
   }
 
   private func writeNow() {
@@ -175,10 +190,22 @@ final class PSState: ObservableObject {
     try? doc.save(to: projectFolder)
   }
 
-  /// Sets the camera; the file is written a moment later (see `persist`).
+  /// Moves the live camera (the sphere view redraws, nothing else does); the document and the file follow a moment after the last move, or when the
+  /// drag that moves it ends.
   func setCamera(_ camera: PSCamera) {
-    deferNextSave = true
-    mutate { $0.camera = camera }
+    var clamped = camera
+    clamped.clamp()
+    cameraBox.camera = clamped
+    // The new frame is asked for here, not when a view notices the change: one step less between the pointer and the picture.
+    if doc.viewMode == .sphere { refreshPreview(scale: isDragging ? 0.5 : 1) }
+    cameraDirty = true
+    saveWaiting = true
+    saveTask?.cancel()
+    saveTask = Task { [weak self] in
+      try? await Task.sleep(for: .milliseconds(300))
+      guard !Task.isCancelled else { return }
+      self?.flushSave()
+    }
   }
 
   /// The size of a picture file, read once; nil when the file is gone.

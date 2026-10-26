@@ -143,12 +143,12 @@ struct PSSphereTests {
   @Test func zoomAndResetWork() {
     let state = state([sticker()])
     state.sphereZoom(by: 1)
-    #expect(state.doc.camera.fov == 160)
+    #expect(state.camera.fov == 160)
     state.spherePointerDown(at: CGPoint(x: 50, y: 50), size: size)
     state.spherePointerDragged(to: CGPoint(x: 150, y: 90), size: size, shift: false)
     state.spherePointerUp()
     state.resetCamera()
-    #expect(state.doc.camera == PSCamera())
+    #expect(state.camera == PSCamera())
   }
 
   @Test func aCameraAtThePoleStillSeesAStickerThereAndItsOutlineIsFinite() throws {
