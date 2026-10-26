@@ -59,6 +59,9 @@ final class PSState: ObservableObject {
   @Published var error: String?
   @Published var isImproving = false
   @Published var isSending = false
+  /// The correction of the seam that is waiting for RUN (and running), and the button that proposed it.
+  var seamSession: PSSeamSession?
+  @Published var isSeamPrepared = false
   /// True after a send the app accepted: from then on the model of the preset it applied is checked (see `warning`).
   @Published var hasSent = false
   /// The description before the last «Improve prompt», for «Undo».

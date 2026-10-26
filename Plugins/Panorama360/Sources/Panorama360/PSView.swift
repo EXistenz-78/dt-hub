@@ -57,6 +57,11 @@ struct PSView: View {
             .buttonStyle(DSGlassCircleButtonStyle()).help(state.text(.add)).disabled(viewOnly)
           Button { confirmingClear = true } label: { Image(systemName: "trash") }
             .buttonStyle(DSGlassCircleButtonStyle()).help(state.text(.clearAll)).disabled(state.doc.stickers.isEmpty || viewOnly)
+          if isSphere && state.effectiveSource == .result {
+            Button { actions.fixSeam() } label: { Text(state.text(.seamButton)).lineLimit(1) }
+              .buttonStyle(DSPillButtonStyle()).disabled(state.seamReason != nil || state.isSending)
+              .help(state.seamReason.map { state.seamReasonText($0) } ?? state.text(.seamButton))
+          }
           if isSphere {
             Button { state.resetCamera() } label: { Image(systemName: "scope") }
               .buttonStyle(DSGlassCircleButtonStyle()).help(state.text(.resetView))

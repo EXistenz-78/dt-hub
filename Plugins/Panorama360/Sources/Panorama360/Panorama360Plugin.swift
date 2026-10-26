@@ -26,7 +26,8 @@ final class Panorama360Plugin: DTHubPlugin {
           improve: { [weak self] in self?.improve() }, send: { [weak self] in self?.send() },
           cutoutStart: { [weak self] in self?.cutout { await $0.sendCutoutAsStartImage(contribute: $1) } },
           cutoutMoodboard: { [weak self] in self?.cutout { await $0.addCutoutToMoodboard(contribute: $1) } },
-          putBackPanorama: { [weak self] in self?.cutout { await $0.putBackInPanorama(contribute: $1) } })))
+          putBackPanorama: { [weak self] in self?.cutout { await $0.putBackInPanorama(contribute: $1) } },
+          fixSeam: { [weak self] in self?.cutout { await $0.prepareSeamCorrection(contribute: $1) } })))
   }
 
   func start(host: DTHubHost) {
@@ -78,6 +79,11 @@ final class Panorama360Plugin: DTHubPlugin {
       if let project = try? JSONDecoder().decode(DTHubProject.self, from: message) {
         state.switchProject(folder: URL(fileURLWithPath: project.folder, isDirectory: true))
       }
+      return nil
+    case "session.next":
+      return state.seamNext(message)
+    case "session.end":
+      if let host { await state.seamEnded(message, contribute: { await host.contribute($0) }) }
       return nil
     case "activate":
       registerPresetsInBackground()

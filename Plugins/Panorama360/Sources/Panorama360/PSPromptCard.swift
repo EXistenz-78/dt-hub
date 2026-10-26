@@ -8,6 +8,7 @@ struct PSViewActions {
   var cutoutStart: () -> Void = {}
   var cutoutMoodboard: () -> Void = {}
   var putBackPanorama: () -> Void = {}
+  var fixSeam: () -> Void = {}
   static var none: PSViewActions { PSViewActions() }
 }
 

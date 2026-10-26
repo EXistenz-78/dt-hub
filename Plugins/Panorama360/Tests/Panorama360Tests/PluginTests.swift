@@ -63,4 +63,11 @@ struct PluginTests {
     _ = await plugin.handle(Data(#"{"type":"project","name":"p","folder":"\#(folder.path)","adoptLegacy":false}"#.utf8))
     #expect(plugin.projectFolderForTests?.path == folder.path)
   }
+
+  @Test func theSessionMessagesAreRoutedToTheSeamCorrection() async throws {
+    let plugin = plugin()
+    let next = await plugin.handle(Data(#"{"type":"session.next","index":1,"count":1}"#.utf8))
+    #expect(String(decoding: try #require(next), as: UTF8.self).contains("done"), "no session: nothing to do")
+    #expect(await plugin.handle(Data(#"{"type":"session.end","reason":"stopped"}"#.utf8)) == nil)
+  }
 }

@@ -43,11 +43,11 @@ extension PSState {
 
   // MARK: The actions
 
-  private var exchangeFolder: URL {
+  var exchangeFolder: URL {
     URL(fileURLWithPath: tempFolder.isEmpty ? NSTemporaryDirectory() : tempFolder, isDirectory: true)
   }
 
-  private func writeTemporary(_ image: CGImage, prefix: String) throws -> URL {
+  func writeTemporary(_ image: CGImage, prefix: String) throws -> URL {
     try? FileManager.default.createDirectory(at: exchangeFolder, withIntermediateDirectories: true)
     let url = exchangeFolder.appendingPathComponent("\(prefix)-\(UUID().uuidString).png")
     guard PSSender.writePNG(image, to: url) else { throw PSCutoutError.cannotWrite }
@@ -55,7 +55,7 @@ extension PSState {
   }
 
   /// The answer of the app as the text to show: nil when it took the message.
-  private func problem(in answer: [String: Any]?) -> String? {
+  func problem(in answer: [String: Any]?) -> String? {
     guard let answer else { return text(.noAnswerFromApp) }
     if answer["type"] as? String == "error" { return answer["text"] as? String ?? text(.noAnswerFromApp) }
     if let problems = answer["problems"] as? [String], !problems.isEmpty { return problems.joined(separator: "\n") }
