@@ -2,7 +2,7 @@
 
 A plug-in for DT Hub that makes **360° panoramas** (equirectangular, 2:1) with the *360 ERP outpaint* LoRA of FLUX.2 [klein]. You place pictures («stickers») on a canvas that shows the whole sphere unrolled, write a few words about the place, and press **Send to Generation**: the plug-in sends the canvas, with the stickers drawn on green, as the start image, and the model fills the green with the rest of the panorama.
 
-**Works with:** FLUX.2 [klein] 9B and 4B, **Base** models only. Needs a DT Hub release newer than 0.4.3 (it uses additions to the plug-in contract: a preset can carry a model and advanced values, a plug-in can ask for a saved preset to be applied, the context carries the latest result, and a plug-in can send a result to the Results at any time).
+**Works with:** FLUX.2 [klein] 9B and 4B, **Base** models only. Needs DT Hub 0.5.0 or later (it uses additions to the plug-in contract: a preset can carry a model and advanced values, a plug-in can ask for a saved preset to be applied, the context carries the latest result, and a plug-in can send a result to the Results at any time).
 
 ## How it works
 
@@ -57,6 +57,10 @@ The first time DT Hub starts with the plug-in, it adds `PAN · 360 ERP` and `PAN
 | LoRA | `f2_360_erp_outpaint_lora_v1_lora_f16.ckpt` at 1 | the same |
 
 If the preset's model or LoRA is not installed, the plug-in shows what DT Hub says. If a model that is not a Base one ends up selected, a warning says that the LoRA works only with Base models.
+
+## Credits
+
+The idea, the LoRA and the workflow come from **nomadoor**: this plug-in is the DT Hub counterpart of the [ComfyUI-Panorama-Stickers](https://github.com/nomadoor/ComfyUI-Panorama-Stickers) custom nodes (stickers on an equirectangular canvas, a sphere viewer, the LoRA's outpaint). The author's notes on the workflow and the LoRA are on [comfyui.nomadoor.net](https://comfyui.nomadoor.net/en/notes/panorama-stickers/).
 
 ## Where to get the LoRA
 
