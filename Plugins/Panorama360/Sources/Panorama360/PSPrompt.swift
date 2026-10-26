@@ -38,7 +38,14 @@ enum PSPrompt {
     """
 
   static func request(description: String, reminder: Bool = false, withPicture: Bool = false, in folder: DTHubPromptFolder = folder()) -> (prompt: String, system: String) {
-    var prompt = (withPicture ? pictureNote + "\n\n" : "") + "Rewrite this description:\n\n" + description.trimmingCharacters(in: .whitespacesAndNewlines)
+    let text = description.trimmingCharacters(in: .whitespacesAndNewlines)
+    var prompt: String
+    if withPicture {
+      // With the picture the text is a guide for the description to write, and it may be missing.
+      prompt = pictureNote + "\n\n" + (text.isEmpty ? "The user wrote no text: write the description from the picture alone." : "Use this text from the user as the guide for the description you write:\n\n" + text)
+    } else {
+      prompt = "Rewrite this description:\n\n" + text
+    }
     if reminder { prompt += "\n\n" + englishReminder }
     return (prompt, system(in: folder))
   }

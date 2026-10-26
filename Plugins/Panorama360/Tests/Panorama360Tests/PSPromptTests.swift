@@ -141,4 +141,28 @@ struct PSPromptTests {
     await state.improve(using: asker.ask)
     #expect(asker.imageLists == [[]] && asker.requests.first?.prompt.contains("attached picture") == false)
   }
+
+  @Test func withAPictureTheTextIsOnlyAGuideAndMayBeEmpty() async {
+    let temp = TestImages.tempFolder()
+    let state = state("")
+    state.apply(context: Data(#"{"type":"context","tempFolder":"\#(temp.path)"}"#.utf8))
+    let sticker = Sticker(name: "s", file: "s.png")
+    state.mutate { $0.stickers = [sticker] }
+    state.setImage(TestImages.solid(60, 40, 200, 50, 50), for: sticker.id)
+    let asker = Asker([.text("A mountain valley at sunset, warm low light, long shadows, haze in the lower valley.")])
+    await state.improve(using: asker.ask)
+    #expect(state.error == nil && state.doc.description.hasPrefix("A mountain valley"))
+    #expect(asker.requests.first?.prompt.contains("no text") == true)
+    state.mutate { $0.description = "una valle" }
+    let again = Asker([.text("A mountain valley at sunset, warm low light, long shadows, haze in the lower valley.")])
+    await state.improve(using: again.ask)
+    #expect(again.requests.first?.prompt.contains("guide for the description") == true && again.requests.first?.prompt.contains("una valle") == true)
+  }
+
+  @Test func withoutAPictureAnEmptyTextIsStillRefused() async {
+    let state = state("  ")
+    let asker = Asker([])
+    await state.improve(using: asker.ask)
+    #expect(state.error != nil && asker.requests.isEmpty)
+  }
 }

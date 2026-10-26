@@ -6,7 +6,10 @@ extension PSState {
   /// «Undo» brings back the one before. An Italian answer is asked again once; an answer that holds a piece of the trigger phrase is refused.
   func improve(using ask: @MainActor (String, String, [String]) async -> DTHubLLMAnswer) async {
     let original = doc.description
-    guard !original.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+    // The canvas goes along as a small picture, when there is something on it; with a picture the text is only a guide and may be empty.
+    let picture = improvePicture()
+    defer { if let picture { try? FileManager.default.removeItem(atPath: picture) } }
+    guard picture != nil || !original.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
       error = text(.emptyDescription)
       return
     }
@@ -14,9 +17,6 @@ extension PSState {
     let folder = projectFolder
     isImproving = true
     defer { isImproving = false }
-    // The canvas goes along as a small picture, when there is something on it.
-    let picture = improvePicture()
-    defer { if let picture { try? FileManager.default.removeItem(atPath: picture) } }
     let images = picture.map { [$0] } ?? []
     var request = PSPrompt.request(description: original, withPicture: picture != nil)
     var answer = await ask(request.prompt, request.system, images)
