@@ -19,6 +19,8 @@ enum CUFamily: String {
   case flux2 = "flux2"
   case flux2_9b = "flux2_9b"
   case flux2_4b = "flux2_4b"
+  case flux3_5b = "flux3_5b"
+  case mossImage = "moss_image"
   case krea2 = "krea_2"
   case sd15 = "v1"
   case sd2 = "v2"
@@ -175,6 +177,22 @@ enum ComputeUnitsEstimator {
         referenceSequenceLength: referenceLength, channels: channels, layers: layers,
         guidanceEmbed: isGuidanceEmbedEnabled, kvCache: kvCache)
       counts = (main * imageBatch, fixed * imageBatch)
+    case .flux3_5b:
+      let main = Flux3InstructionCount(
+        batchSize: 1, tokenLength: baseTokenLength, referenceSequenceLength: referenceLength,
+        height: startHeight, width: startWidth, channels: 3072, layers: (5, 28))
+      let fixed = Flux3FixedInstructionCount(
+        contextBatchSize: 1, tokenLength: baseTokenLength, timestepCount: 1,
+        referenceSequenceLength: referenceLength, channels: 3072)
+      counts = (main * imageBatch, fixed * imageBatch)
+    case .mossImage:
+      let main = MOSSImageInstructionCount(
+        batchSize: 1, tokenLength: baseTokenLength, height: startHeight, width: startWidth, channels: 3_072,
+        layers: 42)
+      // The text refiner runs on every prompt packed together (the CFG branches).
+      let fixed = MOSSImageFixedInstructionCount(
+        batchSize: 1, tokenLength: baseTokenLength * cfg, timesteps: 1, channels: 3_072)
+      counts = (main * imageBatch, fixed * imageBatch)
     case .krea2:
       let fixedTextLength: (Int, Int) = cfg > 1 ? (baseTokenLength, baseTokenLength) : (0, baseTokenLength)
       let totalFixedTextLength = fixedTextLength.0 + fixedTextLength.1
@@ -306,7 +324,8 @@ enum ComputeUnitsEstimator {
   static func tokenLength(family: CUFamily, padded: Int) -> Int {
     if padded > 0 { return padded }
     switch family {
-    case .zImage, .qwenImage, .qwenImage2_1, .ernieImage, .ideogram4, .flux1, .flux2, .flux2_9b, .flux2_4b:
+    case .zImage, .qwenImage, .qwenImage2_1, .ernieImage, .ideogram4, .flux1, .flux2, .flux2_9b, .flux2_4b, .flux3_5b,
+      .mossImage:
       return 512
     case .krea2: return 256
     case .hiDreamI1: return 128

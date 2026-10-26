@@ -45,6 +45,31 @@ struct ComputeUnitsEstimatorTests {
     #expect(abs(Double(with) / Double(without) - 2) < 0.1)
   }
 
+  @Test func flux3KleinAndMossHaveAnEstimate() {
+    for family in ["flux3_5b", "moss_image"] {
+      let few = estimate(inputs(family, steps: 8))
+      let many = estimate(inputs(family, steps: 16))
+      #expect(few > 0, "\(family)")
+      #expect(abs(Double(many) / Double(few) - 2) < 0.1, "\(family)")
+      #expect(estimate(inputs(family, width: 2048, height: 2048)) > few, "\(family)")
+    }
+  }
+
+  @Test func mossCfgDoublesTheWork() {
+    let without = estimate(inputs("moss_image", guidance: 1))
+    let with = estimate(inputs("moss_image", guidance: 4))
+    #expect(abs(Double(with) / Double(without) - 2) < 0.15)
+  }
+
+  @Test func flux3ReferencesAddWork() {
+    let kontext = ModelCapabilities(
+      guidanceEmbed: false, teaCache: false, clipL: false, openClipG: false, t5: false, optionalT5: false,
+      clipSkip: false, nativeSize: nil, modifier: "kontext")
+    let none = estimate(inputs("flux3_5b", capabilities: kontext))
+    let two = estimate(inputs("flux3_5b", references: 2, capabilities: kontext))
+    #expect(two > none)
+  }
+
   @Test func anUncoveredFamilyHasNoEstimate() {
     #expect(ComputeUnitsEstimator.estimate(inputs("wurstchen_v3.0_stage_c")) == nil)
     #expect(ComputeUnitsEstimator.estimate(inputs("kandinsky2.1")) == nil)
