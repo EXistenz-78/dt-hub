@@ -64,8 +64,8 @@ final class Panorama360Plugin: DTHubPlugin {
   private func improve() {
     guard let host else { return }
     Task {
-      await state.improve { prompt, system in
-        await host.askLanguageModelAnswer(prompt, system: system, options: PSPrompt.options)
+      await state.improve { prompt, system, images in
+        await host.askLanguageModelAnswer(prompt, images: images, system: system, options: PSPrompt.options)
       }
     }
   }

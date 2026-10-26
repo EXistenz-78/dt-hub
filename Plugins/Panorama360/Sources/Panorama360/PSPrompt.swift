@@ -30,8 +30,15 @@ enum PSPrompt {
 
   static let englishReminder = "Reply in English only: the previous reply was not in English."
 
-  static func request(description: String, reminder: Bool = false, in folder: DTHubPromptFolder = folder()) -> (prompt: String, system: String) {
-    var prompt = "Rewrite this description:\n\n" + description.trimmingCharacters(in: .whitespacesAndNewlines)
+  /// With `withPicture` the canvas goes along as a picture, and the request says what it is and what is asked of the model.
+  static let pictureNote = """
+    The attached picture is the canvas: some pieces of the scene on a flat green background, laid out as an equirectangular panorama. The image \
+    model will replace the green with an extension of the pieces that remain, and the final result will be a 360° equirectangular projection. \
+    Look at the parts of the picture that are not flat green and describe what must complete them to fill the whole panorama.
+    """
+
+  static func request(description: String, reminder: Bool = false, withPicture: Bool = false, in folder: DTHubPromptFolder = folder()) -> (prompt: String, system: String) {
+    var prompt = (withPicture ? pictureNote + "\n\n" : "") + "Rewrite this description:\n\n" + description.trimmingCharacters(in: .whitespacesAndNewlines)
     if reminder { prompt += "\n\n" + englishReminder }
     return (prompt, system(in: folder))
   }

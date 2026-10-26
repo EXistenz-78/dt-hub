@@ -33,7 +33,7 @@ struct PSSeamPlan: Equatable {
 /// The correction of the seam: the constants (all in one place, to be changed with one line) and the plan for a size.
 enum PSSeam {
   /// The saved preset the pass uses. Its model, prompt and parameters are the user's.
-  static let presetName = "PANO Test"
+  static let presetName = PSPresets.seamlessName
   static let strength = 1.0
   /// How Draw Things treats the mask (blur 0…30, outset 0…100; the original is kept outside it).
   static let maskBlur = 30

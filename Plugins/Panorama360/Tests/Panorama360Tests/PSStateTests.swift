@@ -69,7 +69,7 @@ struct PSStateTests {
   @Test func anImproveAnswerIsDroppedWhenTheTextChangedMeanwhile() async {
     let state = PSState(italian: false)
     state.mutate { $0.description = "a harbour" }
-    await state.improve { _, _ in
+    await state.improve { _, _, _ in
       state.mutate { $0.description = "typed while waiting" }
       return .text("A quiet harbour at dawn, soft grey light and still water.")
     }
@@ -81,7 +81,7 @@ struct PSStateTests {
     let state = PSState(italian: false)
     state.switchProject(folder: first)
     state.mutate { $0.description = "a harbour" }
-    await state.improve { _, _ in
+    await state.improve { _, _, _ in
       state.switchProject(folder: second)
       return .text("A quiet harbour at dawn, soft grey light and still water.")
     }

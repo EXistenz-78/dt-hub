@@ -39,7 +39,7 @@ struct PSSeamTests {
   }
 
   @Test func theConstantsAreTheOnesOfTheSpec() {
-    #expect(PSSeam.presetName == "PANO Test" && PSSeam.strength == 1 && PSSeam.maskBlur == 30 && PSSeam.maskOutset == 0)
+    #expect(PSSeam.presetName == "PAN · 360 Seamless" && PSSeam.strength == 1 && PSSeam.maskBlur == 30 && PSSeam.maskOutset == 0)
     #expect(PSSeam.maxSquare == 2048)
   }
 }

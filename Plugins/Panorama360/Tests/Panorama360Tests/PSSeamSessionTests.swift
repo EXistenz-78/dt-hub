@@ -45,7 +45,7 @@ struct PSSeamSessionTests {
     #expect(maskImage.width == 256 && maskImage.height == 256)
     let size = try #require(pass["size"] as? [String: Any])
     #expect(size["width"] as? Int == 256 && size["height"] as? Int == 256)
-    #expect(pass["preset"] as? String == "PANO Test" && pass["strength"] as? Double == 1)
+    #expect(pass["preset"] as? String == "PAN · 360 Seamless" && pass["strength"] as? Double == 1)
     let settings = try #require(pass["maskSettings"] as? [String: Any])
     #expect(settings["blur"] as? Int == 30 && settings["outset"] as? Int == 0 && settings["preserveOriginal"] as? Bool == true)
     #expect(pass["fields"] == nil && pass["loras"] == nil, "the prompt and the parameters belong to the preset")
@@ -109,7 +109,7 @@ struct PSSeamSessionTests {
   @Test func theEstimateNamesThePresetAndTheSize() throws {
     let (session, _) = try session()
     let estimate = session.estimate()
-    #expect(estimate["preset"] as? String == "PANO Test")
+    #expect(estimate["preset"] as? String == "PAN · 360 Seamless")
     let size = estimate["size"] as? [String: Any]
     #expect(size?["width"] as? Int == 256 && size?["height"] as? Int == 256)
   }

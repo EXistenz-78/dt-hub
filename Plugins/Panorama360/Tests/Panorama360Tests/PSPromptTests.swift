@@ -17,9 +17,11 @@ struct PSPromptTests {
   @MainActor final class Asker {
     var answers: [DTHubLLMAnswer]
     private(set) var requests: [(prompt: String, system: String)] = []
+    private(set) var imageLists: [[String]] = []
     init(_ answers: [DTHubLLMAnswer]) { self.answers = answers }
-    func ask(_ prompt: String, _ system: String) async -> DTHubLLMAnswer {
+    func ask(_ prompt: String, _ system: String, _ images: [String]) async -> DTHubLLMAnswer {
       requests.append((prompt, system))
+      imageLists.append(images)
       return answers.isEmpty ? .failure("No answer.") : answers.removeFirst()
     }
   }
@@ -111,5 +113,32 @@ struct PSPromptTests {
     #expect(PSPrompt.looksItalian("Una valle di montagna con il sole che tramonta sulla neve"))
     #expect(!PSPrompt.looksItalian("A mountain valley with the sun setting over the snow"))
     #expect(!PSPrompt.looksItalian("Alpine valley, golden hour, 35mm"))
+  }
+
+  @Test func theCanvasGoesAlongAsAPictureWhenSomethingIsOnIt() async throws {
+    let temp = TestImages.tempFolder()
+    let state = state()
+    state.apply(context: Data(#"{"type":"context","tempFolder":"\#(temp.path)"}"#.utf8))
+    let sticker = Sticker(name: "s", file: "s.png")
+    state.mutate { $0.stickers = [sticker] }
+    state.setImage(TestImages.solid(60, 40, 200, 50, 50), for: sticker.id)
+    let asker = Asker([.text("A mountain valley at sunset, warm low light, long shadows, haze in the lower valley.")])
+    nonisolated(unsafe) var existedDuring = false
+    await state.improve { prompt, system, images in
+      existedDuring = images.count == 1 && FileManager.default.fileExists(atPath: images[0])
+      return await asker.ask(prompt, system, images)
+    }
+    #expect(existedDuring)
+    #expect(asker.imageLists.first?.count == 1)
+    #expect(asker.requests.first?.prompt.contains("attached picture is the canvas") == true)
+    #expect(asker.requests.first?.system.contains("When a picture is attached") == true)
+    #expect(try FileManager.default.contentsOfDirectory(atPath: temp.path).isEmpty, "the picture is removed afterwards")
+  }
+
+  @Test func withNothingOnTheCanvasNoPictureIsSent() async {
+    let state = state()
+    let asker = Asker([.text("A mountain valley at sunset, warm low light, long shadows, haze in the lower valley.")])
+    await state.improve(using: asker.ask)
+    #expect(asker.imageLists == [[]] && asker.requests.first?.prompt.contains("attached picture") == false)
   }
 }

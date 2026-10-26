@@ -60,7 +60,7 @@ struct PSStateSeamTests {
     let pipeline = try #require(bodies().first?["pipeline"] as? [String: Any])
     #expect(pipeline["guided"] as? Bool == true && pipeline["passes"] as? Int == 1 && pipeline["name"] is String)
     let estimate = try #require(pipeline["estimate"] as? [String: Any])
-    #expect(estimate["preset"] as? String == "PANO Test")
+    #expect(estimate["preset"] as? String == "PAN · 360 Seamless")
     #expect((estimate["size"] as? [String: Any])?["width"] as? Int == 512)
     #expect(state.isSeamPrepared && state.error == nil && state.notice != nil)
   }
@@ -83,7 +83,7 @@ struct PSStateSeamTests {
     let state = state(result: picture(1024, 512, (200, 30, 30)))
     await state.prepareSeamCorrection(contribute: send().0)
     let first = try #require(try JSONSerialization.jsonObject(with: await state.seamNext(Data(#"{"type":"session.next","index":1,"count":1}"#.utf8))) as? [String: Any])
-    #expect(first["startImage"] != nil && first["mask"] != nil && first["preset"] as? String == "PANO Test")
+    #expect(first["startImage"] != nil && first["mask"] != nil && first["preset"] as? String == "PAN · 360 Seamless")
     #expect(await state.seamNext(Data(#"{"type":"session.next","index":2,"count":1}"#.utf8)).isDone)
   }
 

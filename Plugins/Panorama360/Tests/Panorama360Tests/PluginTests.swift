@@ -39,7 +39,7 @@ struct PluginTests {
     }
     await plugin.registerPresets(using: send)
     await plugin.registerPresets(using: send)
-    #expect(calls == 1 && last.count == 2)
+    #expect(calls == 1 && last.count == 3)
   }
 
   @Test func aRefusedRegistrationIsTriedAgain() async {
