@@ -113,4 +113,28 @@ struct PSSeamSessionTests {
     let size = estimate["size"] as? [String: Any]
     #expect(size?["width"] as? Int == 256 && size?["height"] as? Int == 256)
   }
+
+  @Test func theFilesOfThePassAreRemovedWhenTheSessionEnds() throws {
+    let (session, folder) = try session()
+    let pass = session.next(index: 1, count: 1)
+    let start = try #require((pass["startImage"] as? [String: Any])?["path"] as? String)
+    let mask = try #require((pass["mask"] as? [String: Any])?["path"] as? String)
+    #expect(FileManager.default.fileExists(atPath: start) && FileManager.default.fileExists(atPath: mask))
+    _ = session.end(reason: "finished", previous: square((0, 0, 255), in: folder))
+    #expect(!FileManager.default.fileExists(atPath: start) && !FileManager.default.fileExists(atPath: mask))
+    let (second, other) = try self.session()
+    let again = second.next(index: 1, count: 1)
+    _ = second.end(reason: "stopped", previous: nil)
+    #expect(!FileManager.default.fileExists(atPath: try #require((again["startImage"] as? [String: Any])?["path"] as? String)))
+    _ = other
+  }
+
+  @Test func aLocalWriteFailureIsNotReportedAsTheAppsFault() throws {
+    // The folder of the pass cannot be created (a file is in its place): next gives up, and the end says the pass failed here.
+    let blocker = TestImages.tempFolder().appendingPathComponent("not-a-folder")
+    try Data("x".utf8).write(to: blocker)
+    let session = PSSeamSession(panorama: panorama(), plan: try plan(), folder: blocker.appendingPathComponent("inside"), italian: false)
+    #expect(session.next(index: 1, count: 1)["done"] as? Bool == true)
+    guard case .nothing(.failed) = session.end(reason: "finished", previous: nil) else { Issue.record("expected .failed"); return }
+  }
 }

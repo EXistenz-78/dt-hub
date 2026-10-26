@@ -103,4 +103,32 @@ struct PSSeamImagesTests {
     #expect(PSSeamImages.compose(rolled: TestImages.solid(512, 256, 1, 1, 1), generated: TestImages.solid(128, 128, 1, 1, 1), plan: plan) == nil)
     #expect(PSSeamImages.compose(rolled: TestImages.solid(500, 256, 1, 1, 1), generated: TestImages.solid(256, 256, 1, 1, 1), plan: plan) == nil)
   }
+
+  /// A panorama (rolled) whose left half is darker than its right half: the exposure steps exactly at the seam, as when the two edges of a
+  /// generated panorama were made at different levels.
+  func steppedPanorama(dark: UInt8, bright: UInt8) -> CGImage {
+    TestImages.make(512, 256) { x, _ in x < 256 ? (dark, dark, dark, 255) : (bright, bright, bright, 255) }
+  }
+
+  @Test func aBrightnessStepBetweenTheTwoSidesDoesNotComeBackAtTheSeam() throws {
+    let plan = try plan()
+    let out = try #require(PSSeamImages.compose(rolled: steppedPanorama(dark: 100, bright: 160), generated: TestImages.solid(256, 256, 130, 130, 130), plan: plan))
+    let left = TestImages.pixel(out, plan.seamX - 1, 128).r, right = TestImages.pixel(out, plan.seamX, 128).r
+    #expect(abs(left - right) <= 3, "no step at the seam: \(left) \(right)")
+    #expect(abs(TestImages.pixel(out, plan.bandX, 128).r - 100) <= 4, "the left edge of the band meets the left side")
+    #expect(abs(TestImages.pixel(out, plan.bandX + plan.bandWidth - 1, 128).r - 160) <= 4, "the right edge meets the right side")
+    // And it goes from one level to the other without overshooting.
+    var last = 0
+    for x in stride(from: plan.bandX, to: plan.bandX + plan.bandWidth, by: 4) {
+      let v = TestImages.pixel(out, x, 128).r
+      #expect(v >= last - 1 && v <= 165, "x \(x): \(v)")
+      last = v
+    }
+  }
+
+  @Test func evenSidesAndAnEvenGeneratedPictureStayEven() throws {
+    let plan = try plan()
+    let out = try #require(PSSeamImages.compose(rolled: TestImages.solid(512, 256, 120, 120, 120), generated: TestImages.solid(256, 256, 120, 120, 120), plan: plan))
+    for x in stride(from: 0, to: 512, by: 32) { #expect(abs(TestImages.pixel(out, x, 100).r - 120) <= 1, "x \(x)") }
+  }
 }

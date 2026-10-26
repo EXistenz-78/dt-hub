@@ -61,6 +61,8 @@ final class PSState: ObservableObject {
   @Published var isSending = false
   /// The correction of the seam that is waiting for RUN (and running), and the button that proposed it.
   var seamSession: PSSeamSession?
+  /// Where DT Hub keeps the presets (the seam correction reads the model of its preset from there).
+  var presetsFolder = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/DT Hub/Presets", isDirectory: true)
   @Published var isSeamPrepared = false
   /// True after a send the app accepted: from then on the model of the preset it applied is checked (see `warning`).
   @Published var hasSent = false

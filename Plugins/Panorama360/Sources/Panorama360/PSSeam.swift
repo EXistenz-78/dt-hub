@@ -54,4 +54,12 @@ enum PSSeam {
     let band = Int(Double(height) * bandFraction)
     return .success(PSSeamPlan(width: width, height: height, square: height, bandWidth: band, fade: height / fadeDivisor))
   }
+
+  /// The model the preset of the correction asks for, when its file says one (DT Hub applies the preset's parameters, but the model is the header's).
+  static func presetModel(in folder: URL) -> String? {
+    guard let data = try? Data(contentsOf: folder.appendingPathComponent("\(presetName).json")),
+      let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any], let model = object["model"] as? String, !model.isEmpty
+    else { return nil }
+    return model
+  }
 }

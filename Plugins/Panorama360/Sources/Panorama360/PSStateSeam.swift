@@ -28,13 +28,21 @@ extension PSState {
       error = seamReasonText(reason)
       return
     }
-    guard let path = lastResultPath, let panorama = PSResultLoader.load(URL(fileURLWithPath: path), maxSide: nil),
-      case .success(let plan) = PSSeam.plan(width: panorama.width, height: panorama.height)
-    else {
+    guard let path = lastResultPath, !isSending else { return }
+    isSending = true
+    defer { isSending = false }
+    let italian = italian, folder = exchangeFolder
+    // The reading of the panorama and its roll are heavy for a big one: not on the main thread.
+    let made = await Task.detached(priority: .userInitiated) { () -> PSSeamSession? in
+      guard let panorama = PSResultLoader.load(URL(fileURLWithPath: path), maxSide: nil),
+        case .success(let plan) = PSSeam.plan(width: panorama.width, height: panorama.height)
+      else { return nil }
+      return PSSeamSession(panorama: panorama, plan: plan, folder: folder, italian: italian)
+    }.value
+    guard let session = made else {
       error = text(.seamUnreadable)
       return
     }
-    let session = PSSeamSession(panorama: panorama, plan: plan, folder: exchangeFolder, italian: italian)
     let pipeline: [String: Any] = ["name": text(.seamPipelineName), "guided": true, "passes": 1, "estimate": session.estimate()]
     if let message = problem(in: await contribute(["pipeline": pipeline])) {
       error = message
@@ -42,17 +50,23 @@ extension PSState {
     }
     seamSession = session
     isSeamPrepared = true
-    notice = text(.seamReady)
+    if let model = PSSeam.presetModel(in: presetsFolder), model != modelFile {
+      notice = text(.seamModel, model.replacingOccurrences(of: ".ckpt", with: ""))
+    } else {
+      notice = text(.seamReady)
+    }
   }
 
   /// `session.next`: the pass, or `{"done":true}` when there is none to give.
-  func seamNext(_ message: Data) -> Data {
+  func seamNext(_ message: Data) async -> Data {
     let done = Data(#"{"done":true}"#.utf8)
     guard let object = (try? JSONSerialization.jsonObject(with: message)) as? [String: Any], let index = object["index"] as? Int,
       let session = seamSession
     else { return done }
-    let answer = session.next(index: index, count: object["count"] as? Int ?? 1)
-    return (try? JSONSerialization.data(withJSONObject: answer)) ?? done
+    let count = object["count"] as? Int ?? 1
+    return await Task.detached(priority: .userInitiated) {
+      (try? JSONSerialization.data(withJSONObject: session.next(index: index, count: count))) ?? done
+    }.value
   }
 
   /// `session.end`: the corrected panorama goes to the Results, or nothing does and the reason is shown.

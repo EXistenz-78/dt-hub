@@ -28,6 +28,8 @@ final class PSSeamSession: @unchecked Sendable {
   private let rolled: CGImage?
   private var passGiven = false
   private var finished = false
+  private var writeFailed = false
+  private var files: [URL] = []
 
   init(panorama: CGImage, plan: PSSeamPlan, folder: URL, italian: Bool) {
     self.plan = plan
@@ -53,8 +55,10 @@ final class PSSeamSession: @unchecked Sendable {
       try picture.write(to: pictureURL)
       try mask.write(to: maskURL)
     } catch {
+      writeFailed = true
       return ["done": true]
     }
+    files = [pictureURL, maskURL]
     passGiven = true
     return [
       "title": "Giunzione", "startImage": ["path": pictureURL.path, "name": "seam-square"], "mask": ["path": maskURL.path, "name": "seam-mask"],
@@ -65,7 +69,9 @@ final class PSSeamSession: @unchecked Sendable {
 
   /// The run is over. With `finished` and the picture the model made (`previous`), the corrected panorama; otherwise nothing, and why.
   func end(reason: String, previous: (path: String, width: Int, height: Int)?) -> PSSeamOutcome {
+    defer { for file in files { try? FileManager.default.removeItem(at: file) } }
     guard !finished else { return .nothing(.closed) }
+    if writeFailed { return .nothing(.failed) }
     switch reason {
     case "finished": break
     case "stopped": return .nothing(.stopped)

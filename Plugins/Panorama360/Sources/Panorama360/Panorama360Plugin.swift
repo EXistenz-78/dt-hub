@@ -81,7 +81,7 @@ final class Panorama360Plugin: DTHubPlugin {
       }
       return nil
     case "session.next":
-      return state.seamNext(message)
+      return await state.seamNext(message)
     case "session.end":
       if let host { await state.seamEnded(message, contribute: { await host.contribute($0) }) }
       return nil

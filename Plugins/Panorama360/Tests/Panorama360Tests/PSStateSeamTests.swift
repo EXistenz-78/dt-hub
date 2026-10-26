@@ -76,28 +76,28 @@ struct PSStateSeamTests {
     let state = state(result: picture(1024, 512, (200, 30, 30)))
     await state.prepareSeamCorrection { _ in ["type": "error", "text": "a pipeline is running"] }
     #expect(state.error == "a pipeline is running" && !state.isSeamPrepared)
-    #expect(state.seamNext(Data(#"{"type":"session.next","index":1,"count":1}"#.utf8)).isDone)
+    #expect(await state.seamNext(Data(#"{"type":"session.next","index":1,"count":1}"#.utf8)).isDone)
   }
 
   @Test func sessionNextAnswersThePassThenDone() async throws {
     let state = state(result: picture(1024, 512, (200, 30, 30)))
     await state.prepareSeamCorrection(contribute: send().0)
-    let first = try #require(try JSONSerialization.jsonObject(with: state.seamNext(Data(#"{"type":"session.next","index":1,"count":1}"#.utf8))) as? [String: Any])
+    let first = try #require(try JSONSerialization.jsonObject(with: await state.seamNext(Data(#"{"type":"session.next","index":1,"count":1}"#.utf8))) as? [String: Any])
     #expect(first["startImage"] != nil && first["mask"] != nil && first["preset"] as? String == "PANO Test")
-    #expect(state.seamNext(Data(#"{"type":"session.next","index":2,"count":1}"#.utf8)).isDone)
+    #expect(await state.seamNext(Data(#"{"type":"session.next","index":2,"count":1}"#.utf8)).isDone)
   }
 
-  @Test func sessionNextWithoutASessionOrWithJunkIsDone() {
+  @Test func sessionNextWithoutASessionOrWithJunkIsDone() async {
     let state = PSState(italian: false)
-    #expect(state.seamNext(Data(#"{"type":"session.next","index":1,"count":1}"#.utf8)).isDone)
-    #expect(state.seamNext(Data("nonsense".utf8)).isDone)
+    #expect(await state.seamNext(Data(#"{"type":"session.next","index":1,"count":1}"#.utf8)).isDone)
+    #expect(await state.seamNext(Data("nonsense".utf8)).isDone)
   }
 
   @Test func sessionEndFinishedSendsTheMontageToTheResultsOnce() async throws {
     let state = state(result: picture(1024, 512, (200, 30, 30)))
     let (contribute, bodies) = send()
     await state.prepareSeamCorrection(contribute: contribute)
-    _ = state.seamNext(Data(#"{"type":"session.next","index":1,"count":1}"#.utf8))
+    _ = await state.seamNext(Data(#"{"type":"session.next","index":1,"count":1}"#.utf8))
     let generated = picture(512, 512, (0, 0, 255), name: "g.png")
     await state.seamEnded(endMessage("finished", previous: generated), contribute: contribute)
     let result = try #require(bodies().last?["result"] as? [String: Any])
@@ -138,7 +138,7 @@ struct PSStateSeamTests {
     let (contribute, bodies) = send()
     await state.prepareSeamCorrection(contribute: contribute)
     state.apply(context: context(picture(1024, 512, (30, 30, 200), name: "other.png")))  // another result arrives: blue
-    _ = state.seamNext(Data(#"{"type":"session.next","index":1,"count":1}"#.utf8))
+    _ = await state.seamNext(Data(#"{"type":"session.next","index":1,"count":1}"#.utf8))
     await state.seamEnded(endMessage("finished", previous: picture(512, 512, (0, 255, 0), name: "g.png")), contribute: contribute)
     let path = try #require(((bodies().last?["result"]) as? [String: Any])?["path"] as? String)
     let source = try #require(CGImageSourceCreateWithURL(URL(fileURLWithPath: path) as CFURL, nil))
@@ -151,10 +151,55 @@ struct PSStateSeamTests {
     let state = state(result: picture(1024, 512, (200, 30, 30)))
     let (contribute, bodies) = send()
     await state.prepareSeamCorrection(contribute: contribute)
-    _ = state.seamNext(Data(#"{"type":"session.next","index":1,"count":1}"#.utf8))
+    _ = await state.seamNext(Data(#"{"type":"session.next","index":1,"count":1}"#.utf8))
     state.switchProject(folder: TestImages.tempFolder())
     await state.seamEnded(endMessage("finished", previous: picture(512, 512, (0, 255, 0), name: "g.png")), contribute: contribute)
     #expect(bodies().last?["result"] != nil, "the app files it under the project that is open now")
+  }
+
+
+  // MARK: The model of the preset
+
+  func presetsFolder(withModel model: String?) throws -> URL {
+    let folder = TestImages.tempFolder()
+    let body = model.map { #"{"model":"\#($0)","parameters":{},"prompt":"p"}"# } ?? #"{"parameters":{},"prompt":"p"}"#
+    try Data(body.utf8).write(to: folder.appendingPathComponent("\(PSSeam.presetName).json"))
+    return folder
+  }
+
+  @Test func aHeaderModelThatIsNotThePresetsIsToldBeforeRUN() async throws {
+    let state = state(result: picture(1024, 512, (200, 30, 30)))
+    state.presetsFolder = try presetsFolder(withModel: "flux_2_klein_9b_kv_i8x.ckpt")
+    state.apply(context: Data(#"{"type":"context","model":"flux_2_klein_base_9b_i8x.ckpt","tempFolder":"/t","lastResult":{"path":"\#(state.lastResultPath ?? "")","name":"r.png"}}"#.utf8))
+    await state.prepareSeamCorrection(contribute: send().0)
+    #expect(state.isSeamPrepared && state.error == nil)
+    #expect(state.notice?.contains("flux_2_klein_9b_kv_i8x") == true, "\(state.notice ?? "nil")")
+  }
+
+  @Test func theSameModelOrNoPresetFileJustSaysReady() async throws {
+    let same = state(result: picture(1024, 512, (200, 30, 30)))
+    same.presetsFolder = try presetsFolder(withModel: "flux_2_klein_9b_kv_i8x.ckpt")
+    same.apply(context: Data(#"{"type":"context","model":"flux_2_klein_9b_kv_i8x.ckpt","tempFolder":"/t","lastResult":{"path":"\#(same.lastResultPath ?? "")","name":"r.png"}}"#.utf8))
+    await same.prepareSeamCorrection(contribute: send().0)
+    #expect(same.notice == same.text(.seamReady))
+    let none = state(result: picture(1024, 512, (200, 30, 30)))
+    none.presetsFolder = TestImages.tempFolder()
+    await none.prepareSeamCorrection(contribute: send().0)
+    #expect(none.notice == none.text(.seamReady))
+    let noModel = state(result: picture(1024, 512, (200, 30, 30)))
+    noModel.presetsFolder = try presetsFolder(withModel: nil)
+    await noModel.prepareSeamCorrection(contribute: send().0)
+    #expect(noModel.notice == noModel.text(.seamReady))
+  }
+
+  @Test func theButtonIsBusyWhileThePipelineIsBeingProposed() async {
+    let state = state(result: picture(1024, 512, (200, 30, 30)))
+    nonisolated(unsafe) var busyInside = false
+    await state.prepareSeamCorrection { _ in
+      busyInside = state.isSending
+      return ["type": "ok"]
+    }
+    #expect(busyInside && !state.isSending)
   }
 }
 

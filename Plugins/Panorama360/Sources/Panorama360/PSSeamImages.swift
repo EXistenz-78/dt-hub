@@ -63,25 +63,29 @@ enum PSSeamImages {
     let (made, side, _) = PSPixels.rgba(of: generated)
     let band = plan.bandWidth
     let offset = (side - band) / 2
-    // The brightness of the band in both pictures, over a wide window: the generated one is scaled by the ratio, so the slow drift of the level goes
-    // and the detail stays.
-    var lightOriginal = [Float](repeating: 0, count: band * height)
-    var lightMade = [Float](repeating: 0, count: band * height)
-    for y in 0..<height {
-      for i in 0..<band {
-        let o = (y * width + plan.bandX + i) * 4
-        let g = (y * side + offset + i) * 4
-        lightOriginal[y * band + i] = luminance(original, o)
-        lightMade[y * band + i] = luminance(made, g)
-      }
-    }
+    // The level to match is the one of the panorama OUTSIDE the band, on its two sides (a strip as wide as the fade, beside the band): the gain
+    // goes from the left level to the right one, row by row, so an exposure step across the seam is not copied by the new picture.
     let radius = max(1, plan.square / PSSeam.toneRadiusDivisor)
-    let blurredOriginal = boxBlur(lightOriginal, width: band, height: height, radius: radius)
+    var lightMade = [Float](repeating: 0, count: band * height)
+    var lightOriginal = [Float](repeating: 0, count: width * height)
+    for y in 0..<height {
+      for i in 0..<band { lightMade[y * band + i] = luminance(made, (y * side + offset + i) * 4) }
+      for x in 0..<width { lightOriginal[y * width + x] = luminance(original, (y * width + x) * 4) }
+    }
     let blurredMade = boxBlur(lightMade, width: band, height: height, radius: radius)
+    let blurredOriginal = boxBlur(lightOriginal, width: width, height: height, radius: radius)
+    let strip = max(1, min(plan.fade, plan.bandX))
     var out = original
     for y in 0..<height {
+      // The brightness of the generated picture at its two edges (blurred), and of the panorama just outside the band.
+      let madeLeft = blurredMade[y * band + min(band - 1, strip / 2)], madeRight = blurredMade[y * band + max(0, band - 1 - strip / 2)]
+      let sideLeft = blurredOriginal[y * width + max(0, plan.bandX - 1 - strip / 2)]
+      let sideRight = blurredOriginal[y * width + min(width - 1, plan.bandX + band + strip / 2)]
+      let gainLeft = min(5, max(0.2, (sideLeft + 1) / (madeLeft + 1)))
+      let gainRight = min(5, max(0.2, (sideRight + 1) / (madeRight + 1)))
       for i in 0..<band {
-        let gain = min(5, max(0.2, (blurredOriginal[y * band + i] + 1) / (blurredMade[y * band + i] + 1)))
+        let along = Float(i) / Float(max(1, band - 1))
+        let gain = gainLeft + (gainRight - gainLeft) * along
         let edge = Double(min(i, band - 1 - i)) + 0.5
         let t = min(1, max(0, edge / Double(max(1, plan.fade))))
         let weight = Float(t * t * (3 - 2 * t))
