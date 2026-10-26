@@ -45,9 +45,9 @@ extension PSState {
     }
   }
 
-  /// The ERP canvas as a small PNG in the exchange folder, for the language model; nil when nothing is visible or it cannot be written.
+  /// The ERP canvas as a PNG at full size (the pieces must stay readable) in the exchange folder, for the language model; nil when nothing is visible or it cannot be written.
   private func improvePicture() -> String? {
-    guard doc.stickers.contains(where: \.visible), let image = try? renderedERP(width: 1024, height: 512) else { return nil }
+    guard doc.stickers.contains(where: \.visible), let image = try? renderedERP(width: PSSender.width, height: PSSender.height) else { return nil }
     let folder = URL(fileURLWithPath: tempFolder.isEmpty ? NSTemporaryDirectory() : tempFolder, isDirectory: true)
     try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
     let file = folder.appendingPathComponent("panorama-360-improve-\(UUID().uuidString).png")

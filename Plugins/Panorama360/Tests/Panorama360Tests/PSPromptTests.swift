@@ -130,7 +130,7 @@ struct PSPromptTests {
     }
     #expect(existedDuring)
     #expect(asker.imageLists.first?.count == 1)
-    #expect(asker.requests.first?.prompt.contains("attached picture is the canvas") == true)
+    #expect(asker.requests.first?.prompt.contains("attached picture is the starting canvas") == true)
     #expect(asker.requests.first?.system.contains("When a picture is attached") == true)
     #expect(try FileManager.default.contentsOfDirectory(atPath: temp.path).isEmpty, "the picture is removed afterwards")
   }

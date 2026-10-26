@@ -32,9 +32,14 @@ enum PSPrompt {
 
   /// With `withPicture` the canvas goes along as a picture, and the request says what it is and what is asked of the model.
   static let pictureNote = """
-    The attached picture is the canvas: some pieces of the scene on a flat green background, laid out as an equirectangular panorama. The image \
-    model will replace the green with an extension of the pieces that remain, and the final result will be a 360° equirectangular projection. \
-    Look at the parts of the picture that are not flat green and describe what must complete them to fill the whole panorama.
+    TASK CONTEXT. The attached picture is the starting canvas of an image model. It is a 2:1 equirectangular layout: the whole 360° \
+    surroundings of a viewer, unrolled flat. Some pieces of the scene are already placed on it, each in the position where it will stay; \
+    everything else is flat solid green. The image model will paint over the green so that the pieces are extended and joined into one \
+    continuous scene, and the final result will be a complete 360° equirectangular panorama.
+
+    YOUR JOB. Look only at the parts that are not flat green: what they show, where they are on the canvas, their light, colours and style. \
+    Then describe what must fill the green around them, so that the whole panorama is one coherent place: what continues from each piece, \
+    what surrounds it, what lies in the empty regions.
     """
 
   static func request(description: String, reminder: Bool = false, withPicture: Bool = false, in folder: DTHubPromptFolder = folder()) -> (prompt: String, system: String) {
