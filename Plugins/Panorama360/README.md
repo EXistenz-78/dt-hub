@@ -34,6 +34,16 @@ In the sphere view the **Cutout** panel takes what you see as a flat 4:3 picture
    - **Put back in the panorama** pastes it, with a soft edge, on the panorama the cutout was taken from and sends the new panorama to DT Hub's **Results** (it becomes the latest result; the source **Result** shows it). Nothing else is generated.
 3. Both buttons stay on for the same retouch until you extract again. If one is off, its tooltip says why: no cutout yet, no retouch yet, the retouch is not 4:3, its file cannot be read, or (for the panorama) there was no result when the cutout was taken.
 
+## Closing the seam
+
+The left and the right edge of a panorama are the same place, and the model does not always make them meet. In the sphere view with the **Result** as the source, **Fix the seam** (Correggi giunzione) closes it:
+
+1. The plug-in rolls the latest result by half its width, so the seam is in the middle, and cuts the **central square** (as tall as the panorama: 1024 × 1024 for a 2048 × 1024 one, 512 × 512 for a 1024 × 512 one). Half of that square, in the middle, is masked.
+2. It proposes a one-pass pipeline to DT Hub ("Run · 1 pass") with the saved preset **`PANO Test`**, the square and the mask. Press RUN. The preset is yours: the model, the prompt and the parameters are those you saved in it (it can be any preset, with no need of the 360 LoRA or of a Base model, so it is much faster than a whole panorama).
+3. When the RUN ends the plug-in pastes the new band into the panorama with a soft edge, levels its brightness to the original's (the method Tiled Upscale uses to join its tiles), rolls it back and sends the corrected panorama to the **Results**. The square the model made is not saved.
+
+The button is off, with the reason in its tooltip, when there is no result, the result is not 2:1, its height is not a multiple of 64 (the pass takes only those) or the square would pass 2048 px. The name of the preset and the numbers of the band and of the soft edge are constants at the top of `PSSeam.swift`.
+
 ## The presets are yours
 
 The first time DT Hub starts with the plug-in, it adds `PAN · 360 ERP` and `PAN · 360 ERP Fast` to the Preset menu. After that it never touches them: change them as you like (the 4B model and its LoRA, other quantisations, other steps). Values of the shipped ones:
