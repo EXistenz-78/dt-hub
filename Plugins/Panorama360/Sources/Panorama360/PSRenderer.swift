@@ -25,6 +25,8 @@ enum PSRenderError: Error, Equatable {
 /// `width × height` equirectangular picture. `uOffset` rolls the picture sideways, in turns. `renderView` draws what a camera in the centre of
 /// the sphere sees.
 protocol PSRendering: Sendable {
+  /// «Metal» or «CPU»: which one draws.
+  var backendName: String { get }
   func render(_ layers: [PSLayer], width: Int, height: Int, uOffset: Double, background: CGImage?) throws -> CGImage
   func renderView(_ source: PSViewSource, camera: PSCamera, width: Int, height: Int) throws -> CGImage
 }
@@ -67,6 +69,8 @@ private struct Box: @unchecked Sendable { let pointer: UnsafeMutablePointer<UInt
 /// The reference renderer: every pixel's ray against every layer, bilinear, premultiplied alpha, rows on all cores. The Metal renderer
 /// must agree with it; it also takes over when Metal cannot be used.
 final class PSCPURenderer: PSRendering {
+  var backendName: String { "CPU" }
+
   private struct Prepared: Sendable {
     var bytes: [UInt8]
     var width: Int
@@ -194,11 +198,15 @@ final class PSCPURenderer: PSRendering {
 }
 
 enum PSRendererFactory {
-  private static let shared: any PSRendering = {
-    if PSMetalProbe.canCompileAndRun(), let metal = try? PSMetalRenderer() { return metal }
-    return PSCPURenderer()
+  /// The renderer, and why it is the CPU one when it is.
+  private static let choice: (renderer: any PSRendering, fallbackReason: String?) = {
+    guard PSMetalProbe.canCompileAndRun() else { return (PSCPURenderer(), "the Metal test shader did not compile or run here") }
+    do { return (try PSMetalRenderer(), nil) } catch { return (PSCPURenderer(), "\(error)") }
   }()
 
   /// The Metal renderer when the shader compiles and runs here (inside DT Hub too), the CPU one otherwise.
-  static func make() -> any PSRendering { shared }
+  static func make() -> any PSRendering { choice.renderer }
+
+  /// Why Metal is not in use; nil when it is.
+  static var fallbackReason: String? { choice.fallbackReason }
 }

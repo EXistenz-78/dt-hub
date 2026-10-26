@@ -267,3 +267,26 @@ struct PSRendererTests {
     #expect(Double(total) / Double(a.count) < 2)
   }
 }
+
+@Suite("Renderer in use")
+struct PSRendererInUseTests {
+  @Test func eachRendererSaysWhichOneItIs() throws {
+    #expect(PSCPURenderer().backendName == "CPU")
+    if let metal = try? PSMetalRenderer() { #expect(metal.backendName == "Metal") }
+  }
+
+  @Test func theFactoryReportsWhatItChoseAndWhy() {
+    let chosen = PSRendererFactory.make()
+    if PSMetalProbe.canCompileAndRun() {
+      #expect(chosen.backendName == "Metal" && PSRendererFactory.fallbackReason == nil)
+    } else {
+      #expect(chosen.backendName == "CPU" && PSRendererFactory.fallbackReason != nil)
+    }
+  }
+
+  @Test @MainActor func theStateTellsWhichRendererDrawsTheView() {
+    let state = PSState(italian: false)
+    #expect(state.rendererName == PSRendererFactory.make().backendName)
+    #expect(state.rendererLabel.hasPrefix(state.rendererName))
+  }
+}

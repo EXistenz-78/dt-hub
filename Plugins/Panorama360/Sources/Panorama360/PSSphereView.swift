@@ -39,7 +39,7 @@ struct PSSphereView: View {
               .onEnded { _ in lastMagnification = 1 })
         VStack {
           HStack {
-            Text(verbatim: badge).font(.caption.monospaced()).padding(.horizontal, 8).padding(.vertical, 2)
+            Text(verbatim: badge).help(state.rendererLabel).font(.caption.monospaced()).padding(.horizontal, 8).padding(.vertical, 2)
               .background(Capsule().fill(.black.opacity(0.55))).foregroundStyle(.white)
             Spacer(minLength: 0)
           }
@@ -86,7 +86,7 @@ struct PSSphereView: View {
 
   private var badge: String {
     let c = state.doc.camera
-    return String(format: "yaw %.0f° · pitch %.0f° · FOV %.0f°", c.yaw, c.pitch, c.fov)
+    return String(format: "yaw %.0f° · pitch %.0f° · FOV %.0f°", c.yaw, c.pitch, c.fov) + " · " + state.rendererName
   }
 
   private func pointer(_ size: CGSize) -> some Gesture {

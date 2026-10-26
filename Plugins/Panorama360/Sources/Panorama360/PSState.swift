@@ -23,6 +23,10 @@ final class PSState: ObservableObject {
   /// The pictures of the stickers, by sticker id (loaded from the project folder when first needed).
   let images = PSImageCache()
   /// The panorama as the canvas shows it, and what the pointer is doing to a sticker.
+  /// Which renderer draws (Metal or CPU), for the badge of the sphere view.
+  var rendererName: String { PSRendererFactory.make().backendName }
+  var rendererLabel: String { PSRendererFactory.fallbackReason.map { "\(rendererName) (\($0))" } ?? rendererName }
+
   /// The picture the canvas shows lives in an object of its own, so that a new frame redraws only the view that shows it, not every card of the tab.
   let previewBox = PSPreview()
   var preview: CGImage? {

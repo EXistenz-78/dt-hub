@@ -5,6 +5,8 @@ import Metal
 /// The same maths as `PSCPURenderer` on the GPU: one full-screen pass per layer, blended as premultiplied alpha over a green clear (or over a
 /// panorama drawn first).
 final class PSMetalRenderer: PSRendering, @unchecked Sendable {
+  var backendName: String { "Metal" }
+
   private static let source = """
     #include <metal_stdlib>
     using namespace metal;
