@@ -12,7 +12,7 @@ enum PSPresets {
   /// The preset of the seam correction: the KV model alone, 4 steps, no LoRA, and the prompt that makes the junction disappear.
   static let seamlessName = "PAN · 360 Seamless"
   static let seamlessPrompt =
-    "recreate the central part of the image to make the vertical junction seamless, correct the background elements to  avoid texture mismatches, visible junctions and distortions."
+    "recreate the central part of the image to make the vertical junction seamless, correct the background elements to avoid mismatches, visible junctions and distortions."
 
   static let model = "flux_2_klein_base_9b_i8x.ckpt"
   static let refiner = "flux_2_klein_9b_kv_i8x.ckpt"
