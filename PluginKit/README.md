@@ -60,7 +60,7 @@ language models of the app's models folder (`family`: the family the user assign
   Only a plug-in that is on for the job (header menu) can contribute.
   - `fields`: `prompt`, `negativePrompt` (text); `width`, `height`, `steps`, `cfgZeroInitSteps`, `seed`, `batchSize`,
     `batchCount` (whole numbers); `guidanceScale`, `shift` (numbers); `cfgZeroStar`, `resolutionDependentShift`,
-    `randomSeed` (true/false); `sampler` (the number of the Draw Things sampler, or its name). Values are limited like
+    `randomSeed`, `highRes` (true/false; HiRes (beta) lets a side go up to 8192, a preset that makes a big picture turns it on); `sampler` (the number of the Draw Things sampler, or its name). Values are limited like
     the cards limit them. A plug-in never changes the model.
   - `loras`: `[{"file", "weight", "mode", "trigger"}]`, added to the LoRA card.
     With `"replaceLoRAs": true` (and at least one LoRA) the LoRAs already on the card are taken off first, so only the ones sent remain.

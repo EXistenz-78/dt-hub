@@ -11,6 +11,7 @@ enum ContributionText {
     case .negativePrompt: String(localized: "card.prompt.negative")
     case .width: String(localized: "card.dimensions.width")
     case .height: String(localized: "card.dimensions.height")
+    case .highRes: String(localized: "card.dimensions.highRes")
     case .steps: String(localized: "card.sampling.steps")
     case .guidanceScale: String(localized: "card.sampling.guidance")
     case .cfgZeroStar: String(localized: "card.sampling.cfgZero")

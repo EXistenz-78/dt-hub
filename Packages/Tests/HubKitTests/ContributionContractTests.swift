@@ -53,6 +53,24 @@ struct ContributionContractTests {
     }
   }
 
+  @Test func highResIsAFieldLikeTheOtherSwitches() {
+    let on = FieldOverlay(json: ["highRes": .bool(true)]).applied(to: GenerationFields())
+    #expect(on.parameters.highRes && on.parameters.sizeLimit == GenerationParameters.tiledSizeRange.upperBound)
+    #expect(FieldOverlay(json: ["highRes": .int(1)]).isEmpty, "a value of the wrong kind is left out")
+    #expect(GenerationFields().value(of: .highRes) == .bool(false))
+    #expect(ContributionField(rawValue: "highRes") == .highRes)
+  }
+
+  @Test func aPresetOfAPluginCanTurnHiResOn() throws {
+    let message = Data(
+      #"{"type":"presets","presets":[{"name":"PAN · Test","fields":{"steps":16,"highRes":true}},{"name":"PAN · Plain","fields":{"steps":8}}]}"#
+        .utf8)
+    let presets = try #require(PluginPresets(message: message)).presets
+    #expect(presets.map(\.name) == ["PAN · Test", "PAN · Plain"])
+    #expect(presets[0].parameters.highRes && presets[0].parameters.steps == 16)
+    #expect(!presets[1].parameters.highRes)
+  }
+
   @Test func aContributionIsReadWithItsParts() throws {
     let message = Data(
       """

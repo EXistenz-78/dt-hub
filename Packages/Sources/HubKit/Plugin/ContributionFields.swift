@@ -4,7 +4,7 @@ import Foundation
 /// `fields` object of the `contribute` message.
 public enum ContributionField: String, CaseIterable, Codable, Hashable, Sendable {
   case prompt, negativePrompt
-  case width, height, steps, guidanceScale, cfgZeroStar, cfgZeroInitSteps, sampler, shift, resolutionDependentShift
+  case width, height, highRes, steps, guidanceScale, cfgZeroStar, cfgZeroInitSteps, sampler, shift, resolutionDependentShift
   case seed, randomSeed, batchSize, batchCount
 }
 
@@ -34,6 +34,7 @@ public struct GenerationFields: Equatable, Sendable {
     case .negativePrompt: .text(negativePrompt)
     case .width: .int(parameters.width)
     case .height: .int(parameters.height)
+    case .highRes: .bool(parameters.highRes)
     case .steps: .int(parameters.steps)
     case .guidanceScale: .double(parameters.guidanceScale)
     case .cfgZeroStar: .bool(parameters.cfgZeroStar)
@@ -56,6 +57,7 @@ public struct GenerationFields: Equatable, Sendable {
     case (.negativePrompt, .text(let text)): negativePrompt = text
     case (.width, .int(let number)): parameters.width = number
     case (.height, .int(let number)): parameters.height = number
+    case (.highRes, .bool(let flag)): parameters.highRes = flag
     case (.steps, .int(let number)): parameters.steps = number
     case (.guidanceScale, .double(let number)): parameters.guidanceScale = number
     case (.cfgZeroStar, .bool(let flag)): parameters.cfgZeroStar = flag
@@ -113,7 +115,7 @@ public struct FieldOverlay: Equatable, Sendable {
       case .int(let number): return .double(Double(number))
       default: break
       }
-    case .cfgZeroStar, .resolutionDependentShift, .randomSeed:
+    case .cfgZeroStar, .resolutionDependentShift, .randomSeed, .highRes:
       if case .bool(let flag) = raw { return .bool(flag) }
     case .sampler:
       if let number = integer(raw), Sampler(rawValue: number) != nil { return .int(number) }
