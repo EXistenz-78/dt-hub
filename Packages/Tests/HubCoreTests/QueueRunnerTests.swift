@@ -14,10 +14,13 @@ final class FakeQueueHost: QueueHost {
   private(set) var restored: [String] = []
   private(set) var runs = 0
   private(set) var stops = 0
+  /// Runs while an entry is being restored (a test presses Stop here).
+  var onRestore: (@MainActor () -> Void)?
 
   func canRun() -> Bool { allowed }
-  func restore(_ entry: QueueEntry) -> String? {
+  func restore(_ entry: QueueEntry) async -> String? {
     restored.append(entry.preset.prompt)
+    onRestore?()
     return restoreProblems[entry.preset.prompt]
   }
   func runAndWait() async -> QueueRunOutcome {
@@ -93,6 +96,15 @@ struct QueueRunnerTests {
     store.setStatus(.done, for: store.entries[0].id)
     await runner.run()
     #expect(host.restored == ["b"])
+  }
+
+  @Test func stopDuringRestoreLeavesTheEntryPendingAndRunsNothing() async {
+    let (store, runner, host) = make(["a", "b"])
+    host.onRestore = { runner.stop() }
+    await runner.run()
+    #expect(statuses(store) == [.pending, .pending])
+    #expect(host.runs == 0)
+    #expect(runner.state == .idle)
   }
 
   @Test func stopAsksTheHostToStop() {

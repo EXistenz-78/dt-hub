@@ -16,7 +16,7 @@ public protocol QueueHost: AnyObject {
   /// True when server, model and session allow a RUN.
   func canRun() -> Bool
   /// Puts the entry on Generation and Control; nil when done, otherwise why it could not be.
-  func restore(_ entry: QueueEntry) -> String?
+  func restore(_ entry: QueueEntry) async -> String?
   /// Presses RUN and returns when it, pipeline included, is over.
   func runAndWait() async -> QueueRunOutcome
   func stop()
@@ -83,9 +83,14 @@ public final class QueueRunner {
     while !stopRequested, let entry = store.firstPending {
       state = .running(entry.id)
       store.setStatus(.running, for: entry.id)
-      if let problem = host.restore(entry) {
+      if let problem = await host.restore(entry) {
         store.setStatus(.failed(problem), for: entry.id)
         continue
+      }
+      // Stop was pressed while the entry was being put on the tabs (a plug-in may take a while): nothing runs.
+      if stopRequested {
+        store.setStatus(.pending, for: entry.id)
+        break
       }
       switch await host.runAndWait() {
       case .finished: store.setStatus(.done, for: entry.id)
