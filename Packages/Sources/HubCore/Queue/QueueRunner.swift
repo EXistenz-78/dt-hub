@@ -46,6 +46,7 @@ public final class QueueRunner {
   @ObservationIgnored private let host: any QueueHost
   @ObservationIgnored private var stopRequested = false
   @ObservationIgnored private var task: Task<Void, Never>?
+  @ObservationIgnored private var restoreTask: Task<String?, Never>?
 
   public init(store: QueueStore, host: any QueueHost) {
     self.store = store
@@ -64,6 +65,7 @@ public final class QueueRunner {
   public func stop() {
     stopRequested = true
     if isRunning { state = .stopping }
+    restoreTask?.cancel()
     host.stop()
   }
 
@@ -83,14 +85,19 @@ public final class QueueRunner {
     while !stopRequested, let entry = store.firstPending {
       state = .running(entry.id)
       store.setStatus(.running, for: entry.id)
-      if let problem = await host.restore(entry) {
-        store.setStatus(.failed(problem), for: entry.id)
-        continue
-      }
-      // Stop was pressed while the entry was being put on the tabs (a plug-in may take a while): nothing runs.
+      // The restore runs in a task of its own so that Stop can end it: a plug-in that never answers must not hold the queue.
+      let restoring = Task { await host.restore(entry) }
+      restoreTask = restoring
+      let problem = await restoring.value
+      restoreTask = nil
+      // Stop was pressed while the entry was being put on the tabs: whatever the restore said, nothing runs and the entry waits.
       if stopRequested {
         store.setStatus(.pending, for: entry.id)
         break
+      }
+      if let problem {
+        store.setStatus(.failed(problem), for: entry.id)
+        continue
       }
       switch await host.runAndWait() {
       case .finished: store.setStatus(.done, for: entry.id)

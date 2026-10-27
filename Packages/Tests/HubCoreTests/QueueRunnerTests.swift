@@ -16,11 +16,17 @@ final class FakeQueueHost: QueueHost {
   private(set) var stops = 0
   /// Runs while an entry is being restored (a test presses Stop here).
   var onRestore: (@MainActor () -> Void)?
+  /// A restore that waits for a plug-in that never answers: it ends only when its task is cancelled.
+  var hangsInRestore = false
 
   func canRun() -> Bool { allowed }
   func restore(_ entry: QueueEntry) async -> String? {
     restored.append(entry.preset.prompt)
     onRestore?()
+    if hangsInRestore {
+      try? await Task.sleep(for: .seconds(30))
+      if Task.isCancelled { return "cancelled" }
+    }
     return restoreProblems[entry.preset.prompt]
   }
   func runAndWait() async -> QueueRunOutcome {
@@ -105,6 +111,20 @@ struct QueueRunnerTests {
     #expect(statuses(store) == [.pending, .pending])
     #expect(host.runs == 0)
     #expect(runner.state == .idle)
+  }
+
+  @Test func stopEndsARestoreThatNeverAnswers() async {
+    let host = FakeQueueHost()
+    host.hangsInRestore = true
+    let (store, runner, _) = make(["a", "b"], host: host)
+    let begun = ContinuousClock.now
+    runner.start()
+    while host.restored.isEmpty { await Task.yield() }
+    runner.stop()
+    while runner.isRunning, ContinuousClock.now - begun < .seconds(5) { try? await Task.sleep(for: .milliseconds(10)) }
+    #expect(!runner.isRunning, "Stop must not wait for the plug-in")
+    #expect(statuses(store) == [.pending, .pending], "a cancelled restore is not a failure of the entry")
+    #expect(host.runs == 0)
   }
 
   @Test func stopAsksTheHostToStop() {
