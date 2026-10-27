@@ -45,6 +45,17 @@ final class TiledUpscalePlugin: DTHubPlugin {
     case "deactivate":
       state.active = false
       return nil
+    case "queue.capture":
+      guard let request = DTHubQueueCapture(message), let captured = state.queueCapture(folder: request.folder) else {
+        return DTHubMessage.failure(state.text(.queueNothingPrepared))
+      }
+      return DTHubMessage.ok(state: captured)
+    case "queue.prepare":
+      guard let host, let request = DTHubQueuePrepare(message) else { return DTHubMessage.failure(state.text(.queueBadState)) }
+      let problem = await state.queuePrepare(
+        folder: request.folder, state: request.state, model: request.model, family: request.family,
+        contribute: { await host.contribute($0) }, registerPreset: { await host.registerPresets([$0]) })
+      return problem.map(DTHubMessage.failure) ?? DTHubMessage.ok()
     case "session.next":
       return await state.sessionNext(message)
     case "session.end":

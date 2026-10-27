@@ -276,12 +276,33 @@ final class TUState: ObservableObject {
     persist()
   }
 
+  /// The choices as they are now: what the project remembers, and what a queued entry keeps.
+  var currentChoice: TUChoice {
+    TUChoice(
+      factor: factor, overlap: overlap.rawValue, loraWeight: loraWeights[""] ?? 1, settings: settings, loraWeights: loraWeights,
+      extraPrompt: extraPrompt)
+  }
+
   private func persist() {
     guard !loadingChoice else { return }
-    store.save(
-      TUChoice(
-        factor: factor, overlap: overlap.rawValue, loraWeight: loraWeights[""] ?? 1, settings: settings, loraWeights: loraWeights,
-        extraPrompt: extraPrompt))
+    store.save(currentChoice)
+  }
+
+  /// Puts saved choices on the tab as they are (no automatic tile size, as when a project is opened); what was prepared is out
+  /// of date. `save` also writes them as the project's.
+  func applyChoice(_ choice: TUChoice, save: Bool = false) {
+    loadingChoice = true
+    factor = choice.factor
+    overlap = TileOverlap(rawValue: choice.overlap) ?? .standard
+    loraWeights = choice.loraWeights
+    settings = choice.settings
+    extraPrompt = choice.extraPrompt
+    loadingChoice = false
+    isPrepared = false
+    awaitingConfirmation = false
+    dropSession()
+    resetPreview()
+    if save { persist() }
   }
 
   /// The general and the tile's instructions, as one text.
@@ -303,14 +324,7 @@ final class TUState: ObservableObject {
 
   func switchProject(folder: URL) {
     store.folder = folder
-    let choice = store.load()
-    loadingChoice = true
-    factor = choice.factor
-    overlap = TileOverlap(rawValue: choice.overlap) ?? .standard
-    loraWeights = choice.loraWeights
-    settings = choice.settings
-    extraPrompt = choice.extraPrompt
-    loadingChoice = false
+    applyChoice(store.load())
     image = nil
     imageName = ""
     notice = nil

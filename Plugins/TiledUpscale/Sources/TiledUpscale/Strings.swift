@@ -9,6 +9,7 @@ enum L {
     case unsupportedModel, tooBig, bigJob, notAnswered, unreadableImage, noFolder
     case resetAdvanced, toneStrength, toneRadius, tileSize, noRoomForFade, megapixels, maskSection, maskFree, maskBlur, maskOutset, junctionFade, addedToResults, resultNotAdded, resultDescription, useAsStart, stopped, failed, closed, resultPlaceholder, tileRegenerated, tilesDone
     case extraPrompt, extraPromptHint, tileExtraHint, regenerateTile, regenerateHint, regenerationPrepared, tileSelected
+    case queueNothingPrepared, queueBadState
   }
 
   static var systemIsItalian: Bool {
@@ -39,6 +40,8 @@ enum L {
     .bigJob: "A big job: it takes many passes. Press Prepare again to confirm.",
     .notAnswered: "No answer from the app.", .unreadableImage: "This image could not be read.",
     .noFolder: "No picture folder yet: switch the plug-in on first.",
+    .queueNothingPrepared: "Nothing is prepared to put in the queue: press Prepare first.",
+    .queueBadState: "The saved state of this queue entry cannot be read.",
     .addedToResults: "Done. The enlarged picture is in the Results.", .resultNotAdded: "The picture could not be added to the Results: %@",
     .resultDescription: "Tiled Upscale %d× · %d×%d tiles · LoRA %.2f · tile %d · free %d · blur %d · margin %d · fade %d · tone %d%%/%d",
     .maskSection: "Advanced", .resetAdvanced: "Restore defaults", .maskFree: "Free part of the overlap", .maskBlur: "Blur of the mask", .maskOutset: "Margin of the mask",
@@ -65,6 +68,8 @@ enum L {
     .bigJob: "Un lavoro grande: richiede molti passi. Premi di nuovo Prepara per confermare.",
     .notAnswered: "Nessuna risposta dall'app.", .unreadableImage: "Impossibile leggere questa immagine.",
     .noFolder: "Ancora nessuna cartella per le immagini: accendi prima il plug-in.",
+    .queueNothingPrepared: "Niente di preparato da mettere in coda: premi prima Prepara.",
+    .queueBadState: "Lo stato salvato di questa voce della coda non si legge.",
     .addedToResults: "Fatto. L'immagine ingrandita è nei Risultati.", .resultNotAdded: "Impossibile aggiungere l'immagine ai Risultati: %@",
     .resultDescription: "Tiled Upscale %d× · %d×%d tile · LoRA %.2f · tile %d · libera %d · sfumatura %d · margine %d · fusione %d · luminosità %d%%/%d",
     .maskSection: "Avanzate", .resetAdvanced: "Valori predefiniti", .maskFree: "Parte libera della sovrapposizione", .maskBlur: "Sfumatura della maschera",
