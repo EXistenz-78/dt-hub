@@ -26,6 +26,8 @@ final class FakeContributionTarget: ContributionTarget {
     if let index = loras.firstIndex(where: { $0.file == lora.file }) { loras[index] = lora } else { loras.append(lora) }
   }
 
+  func removeLoRA(_ file: String) { loras.removeAll { $0.file == file } }
+
   func addMoodboardImage(_ image: PluginImageRef, from pluginID: String) throws -> UUID {
     struct Failure: Error {}
     if failImages { throw Failure() }
@@ -101,6 +103,23 @@ struct ContributionStoreTests {
     #expect(target.fields.prompt == "a cat")
     #expect(store.marks[.steps] == FieldMark(pluginID: "a", value: .int(24), isOverridden: false))
     #expect(store.marks[.prompt]?.pluginID == "a")
+  }
+
+  @Test func replaceLoRAsLeavesOnlyTheOnesSent() {
+    store.receive(contribution(loras: [LoRASelection(file: "a.safetensors"), LoRASelection(file: "b.safetensors")]), from: "a")
+    var replacing = contribution(loras: [LoRASelection(file: "c.safetensors")])
+    replacing.replaceLoRAs = true
+    store.receive(replacing, from: "a")
+    #expect(target.loras.map(\.file) == ["c.safetensors"])
+    #expect(Set(store.loraPlugins.keys) == ["c.safetensors"])
+  }
+
+  @Test func replaceLoRAsWithNoLoRAsChangesNothing() {
+    store.receive(contribution(loras: [LoRASelection(file: "a.safetensors")]), from: "a")
+    var replacing = contribution()
+    replacing.replaceLoRAs = true
+    store.receive(replacing, from: "a")
+    #expect(target.loras.map(\.file) == ["a.safetensors"])
   }
 
   @Test func theMarkedValueIsTheLimitedOne() {

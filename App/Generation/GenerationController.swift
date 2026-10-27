@@ -846,6 +846,8 @@ extension GenerationController: ContributionTarget {
     }
   }
 
+  func removeLoRA(_ file: String) { parameters.removeLoRA(file) }
+
   var moodboardIDs: Set<UUID> { Set(control.inputs.moodboard.map(\.id)) }
   var startImageID: UUID? { control.inputs.image?.id }
 

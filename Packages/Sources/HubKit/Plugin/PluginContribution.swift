@@ -170,12 +170,15 @@ public struct PluginContribution: Equatable, Sendable {
   public var result: PluginResult?
   /// The name of a saved preset to apply as the Preset menu does, before the rest of the message.
   public var preset: String?
+  /// With `loras`: the LoRAs on the tab are taken off first, so that only these remain (`replaceLoRAs`).
+  public var replaceLoRAs: Bool
 
   public init(
     fields: FieldOverlay = FieldOverlay(), loras: [LoRASelection] = [], moodboard: [PluginImageRef] = [],
     startImage: PluginImageRef? = nil, pipeline: PluginPipeline? = nil, strength: Double? = nil,
-    paint: PluginImageRef? = nil, result: PluginResult? = nil, preset: String? = nil
+    paint: PluginImageRef? = nil, result: PluginResult? = nil, preset: String? = nil, replaceLoRAs: Bool = false
   ) {
+    self.replaceLoRAs = replaceLoRAs
     self.preset = preset
     self.result = result
     self.strength = strength
@@ -215,7 +218,8 @@ public struct PluginContribution: Equatable, Sendable {
     self.init(
       fields: fields, loras: Self.loras(object["loras"]) ?? [], moodboard: Self.images(object["moodboard"]) ?? [],
       startImage: PluginImageRef(object["startImage"]), pipeline: pipeline, strength: Self.strength(object["strength"]),
-      paint: PluginImageRef(object["paint"]), result: Self.result(object["result"]), preset: Self.presetName(object["preset"]))
+      paint: PluginImageRef(object["paint"]), result: Self.result(object["result"]), preset: Self.presetName(object["preset"]),
+      replaceLoRAs: { if case .bool(true)? = object["replaceLoRAs"] { return true } else { return false } }())
   }
 
   /// A preset name, trimmed; nothing when it is empty or not a string.

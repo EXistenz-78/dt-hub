@@ -4,7 +4,7 @@ import Foundation
 /// `.strings` files: the table is here.
 enum L {
   enum Key: CaseIterable {
-    case dropOnlyAddress, choosePage, useThis, openInBrowser, downloads, needsNewApp, notActive, noLoRAs, unreadableStore, listTitle, adviceTitle, filterPlaceholder, findPages, summariseAll, jobsNote, stop, progress, currentModel, unknownFamily, trigger, noTrigger, weight, noNotes, foundAuto, pageNotFound, toSummarise, add, onTab, otherFamily,
+    case dropOnlyAddress, choosePage, useThis, openInBrowser, downloads, needsNewApp, notActive, noLoRAs, unreadableStore, listTitle, adviceTitle, filterPlaceholder, filterIncomplete, replaceHelp, findPages, summariseAll, jobsNote, stop, progress, currentModel, unknownFamily, trigger, noTrigger, weight, noNotes, foundAuto, pageNotFound, toSummarise, add, onTab, otherFamily,
       notes, link, importPage, cancel, summarise, notThisOne, searchAgain, thumbnail, chooseFile, useControlImage, removeThumbnail, unreadableImage, replaceNotesQuestion, replace, keepMine, linkNotRecognised, needsAccess, noImageInPage, notFound, unreachable, unreadableAnswer, tooLarge, notAllowed,
       rateLimited, imported, summaryFailed,
       needsLLM, request, onlyFamily, advise, resetRequest, noSuitable, adviceNotUnderstood, noLoRAsForFamily, updateWeight, addAll, sent, sentWithConflicts, notAnswered, languageName
@@ -36,6 +36,8 @@ enum L {
     .listTitle: "I tuoi LoRA",
     .adviceTitle: "Consiglia",
     .filterPlaceholder: "Filtra per nome, trigger o note",
+    .replaceHelp: "Toglie gli altri LoRA dalla tab Generation e lascia solo questo",
+    .filterIncomplete: "Solo senza anteprima o con pagina da scegliere",
     .findPages: "Cerca le pagine · %d",
     .summariseAll: "Riassumi tutti · %d",
     .jobsNote: "lavorano solo sui LoRA nuovi o senza pagina",
@@ -108,6 +110,8 @@ enum L {
     .listTitle: "Your LoRAs",
     .adviceTitle: "Advise",
     .filterPlaceholder: "Filter by name, trigger or notes",
+    .replaceHelp: "Takes the other LoRAs off the Generation tab and leaves only this one",
+    .filterIncomplete: "Only without thumbnail or with a page to choose",
     .findPages: "Find pages · %d",
     .summariseAll: "Summarise all · %d",
     .jobsNote: "they only work on new LoRAs or those without a page",

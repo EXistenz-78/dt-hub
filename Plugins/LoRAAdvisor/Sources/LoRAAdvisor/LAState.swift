@@ -15,6 +15,8 @@ final class LAState: ObservableObject {
   /// On for the job (header menu): only then the app sends the context and takes what the plug-in adds.
   @Published var active = false
   @Published var filter = ""
+  /// Keep only the LoRAs with no thumbnail, or whose page is still to be chosen.
+  @Published var onlyIncomplete = false
   /// The row that is open; one at a time.
   @Published var openFile: String? {
     didSet { if oldValue != openFile { flushNotes() } }
@@ -101,8 +103,9 @@ final class LAState: ObservableObject {
   var groups: [Group] {
     let wanted = Self.folded(filter.trimmingCharacters(in: .whitespacesAndNewlines))
     let shown = catalog.filter { lora in
-      wanted.isEmpty
-        || [lora.name, lora.trigger, notes(for: lora.file)].contains { Self.folded($0).contains(wanted) }
+      (!onlyIncomplete || isIncomplete(lora.file))
+        && (wanted.isEmpty
+          || [lora.name, lora.trigger, notes(for: lora.file)].contains { Self.folded($0).contains(wanted) })
     }
     let current = context?.family
     let families = Set(shown.compactMap(\.family)).sorted { $0.localizedStandardCompare($1) == .orderedAscending }
@@ -115,6 +118,12 @@ final class LAState: ObservableObject {
 
   /// The name of the current model's family, as the app's guide calls it when it has one.
   var familyLabel: String { context?.promptGuide?.label ?? context?.family ?? "—" }
+
+  /// No thumbnail, or a search that found candidates and waits for the user to choose one ("Choose page").
+  func isIncomplete(_ file: String) -> Bool {
+    let entry = store.entry(for: file)
+    return thumbnailURL(for: file) == nil || (entry.searched && entry.link == nil && !entry.candidates.isEmpty)
+  }
 
   func entry(for file: String) -> LAEntry { store.entry(for: file) }
   func thumbnailURL(for file: String) -> URL? { store.thumbnailURL(for: file) }
@@ -132,6 +141,17 @@ final class LAState: ObservableObject {
   func add(_ lora: DTHubCatalogLoRA, weight: Double? = nil) async {
     guard canAdd(lora), let contribute else { return }
     report(await contribute(LAAdvice.contribution(lora, weight: weight)))
+  }
+
+  /// "Replace": the LoRA alone on the Generation tab, the others taken off.
+  func replace(with lora: DTHubCatalogLoRA) async {
+    guard canAdd(lora), let contribute else { return }
+    report(await contribute(LAAdvice.contribution(lora, replacing: true)))
+  }
+
+  /// Another LoRA is on the tab besides this one, so "Replace" has something to take off.
+  func hasOtherLoRAsOnTab(than file: String) -> Bool {
+    context?.parameters?.loras?.contains { $0.file != file } ?? false
   }
 
   /// "Add all": every suggestion, with the weight shown on its card.

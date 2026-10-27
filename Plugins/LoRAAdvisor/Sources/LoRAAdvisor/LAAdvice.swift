@@ -81,8 +81,13 @@ enum LAAdvice {
 
   /// What `contribute` takes to put a LoRA on the Generation tab: its file, a weight (its own unless given) and its
   /// trigger word.
-  static func contribution(_ lora: DTHubCatalogLoRA, weight: Double? = nil) -> [String: Any] {
-    ["loras": [["file": lora.file, "weight": clamped(weight ?? lora.weight), "trigger": lora.trigger] as [String: Any]]]
+  static func contribution(_ lora: DTHubCatalogLoRA, weight: Double? = nil, replacing: Bool = false) -> [String: Any] {
+    var body: [String: Any] = [
+      "loras": [["file": lora.file, "weight": clamped(weight ?? lora.weight), "trigger": lora.trigger] as [String: Any]]
+    ]
+    // The app takes the other LoRAs off the tab first (`replaceLoRAs`, DT Hub 0.3.5 or later).
+    if replacing { body["replaceLoRAs"] = true }
+    return body
   }
 
   static func clamped(_ weight: Double) -> Double {

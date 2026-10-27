@@ -63,6 +63,7 @@ language models of the app's models folder (`family`: the family the user assign
     `randomSeed` (true/false); `sampler` (the number of the Draw Things sampler, or its name). Values are limited like
     the cards limit them. A plug-in never changes the model.
   - `loras`: `[{"file", "weight", "mode", "trigger"}]`, added to the LoRA card.
+    With `"replaceLoRAs": true` (and at least one LoRA) the LoRAs already on the card are taken off first, so only the ones sent remain.
   - `moodboard`: `[{"path", "name"}]`, files in the `tempFolder`, added to the Moodboard. Sending them again replaces
     the ones this plug-in sent before.
   - `startImage`: `{"path", "name"}`, the start image of the Control tab.
