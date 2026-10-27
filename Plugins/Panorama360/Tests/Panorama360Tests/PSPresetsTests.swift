@@ -11,7 +11,7 @@ struct PSPresetsTests {
   @Test func theNamesAreTheAgreedOnes() {
     #expect(PSPresets.normalName == "PAN · 360 ERP")
     #expect(PSPresets.fastName == "PAN · 360 ERP Fast")
-    #expect(PSPresets.messages().compactMap { $0["name"] as? String } == ["PAN · 360 ERP", "PAN · 360 ERP Fast", "PAN · 360 Seamless"])
+    #expect(PSPresets.messages().compactMap { $0["name"] as? String } == ["PAN · 360 ERP", "PAN · 360 ERP Fast"])
   }
 
   @Test func normalPresetMatchesTheUsersFile() throws {
@@ -33,21 +33,10 @@ struct PSPresetsTests {
     #expect(normal["advanced"] == nil || (normal["advanced"] as? [String: Any])?["refinerModel"] == nil)
   }
 
-  @Test func seamlessPresetMatchesTheUsersFile() throws {
-    let seamless = PSPresets.messages()[2]
-    #expect(seamless["name"] as? String == "PAN · 360 Seamless" && seamless["model"] as? String == "flux_2_klein_9b_kv_i8x.ckpt")
-    let f = fields(seamless)
-    #expect(f["steps"] as? Int == 4 && f["guidanceScale"] as? Double == 1 && f["sampler"] as? Int == 16 && f["shift"] as? Double == 3)
-    #expect(f["resolutionDependentShift"] as? Bool == false)
-    #expect((f["prompt"] as? String)?.hasPrefix("recreate the central part of the image") == true)
-    #expect((seamless["loras"] as? [[String: Any]])?.isEmpty == true)
-  }
-
   @Test func theTwoPanoramaPresetsHaveHiResOnSoABigPanoramaIsNotCut() {
     for entry in PSPresets.messages().prefix(2) {
       #expect(fields(entry)["highRes"] as? Bool == true, "\(entry["name"] ?? "")")
     }
-    #expect(fields(PSPresets.messages()[2])["highRes"] == nil, "the small seamless preset is not touched")
   }
 
   @Test func fastPresetAddsTheRefinerAndRunsFewerSteps() throws {
@@ -67,8 +56,8 @@ struct PSPresetsTests {
     var sent: [[String: Any]] = []
     let answer = await PSPresets.register { presets in
       sent = presets
-      return ["type": "ok", "added": 3]
+      return ["type": "ok", "added": 2]
     }
-    #expect(sent.count == 3 && answer?["added"] as? Int == 3)
+    #expect(sent.count == 2 && answer?["added"] as? Int == 2)
   }
 }
