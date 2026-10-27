@@ -71,7 +71,7 @@ public final class ControlStore {
   /// stacks themselves are not).
   private var historyVersion = 0
 
-  @ObservationIgnored private var storage: any ReferenceStorage
+  @ObservationIgnored var storage: any ReferenceStorage
   @ObservationIgnored private var fileURL: URL
   @ObservationIgnored private let undoLimit: Int
   @ObservationIgnored private var undoStack: [ControlInputs] = []
@@ -536,7 +536,7 @@ public final class ControlStore {
     return CGImageDestinationFinalize(destination) ? data as Data : nil
   }
 
-  private func commit(_ next: ControlInputs) {
+  func commit(_ next: ControlInputs) {
     undoStack.append(inputs)
     if undoStack.count > undoLimit { undoStack.removeFirst(undoStack.count - undoLimit) }
     redoStack = []
