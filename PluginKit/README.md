@@ -116,6 +116,18 @@ language models of the app's models folder (`family`: the family the user assign
     passes done or `done`; Stop; a pass failed; the plug-in did not answer or the model was changed meanwhile). The plug-in
     frees its memory and files, and with `finished` sends its `result`. Its answer is ignored. When the run ends the app
     takes the pipeline off the Run button (its session is gone).
+  - `{"type":"queue.capture","folder":"…"}` (optional, an addition to contract 1): the user put the guided pipeline that is on
+    RUN in the app's queue. Write the files you will need to guide it again (the picture you start from) into `folder` and answer
+    `{"type":"ok","state":{…}}`, an object of your own that names them (relative names) and holds your choices; or
+    `{"type":"error","text":…}` when nothing is prepared. A plug-in that answers `unsupported` cannot be queued.
+    `DTHubQueueCapture` decodes it, `DTHubMessage.ok(state:)` / `.failure(_:)` answer.
+  - `{"type":"queue.prepare","folder":"…","state":{…},"model":"…","family":"…"}`: the queued entry runs now. Rebuild your session
+    from `folder` and `state`, show that state as if the user had set it, and propose the guided pipeline with `contribute` as
+    your own Prepare does, **without asking for any confirmation**. `model` and `family` (absent when unknown) are the header's
+    after the entry's model was chosen: a plug-in that is not active has not been told, so take them before looking for a
+    preset. Answer `{"type":"ok"}` once the app accepted the pipeline, or an `error`. There is no time limit on a queued run:
+    **answer `session.end` only when you are done** (the montage has been handed over), because the queue waits for it before
+    it starts the next entry. `DTHubQueuePrepare` decodes it.
   The pictures of the passes are **not results**: they are written to files of their own (in a folder the app makes inside the `tempFolder`, named in
   `previous`), and go neither to the Results strip nor to the project's output folder. What the plug-in makes of them (a
   picture it composes) is up to it: hand it over as a `result`, or send it back with `contribute.startImage`.

@@ -42,6 +42,55 @@ public enum DTHubMessage {
   }
 
   public static func bare(_ type: String) -> Data { Data(#"{"type":"\#(type)"}"#.utf8) }
+
+  /// `{"type":"ok"}`, with `"state"` when given: the answer to `queue.capture` (the state is yours to define), or a bare `ok`.
+  public static func ok(state: [String: Any]? = nil) -> Data {
+    var message: [String: Any] = ["type": "ok"]
+    if let state { message["state"] = state }
+    return (try? JSONSerialization.data(withJSONObject: message)) ?? bare("ok")
+  }
+
+  /// `{"type":"error","text":text}`: a message you cannot do.
+  public static func failure(_ text: String) -> Data {
+    (try? JSONSerialization.data(withJSONObject: ["type": "error", "text": text])) ?? bare("error")
+  }
+}
+
+/// App → plug-in: `queue.capture`. The user put the guided pipeline that is on RUN in the queue: write the files you will need
+/// to guide it again (the picture you start from) into `folder`, then answer `DTHubMessage.ok(state:)` with an object that names
+/// them (relative names) and holds your choices, or `DTHubMessage.failure(_:)` when there is nothing prepared to capture.
+public struct DTHubQueueCapture {
+  /// The plug-in's own folder inside the queue entry; it exists.
+  public var folder: URL
+
+  public init?(_ data: Data) {
+    guard let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+      let path = object["folder"] as? String
+    else { return nil }
+    folder = URL(fileURLWithPath: path, isDirectory: true)
+  }
+}
+
+/// App → plug-in: `queue.prepare`. The entry runs now: rebuild your session from `folder` and `state` (what you answered to
+/// `queue.capture`), show that state as if the user had set it, and propose the guided pipeline with `contribute` as your own
+/// Prepare does, **without asking for any confirmation**. Answer `DTHubMessage.ok()` once the app has accepted the pipeline,
+/// or `DTHubMessage.failure(_:)`. `model` and `family` are the header's model for the entry (a plug-in that is not active has
+/// not been told): take them before looking for a preset.
+public struct DTHubQueuePrepare {
+  public var folder: URL
+  public var state: [String: Any]
+  public var model: String?
+  public var family: String?
+
+  public init?(_ data: Data) {
+    guard let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+      let path = object["folder"] as? String, let state = object["state"] as? [String: Any]
+    else { return nil }
+    folder = URL(fileURLWithPath: path, isDirectory: true)
+    self.state = state
+    model = object["model"] as? String
+    family = object["family"] as? String
+  }
 }
 
 /// App → plug-in: a project was opened (message type `project`). Keep the state in `folder` (for example
