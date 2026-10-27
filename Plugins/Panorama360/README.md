@@ -44,6 +44,8 @@ The left and the right edge of a panorama are the same place, and the model does
 
 The button is off, with the reason in its tooltip, when there is no result, the result is not 2:1, its height is not a multiple of 64 (the pass takes only those) or the square would pass 2048 px. The name of the preset and the numbers of the band and of the soft edge are constants at the top of `PSSeam.swift`.
 
+**In the queue.** With the correction prepared, the **+** of DT Hub's queue sidebar keeps it as an entry: the panorama it was made from (the one at the time of the click, even if a newer result has arrived) is copied into the entry's folder. When the entry runs the plug-in makes the correction again from that copy, without touching the result shown in the tab, and DT Hub presses RUN. The plug-in must be switched on at that moment, otherwise the entry fails (orange X) and the queue goes on.
+
 ## The presets are yours
 
 The first time DT Hub starts with the plug-in, it adds `PAN · 360 ERP` and `PAN · 360 ERP Fast` to the Preset menu. After that it never touches them: change them as you like (the 4B model and its LoRA, other quantisations, other steps). Values of the shipped ones:

@@ -15,6 +15,10 @@ A plug-in for DT Hub that enlarges a picture **2× or 4×** and gives it new det
 
 When a run is finished the picture stays in the plug-in. Click a tile in the preview to pick it (click again to let it go), optionally write instructions **for that tile only** (added after the general ones), and press **Regenerate tile**. The plug-in proposes a one-pass pipeline: press **RUN**. The tile starts **from the original** (the enlarged source, not the result that is there); the strips it shares with the tiles above and on the left are what those tiles made, so the join is kept. The seed is random, so every try differs. The new tile replaces the old one, and the whole picture goes to the Results again. The join with the tiles to the right and below, made from the old tile, can differ a little. Changing the image, the enlargement, the overlap or the advanced values drops the kept picture.
 
+## In the queue
+
+After **Prepare**, the **+** of DT Hub's queue sidebar keeps the enlargement as an entry: the picture (copied into the entry's folder) and the choices of the tab. When the entry runs, the plug-in puts them back (the tab shows them, as if you had set them), proposes the pipeline **without asking the big-job confirmation again** and the app presses RUN. The tiles are made again from the start. The plug-in must be switched on when the entry runs, otherwise the entry fails (orange X) and the queue goes on.
+
 ## Models
 
 | | FLUX.2 [klein] 9B | FLUX.3 [klein] | Qwen Image 2.1 Turbo | Qwen Image 2.1 |
