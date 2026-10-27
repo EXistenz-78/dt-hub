@@ -309,6 +309,16 @@ public final class ContributionStore {
     return true
   }
 
+  /// A plug-in's listed pipeline becomes the pipeline of RUN (the queue puts back the one an entry saved), with no
+  /// question. False while a pipeline runs, and for a guided pipeline (it needs its plug-in's live session).
+  @discardableResult
+  public func setPipeline(_ pipeline: PluginPipeline, pluginID: String) -> Bool {
+    guard !pipelineLocked, pipeline.guided == nil else { return false }
+    conflicts.removeAll { $0.subject == .pipeline }
+    self.pipeline = PipelineContribution(pluginID: pluginID, pipeline: pipeline)
+    return true
+  }
+
   /// Realigns the user's pipeline on RUN with its file, after a pipeline or a preset was saved, renamed or deleted
   /// (`renamedTo` when the file of the pipeline itself was just renamed). A pipeline that cannot be read any more is
   /// taken away. A plug-in's pipeline is left alone.

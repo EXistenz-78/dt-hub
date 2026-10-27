@@ -91,7 +91,7 @@ final class GenerationController {
   @ObservationIgnored private let outputSettings = OutputSettingsStore()
   @ObservationIgnored private let sessionStore: SessionStore
   @ObservationIgnored private var pendingSave: Task<Void, Never>?
-  @ObservationIgnored private var preparation: Task<Void, Never>?
+  @ObservationIgnored var preparation: Task<Void, Never>?
 
   /// Restores the last prompt and parameters (spec §11) when the session was saved in `restoringProject`, the project
   /// that opens at launch (nil: no project yet, as before projects existed).
@@ -346,8 +346,11 @@ final class GenerationController {
 
   /// True while the project cannot change: a RUN, its preparation or a pipeline is under way.
   func isBusyForProjectSwitch() -> Bool {
-    session.isRunning || isPreparing || pipelinePass != nil
+    session.isRunning || isPreparing || pipelinePass != nil || queueIsRunning()
   }
+
+  /// True while the queue is running its entries; set by the app next to the queue (`GenerationController+Queue.swift`).
+  @ObservationIgnored var queueIsRunning: () -> Bool = { false }
 
   /// Puts a project's last image on the tab: its prompt, negative prompt and parameters and, when the catalog has it, its
   /// model (without the recommended values, which would overwrite the parameters). With nil (a new project, or one
