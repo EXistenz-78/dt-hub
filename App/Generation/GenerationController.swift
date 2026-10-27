@@ -603,6 +603,9 @@ final class GenerationController {
       contributions?.finishedGuidedPipeline()
     }
     var known = loaded
+    // A queued run has no time limit: the plug-in hands over its montage while it answers `session.end`, and the next entry must
+    // wait for it. Stop ends the wait.
+    let endWait: Duration = queueIsRunning() ? PluginRegistry.unbounded : .seconds(5)
     let driver = GuidedSessionDriver(
       passes: guided.passes, tileLimit: parameters.sizeLimit,
       ask: { await channel.request($0, pluginID, .seconds(60)) },
@@ -628,7 +631,7 @@ final class GenerationController {
         guard !run.wasStopped, let result = run.intermediate else { return .stopped }
         return .made(result.url, width: result.width, height: result.height)
       },
-      end: { _ = await channel.request($0, pluginID, .seconds(5)) },
+      end: { _ = await channel.request($0, pluginID, endWait) },
       progress: { [self] index, count in pipelinePass = (index, count) })
     switch await driver.run() {
     case .finished, .stopped: break

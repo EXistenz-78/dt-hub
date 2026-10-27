@@ -13,6 +13,8 @@ struct QueueSidebar: View {
   /// What the last click on + or on an entry had to say.
   @State private var notice: String?
   @State private var confirmClear = false
+  /// A capture is under way (a plug-in is asked for its snapshot): the + waits.
+  @State private var capturing = false
 
   static let width: CGFloat = 260
   /// `@AppStorage` key: the sidebar is open or closed (kept between launches).
@@ -27,6 +29,7 @@ struct QueueSidebar: View {
           Image(systemName: "plus")
         }
         .buttonStyle(DSGlassCircleButtonStyle())
+        .disabled(capturing)
         .help(String(localized: "queue.add"))
         .accessibilityLabel(String(localized: "queue.add"))
         Spacer(minLength: 0)
@@ -98,15 +101,20 @@ struct QueueSidebar: View {
   private func isRunning(_ entry: QueueEntry) -> Bool { entry.status == .running }
 
   private func add() {
+    guard !capturing else { return }
     notice = nil
-    let result = generation.captureQueueEntry(in: connection, store: store)
-    if let entry = result.entry { store.add(entry) } else { notice = result.problem }
+    capturing = true
+    Task {
+      let result = await generation.captureQueueEntry(in: connection, store: store)
+      if let entry = result.entry { store.add(entry) } else { notice = result.problem }
+      capturing = false
+    }
   }
 
   /// A click puts the entry on the tabs without running it; not while the queue runs.
   private func load(_ entry: QueueEntry) {
     guard !runner.isRunning else { return }
-    notice = generation.restoreQueueEntry(entry, store: store, in: connection)
+    Task { notice = await generation.restoreQueueEntry(entry, store: store, in: connection) }
   }
 }
 

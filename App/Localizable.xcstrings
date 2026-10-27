@@ -9351,19 +9351,70 @@
         }
       }
     },
-    "queue.error.guided": {
+    "queue.error.guidedUnsupported": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pipelines guided by a plug-in cannot be queued yet."
+            "value": "This plug-in does not support the queue."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Le pipeline guidate dai plug-in non si possono ancora mettere in coda."
+            "value": "Questo plug-in non supporta la coda."
+          }
+        }
+      }
+    },
+    "queue.error.guidedClosed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The plug-in is not open."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il plug-in non è aperto."
+          }
+        }
+      }
+    },
+    "queue.error.guidedRefused": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The plug-in cannot be queued now: %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il plug-in non si può mettere in coda ora: %@"
+          }
+        }
+      }
+    },
+    "queue.error.guidedPrepare": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The plug-in could not prepare the entry: %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il plug-in non ha potuto preparare la voce: %@"
           }
         }
       }
