@@ -10,6 +10,9 @@ struct MainWindowView: View {
   let generation: GenerationController
   let plugins: PluginRegistry
   let projects: ProjectManager
+  let queueStore: QueueStore
+  let queueRunner: QueueRunner
+  @AppStorage(QueueSidebar.visibleKey) private var queueVisible = true
 
   /// What the plug-ins are told about: the model and its family, the start image, the Moodboard and the size.
   private var contextKey: PluginContextKey {
@@ -32,12 +35,17 @@ struct MainWindowView: View {
       }
       .fixedSize(horizontal: false, vertical: true)
       ManagedServerBanner(connection: connection)
-      DSTabFrame {
-        WorkspaceTabBar(
-          workspace: workspace, plugins: plugins,
-          controlHasImages: generation.control.inputs.image != nil || !generation.control.inputs.moodboard.isEmpty)
-      } content: {
-        tabContent
+      HStack(alignment: .top, spacing: DS.panelPadding) {
+        if queueVisible {
+          QueueSidebar(store: queueStore, runner: queueRunner, generation: generation, connection: connection)
+        }
+        DSTabFrame {
+          WorkspaceTabBar(
+            workspace: workspace, plugins: plugins,
+            controlHasImages: generation.control.inputs.image != nil || !generation.control.inputs.moodboard.isEmpty)
+        } content: {
+          tabContent
+        }
       }
       // Without an open project there is nowhere to work: this sheet asks for one and cannot be dismissed.
       .sheet(isPresented: Binding(get: { projects.didStart && projects.current == nil }, set: { _ in })) {

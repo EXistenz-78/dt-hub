@@ -22,6 +22,8 @@ struct DTHubApp: App {
   @State private var download: LanguageModelDownloadController
   @State private var plugins: PluginRegistry
   @State private var projects: ProjectManager
+  @State private var queueStore: QueueStore
+  @State private var queueRunner: QueueRunner
   @State private var canvasWindow = CanvasWindowState()
 
   init() {
@@ -48,6 +50,13 @@ struct DTHubApp: App {
     let selection = DefaultsProjectSelection()
     let generation = GenerationController(
       languageModel: languageModel, control: control, restoringProject: selection.currentName())
+    // The queue follows the open project (its folder is set in `onOpen` below).
+    let queueStore = QueueStore(folder: nil)
+    let queueRunner = QueueRunner(
+      store: queueStore, host: AppQueueHost(generation: generation, connection: connection, store: queueStore))
+    generation.queueIsRunning = { queueRunner.isRunning }
+    _queueStore = State(initialValue: queueStore)
+    _queueRunner = State(initialValue: queueRunner)
     // The language model never takes the image model's memory while an image is being made.
     connection.isImageWorkActive = { generation.session.isRunning || generation.isPreparing }
     _connection = State(initialValue: connection)
@@ -108,6 +117,7 @@ struct DTHubApp: App {
       canSwitch: { !generation.isBusyForProjectSwitch() },
       onOpen: { project, reason in
         control.switchTo(storage: FileReferenceStorage(folder: project.controlFolder), fileURL: project.controlFile)
+        queueStore.switchTo(folder: project.stateFolder.appendingPathComponent("Queue", isDirectory: true))
         await generation.session.switchHistory(to: ResultsHistoryStore(fileURL: project.resultsFile))
         generation.projectFolder = project.folder
         generation.projectName = project.name
@@ -137,7 +147,8 @@ struct DTHubApp: App {
   var body: some Scene {
     WindowGroup(String(localized: "app.title")) {
       MainWindowView(
-        workspace: workspace, connection: connection, generation: generation, plugins: plugins, projects: projects)
+        workspace: workspace, connection: connection, generation: generation, plugins: plugins, projects: projects,
+        queueStore: queueStore, queueRunner: queueRunner)
         .environment(canvasWindow)
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
           generation.saveSessionNow()

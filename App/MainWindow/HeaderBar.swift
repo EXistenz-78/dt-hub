@@ -10,6 +10,7 @@ struct HeaderBar: View {
   let plugins: PluginRegistry
   let projects: ProjectManager
   @State private var showNewProject = false
+  @AppStorage(QueueSidebar.visibleKey) private var queueVisible = true
   /// DT+ model picker: open or not, and what is open inside (kept while the app runs).
   @State private var showModelPicker = false
   @State private var modelTree = ModelTreeState()
@@ -23,6 +24,14 @@ struct HeaderBar: View {
 
   var body: some View {
     HStack(spacing: DS.controlGap) {
+      Button {
+        queueVisible.toggle()
+      } label: {
+        Image(systemName: "sidebar.left")
+      }
+      .buttonStyle(DSGlassCircleButtonStyle())
+      .help(String(localized: "queue.toggle"))
+      .accessibilityLabel(String(localized: "queue.toggle"))
       projectMenu
       modelMenu
       dtPlusPill
