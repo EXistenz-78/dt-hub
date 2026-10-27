@@ -118,7 +118,7 @@ private struct QueueRow: View {
     HStack(alignment: .top, spacing: 8) {
       statusIcon.frame(width: 18)
       VStack(alignment: .leading, spacing: 2) {
-        Text("\(index). \(entry.preset.prompt.isEmpty ? "—" : entry.preset.prompt)").lineLimit(1)
+        Text(verbatim: "\(index). \(entry.preset.prompt.isEmpty ? "—" : entry.preset.prompt)").lineLimit(1)
         Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(1)
       }
     }
