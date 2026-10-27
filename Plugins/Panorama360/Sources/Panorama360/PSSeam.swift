@@ -43,9 +43,8 @@ enum PSSeam {
   static let bandDivisor = 4
   static let fadeDivisor = 16
   static let toneRadiusDivisor = 32
-  /// The longest side of a pass: what Draw Things makes without HiRes. A bigger pass would be cut to this by the app and the picture made would not
-  /// be the size of the pass (the correction would find it out only at the end), so the button refuses it.
-  static let maxSide = 2048
+  /// The longest side of a pass (what Draw Things takes with HiRes).
+  static let maxSide = 8192
 
   /// The plan for a panorama of this size, or the reason there is none: it must be 2:1 (4 % either way), both sides multiples of 64 (the pass is the
   /// whole picture) and not above what the model takes.
