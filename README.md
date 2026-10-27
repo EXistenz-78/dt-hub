@@ -17,6 +17,7 @@ This is an independent community project, not affiliated with or endorsed by Dra
 - **Projects.** Each project is a subfolder of the output folder with its own start image, mask, Moodboard, results strip and plug-in state; reopening one restores the prompt and settings of its last image. Switch from the **Project** menu in the header.
 - **Your own LoRA trigger words and weights.** *Manage LoRAs…* (LoRA card) lists the LoRAs of the server by model family, compactly: change a trigger word or the default weight (−4 to 4) of any of them. The server's trigger words are inherited and only your changes are kept, in a file of DT Hub's own: Draw Things' files are never touched.
 - **Presets and preset pipelines.** Save a configuration as a preset and chain several presets into one Run. Recommended settings per model family are suggested for you.
+- **A queue of generations.** The **Queue** sidebar (the button in the header opens and closes it) lines up generations to run one after the other: **+** saves the Generation tab, the pipeline on RUN and everything in Control (images included) as an entry, **Start** restores each entry and presses RUN, and an entry gets a green check when it finishes or an orange ✕ when it fails, after which the queue goes on. Stop ends the run and the queue. The queue is kept per project, on disk. Pipelines a plug-in guides (Tiled Upscale, the seam correction of Panorama 360) can be queued too.
 - **A local LLM (MLX)** that runs inside the app and can see images, with controls to free memory so the image model and the LLM can share a Mac. Nothing is downloaded unless you ask for it.
 - **Prompt tools.** *Enhance Prompt* rewrites your prompt for the selected model's family (and sees the start image and the Moodboard pictures, so "image 1", "image 2"… keep their meaning) and *Generate Prompt* writes one from the start image, both with the local language model.
 - **Plug-ins**, each with its own tab and active only on the model families it was made for: Prompt Master, Prompt Master I4 (Ideogram 4), Prompt Master F3 (the structured prompt of FLUX.3, with boxes), Flux3 Editing (FLUX.3 editing with reference pictures and boxes), Prompt Master MOSS (the JSON layout prompt of MOSS Image: a summary and boxes in pixels from the centre), Sphere Light Reference, Character Sheet (Qwen Image 2.1), Batch plus (a series of RUNs with growing parameters, or one per prompt; all families), AI Assistant (chat with a local LLM that can write the prompt and the settings on command), Qwen 2.1 Inpainting (colored marks and instructions on the start image, for Qwen Image 2.1) LoRA Advisor (a visual list of your LoRAs with thumbnails and notes, and the LLM's advice on which to use; all families), Depth & Pose (a depth map and a DWPose-style skeleton with face and hands from one picture, sent to the Moodboard; edit and in-context models) Tiled Upscale (a 2× or 4× enlargement tile by tile with FLUX.2 klein 9B, FLUX.3 klein or Qwen Image 2.1, with joins that do not show; the result goes to the Results) and Panorama 360 (360° panoramas: pictures placed on the unrolled sphere become the start image for nomadoor's *360 ERP outpaint* [LoRA](https://huggingface.co/nomadoor/flux-2-klein-9B-360-erp-outpaint-lora) of FLUX.2 klein; inspired by the [ComfyUI-Panorama-Stickers](https://github.com/nomadoor/ComfyUI-Panorama-Stickers) custom nodes). See [`Plugins/`](Plugins/README.md).
@@ -61,7 +62,7 @@ This is an independent community project, not affiliated with or endorsed by Dra
 
 ## Install
 
-1. Download **`DT-Hub-0.5.0-macOS-arm64.zip`** from the [latest release](https://github.com/EXistenz-78/dt-hub/releases/latest).
+1. Download **`DT-Hub-0.6.0-macOS-arm64.zip`** from the [latest release](https://github.com/EXistenz-78/dt-hub/releases/latest).
 2. Unzip it and drag **DT Hub.app** into `/Applications`.
 3. Read **First launch** below before you open it.
 4. Optional: add the plug-ins (they are in the same release, see [`Plugins/`](Plugins/README.md#install)).
@@ -176,7 +177,7 @@ The interface of the app and of the plug-ins is available in **English and Itali
 
 ## Status
 
-An early version (0.5.0), used daily by its author. Feedback, bug reports and ideas are welcome: open an [Issue](../../issues).
+An early version (0.6.0), used daily by its author. Feedback, bug reports and ideas are welcome: open an [Issue](../../issues).
 
 ## License
 
