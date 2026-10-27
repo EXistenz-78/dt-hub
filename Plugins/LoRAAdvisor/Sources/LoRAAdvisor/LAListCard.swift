@@ -13,6 +13,11 @@ struct LAListCard: View {
       HStack(spacing: DS.controlGap) {
         DSGroupHeader(title: state.text(.listTitle), prominent: true)
         Spacer(minLength: 0)
+        Toggle(isOn: $state.onlyIncomplete) { Image(systemName: "photo.badge.exclamationmark") }
+          .toggleStyle(.button)
+          .controlSize(.small)
+          .help(state.text(.filterIncomplete))
+          .accessibilityLabel(state.text(.filterIncomplete))
         TextField(state.text(.filterPlaceholder), text: $state.filter)
           .textFieldStyle(.roundedBorder)
           .frame(maxWidth: 240)
@@ -128,6 +133,7 @@ struct LARow: View {
             .foregroundStyle(.secondary)
             .accessibilityHidden(true)
           Spacer(minLength: 0)
+          browserControl
           addControl
         }
         // The name closes an open row; anywhere on a closed row opens it.
@@ -195,16 +201,35 @@ struct LARow: View {
       .truncationMode(.tail)
   }
 
+  /// The compass: opens the LoRA's page in the browser, when it has one.
+  @ViewBuilder private var browserControl: some View {
+    if let url = entry.link.flatMap({ URL(string: $0) }), LAHosts.isAllowed(url) {
+      Button { NSWorkspace.shared.open(url) } label: { Image(systemName: "safari") }
+        .buttonStyle(.plain)
+        .help(state.text(.openInBrowser))
+        .accessibilityLabel(state.text(.openInBrowser))
+    }
+  }
+
   /// "Add", or "already in the list" for a LoRA that is on the Generation tab.
   @ViewBuilder private var addControl: some View {
-    if state.isOnTab(file) {
-      LATag(text: state.text(.onTab))
-    } else {
-      Button(state.text(.add)) { Task { await state.add(lora) } }
-        .buttonStyle(DSPillButtonStyle())
-        .controlSize(.small)
-        .disabled(!state.canAdd(lora) || !state.active)
-        .help(state.canAdd(lora) ? "" : state.text(.otherFamily))
+    HStack(spacing: DS.controlGap) {
+      if state.isOnTab(file) {
+        LATag(text: state.text(.onTab))
+      } else {
+        Button(state.text(.add)) { Task { await state.add(lora) } }
+          .buttonStyle(DSPillButtonStyle())
+          .controlSize(.small)
+          .disabled(!state.canAdd(lora) || !state.active)
+          .help(state.canAdd(lora) ? "" : state.text(.otherFamily))
+      }
+      if !state.isOnTab(file) || state.hasOtherLoRAsOnTab(than: file) {
+        Button(state.text(.replace)) { Task { await state.replace(with: lora) } }
+          .buttonStyle(DSPillButtonStyle())
+          .controlSize(.small)
+          .disabled(!state.canAdd(lora) || !state.active)
+          .help(state.canAdd(lora) ? state.text(.replaceHelp) : state.text(.otherFamily))
+      }
     }
   }
 

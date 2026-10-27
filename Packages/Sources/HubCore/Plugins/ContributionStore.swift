@@ -86,6 +86,8 @@ public protocol ContributionTarget: AnyObject {
   var loraFiles: Set<String> { get }
   /// Adds the LoRA, or gives the one with the same file the new weight, mode and trigger.
   func addLoRA(_ lora: LoRASelection)
+  /// Takes the LoRA off the tab; nothing when it is not there.
+  func removeLoRA(_ file: String)
   var moodboardIDs: Set<UUID> { get }
   var startImageID: UUID? { get }
   func addMoodboardImage(_ image: PluginImageRef, from pluginID: String) throws -> UUID
@@ -169,6 +171,11 @@ public final class ContributionStore {
       }
     }
 
+    // `replaceLoRAs`: the LoRAs on the tab go first, so that the ones sent are the only ones left.
+    if contribution.replaceLoRAs, !contribution.loras.isEmpty {
+      for file in target.loraFiles { target.removeLoRA(file) }
+      loraPlugins = [:]
+    }
     for lora in contribution.loras {
       target.addLoRA(lora)
       loraPlugins[lora.file] = pluginID

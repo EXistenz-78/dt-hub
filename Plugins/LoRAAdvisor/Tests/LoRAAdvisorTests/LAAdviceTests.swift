@@ -90,4 +90,9 @@ struct LAAdviceTests {
     #expect(((LAAdvice.contribution(lora("A"), weight: 0.5)["loras"] as? [[String: Any]])?.first?["weight"] as? Double) == 0.5)
     #expect(((LAAdvice.contribution(lora("A"), weight: 9)["loras"] as? [[String: Any]])?.first?["weight"] as? Double) == 4)
   }
+
+  @Test func replacingAsksTheAppToTakeTheOthersOff() {
+    #expect(LAAdvice.contribution(lora("A"), replacing: true)["replaceLoRAs"] as? Bool == true)
+    #expect(LAAdvice.contribution(lora("A"))["replaceLoRAs"] == nil)
+  }
 }
