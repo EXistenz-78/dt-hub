@@ -10,12 +10,15 @@ public enum QueueStatus: Codable, Equatable, Sendable {
   case failed(String)
 }
 
-/// The pipeline on RUN when an entry was added. A guided pipeline (one a plug-in drives pass by pass) cannot be queued.
+/// The pipeline on RUN when an entry was added.
 public enum QueuedPipeline: Codable, Equatable, Sendable {
   /// The user's own pipeline, by the name of its file: read again when the entry runs.
   case user(name: String)
   /// A plug-in's listed pipeline, as a copy of its steps (the pictures they name were copied into the entry's folder).
   case plugin(pluginID: String, name: String, steps: [PipelineStep])
+  /// A pipeline the plug-in guides pass by pass: the plug-in's own snapshot of what it needs (`queue.capture`), given back
+  /// to it when the entry runs (`queue.prepare`).
+  case guided(pluginID: String, name: String, passes: Int, state: QueueSnapshot)
 }
 
 /// One generation waiting in the queue: the Generation tab (the size included, unlike a preset on disk), Control and

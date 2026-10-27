@@ -41,6 +41,20 @@ struct QueueStoreTests {
     #expect(!FileManager.default.fileExists(atPath: store.folder(for: item.id).path))
   }
 
+  @Test func removingAGuidedEntryDeletesPluginFiles() throws {
+    let store = QueueStore(folder: folder())
+    var item = entry("guided")
+    item.pipeline = .guided(
+      pluginID: "tiled-upscale", name: "Tiled Upscale", passes: 4, state: try #require(QueueSnapshot(jsonObject: ["image": "source.png"])))
+    store.add(item)
+    let file = store.folder(for: item.id).appendingPathComponent("plugin/source.png")
+    try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try Data("png".utf8).write(to: file)
+    store.remove(id: item.id)
+    #expect(!FileManager.default.fileExists(atPath: file.path))
+    #expect(!FileManager.default.fileExists(atPath: store.folder(for: item.id).path))
+  }
+
   @Test func clearDeletesEverything() throws {
     let root = folder()
     let store = QueueStore(folder: root)

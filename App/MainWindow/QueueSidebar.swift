@@ -130,6 +130,7 @@ private struct QueueRow: View {
     switch entry.pipeline {
     case .user(let name): parts.append(String(format: String(localized: "queue.pipeline"), name))
     case .plugin(_, let name, _): parts.append(String(format: String(localized: "queue.pipeline"), name))
+    case .guided(_, let name, _, _): parts.append(String(format: String(localized: "queue.pipeline"), name))
     case nil: break
     }
     return parts.joined(separator: " · ")
