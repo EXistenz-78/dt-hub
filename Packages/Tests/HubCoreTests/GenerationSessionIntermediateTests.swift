@@ -72,4 +72,21 @@ struct GenerationSessionIntermediateTests {
     #expect(!(await session.adopt(fileAt: url.appendingPathExtension("missing"), job: job, elapsed: nil)), "an unreadable file adds nothing")
     #expect(session.results.count == 1)
   }
+
+  @Test func aPictureAdoptedInTheBackgroundIsInTheStripOnceItIsWaitedFor() async throws {
+    let session = GenerationSession(store: MemoryImageStore())
+    let url = FileManager.default.temporaryDirectory.appendingPathComponent("adopt-later-\(UUID()).png")
+    defer { try? FileManager.default.removeItem(at: url) }
+    let data = NSMutableData()
+    let destination = CGImageDestinationCreateWithData(data, "public.png" as CFString, 1, nil)!
+    CGImageDestinationAddImage(destination, testImage(width: 48, height: 32), nil)
+    CGImageDestinationFinalize(destination)
+    try (data as Data).write(to: url)
+    session.adoptLater(fileAt: url, job: job, elapsed: nil)
+    #expect(session.results.isEmpty, "the picture is read and saved away from the main actor: it is not there at once")
+    await session.waitForAdoptions()
+    #expect(session.results.count == 1, "the queue waits here before it looks at the strip")
+    await session.waitForAdoptions()  // nothing pending: returns at once
+    #expect(session.results.count == 1)
+  }
 }

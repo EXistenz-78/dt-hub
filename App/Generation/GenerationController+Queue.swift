@@ -115,6 +115,8 @@ extension GenerationController {
     // A pipeline is all inside `preparation`; a plain RUN hands over to the session, which is awaited next.
     await preparation?.value
     await session.waitUntilFinished()
+    // A plug-in's montage is read and saved away from the main actor: it is in the strip only after this.
+    await session.waitForAdoptions()
     if session.lastRunWasStopped { return .stopped }
     if case .failed(let error) = session.phase { return .failed(String(describing: error)) }
     if session.results.first?.id == before { return .failed(String(localized: "queue.error.noResult")) }

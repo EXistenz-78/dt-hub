@@ -71,6 +71,7 @@ public final class GenerationSession {
   @ObservationIgnored private let store: any ImageStore
   @ObservationIgnored private var history: ResultsHistoryStore?
   @ObservationIgnored private var task: Task<Void, Never>?
+  @ObservationIgnored private var adoptions: [Task<Bool, Never>] = []
 
   /// Longest side of the pictures read back at launch.
   public nonisolated static let restoredThumbnailSize = 512
@@ -342,6 +343,20 @@ public final class GenerationSession {
     persistHistory()
     trimStrip()
     return true
+  }
+
+  /// `adopt`, started and not waited for: a plug-in's `contribute` is answered at once. `waitForAdoptions` waits for them.
+  public func adoptLater(fileAt url: URL, job: GenerationJob, elapsed: TimeInterval? = nil) {
+    adoptions.append(Task { await adopt(fileAt: url, job: job, elapsed: elapsed) })
+  }
+
+  /// Returns when every picture started with `adoptLater` is in the strip (or could not be). The queue calls it before it
+  /// looks whether a run made a new result: a big montage takes a while to read and save.
+  public func waitForAdoptions() async {
+    while let next = adoptions.first {
+      _ = await next.value
+      if !adoptions.isEmpty { adoptions.removeFirst() }
+    }
   }
 
   /// Writes an image as a PNG, away from the main actor; false when it cannot be written.

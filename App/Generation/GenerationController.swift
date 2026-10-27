@@ -898,7 +898,7 @@ extension GenerationController: ContributionTarget {
       let took = start.duration(to: .now)
       return Double(took.components.seconds) + Double(took.components.attoseconds) / 1e18
     }
-    Task { _ = await session.adopt(fileAt: url, job: job, elapsed: elapsed) }
+    session.adoptLater(fileAt: url, job: job, elapsed: elapsed)
   }
 
   func setStartImage(_ image: PluginImageRef, from pluginID: String) throws -> UUID {
