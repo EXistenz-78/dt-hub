@@ -6,7 +6,7 @@ enum L {
   enum Key: CaseIterable {
     case canvasTitle, guides, clearAll, clearConfirm, clearConfirmMessage, cancel
     case stickersTitle, yaw, pitch, rotation, fieldOfView, verticalFieldOfView, opacity, duplicate, delete, add, toggleVisible
-    case croppedPhoto, unreadableFile, openProjectFirst, dropHere
+    case croppedPhoto, unreadableFile, openProjectFirst, dropHere, dropResult
     case seamDescription, seamButton, seamPipelineName, seamReady, seamModel, seamDone, seamStopped, seamClosed, seamFailed, seamNoPicture, seamWrongSize, seamUnreadablePicture
     case seamNoResult, seamUnreadable, seamNotTwoToOne, seamHeight, seamTooBig, queueNotPrepared
     case cutoutSize, extract, actionStart, actionMoodboard, actionSave, actionSticker, actionPanorama, cutoutNothing, putBackOff, montageDescription
@@ -33,7 +33,7 @@ enum L {
     .stickersTitle: "Stickers", .yaw: "Yaw (°)", .pitch: "Pitch (°)", .rotation: "Rotation (°)", .fieldOfView: "Horizontal FOV (°)",
     .verticalFieldOfView: "Vertical FOV (°)", .opacity: "Opacity", .duplicate: "Duplicate", .delete: "Delete", .add: "Add picture",
     .toggleVisible: "Show or hide", .croppedPhoto: "“%@” looks cropped: its focal length was not used.",
-    .unreadableFile: "“%@” could not be read.", .openProjectFirst: "Open a project first.", .dropHere: "Drop pictures here",
+    .unreadableFile: "“%@” could not be read.", .openProjectFirst: "Open a project first.", .dropHere: "Drop pictures here", .dropResult: "Drop a picture to look at it",
     .seamDescription: "Seam corrected · band of %d px", .seamButton: "Fix the seam", .seamPipelineName: "Panorama 360 · seam",
     .seamReady: "Ready: press RUN in DT Hub.", .seamModel: "Ready: choose the model «%@» (the one of the preset) in the DT Hub header, then press RUN.", .seamDone: "Seam corrected: the panorama is in the Results.",
     .seamStopped: "Stopped: the seam was not changed.", .seamClosed: "The correction was closed: the seam was not changed.",
@@ -72,7 +72,7 @@ enum L {
     .stickersTitle: "Sticker", .yaw: "Yaw (°)", .pitch: "Pitch (°)", .rotation: "Rotazione (°)", .fieldOfView: "FOV orizzontale (°)",
     .verticalFieldOfView: "FOV verticale (°)", .opacity: "Opacità", .duplicate: "Duplica", .delete: "Elimina", .add: "Aggiungi immagine",
     .toggleVisible: "Mostra o nascondi", .croppedPhoto: "«%@» sembra ritagliata: la focale non è stata usata.",
-    .unreadableFile: "«%@» non si può leggere.", .openProjectFirst: "Apri prima un progetto.", .dropHere: "Rilascia le immagini qui",
+    .unreadableFile: "«%@» non si può leggere.", .openProjectFirst: "Apri prima un progetto.", .dropHere: "Rilascia le immagini qui", .dropResult: "Rilascia un'immagine per guardarla",
     .seamDescription: "Giunzione corretta · fascia di %d px", .seamButton: "Correggi giunzione", .seamPipelineName: "Panorama 360 · giunzione",
     .seamReady: "Pronto: premi RUN in DT Hub.", .seamModel: "Pronto: scegli nell'header di DT Hub il modello «%@» (quello del preset), poi premi RUN.", .seamDone: "Giunzione corretta: il panorama è nei Risultati.",
     .seamStopped: "Interrotto: la giunzione non è stata modificata.", .seamClosed: "La correzione è stata chiusa: la giunzione non è stata modificata.",

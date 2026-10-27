@@ -94,6 +94,10 @@ final class PSState: ObservableObject {
   /// The newest result of the project, from the app's context, and the picture read from its file.
   @Published private(set) var lastResultPath: String?
   @Published private(set) var resultImage: CGImage?
+  /// The newest result the app told about, and a picture the user dropped on the result view: while there is one it stands for the result
+  /// (`lastResultPath`) until the app tells about another result or another project is opened.
+  private var contextResultPath: String?
+  private(set) var droppedPath: String?
   /// The last picture extracted with the Cutout (kept in memory only: the actions need it, the memory in the state needs only the pose).
   @Published var cutoutImage: CGImage?
   /// Brings a picture file into the project folder (the real store; a test puts another here).
@@ -125,13 +129,41 @@ final class PSState: ObservableObject {
     hasSent = false
     preview = nil
     cutoutImage = nil
+    // A picture dropped on the result view stays with the project it was dropped in: the result is the one the app knows again.
+    if droppedPath != nil {
+      droppedPath = nil
+      setLastResult(contextResultPath)
+    }
   }
 
   func apply(context: Data) {
     guard let context = try? JSONDecoder().decode(DTHubContext.self, from: context) else { return }
     modelFile = context.model
     tempFolder = context.tempFolder
-    setLastResult(context.lastResult?.path)
+    let incoming = context.lastResult?.path
+    // A context is sent for many reasons: only a different result takes the place of a dropped picture.
+    if incoming != contextResultPath {
+      contextResultPath = incoming
+      droppedPath = nil
+    }
+    setLastResult(droppedPath ?? incoming)
+  }
+
+  /// Pictures dropped on the result view: the first one that can be read is shown as the result (Cutout and the seam correction work on it too).
+  /// A file that cannot be read says so and changes nothing.
+  func dropResult(from urls: [URL]) {
+    error = nil
+    for url in urls {
+      guard PSResultLoader.load(url) != nil else {
+        error = text(.unreadableFile, url.lastPathComponent)
+        continue
+      }
+      droppedPath = url.path
+      setLastResult(url.path)
+      if doc.source != .result { mutate { $0.source = .result } }
+      error = nil
+      return
+    }
   }
 
   /// The source the view really shows: the result only when there is a result to show.

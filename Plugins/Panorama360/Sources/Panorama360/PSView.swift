@@ -90,19 +90,23 @@ struct PSView: View {
       if isSphere { PSSphereView(state: state) } else { PSCanvasView(state: state) }
     }
     .overlay {
-      if dropTargeted && !viewOnly {
+      if dropTargeted {
         ZStack {
           RoundedRectangle(cornerRadius: DS.boxRadius).fill(DS.accent.opacity(0.25))
           RoundedRectangle(cornerRadius: DS.boxRadius).strokeBorder(DS.accent, style: StrokeStyle(lineWidth: 3, dash: [8, 6]))
-          Text(state.text(.dropHere)).font(.headline)
+          Text(state.text(viewOnly ? .dropResult : .dropHere)).font(.headline)
         }
         .allowsHitTesting(false)
       }
     }
     .onDrop(of: PSDrop.types, isTargeted: $dropTargeted) { providers in
-      guard !viewOnly else { return false }
       let temp = URL(fileURLWithPath: state.tempFolder.isEmpty ? NSTemporaryDirectory() : state.tempFolder, isDirectory: true)
-      PSDrop.collect(providers, tempFolder: temp) { state.addStickers(from: $0) }
+      // On the sphere view of the result a dropped picture is looked at (it becomes the result shown); elsewhere it is a new sticker.
+      if viewOnly {
+        PSDrop.collect(providers, tempFolder: temp) { state.dropResult(from: $0) }
+      } else {
+        PSDrop.collect(providers, tempFolder: temp) { state.addStickers(from: $0) }
+      }
       return true
     }
   }
