@@ -321,22 +321,28 @@ public final class PluginRegistry: PluginHosting {
     send(data, to: identifier)
   }
 
+  /// A timeout for the messages of the queue: a year, which is no limit (a run can last hours). What ends the wait is the answer, or
+  /// the cancellation of the task that waits (Stop).
+  public static let unbounded: Duration = .seconds(60 * 60 * 24 * 365)
+
   /// A message to a loaded plug-in, with its answer: nil when the plug-in is not loaded or does not answer within `timeout`.
   /// For the questions the app asks while a plug-in guides a pipeline (`session.next`).
   public func request(_ message: Data, to pluginID: String, timeout: Duration) async -> Data? {
     guard let plugin = loaded[pluginID] else { return nil }
-    return await withCheckedContinuation { continuation in
-      var answered = false
-      func finish(_ value: Data?) {
-        guard !answered else { return }
-        answered = true
-        continuation.resume(returning: value)
+    let once = RequestOnce()
+    return await withTaskCancellationHandler {
+      await withCheckedContinuation { continuation in
+        once.arm(continuation)
+        // The message goes out whether or not anybody is still waiting for the answer.
+        Task { once.finish(await plugin.send(message, timeout: timeout)) }
+        once.attach(
+          timer: Task {
+            try? await Task.sleep(for: timeout)
+            once.finish(nil)
+          })
       }
-      Task { finish(await plugin.send(message, timeout: timeout)) }
-      Task {
-        try? await Task.sleep(for: timeout)
-        finish(nil)
-      }
+    } onCancel: {
+      once.finish(nil)
     }
   }
 
@@ -496,4 +502,48 @@ public final class PluginRegistry: PluginHosting {
 private extension Array {
   /// nil for an empty list: a key with nothing to say is left out of the context.
   var nilIfEmpty: [Element]? { isEmpty ? nil : self }
+}
+
+/// The answer to a `request`, handed over once: from the plug-in, from the timeout, or from the cancellation of whoever waits
+/// (which can come before the wait has begun, or from another thread).
+private final class RequestOnce: @unchecked Sendable {
+  private let lock = NSLock()
+  private var continuation: CheckedContinuation<Data?, Never>?
+  private var result: Data??
+  private var timer: Task<Void, Never>?
+
+  func arm(_ continuation: CheckedContinuation<Data?, Never>) {
+    lock.lock()
+    if let result {
+      lock.unlock()
+      continuation.resume(returning: result)
+    } else {
+      self.continuation = continuation
+      lock.unlock()
+    }
+  }
+
+  func attach(timer: Task<Void, Never>) {
+    lock.lock()
+    let done = result != nil
+    if !done { self.timer = timer }
+    lock.unlock()
+    if done { timer.cancel() }
+  }
+
+  func finish(_ value: Data?) {
+    lock.lock()
+    guard result == nil else {
+      lock.unlock()
+      return
+    }
+    result = .some(value)
+    let waiting = continuation
+    continuation = nil
+    let pending = timer
+    timer = nil
+    lock.unlock()
+    pending?.cancel()
+    waiting?.resume(returning: value)
+  }
 }

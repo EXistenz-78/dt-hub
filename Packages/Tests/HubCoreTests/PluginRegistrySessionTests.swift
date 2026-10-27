@@ -43,6 +43,44 @@ struct PluginRegistrySessionTests {
     #expect(ContinuousClock.now - started < .seconds(8), "it must not wait for the plug-in's 10 s")
   }
 
+  @Test func requestWithUnboundedTimeoutWaitsForASlowAnswer() async throws {
+    let loader = FakeLoader()
+    let registry = try started(loader)
+    let plugin = try #require(loader.plugins["a"])
+    plugin.delay = .milliseconds(300)
+    plugin.answer = Data(#"{"type":"ok"}"#.utf8)
+    let answer = await registry.request(Data(#"{"type":"queue.prepare"}"#.utf8), to: "a", timeout: PluginRegistry.unbounded)
+    #expect(answer == Data(#"{"type":"ok"}"#.utf8))
+  }
+
+  @Test func cancellingTheTaskReturnsNilAtOnce() async throws {
+    let loader = FakeLoader()
+    let registry = try started(loader)
+    loader.plugins["a"]?.delay = .seconds(10)
+    let waiting = Task { await registry.request(Data("{}".utf8), to: "a", timeout: PluginRegistry.unbounded) }
+    try await Task.sleep(for: .milliseconds(50))
+    let started = ContinuousClock.now
+    waiting.cancel()
+    let answer = await waiting.value
+    #expect(answer == nil)
+    #expect(ContinuousClock.now - started < .seconds(2), "the wait ends when the task is cancelled")
+  }
+
+  @Test func cancelledBeforeItStartsStillSendsTheMessage() async throws {
+    let loader = FakeLoader()
+    let registry = try started(loader)
+    let plugin = try #require(loader.plugins["a"])
+    plugin.delay = .seconds(10)
+    let waiting = Task {
+      while !Task.isCancelled { await Task.yield() }
+      return await registry.request(PluginMessageType.bare("session.end"), to: "a", timeout: PluginRegistry.unbounded)
+    }
+    waiting.cancel()
+    #expect(await waiting.value == nil)
+    try await Task.sleep(for: .milliseconds(100))
+    #expect(plugin.sentTypes.contains("session.end"), "the plug-in is told even when nobody waits for it")
+  }
+
   @Test func sessionFolderIsInsideTheTempFolderAndRemoved() throws {
     let registry = try started(FakeLoader())
     let folder = registry.sessionFolder()
