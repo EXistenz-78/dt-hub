@@ -8,7 +8,7 @@ enum L {
     case stickersTitle, yaw, pitch, rotation, fieldOfView, verticalFieldOfView, opacity, duplicate, delete, add, toggleVisible
     case croppedPhoto, unreadableFile, openProjectFirst, dropHere, dropResult
     case seamDescription, seamButton, seamPipelineName, seamReady, seamModel, seamDone, seamStopped, seamClosed, seamFailed, seamNoPicture, seamWrongSize, seamUnreadablePicture
-    case seamNoResult, seamUnreadable, seamNotTwoToOne, seamHeight, seamTooBig, queueNotPrepared
+    case seamNoResult, seamUnreadable, seamNotTwoToOne, seamSize, seamTooBig, queueNotPrepared
     case cutoutSize, extract, actionStart, actionMoodboard, actionSave, actionSticker, actionPanorama, cutoutNothing, putBackOff, montageDescription
     case putBackNoCutout, putBackNoPatch, putBackWrongProportion, putBackPatchMissing, putBackNoPanorama, putBackPanoramaMissing, megapixels
     case viewPlane, viewSphere, sourceCanvas, sourceResult, resetView, noResultYet, resultUnreadable, resultNotTwoToOne
@@ -42,8 +42,8 @@ enum L {
     .seamUnreadablePicture: "The picture made cannot be read: the seam was not changed.",
     .queueNotPrepared: "No seam correction is prepared to put in the queue: press the button first.",
     .seamNoResult: "There is no result to fix yet.", .seamUnreadable: "The last result's file cannot be read.",
-    .seamNotTwoToOne: "The last result is not 2:1.", .seamHeight: "The height of the last result is not a multiple of 64.",
-    .seamTooBig: "The last result is too big: the central square would pass 2048 px.",
+    .seamNotTwoToOne: "The last result is not 2:1.", .seamSize: "The size of the last result is not a multiple of 64 on both sides.",
+    .seamTooBig: "The last result is too big: the picture would pass 8192 px on a side.",
     .cutoutSize: "Size", .extract: "Extract", .actionStart: "Use as start image", .actionMoodboard: "Add to Moodboard", .actionSave: "Save…",
     .actionSticker: "Put back as a sticker", .actionPanorama: "Put back in the panorama (goes to the Results)",
     .cutoutNothing: "Extract the view first.", .putBackOff: "The retouch cannot be put back.",
@@ -82,8 +82,8 @@ enum L {
     .seamUnreadablePicture: "L'immagine generata non si legge: la giunzione non è stata modificata.",
     .queueNotPrepared: "Nessuna correzione della giunzione è preparata da mettere in coda: premi prima il pulsante.",
     .seamNoResult: "Non c'è ancora un risultato da correggere.", .seamUnreadable: "Il file dell'ultimo risultato non si legge.",
-    .seamNotTwoToOne: "L'ultimo risultato non è 2:1.", .seamHeight: "L'altezza dell'ultimo risultato non è un multiplo di 64.",
-    .seamTooBig: "L'ultimo risultato è troppo grande: il quadrato centrale supererebbe 2048 px.",
+    .seamNotTwoToOne: "L'ultimo risultato non è 2:1.", .seamSize: "Le dimensioni dell'ultimo risultato non sono multipli di 64 su entrambi i lati.",
+    .seamTooBig: "L'ultimo risultato è troppo grande: l'immagine supererebbe 8192 px per lato.",
     .cutoutSize: "Dimensione", .extract: "Estrai", .actionStart: "Usa come immagine di partenza", .actionMoodboard: "Aggiungi al Moodboard",
     .actionSave: "Salva…", .actionSticker: "Rimetti come sticker", .actionPanorama: "Rimetti nel panorama (va ai Risultati)",
     .cutoutNothing: "Estrai prima la vista.", .putBackOff: "Il ritocco non si può rimettere.",

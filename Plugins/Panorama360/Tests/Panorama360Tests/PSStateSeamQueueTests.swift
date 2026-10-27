@@ -79,7 +79,22 @@ struct PSStateSeamQueueTests {
       return try bytes(URL(fileURLWithPath: try #require(box["path"] as? String)))
     }
     #expect(try file(a, "startImage") == file(b, "startImage"))
-    #expect(try file(a, "mask") == file(b, "mask"))
+    #expect(a["mask"] == nil && b["mask"] == nil)
+  }
+
+  @Test func theDescriptionOfThePlaceTravelsWithTheEntry() async throws {
+    let url = picture((200, 30, 30))
+    let s1 = state(result: url)
+    s1.mutate { $0.description = "a quiet lake" }
+    await s1.prepareSeamCorrection(contribute: accept)
+    let folder = TestImages.tempFolder().appendingPathComponent("q")
+    let captured = try #require(s1.queueCapture(folder: folder))
+    #expect(captured["description"] as? String == "a quiet lake")
+    s1.mutate { $0.description = "changed afterwards" }  // the tab moves on: the entry keeps what it was queued with
+    let s2 = state(result: nil)
+    #expect(await s2.queuePrepare(folder: folder, state: captured, model: nil, contribute: accept) == nil)
+    let pass = try #require(s2.seamSession).next(index: 1, count: 1)
+    #expect((pass["fields"] as? [String: Any])?["prompt"] as? String == "a quiet lake")
   }
 
   @Test func prepareDoesNotChangeTheShownResult() async throws {

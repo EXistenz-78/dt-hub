@@ -19,31 +19,21 @@ enum PSSeamImages {
     return PSPixels.image(bytes: out, width: width, height: height)
   }
 
-  /// `width` columns from column `x`, at the full height; nil when they are not all inside the picture.
-  static func crop(_ image: CGImage, x: Int, width: Int) -> CGImage? {
-    let (bytes, fullWidth, height) = PSPixels.rgba(of: image)
-    guard x >= 0, width > 0, x + width <= fullWidth else { return nil }
-    var out = [UInt8](repeating: 255, count: width * height * 4)
+  /// The picture with `width` columns from column `x`, at the full height, painted green (0, 255, 0): the colour the model fills as an outpaint.
+  /// nil when they are not all inside the picture.
+  static func paintGreen(_ image: CGImage, x: Int, width: Int) -> CGImage? {
+    var (bytes, fullWidth, height) = PSPixels.rgba(of: image)
+    guard x >= 0, width > 0, x + width <= fullWidth, height > 0 else { return nil }
     for y in 0..<height {
-      out.replaceSubrange(
-        (y * width * 4)..<((y + 1) * width * 4), with: bytes[((y * fullWidth + x) * 4)..<((y * fullWidth + x + width) * 4)])
+      for column in x..<(x + width) {
+        let i = (y * fullWidth + column) * 4
+        bytes[i] = 0
+        bytes[i + 1] = 255
+        bytes[i + 2] = 0
+        bytes[i + 3] = 255
+      }
     }
-    return PSPixels.image(bytes: out, width: width, height: height)
-  }
-
-  /// The mask of the pass: a grey PNG `square × square`, 255 in the central `bandWidth` columns, 0 elsewhere.
-  static func maskPNG(square: Int, bandWidth: Int) -> Data? {
-    guard square > 0, bandWidth > 0, bandWidth <= square else { return nil }
-    let start = (square - bandWidth) / 2
-    var bytes = [UInt8](repeating: 0, count: square * square)
-    for y in 0..<square { for x in start..<(start + bandWidth) { bytes[y * square + x] = 255 } }
-    guard let provider = CGDataProvider(data: Data(bytes) as CFData),
-      let image = CGImage(
-        width: square, height: square, bitsPerComponent: 8, bitsPerPixel: 8, bytesPerRow: square,
-        space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.none.rawValue),
-        provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)
-    else { return nil }
-    return pngData(image)
+    return PSPixels.image(bytes: bytes, width: fullWidth, height: height)
   }
 
   static func pngData(_ image: CGImage) -> Data? {
@@ -53,23 +43,22 @@ enum PSSeamImages {
     return CGImageDestinationFinalize(destination) ? data as Data : nil
   }
 
-  /// The panorama (still rolled) with the band of the generated square pasted in: its brightness brought towards the original's, and its two edges
+  /// The panorama (still rolled) with the band of the generated panorama (the same size) pasted in: its brightness brought towards the original's, and its two edges
   /// faded into the original over `plan.fade` pixels. nil when the pictures are not the size the plan says.
   static func compose(rolled: CGImage, generated: CGImage, plan: PSSeamPlan) -> CGImage? {
-    guard rolled.width == plan.width, rolled.height == plan.height, generated.width == plan.square, generated.height == plan.square else {
+    guard rolled.width == plan.width, rolled.height == plan.height, generated.width == plan.width, generated.height == plan.height else {
       return nil
     }
     let (original, width, height) = PSPixels.rgba(of: rolled)
-    let (made, side, _) = PSPixels.rgba(of: generated)
+    let (made, _, _) = PSPixels.rgba(of: generated)
     let band = plan.bandWidth
-    let offset = (side - band) / 2
     // The level to match is the one of the panorama OUTSIDE the band, on its two sides (a strip as wide as the fade, beside the band): the gain
     // goes from the left level to the right one, row by row, so an exposure step across the seam is not copied by the new picture.
-    let radius = max(1, plan.square / PSSeam.toneRadiusDivisor)
+    let radius = max(1, plan.height / PSSeam.toneRadiusDivisor)
     var lightMade = [Float](repeating: 0, count: band * height)
     var lightOriginal = [Float](repeating: 0, count: width * height)
     for y in 0..<height {
-      for i in 0..<band { lightMade[y * band + i] = luminance(made, (y * side + offset + i) * 4) }
+      for i in 0..<band { lightMade[y * band + i] = luminance(made, (y * width + plan.bandX + i) * 4) }
       for x in 0..<width { lightOriginal[y * width + x] = luminance(original, (y * width + x) * 4) }
     }
     let blurredMade = boxBlur(lightMade, width: band, height: height, radius: radius)
@@ -90,7 +79,7 @@ enum PSSeamImages {
         let t = min(1, max(0, edge / Double(max(1, plan.fade))))
         let weight = Float(t * t * (3 - 2 * t))
         let o = (y * width + plan.bandX + i) * 4
-        let g = (y * side + offset + i) * 4
+        let g = o
         for c in 0..<3 {
           let corrected = min(255, Float(made[g + c]) * gain)
           out[o + c] = UInt8(min(255, max(0, Float(original[o + c]) * (1 - weight) + corrected * weight + 0.5)))

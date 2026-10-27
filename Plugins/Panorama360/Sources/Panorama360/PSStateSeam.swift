@@ -15,7 +15,7 @@ extension PSState {
     case .noResult: text(.seamNoResult)
     case .unreadable: text(.seamUnreadable)
     case .notTwoToOne: text(.seamNotTwoToOne)
-    case .heightNotMultipleOf64: text(.seamHeight)
+    case .sizeNotMultipleOf64: text(.seamSize)
     case .tooBig: text(.seamTooBig)
     }
   }
@@ -31,19 +31,19 @@ extension PSState {
     guard let path = lastResultPath, !isSending else { return }
     isSending = true
     defer { isSending = false }
-    if let message = await proposeSeamCorrection(panorama: path, contribute: contribute) { error = message }
+    if let message = await proposeSeamCorrection(panorama: path, description: doc.description, contribute: contribute) { error = message }
   }
 
   /// Builds the correction from the panorama file and proposes the guided pipeline to the app. Nil when the app took it,
   /// otherwise why not (the button shows it; the queue reports it).
-  func proposeSeamCorrection(panorama path: String, contribute: PSContribute) async -> String? {
+  func proposeSeamCorrection(panorama path: String, description: String, contribute: PSContribute) async -> String? {
     let italian = italian, folder = exchangeFolder
     // The reading of the panorama and its roll are heavy for a big one: not on the main thread.
     let made = await Task.detached(priority: .userInitiated) { () -> PSSeamSession? in
       guard let panorama = PSResultLoader.load(URL(fileURLWithPath: path), maxSide: nil),
         case .success(let plan) = PSSeam.plan(width: panorama.width, height: panorama.height)
       else { return nil }
-      return PSSeamSession(panorama: panorama, plan: plan, folder: folder, italian: italian)
+      return PSSeamSession(panorama: panorama, plan: plan, folder: folder, italian: italian, description: description)
     }.value
     guard let session = made else { return text(.seamUnreadable) }
     let pipeline: [String: Any] = ["name": text(.seamPipelineName), "guided": true, "passes": 1, "estimate": session.estimate()]

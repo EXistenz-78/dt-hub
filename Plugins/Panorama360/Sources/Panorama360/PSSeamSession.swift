@@ -19,19 +19,22 @@ enum PSSeamOutcome {
   case nothing(PSSeamProblem)
 }
 
-/// One correction of the seam, as DT Hub drives it (a guided pipeline of one pass): `next` gives the pass, `end` takes what the model made and puts
-/// it into the panorama. It keeps the panorama it was made with: what happens to the result shown meanwhile does not matter.
+/// One correction of the seam, as DT Hub drives it (a guided pipeline of one pass): `next` gives the pass (the panorama rolled by half, with a green
+/// stripe on the seam), `end` takes what the model made and puts its central band into the panorama. It keeps the panorama it was made with: what happens to the result shown meanwhile does not matter.
 final class PSSeamSession: @unchecked Sendable {
   private let plan: PSSeamPlan
   private let folder: URL
   private let italian: Bool
   private let rolled: CGImage?
+  /// The description of the place, the prompt of the pass.
+  let description: String
   private var passGiven = false
   private var finished = false
   private var writeFailed = false
   private var files: [URL] = []
 
-  init(panorama: CGImage, plan: PSSeamPlan, folder: URL, italian: Bool) {
+  init(panorama: CGImage, plan: PSSeamPlan, folder: URL, italian: Bool, description: String) {
+    self.description = description.trimmingCharacters(in: .whitespacesAndNewlines)
     self.plan = plan
     self.folder = folder
     self.italian = italian
@@ -40,30 +43,29 @@ final class PSSeamSession: @unchecked Sendable {
 
   /// A pass like the real one, for the meter of computing units: the preset and the size.
   func estimate() -> [String: Any] {
-    ["preset": PSSeam.presetName, "size": ["width": plan.square, "height": plan.square]]
+    ["preset": PSSeam.presetName, "size": ["width": plan.width, "height": plan.height]]
   }
 
-  /// The one pass: the central square of the rolled panorama and its mask, with the preset (which holds the prompt and the parameters), no fields.
+  /// The one pass: the whole panorama, rolled by half, with the green stripe over the seam, and the preset (which holds the LoRA and the parameters).
+  /// No mask: the model fills the green. The prompt is the description of the place, sent even when empty (the app would keep the tab's).
   func next(index: Int, count: Int) -> [String: Any] {
-    guard index == 1, !passGiven, let rolled, let square = PSSeamImages.crop(rolled, x: plan.cropX, width: plan.square),
-      let picture = PSSeamImages.pngData(square), let mask = PSSeamImages.maskPNG(square: plan.square, bandWidth: plan.bandWidth)
+    guard index == 1, !passGiven, let rolled, let painted = PSSeamImages.paintGreen(rolled, x: plan.greenX, width: plan.greenWidth),
+      let picture = PSSeamImages.pngData(painted)
     else { return ["done": true] }
-    let pictureURL = folder.appendingPathComponent("seam-square.png")
-    let maskURL = folder.appendingPathComponent("seam-mask.png")
+    let pictureURL = folder.appendingPathComponent("seam-panorama.png")
     do {
       try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
       try picture.write(to: pictureURL)
-      try mask.write(to: maskURL)
     } catch {
       writeFailed = true
       return ["done": true]
     }
-    files = [pictureURL, maskURL]
+    files = [pictureURL]
     passGiven = true
     return [
-      "title": "Giunzione", "startImage": ["path": pictureURL.path, "name": "seam-square"], "mask": ["path": maskURL.path, "name": "seam-mask"],
-      "maskSettings": ["blur": PSSeam.maskBlur, "outset": PSSeam.maskOutset, "preserveOriginal": true],
-      "size": ["width": plan.square, "height": plan.square], "preset": PSSeam.presetName, "strength": PSSeam.strength,
+      "title": "Giunzione", "startImage": ["path": pictureURL.path, "name": "seam-panorama"],
+      "size": ["width": plan.width, "height": plan.height], "preset": PSSeam.presetName, "strength": PSSeam.strength,
+      "fields": ["prompt": description],
     ]
   }
 
@@ -79,9 +81,9 @@ final class PSSeamSession: @unchecked Sendable {
     default: return .nothing(.failed)
     }
     guard let previous else { return .nothing(.noPicture) }
-    guard previous.width == plan.square, previous.height == plan.square else { return .nothing(.wrongSize) }
+    guard previous.width == plan.width, previous.height == plan.height else { return .nothing(.wrongSize) }
     guard let generated = PSResultLoader.load(URL(fileURLWithPath: previous.path), maxSide: nil) else { return .nothing(.unreadable) }
-    guard generated.width == plan.square, generated.height == plan.square else { return .nothing(.wrongSize) }
+    guard generated.width == plan.width, generated.height == plan.height else { return .nothing(.wrongSize) }
     guard let rolled, let composed = PSSeamImages.compose(rolled: rolled, generated: generated, plan: plan),
       let corrected = PSSeamImages.rolled(composed, by: plan.width - plan.rollColumns)
     else { return .nothing(.failed) }

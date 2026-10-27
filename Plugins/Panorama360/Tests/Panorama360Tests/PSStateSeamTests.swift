@@ -33,8 +33,8 @@ struct PSStateSeamTests {
     return (contribute, { bodies })
   }
 
-  func endMessage(_ reason: String, previous: URL?, size: Int = 512) -> Data {
-    let box = previous.map { #","previous":{"path":"\#($0.path)","width":\#(size),"height":\#(size)}"# } ?? ""
+  func endMessage(_ reason: String, previous: URL?, width: Int = 1024, height: Int = 512) -> Data {
+    let box = previous.map { #","previous":{"path":"\#($0.path)","width":\#(width),"height":\#(height)}"# } ?? ""
     return Data(#"{"type":"session.end","reason":"\#(reason)"\#(box)}"#.utf8)
   }
 
@@ -42,14 +42,14 @@ struct PSStateSeamTests {
     #expect(state(result: nil).seamReason == .noResult)
     #expect(state(result: URL(fileURLWithPath: "/nowhere/gone.png")).seamReason == .unreadable)
     #expect(state(result: picture(1000, 1024, (1, 2, 3))).seamReason == .notTwoToOne)
-    #expect(state(result: picture(1000, 500, (1, 2, 3))).seamReason == .heightNotMultipleOf64)
+    #expect(state(result: picture(1000, 500, (1, 2, 3))).seamReason == .sizeNotMultipleOf64)
     #expect(state(result: picture(1024, 512, (1, 2, 3))).seamReason == nil)
   }
 
   @Test func aResultThatIsTooBigIsRefusedBeforeItIsLoaded() {
     let big = picture(64, 32, (1, 2, 3), name: "big.png")
     let state = state(result: big)
-    state.imageSizeReader = { _ in (6144, 3072) }
+    state.imageSizeReader = { _ in (8320, 4160) }
     #expect(state.seamReason == .tooBig)
   }
 
@@ -60,8 +60,8 @@ struct PSStateSeamTests {
     let pipeline = try #require(bodies().first?["pipeline"] as? [String: Any])
     #expect(pipeline["guided"] as? Bool == true && pipeline["passes"] as? Int == 1 && pipeline["name"] is String)
     let estimate = try #require(pipeline["estimate"] as? [String: Any])
-    #expect(estimate["preset"] as? String == "PAN · 360 Seamless")
-    #expect((estimate["size"] as? [String: Any])?["width"] as? Int == 512)
+    #expect(estimate["preset"] as? String == "PAN · 360 ERP Fast")
+    #expect((estimate["size"] as? [String: Any])?["width"] as? Int == 1024 && (estimate["size"] as? [String: Any])?["height"] as? Int == 512, "the whole panorama is the pass")
     #expect(state.isSeamPrepared && state.error == nil && state.notice != nil)
   }
 
@@ -83,7 +83,7 @@ struct PSStateSeamTests {
     let state = state(result: picture(1024, 512, (200, 30, 30)))
     await state.prepareSeamCorrection(contribute: send().0)
     let first = try #require(try JSONSerialization.jsonObject(with: await state.seamNext(Data(#"{"type":"session.next","index":1,"count":1}"#.utf8))) as? [String: Any])
-    #expect(first["startImage"] != nil && first["mask"] != nil && first["preset"] as? String == "PAN · 360 Seamless")
+    #expect(first["startImage"] != nil && first["mask"] == nil && first["preset"] as? String == "PAN · 360 ERP Fast")
     #expect(await state.seamNext(Data(#"{"type":"session.next","index":2,"count":1}"#.utf8)).isDone)
   }
 
@@ -98,7 +98,7 @@ struct PSStateSeamTests {
     let (contribute, bodies) = send()
     await state.prepareSeamCorrection(contribute: contribute)
     _ = await state.seamNext(Data(#"{"type":"session.next","index":1,"count":1}"#.utf8))
-    let generated = picture(512, 512, (0, 0, 255), name: "g.png")
+    let generated = picture(1024, 512, (0, 0, 255), name: "g.png")
     await state.seamEnded(endMessage("finished", previous: generated), contribute: contribute)
     let result = try #require(bodies().last?["result"] as? [String: Any])
     let path = try #require(result["path"] as? String)
@@ -139,7 +139,7 @@ struct PSStateSeamTests {
     await state.prepareSeamCorrection(contribute: contribute)
     state.apply(context: context(picture(1024, 512, (30, 30, 200), name: "other.png")))  // another result arrives: blue
     _ = await state.seamNext(Data(#"{"type":"session.next","index":1,"count":1}"#.utf8))
-    await state.seamEnded(endMessage("finished", previous: picture(512, 512, (0, 255, 0), name: "g.png")), contribute: contribute)
+    await state.seamEnded(endMessage("finished", previous: picture(1024, 512, (0, 255, 0), name: "g.png")), contribute: contribute)
     let path = try #require(((bodies().last?["result"]) as? [String: Any])?["path"] as? String)
     let source = try #require(CGImageSourceCreateWithURL(URL(fileURLWithPath: path) as CFURL, nil))
     let image = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
@@ -153,7 +153,7 @@ struct PSStateSeamTests {
     await state.prepareSeamCorrection(contribute: contribute)
     _ = await state.seamNext(Data(#"{"type":"session.next","index":1,"count":1}"#.utf8))
     state.switchProject(folder: TestImages.tempFolder())
-    await state.seamEnded(endMessage("finished", previous: picture(512, 512, (0, 255, 0), name: "g.png")), contribute: contribute)
+    await state.seamEnded(endMessage("finished", previous: picture(1024, 512, (0, 255, 0), name: "g.png")), contribute: contribute)
     #expect(bodies().last?["result"] != nil, "the app files it under the project that is open now")
   }
 

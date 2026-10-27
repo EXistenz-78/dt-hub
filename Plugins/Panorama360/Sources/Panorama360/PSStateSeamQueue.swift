@@ -17,7 +17,7 @@ extension PSState {
     } catch {
       return nil
     }
-    return ["panorama": name]
+    return ["panorama": name, "description": seamSession?.description ?? ""]
   }
 
   /// Makes the correction again from the copy in `folder` and proposes it to the app. The result shown in the tab is not
@@ -31,6 +31,6 @@ extension PSState {
     if let model { modelFile = model }
     isSending = true
     defer { isSending = false }
-    return await proposeSeamCorrection(panorama: file.path, contribute: contribute)
+    return await proposeSeamCorrection(panorama: file.path, description: state["description"] as? String ?? "", contribute: contribute)
   }
 }
