@@ -43,6 +43,13 @@ struct PSPresetsTests {
     #expect((seamless["loras"] as? [[String: Any]])?.isEmpty == true)
   }
 
+  @Test func theTwoPanoramaPresetsHaveHiResOnSoABigPanoramaIsNotCut() {
+    for entry in PSPresets.messages().prefix(2) {
+      #expect(fields(entry)["highRes"] as? Bool == true, "\(entry["name"] ?? "")")
+    }
+    #expect(fields(PSPresets.messages()[2])["highRes"] == nil, "the small seamless preset is not touched")
+  }
+
   @Test func fastPresetAddsTheRefinerAndRunsFewerSteps() throws {
     let normal = PSPresets.messages()[0], fast = PSPresets.messages()[1]
     let advanced = try #require(fast["advanced"] as? [String: Any])

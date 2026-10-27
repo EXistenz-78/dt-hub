@@ -78,12 +78,18 @@ struct PSSeamSessionTests {
   @Test func endFinishedComposesAndRollsBack() throws {
     let (session, folder) = try session()
     _ = session.next(index: 1, count: 1)
-    let outcome = session.end(reason: "finished", previous: generated((0, 0, 255), in: folder))
+    // What the model made: the rolled panorama as it was sent, with a white detail on the seam (the colours at the edges of the band are the panorama's own).
+    let p = try plan()
+    let made = TestImages.make(512, 256) { x, y in
+      abs(x - p.seamX) < 4 ? (255, 255, 255, 255) : (UInt8(((x + p.rollColumns) % 512) / 2), UInt8(y), 40, 255)
+    }
+    let url = TestImages.file(made, in: folder, name: "made.png", type: "public.png")
+    let outcome = session.end(reason: "finished", previous: (url.path, 512, 256))
     guard case .montage(let image, let description) = outcome else { Issue.record("expected a montage: \(outcome)"); return }
     #expect(image.width == 512 && image.height == 256)
     // The band was in the middle of the rolled panorama; rolled back it is split over the two edges of the picture: the seam is closed.
     let left = TestImages.pixel(image, 0, 100), right = TestImages.pixel(image, 511, 100)
-    #expect(left.b > 150 && right.b > 150, "both sides of the old seam come from the generated band: \(left) \(right)")
+    #expect(left.g > 200 && right.g > 200, "both sides of the old seam come from the generated band: \(left) \(right)")
     #expect(TestImages.pixel(image, 256, 100).b == 40, "the middle of the panorama keeps the original")
     #expect(description.contains("128"), "names the band width: \(description)")
   }

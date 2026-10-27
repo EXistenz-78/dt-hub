@@ -43,8 +43,11 @@ enum PSSeamImages {
     return CGImageDestinationFinalize(destination) ? data as Data : nil
   }
 
-  /// The panorama (still rolled) with the band of the generated panorama (the same size) pasted in: its brightness brought towards the original's, and its two edges
-  /// faded into the original over `plan.fade` pixels. nil when the pictures are not the size the plan says.
+  /// The panorama (still rolled) with the band of the generated panorama (the same size) pasted in: its colour brought towards the original's, and its
+  /// two edges faded into the original over `plan.fade` pixels. nil when the pictures are not the size the plan says.
+  ///
+  /// The colour is matched channel by channel (red, green and blue each get their own gain), so a band the model made paler or less saturated than
+  /// the sky around it, and not only a darker or lighter one, comes back to the colours of its two sides.
   static func compose(rolled: CGImage, generated: CGImage, plan: PSSeamPlan) -> CGImage? {
     guard rolled.width == plan.width, rolled.height == plan.height, generated.width == plan.width, generated.height == plan.height else {
       return nil
@@ -53,35 +56,27 @@ enum PSSeamImages {
     let (made, _, _) = PSPixels.rgba(of: generated)
     let band = plan.bandWidth
     // The level to match is the one of the panorama OUTSIDE the band, on its two sides (a strip as wide as the fade, beside the band): the gain
-    // goes from the left level to the right one, row by row, so an exposure step across the seam is not copied by the new picture.
+    // goes from the left level to the right one, row by row, so a colour or exposure step across the seam is not copied by the new picture.
     let radius = max(1, plan.height / PSSeam.toneRadiusDivisor)
-    var lightMade = [Float](repeating: 0, count: band * height)
-    var lightOriginal = [Float](repeating: 0, count: width * height)
-    for y in 0..<height {
-      for i in 0..<band { lightMade[y * band + i] = luminance(made, (y * width + plan.bandX + i) * 4) }
-      for x in 0..<width { lightOriginal[y * width + x] = luminance(original, (y * width + x) * 4) }
-    }
-    let blurredMade = boxBlur(lightMade, width: band, height: height, radius: radius)
-    let blurredOriginal = boxBlur(lightOriginal, width: width, height: height, radius: radius)
     let strip = max(1, min(plan.fade, plan.bandX))
+    let madeLeft = levels(made, width: width, height: height, column: plan.bandX + min(band - 1, strip / 2), radius: radius)
+    let madeRight = levels(made, width: width, height: height, column: plan.bandX + max(0, band - 1 - strip / 2), radius: radius)
+    let sideLeft = levels(original, width: width, height: height, column: max(0, plan.bandX - 1 - strip / 2), radius: radius)
+    let sideRight = levels(original, width: width, height: height, column: min(width - 1, plan.bandX + band + strip / 2), radius: radius)
     var out = original
     for y in 0..<height {
-      // The brightness of the generated picture at its two edges (blurred), and of the panorama just outside the band.
-      let madeLeft = blurredMade[y * band + min(band - 1, strip / 2)], madeRight = blurredMade[y * band + max(0, band - 1 - strip / 2)]
-      let sideLeft = blurredOriginal[y * width + max(0, plan.bandX - 1 - strip / 2)]
-      let sideRight = blurredOriginal[y * width + min(width - 1, plan.bandX + band + strip / 2)]
-      let gainLeft = min(5, max(0.2, (sideLeft + 1) / (madeLeft + 1)))
-      let gainRight = min(5, max(0.2, (sideRight + 1) / (madeRight + 1)))
+      var gainLeft = [Float](repeating: 1, count: 3), gainRight = [Float](repeating: 1, count: 3)
+      for c in 0..<3 {
+        gainLeft[c] = min(5, max(0.2, (sideLeft[c][y] + 1) / (madeLeft[c][y] + 1)))
+        gainRight[c] = min(5, max(0.2, (sideRight[c][y] + 1) / (madeRight[c][y] + 1)))
+      }
       for i in 0..<band {
         let along = Float(i) / Float(max(1, band - 1))
-        let gain = gainLeft + (gainRight - gainLeft) * along
-        let edge = Double(min(i, band - 1 - i)) + 0.5
-        let t = min(1, max(0, edge / Double(max(1, plan.fade))))
-        let weight = Float(t * t * (3 - 2 * t))
+        let weight = fadeWeight(distanceToEdge: Double(min(i, band - 1 - i)) + 0.5, fade: plan.fade)
         let o = (y * width + plan.bandX + i) * 4
-        let g = o
         for c in 0..<3 {
-          let corrected = min(255, Float(made[g + c]) * gain)
+          let gain = gainLeft[c] + (gainRight[c] - gainLeft[c]) * along
+          let corrected = min(255, Float(made[o + c]) * gain)
           out[o + c] = UInt8(min(255, max(0, Float(original[o + c]) * (1 - weight) + corrected * weight + 0.5)))
         }
       }
@@ -89,27 +84,30 @@ enum PSSeamImages {
     return PSPixels.image(bytes: out, width: width, height: height)
   }
 
-  private static func luminance(_ bytes: [UInt8], _ i: Int) -> Float {
-    0.2126 * Float(bytes[i]) + 0.7152 * Float(bytes[i + 1]) + 0.0722 * Float(bytes[i + 2])
+  /// How much of the generated picture there is at `distanceToEdge` pixels from the nearest edge of the band: 0 at the edge, 1 from `fade` pixels in
+  /// (a smoothstep, so the join has no corner).
+  static func fadeWeight(distanceToEdge: Double, fade: Int) -> Float {
+    let t = min(1, max(0, distanceToEdge / Double(max(1, fade))))
+    return Float(t * t * (3 - 2 * t))
   }
 
-  /// A box blur (edges clamped), the horizontal then the vertical pass, with running sums.
-  private static func boxBlur(_ values: [Float], width: Int, height: Int, radius: Int) -> [Float] {
-    func pass(_ input: [Float], length: Int, lines: Int, stride step: Int, lineStride: Int) -> [Float] {
-      var output = input
-      let size = Float(2 * radius + 1)
-      for line in 0..<lines {
-        let base = line * lineStride
-        var sum: Float = 0
-        for k in -radius...radius { sum += input[base + min(length - 1, max(0, k)) * step] }
-        for i in 0..<length {
-          output[base + i * step] = sum / size
-          sum += input[base + min(length - 1, i + radius + 1) * step] - input[base + min(length - 1, max(0, i - radius)) * step]
-        }
+  /// The level of each channel around one column, row by row: the mean of the pixels within `radius` of `column` across and down (edges clamped).
+  private static func levels(_ bytes: [UInt8], width: Int, height: Int, column: Int, radius: Int) -> [[Float]] {
+    let from = max(0, column - radius), to = min(width - 1, column + radius)
+    return (0..<3).map { c in
+      var across = [Float](repeating: 0, count: height)
+      for y in 0..<height {
+        var sum = 0
+        for x in from...to { sum += Int(bytes[(y * width + x) * 4 + c]) }
+        across[y] = Float(sum) / Float(to - from + 1)
       }
-      return output
+      var down = across
+      for y in 0..<height {
+        var sum: Float = 0
+        for k in -radius...radius { sum += across[min(height - 1, max(0, y + k))] }
+        down[y] = sum / Float(2 * radius + 1)
+      }
+      return down
     }
-    let horizontal = pass(values, length: width, lines: height, stride: 1, lineStride: width)
-    return pass(horizontal, length: height, lines: width, stride: width, lineStride: 1)
   }
 }

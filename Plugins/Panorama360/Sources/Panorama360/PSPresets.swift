@@ -5,7 +5,8 @@ typealias PSContribute = @MainActor ([String: Any]) async -> [String: Any]?
 
 /// The presets the plug-in puts in the Preset menu (the app never touches one that is already there, so the user may change them: another
 /// model, the 4B LoRA, other quantisations). Normal runs the base model alone, Fast adds the KV refiner. The values are those of the preset the
-/// user made and tried (30 steps for Normal, 16 for Fast).
+/// user made and tried (30 steps for Normal, 16 for Fast). Both turn HiRes (beta) on: a panorama of more than 2048 px on a side (an upscaled one) would
+/// otherwise be cut to 2048 by Draw Things.
 enum PSPresets {
   static let normalName = "PAN · 360 ERP"
   static let fastName = "PAN · 360 ERP Fast"
@@ -26,7 +27,7 @@ enum PSPresets {
     func preset(name: String, steps: Int) -> [String: Any] {
       [
         "name": name, "model": model,
-        "fields": ["steps": steps, "guidanceScale": 4.0, "sampler": 16, "shift": 3.0, "resolutionDependentShift": true] as [String: Any],
+        "fields": ["steps": steps, "guidanceScale": 4.0, "sampler": 16, "shift": 3.0, "resolutionDependentShift": true, "highRes": true] as [String: Any],
         "loras": [["file": loraFile, "weight": 1.0, "mode": 0, "trigger": trigger] as [String: Any]],
       ]
     }

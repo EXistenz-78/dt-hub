@@ -52,26 +52,29 @@ struct PSSeamImagesTests {
     return plan
   }
 
+  /// The colour the model kept at the edges of the band is the panorama's own, with a bright detail on the seam: the colour matching leaves the
+  /// detail alone (its gain is 1 there) and the rest of the panorama is untouched.
   @Test func composeKeepsTheOriginalOutsideTheBandAndTheGeneratedInsideIt() throws {
     let plan = try plan()
-    let red = TestImages.solid(512, 256, 255, 0, 0)
-    let blue = TestImages.solid(512, 256, 0, 0, 255)
-    let out = try #require(PSSeamImages.compose(rolled: red, generated: blue, plan: plan))
+    let base = TestImages.solid(512, 256, 120, 60, 60)
+    let generated = TestImages.make(512, 256) { x, _ in abs(x - plan.seamX) < 4 ? (230, 230, 230, 255) : (120, 60, 60, 255) }
+    let out = try #require(PSSeamImages.compose(rolled: base, generated: generated, plan: plan))
     #expect(out.width == 512 && out.height == 256)
     let centre = TestImages.pixel(out, plan.seamX, 128)
-    #expect(centre.b > 200 && centre.r < 30, "\(centre)")
+    #expect(centre.g > 200 && centre.b > 200, "the detail made inside the band is there: \(centre)")
     let context = TestImages.pixel(out, plan.bandX - 20, 128)
-    #expect(context.r == 255 && context.b == 0, "\(context)")
+    #expect(context.r == 120 && context.g == 60 && context.b == 60, "\(context)")
     let far = TestImages.pixel(out, 5, 10)
-    #expect(far.r == 255 && far.b == 0)
+    #expect(far.r == 120 && far.b == 60)
   }
 
   @Test func onlyTheBandOfTheGeneratedPictureIsUsed() throws {
     let plan = try plan()
     let grey = TestImages.solid(512, 256, 100, 100, 100)
-    // The model made the whole panorama; outside the band its picture is red, inside it is blue.
+    // The model made the whole panorama; outside the band its picture is red, inside it is grey with a blue detail on the seam.
     let generated = TestImages.make(512, 256) { x, _ in
-      (plan.bandX..<(plan.bandX + plan.bandWidth)).contains(x) ? (100, 100, 255, 255) : (255, 0, 0, 255)
+      guard (plan.bandX..<(plan.bandX + plan.bandWidth)).contains(x) else { return (255, 0, 0, 255) }
+      return abs(x - plan.seamX) < 4 ? (100, 100, 255, 255) : (100, 100, 100, 255)
     }
     let out = try #require(PSSeamImages.compose(rolled: grey, generated: generated, plan: plan))
     for x in [0, 50, plan.bandX - 3, plan.bandX + plan.bandWidth + 3, 500] {
@@ -81,22 +84,50 @@ struct PSSeamImagesTests {
     #expect(TestImages.pixel(out, plan.seamX, 100).b > 150, "the middle of the band comes from the generated picture")
   }
 
-  @Test func theFadeIsMonotonicOnBothEdgesOfTheBand() throws {
+  /// A saturated blue sky on both sides of the seam (slightly different on each), and a band the model made flat and washed out.
+  @Test func aDesaturatedBandIsBroughtBackToTheColoursOfTheSides() throws {
     let plan = try plan()
-    let out = try #require(PSSeamImages.compose(rolled: TestImages.solid(512, 256, 255, 0, 0), generated: TestImages.solid(512, 256, 0, 0, 255), plan: plan))
-    var lastRed = 256
-    for x in (plan.bandX - 2)...(plan.bandX + plan.fade + 2) {
-      let r = TestImages.pixel(out, x, 100).r
-      #expect(r <= lastRed, "left edge x \(x)")
-      lastRed = r
+    let left: (r: Int, g: Int, b: Int) = (40, 70, 160), right: (r: Int, g: Int, b: Int) = (60, 70, 140)
+    let sky = TestImages.make(512, 256) { x, _ in x < 256 ? (40, 70, 160, 255) : (60, 70, 140, 255) }
+    let washed = TestImages.solid(512, 256, 120, 125, 135)
+    let out = try #require(PSSeamImages.compose(rolled: sky, generated: washed, plan: plan))
+    let nearLeft = TestImages.pixel(out, plan.bandX + plan.fade + 4, 128)
+    let nearRight = TestImages.pixel(out, plan.bandX + plan.bandWidth - plan.fade - 5, 128)
+    for (got, want) in [(nearLeft, left), (nearRight, right)] {
+      #expect(abs(got.r - want.r) <= 14 && abs(got.g - want.g) <= 14 && abs(got.b - want.b) <= 14, "\(got) should be near \(want)")
     }
-    #expect(TestImages.pixel(out, plan.bandX, 100).r > 200 && TestImages.pixel(out, plan.bandX + plan.fade, 100).r < 40)
-    var lastRight = -1
-    for x in (plan.bandX + plan.bandWidth - plan.fade - 2)...(plan.bandX + plan.bandWidth + 1) {
-      let r = TestImages.pixel(out, x, 100).r
-      #expect(r >= lastRight, "right edge x \(x)")
-      lastRight = r
+    #expect(max(nearLeft.r, nearLeft.g, nearLeft.b) - min(nearLeft.r, nearLeft.g, nearLeft.b) > 80, "the saturation of the sky is back: \(nearLeft)")
+  }
+
+  @Test func theColourGoesFromOneSideToTheOtherWithoutAStepOrAnOvershoot() throws {
+    let plan = try plan()
+    let sky = TestImages.make(512, 256) { x, _ in x < 256 ? (40, 70, 160, 255) : (160, 70, 40, 255) }
+    let flat = TestImages.solid(512, 256, 100, 100, 100)
+    let out = try #require(PSSeamImages.compose(rolled: sky, generated: flat, plan: plan))
+    var lastRed = -1
+    for x in stride(from: plan.bandX + plan.fade, to: plan.bandX + plan.bandWidth - plan.fade, by: 4) {
+      let p = TestImages.pixel(out, x, 128)
+      #expect(p.r >= lastRed - 2 && p.r <= 175 && p.b <= 175, "x \(x): \(p)")
+      lastRed = p.r
     }
+  }
+
+  @Test func theFadeIsMonotonicAndSymmetricOnBothEdgesOfTheBand() throws {
+    let plan = try plan()
+    var last: Float = -1
+    for i in 0...plan.fade {
+      let w = PSSeamImages.fadeWeight(distanceToEdge: Double(i) + 0.5, fade: plan.fade)
+      #expect(w >= last, "i \(i)")
+      last = w
+    }
+    #expect(PSSeamImages.fadeWeight(distanceToEdge: 0.5, fade: plan.fade) < 0.01)
+    #expect(PSSeamImages.fadeWeight(distanceToEdge: Double(plan.fade), fade: plan.fade) == 1)
+    #expect(PSSeamImages.fadeWeight(distanceToEdge: Double(plan.fade * 3), fade: plan.fade) == 1)
+    // The pasted band is symmetric: the same distance from either edge gives the same mix.
+    let flat = TestImages.solid(512, 256, 100, 100, 100)
+    let generated = TestImages.make(512, 256) { x, _ in (plan.bandX..<(plan.bandX + plan.bandWidth)).contains(x) ? (100, 100, 100, 255) : (0, 0, 0, 255) }
+    let out = try #require(PSSeamImages.compose(rolled: flat, generated: generated, plan: plan))
+    #expect(TestImages.pixel(out, plan.bandX + 3, 100).r == TestImages.pixel(out, plan.bandX + plan.bandWidth - 4, 100).r)
   }
 
   @Test func theToneIsBroughtTowardsTheOriginal() throws {
