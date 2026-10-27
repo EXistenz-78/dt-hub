@@ -20,6 +20,10 @@ public enum PluginMessageType {
   public static let sessionNext = "session.next"
   /// App → plug-in: the guided pipeline is over (`PluginSessionReason`).
   public static let sessionEnd = "session.end"
+  /// App → plug-in: capture what the plug-in needs to guide a pipeline again later, for the queue (`PluginQueue`).
+  public static let queueCapture = "queue.capture"
+  /// App → plug-in: rebuild the guided pipeline from what `queue.capture` gave, and propose it (`PluginQueue`).
+  public static let queuePrepare = "queue.prepare"
   /// The answer to a message the app could not use: `{"type":"error","text":…}`.
   public static let error = "error"
   public static let unsupported = "unsupported"
