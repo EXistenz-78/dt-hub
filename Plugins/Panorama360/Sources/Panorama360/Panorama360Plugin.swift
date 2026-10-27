@@ -80,6 +80,16 @@ final class Panorama360Plugin: DTHubPlugin {
         state.switchProject(folder: URL(fileURLWithPath: project.folder, isDirectory: true))
       }
       return nil
+    case "queue.capture":
+      guard let request = DTHubQueueCapture(message), let captured = state.queueCapture(folder: request.folder) else {
+        return DTHubMessage.failure(state.text(.queueNotPrepared))
+      }
+      return DTHubMessage.ok(state: captured)
+    case "queue.prepare":
+      guard let host, let request = DTHubQueuePrepare(message) else { return DTHubMessage.failure(state.text(.seamUnreadable)) }
+      let problem = await state.queuePrepare(
+        folder: request.folder, state: request.state, model: request.model, contribute: { await host.contribute($0) })
+      return problem.map(DTHubMessage.failure) ?? DTHubMessage.ok()
     case "session.next":
       return await state.seamNext(message)
     case "session.end":

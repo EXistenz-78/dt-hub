@@ -8,7 +8,7 @@ enum L {
     case stickersTitle, yaw, pitch, rotation, fieldOfView, verticalFieldOfView, opacity, duplicate, delete, add, toggleVisible
     case croppedPhoto, unreadableFile, openProjectFirst, dropHere
     case seamDescription, seamButton, seamPipelineName, seamReady, seamModel, seamDone, seamStopped, seamClosed, seamFailed, seamNoPicture, seamWrongSize, seamUnreadablePicture
-    case seamNoResult, seamUnreadable, seamNotTwoToOne, seamHeight, seamTooBig
+    case seamNoResult, seamUnreadable, seamNotTwoToOne, seamHeight, seamTooBig, queueNotPrepared
     case cutoutSize, extract, actionStart, actionMoodboard, actionSave, actionSticker, actionPanorama, cutoutNothing, putBackOff, montageDescription
     case putBackNoCutout, putBackNoPatch, putBackWrongProportion, putBackPatchMissing, putBackNoPanorama, putBackPanoramaMissing, megapixels
     case viewPlane, viewSphere, sourceCanvas, sourceResult, resetView, noResultYet, resultUnreadable, resultNotTwoToOne
@@ -40,6 +40,7 @@ enum L {
     .seamFailed: "The pass failed: the seam was not changed.", .seamNoPicture: "DT Hub did not send the picture it made: the seam was not changed.",
     .seamWrongSize: "The picture made is not the size of the pass: the seam was not changed.",
     .seamUnreadablePicture: "The picture made cannot be read: the seam was not changed.",
+    .queueNotPrepared: "No seam correction is prepared to put in the queue: press the button first.",
     .seamNoResult: "There is no result to fix yet.", .seamUnreadable: "The last result's file cannot be read.",
     .seamNotTwoToOne: "The last result is not 2:1.", .seamHeight: "The height of the last result is not a multiple of 64.",
     .seamTooBig: "The last result is too big: the central square would pass 2048 px.",
@@ -79,6 +80,7 @@ enum L {
     .seamNoPicture: "DT Hub non ha mandato l'immagine generata: la giunzione non è stata modificata.",
     .seamWrongSize: "L'immagine generata non ha la dimensione del passo: la giunzione non è stata modificata.",
     .seamUnreadablePicture: "L'immagine generata non si legge: la giunzione non è stata modificata.",
+    .queueNotPrepared: "Nessuna correzione della giunzione è preparata da mettere in coda: premi prima il pulsante.",
     .seamNoResult: "Non c'è ancora un risultato da correggere.", .seamUnreadable: "Il file dell'ultimo risultato non si legge.",
     .seamNotTwoToOne: "L'ultimo risultato non è 2:1.", .seamHeight: "L'altezza dell'ultimo risultato non è un multiplo di 64.",
     .seamTooBig: "L'ultimo risultato è troppo grande: il quadrato centrale supererebbe 2048 px.",

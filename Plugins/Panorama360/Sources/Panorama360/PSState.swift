@@ -36,7 +36,7 @@ final class PSState: ObservableObject {
   private var committingCamera = false
   @Published private(set) var projectFolder: URL?
   /// The chosen model's file and the folder to exchange pictures through, from the last `context`.
-  @Published private(set) var modelFile: String?
+  @Published var modelFile: String?
   private(set) var tempFolder = ""
   private var isLoading = false
   /// The pictures of the stickers, by sticker id (loaded from the project folder when first needed).
@@ -61,6 +61,8 @@ final class PSState: ObservableObject {
   @Published var isSending = false
   /// The correction of the seam that is waiting for RUN (and running), and the button that proposed it.
   var seamSession: PSSeamSession?
+  /// The panorama the correction in `seamSession` was made from (the newest result may have changed since).
+  var seamSourcePath: String?
   /// Where DT Hub keeps the presets (the seam correction reads the model of its preset from there).
   var presetsFolder = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/DT Hub/Presets", isDirectory: true)
   @Published var isSeamPrepared = false

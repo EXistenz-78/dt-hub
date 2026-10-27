@@ -31,6 +31,12 @@ extension PSState {
     guard let path = lastResultPath, !isSending else { return }
     isSending = true
     defer { isSending = false }
+    if let message = await proposeSeamCorrection(panorama: path, contribute: contribute) { error = message }
+  }
+
+  /// Builds the correction from the panorama file and proposes the guided pipeline to the app. Nil when the app took it,
+  /// otherwise why not (the button shows it; the queue reports it).
+  func proposeSeamCorrection(panorama path: String, contribute: PSContribute) async -> String? {
     let italian = italian, folder = exchangeFolder
     // The reading of the panorama and its roll are heavy for a big one: not on the main thread.
     let made = await Task.detached(priority: .userInitiated) { () -> PSSeamSession? in
@@ -39,22 +45,18 @@ extension PSState {
       else { return nil }
       return PSSeamSession(panorama: panorama, plan: plan, folder: folder, italian: italian)
     }.value
-    guard let session = made else {
-      error = text(.seamUnreadable)
-      return
-    }
+    guard let session = made else { return text(.seamUnreadable) }
     let pipeline: [String: Any] = ["name": text(.seamPipelineName), "guided": true, "passes": 1, "estimate": session.estimate()]
-    if let message = problem(in: await contribute(["pipeline": pipeline])) {
-      error = message
-      return
-    }
+    if let message = problem(in: await contribute(["pipeline": pipeline])) { return message }
     seamSession = session
+    seamSourcePath = path
     isSeamPrepared = true
     if let model = PSSeam.presetModel(in: presetsFolder), model != modelFile {
       notice = text(.seamModel, model.replacingOccurrences(of: ".ckpt", with: ""))
     } else {
       notice = text(.seamReady)
     }
+    return nil
   }
 
   /// `session.next`: the pass, or `{"done":true}` when there is none to give.
@@ -73,6 +75,7 @@ extension PSState {
   func seamEnded(_ message: Data, contribute: PSContribute) async {
     guard let session = seamSession else { return }
     seamSession = nil
+    seamSourcePath = nil
     isSeamPrepared = false
     error = nil
     notice = nil
