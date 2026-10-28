@@ -106,12 +106,26 @@ struct PFSessionTests {
     #expect((try? FileManager.default.contentsOfDirectory(atPath: folder.path))?.isEmpty == true, "the files it wrote are gone")
   }
 
-  @Test func aWrongSizedPictureKeepsTheRawPanorama() throws {
+  @Test func aSquarePictureOfAnotherSizeIsScaledAndMerged() throws {
     let session = generate(folder: TestImages.tempFolder())
     _ = session.next(index: 1, previous: nil)
     _ = session.next(index: 2, previous: picture(256, 128))
     let result = try #require(panorama(session.end(reason: "finished", previous: picture(100, 100))))
+    #expect(result.corrected && result.image.width == 256 && result.image.height == 128)
+  }
+
+  @Test func aPictureThatIsNotSquareKeepsTheRawPanorama() throws {
+    let session = generate(folder: TestImages.tempFolder())
+    _ = session.next(index: 1, previous: nil)
+    _ = session.next(index: 2, previous: picture(256, 128))
+    let result = try #require(panorama(session.end(reason: "finished", previous: picture(200, 100))))
     #expect(!result.corrected && result.image.width == 256)
+  }
+
+  @Test func seamOnlyWithAPictureThatIsNotSquareGivesWrongSize() {
+    let session = PFSession(kind: .seamOnly(panorama: TestImages.coordinates(width: 256, height: 128)), folder: TestImages.tempFolder())
+    _ = session.next(index: 1, previous: nil)
+    #expect(problem(session.end(reason: "finished", previous: picture(200, 100))) == .wrongSize)
   }
 
   @Test func anUnreadablePictureKeepsTheRawPanorama() throws {

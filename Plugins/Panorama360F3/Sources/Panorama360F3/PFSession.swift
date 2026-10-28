@@ -163,9 +163,10 @@ final class PFSession: @unchecked Sendable {
 
   /// The corrected panorama when the picture of the Seamfix pass is there, the right size and readable.
   private func merged(previous: Previous?) -> PFOutcome? {
-    guard let previous, let panorama, let plan, previous.width == plan.side, previous.height == plan.side,
-      let generated = Self.load(URL(fileURLWithPath: previous.path)), generated.width == plan.side, generated.height == plan.side,
-      let image = PFSeam.merge(result: generated, into: panorama, plan: plan)
+    // The pass is run at exactly its size; a square picture of another size is scaled to it (spec §6), anything else cannot be used.
+    guard let previous, let panorama, let plan, previous.width == previous.height,
+      let generated = Self.load(URL(fileURLWithPath: previous.path)), generated.width == generated.height,
+      let square = Self.scaled(generated, toSide: plan.side), let image = PFSeam.merge(result: square, into: panorama, plan: plan)
     else { return nil }
     return .panorama(image, corrected: true)
   }
@@ -173,8 +174,20 @@ final class PFSession: @unchecked Sendable {
   /// Why a `finished` run could not be corrected (for `seamOnly`, which has no raw panorama to fall back on).
   private func failure(previous: Previous?) -> PFProblem {
     guard let previous else { return .noPicture }
-    guard let plan, previous.width == plan.side, previous.height == plan.side else { return .wrongSize }
+    guard previous.width == previous.height else { return .wrongSize }
     return Self.load(URL(fileURLWithPath: previous.path)) == nil ? .unreadable : .failed
+  }
+
+  /// The picture at `side × side` (high-quality interpolation); the picture itself when it already is that size.
+  static func scaled(_ image: CGImage, toSide side: Int) -> CGImage? {
+    guard image.width != side || image.height != side else { return image }
+    guard let context = CGContext(
+      data: nil, width: side, height: side, bitsPerComponent: 8, bytesPerRow: side * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+      bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)
+    else { return nil }
+    context.interpolationQuality = .high
+    context.draw(image, in: CGRect(x: 0, y: 0, width: side, height: side))
+    return context.makeImage()
   }
 
   static func load(_ url: URL) -> CGImage? {

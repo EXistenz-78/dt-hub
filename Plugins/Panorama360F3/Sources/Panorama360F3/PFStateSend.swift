@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import ImageIO
 
 extension PFState {
   /// What the app answered in `problems`, or its error: the words to show; nil when it took the contribution.
@@ -28,6 +29,13 @@ extension PFState {
       let url = projectFolder.appendingPathComponent(image.file)
       guard FileManager.default.fileExists(atPath: url.path) else {
         error = text(.imageMissing, image.name)
+        return
+      }
+      // A file that is there but cannot be read (cut short, corrupt) would be dropped by the app and shift the numbers of the pictures.
+      guard let source = CGImageSourceCreateWithURL(url as CFURL, nil), CGImageSourceGetCount(source) > 0,
+        CGImageSourceCreateThumbnailAtIndex(source, 0, [kCGImageSourceCreateThumbnailFromImageAlways: true, kCGImageSourceThumbnailMaxPixelSize: 16] as CFDictionary) != nil
+      else {
+        error = text(.unreadableFile, image.name)
         return
       }
       urls.append(url)

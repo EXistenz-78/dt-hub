@@ -44,6 +44,14 @@ struct PFStateSendTests {
     #expect(state.error?.contains("r0.png") == true)
   }
 
+  @Test func sendFailsWithAnErrorWhenAnImageFileIsUnreadable() async throws {
+    let (state, recorder, project) = ready()
+    try Data("not a picture".utf8).write(to: project.appendingPathComponent(state.doc.images[1].file))
+    await state.send(contribute: recorder.contribute)
+    #expect(recorder.bodies.isEmpty)
+    #expect(state.error?.contains("r1.png") == true)
+  }
+
   @Test func sendWithNoVisibleImageDoesNothing() async {
     let (state, recorder, _) = ready(images: 0)
     await state.send(contribute: recorder.contribute)
