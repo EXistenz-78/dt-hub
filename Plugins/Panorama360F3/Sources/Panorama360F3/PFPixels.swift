@@ -35,4 +35,16 @@ enum PFPixels {
     CGImageDestinationAddImage(destination, image, nil)
     return CGImageDestinationFinalize(destination) ? data as Data : nil
   }
+
+  /// The picture at `width × height` (high-quality interpolation); the picture itself when it already is that size.
+  static func scaled(_ image: CGImage, width: Int, height: Int) -> CGImage? {
+    guard image.width != width || image.height != height else { return image }
+    guard let context = CGContext(
+      data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+      bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)
+    else { return nil }
+    context.interpolationQuality = .high
+    context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+    return context.makeImage()
+  }
 }

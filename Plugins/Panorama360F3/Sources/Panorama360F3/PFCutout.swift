@@ -34,6 +34,23 @@ enum PFCutout {
     return (width, width * 3 / 4)
   }
 
+  /// The widest montage that is made (the limit of a Fix-the-seam pass and of HiRes: 8192 × 4096).
+  static let maxMontageWidth = 8192
+
+  /// The size the montage is made at. Put back at the pixel density of the panorama, a retouch of `patchWidth` pixels over `fov` degrees would be
+  /// squeezed into `W · fov / 360` pixels and lose its detail; so the panorama is enlarged until the retouch has its own pixels at the centre of the
+  /// view (a width of π · patchWidth / tan(fov / 2), rounded up to a multiple of 128), never smaller than it is and never above `maxMontageWidth`
+  /// (a panorama already wider keeps its size). The proportions of the panorama are kept.
+  static func montageSize(background: (Int, Int), patchWidth: Int, fov: Double) -> (Int, Int) {
+    let half = tan(min(170, max(5, fov)) * .pi / 180 / 2)
+    let needed = Double(patchWidth) * .pi / half
+    var width = background.0
+    if needed > Double(width) { width = min(maxMontageWidth, Int((needed / 128).rounded(.up)) * 128) }
+    width = max(width, background.0)
+    let factor = Double(width) / Double(background.0)
+    return (width, Int((Double(background.1) * factor).rounded()))
+  }
+
   /// Why «put back» is off; nil when it is on.
   enum PutBackReason: Equatable {
     /// Nothing has been extracted yet.

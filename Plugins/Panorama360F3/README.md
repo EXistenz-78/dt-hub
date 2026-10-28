@@ -12,7 +12,7 @@ For the same job on FLUX.2 [klein], with pictures placed on a canvas, see [Panor
 2. **Prompt.** The description of the place is optional: **Improve prompt** asks the local LLM to write one in English from the pictures (**Undo** brings the old text back). **Send to Generation** (top right of the card) is off until there is a picture with its eye on.
 3. **Viewer.** The sphere view of the latest result, closed at first: it opens by itself when a panorama arrives (or by the arrow). Drag to look around, the wheel or a pinch to zoom, the target button looks straight ahead. You can **drop any picture** on it (from the Finder or the Results strip): it is shown as the result and **Fix the seam** works on it.
 
-   The **Cutout** is on the header of the Viewer, as in Panorama 360: set the size in megapixels and press **Extract** to take the view you are looking at as a flat 4:3 picture (1.0 MP is 1280 × 960). Then **Use as start image** (it also sets the Generation tab's size to the cutout's), **Add to Moodboard** (DT Hub's own Moodboard) or **Save…** let you retouch it with an edit model (switch the 360 LoRA off first); when the RUN ends, **Put back in the panorama** pastes the retouch, with a soft edge, on the panorama the cutout was taken from and sends the montage to the **Results**.
+   The **Cutout** is on the header of the Viewer, as in Panorama 360: set the size in megapixels and press **Extract** to take the view you are looking at as a flat 4:3 picture (1.0 MP is 1280 × 960). Then **Use as start image** (it also sets the Generation tab's size to the cutout's), **Add to Moodboard** (DT Hub's own Moodboard) or **Save…** let you retouch it with an edit model (switch the 360 LoRA off first); when the RUN ends, **Put back in the panorama** pastes the retouch, with a soft edge, on the panorama the cutout was taken from and sends the montage to the **Results**. The montage is made on the panorama **enlarged** until the retouch has its own pixels (up to 8192 × 4096), so it does not lose detail.
 
 ## What the pipeline does
 
@@ -34,7 +34,7 @@ The first time DT Hub starts with the plug-in, it adds `PANO F3` and `PANO F3 Se
 | | `PANO F3` | `PANO F3 Seamfix` |
 | --- | --- | --- |
 | Model | `flux_3_klein_q8p.ckpt` | the same |
-| Steps / guidance / sampler / shift | 16 / 1 / 16 / 16 | the same |
+| Steps / guidance / sampler / shift | 24 / 1 / 16 / 16 | 16 / 1 / 16 / 16 |
 | HiRes | on | on |
 | LoRA | `f3_360_lora_f16.ckpt` at 1, trigger `create a 360 hdr` | `f3_seamfix_lora_f16.ckpt` at 1, trigger `seamfix` |
 

@@ -18,7 +18,7 @@ struct PFPresetsTests {
   @Test func theFieldsAreThoseOfTheUsersPresets() {
     for preset in PFPresets.messages() {
       let f = fields(preset)
-      #expect(f["steps"] as? Int == 16)
+      #expect(f["steps"] as? Int == (preset["name"] as? String == "PANO F3" ? 24 : 16))
       #expect(f["guidanceScale"] as? Double == 1.0)
       #expect(f["sampler"] as? Int == 16)
       #expect(f["shift"] as? Double == 16.0)

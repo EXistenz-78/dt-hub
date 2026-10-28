@@ -21,7 +21,7 @@ struct PFSphereView: View {
       ZStack(alignment: .topTrailing) {
         Color.black.opacity(0.85)
         if let image = state.preview {
-          Image(decorative: image, scale: 1).resizable().frame(width: size.width, height: size.height)
+          Image(decorative: image, scale: 1).resizable().interpolation(.high).frame(width: size.width, height: size.height)
         } else {
           Text(state.text(.noResultYet)).foregroundStyle(.secondary).frame(maxWidth: .infinity, maxHeight: .infinity)
         }

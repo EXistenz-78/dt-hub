@@ -42,6 +42,24 @@ struct PFCutoutTests {
     #expect(PFCutout.size(megapixels: 99) == (2304, 1728) && PFCutout.size(megapixels: 0) == (512, 384))
   }
 
+  @Test func theMontageIsEnlargedSoThatTheRetouchKeepsItsPixels() {
+    // 1280 px over 90° need π·1280/tan(45°) ≈ 4021 px of panorama width, rounded up to a multiple of 128.
+    #expect(PFCutout.montageSize(background: (2048, 1024), patchWidth: 1280, fov: 90) == (4096, 2048))
+    #expect(PFCutout.montageSize(background: (512, 256), patchWidth: 512, fov: 80) == (1920, 960))
+  }
+
+  @Test func theMontageIsNeverSmallerThanThePanoramaAndNeverAboveTheCap() {
+    #expect(PFCutout.montageSize(background: (4096, 2048), patchWidth: 512, fov: 90) == (4096, 2048))
+    #expect(PFCutout.montageSize(background: (2048, 1024), patchWidth: 256, fov: 90) == (2048, 1024))
+    #expect(PFCutout.montageSize(background: (2048, 1024), patchWidth: 2304, fov: 20) == (8192, 4096), "the cap is 8192 px wide")
+    #expect(PFCutout.montageSize(background: (9000, 4500), patchWidth: 2304, fov: 20) == (9000, 4500), "a panorama already above the cap is kept")
+  }
+
+  @Test func aPanoramaThatIsNotTwoToOneKeepsItsProportionWhenEnlarged() {
+    let size = PFCutout.montageSize(background: (3000, 1000), patchWidth: 1280, fov: 90)
+    #expect(size.0 == 4096 && size.1 == 1365)
+  }
+
   @Test func putBackReasonsInOrder() {
     let taken = PFCutoutMemory(yaw: 0, pitch: 0, fov: 90, width: 512, height: 384, resultPathAtExtraction: "/r/a.png", patchPath: nil)
     let sizes: [String: (Int, Int)] = ["/r/b.png": (512, 384), "/r/odd.png": (400, 400)]
@@ -138,7 +156,7 @@ struct PFCutoutTests {
     let result = try #require(recorder.bodies.first?["result"] as? [String: Any])
     let path = try #require(result["path"] as? String)
     let size = try #require(TestImages.size(of: URL(fileURLWithPath: path)))
-    #expect(size.width == 512 && size.height == 256, "the montage has the size of the panorama it was taken from")
+    #expect(size.width == 1920 && size.height == 960, "the montage is the panorama enlarged so that the retouch keeps its pixels")
     #expect((result["description"] as? String)?.contains("yaw") == true)
     #expect(state.doc.lastCutout?.patchPath == patch.path)
     #expect(FileManager.default.fileExists(atPath: panorama.path))

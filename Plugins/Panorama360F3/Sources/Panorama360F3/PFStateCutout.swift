@@ -100,7 +100,10 @@ extension PFState {
       let place = Sticker(name: "patch", file: "", yaw: memory.yaw, pitch: memory.pitch, rot: 0, hfov: memory.fov)
       var layer = PSLayer(image: patch, basis: PSProjection.basis(for: place, aspect: Double(patch.width) / Double(patch.height)), opacity: 1)
       layer.feather = 0.03
-      let montage = try PSRendererFactory.make().render([layer], width: background.width, height: background.height, uOffset: 0, background: background)
+      // The panorama is enlarged so that the retouch keeps its pixels instead of being squeezed to the density of the panorama.
+      let target = PFCutout.montageSize(background: (background.width, background.height), patchWidth: patch.width, fov: memory.fov)
+      guard let enlarged = PFPixels.scaled(background, width: target.0, height: target.1) else { throw PFCutoutError.cannotWrite }
+      let montage = try PSRendererFactory.make().render([layer], width: target.0, height: target.1, uOffset: 0, background: enlarged)
       let file = try writeTemporary(montage, prefix: "pano-360-f3-montage")
       let description = text(.montageDescription, memory.yaw, memory.pitch, memory.fov)
       if let message = problem(in: await contribute(PFCutoutActions.montageBody(file: file, description: description))) {

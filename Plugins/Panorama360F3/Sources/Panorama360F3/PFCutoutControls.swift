@@ -24,7 +24,8 @@ struct PFCutoutControls: View {
       .textFieldStyle(.roundedBorder).font(.body.monospaced()).frame(width: 56)
       Text(state.text(.megapixels)).font(.caption).foregroundStyle(.secondary)
         .help("\(size.width) × \(size.height) px")
-      Button(state.text(.extract)) { extract() }.buttonStyle(DSPillButtonStyle()).disabled(state.resultImage == nil)
+      Button { extract() } label: { Text(state.text(.extract)).lineLimit(1) }
+        .buttonStyle(DSPillButtonStyle()).fixedSize().disabled(state.resultImage == nil)
       iconButton("square.and.arrow.up", help: state.text(.actionStart), enabled: state.cutoutImage != nil) { actions.cutoutStart() }
       iconButton("square.grid.2x2", help: state.text(.actionMoodboard), enabled: state.cutoutImage != nil) { actions.cutoutMoodboard() }
       iconButton("square.and.arrow.down", help: state.text(.actionSave), enabled: state.cutoutImage != nil) { save() }
@@ -34,7 +35,7 @@ struct PFCutoutControls: View {
 
   @ViewBuilder private var thumbnail: some View {
     if let image = state.cutoutImage {
-      Image(decorative: image, scale: 1).resizable().scaledToFit().frame(width: 48, height: 36).clipShape(RoundedRectangle(cornerRadius: 5))
+      Image(decorative: image, scale: 1).resizable().interpolation(.high).scaledToFit().frame(width: 48, height: 36).clipShape(RoundedRectangle(cornerRadius: 5))
     } else {
       RoundedRectangle(cornerRadius: 5).fill(Color.primary.opacity(0.12)).frame(width: 48, height: 36)
     }

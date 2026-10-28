@@ -24,7 +24,7 @@ enum PFPresets {
       [
         "name": name, "model": model,
         "fields": [
-          "steps": 16, "guidanceScale": 1.0, "sampler": 16, "shift": 16.0, "resolutionDependentShift": false, "highRes": true,
+          "steps": seam ? 16 : 24, "guidanceScale": 1.0, "sampler": 16, "shift": 16.0, "resolutionDependentShift": false, "highRes": true,
         ] as [String: Any],
         "loras": [lora(seam: seam)],
       ]
