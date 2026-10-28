@@ -9,8 +9,8 @@ enum L {
     case croppedPhoto, unreadableFile, openProjectFirst, dropHere, dropResult
     case seamDescription, seamButton, seamPipelineName, seamReady, seamModel, seamDone, seamStopped, seamClosed, seamFailed, seamNoPicture, seamWrongSize, seamUnreadablePicture
     case seamNoResult, seamUnreadable, seamNotTwoToOne, seamSize, seamTooBig, queueNotPrepared
-    case cutoutSize, extract, actionStart, actionMoodboard, actionSave, actionSticker, actionPanorama, cutoutNothing, putBackOff, montageDescription
-    case putBackNoCutout, putBackNoPatch, putBackWrongProportion, putBackPatchMissing, putBackNoPanorama, putBackPanoramaMissing, megapixels
+    case extract, actionStart, actionMoodboard, actionSave, actionSticker, actionPanorama, cutoutNothing, putBackOff, montageDescription
+    case putBackNoCutout, putBackNoPatch, putBackWrongProportion, putBackPatchMissing, putBackNoPanorama, putBackPanoramaMissing
     case viewPlane, viewSphere, sourceCanvas, sourceResult, resetView, noResultYet, resultUnreadable, resultNotTwoToOne
     case modeNormal, modeFast, send, noVisibleSticker, sendFailed, noAnswerFromApp, notBaseWarning
     case promptTitle, promptPlaceholder, improve, improving, undo, words, emptyDescription, answerNotEnglish, answerRejected, improveStale
@@ -44,14 +44,14 @@ enum L {
     .seamNoResult: "There is no result to fix yet.", .seamUnreadable: "The last result's file cannot be read.",
     .seamNotTwoToOne: "The last result is not 2:1.", .seamSize: "The size of the last result is not a multiple of 64 on both sides.",
     .seamTooBig: "The last result is too big: the picture would pass 8192 px on a side.",
-    .cutoutSize: "Size", .extract: "Extract", .actionStart: "Use as start image", .actionMoodboard: "Add to Moodboard", .actionSave: "Save…",
+    .extract: "Extract", .actionStart: "Use as start image", .actionMoodboard: "Add to Moodboard", .actionSave: "Save…",
     .actionSticker: "Put back as a sticker", .actionPanorama: "Put back in the panorama (goes to the Results)",
     .cutoutNothing: "Extract the view first.", .putBackOff: "The retouch cannot be put back.",
     .montageDescription: "Montage · cutout put back at yaw %.0f° pitch %.0f° FOV %.0f°",
     .putBackNoCutout: "Extract a view first.", .putBackNoPatch: "Make the retouch first: a RUN on the cutout.",
     .putBackWrongProportion: "The retouch is not 4:3 like the cutout: make it at the size of the cutout.", .putBackPatchMissing: "The retouch's file cannot be read.",
     .putBackNoPanorama: "There was no result when the cutout was taken, so there is no panorama to paste it on.",
-    .putBackPanoramaMissing: "The panorama the cutout was taken from is not there any more.", .megapixels: "MP",
+    .putBackPanoramaMissing: "The panorama the cutout was taken from is not there any more.",
     .viewPlane: "Plane", .viewSphere: "Sphere", .sourceCanvas: "Canvas", .sourceResult: "Result", .resetView: "Look straight ahead",
     .noResultYet: "No result yet.\nRUN and it will show here.", .resultUnreadable: "The last result's file cannot be read.",
     .resultNotTwoToOne: "The last result is not 2:1: it is shown as a panorama all the same.",
@@ -84,14 +84,14 @@ enum L {
     .seamNoResult: "Non c'è ancora un risultato da correggere.", .seamUnreadable: "Il file dell'ultimo risultato non si legge.",
     .seamNotTwoToOne: "L'ultimo risultato non è 2:1.", .seamSize: "Le dimensioni dell'ultimo risultato non sono multipli di 64 su entrambi i lati.",
     .seamTooBig: "L'ultimo risultato è troppo grande: l'immagine supererebbe 8192 px per lato.",
-    .cutoutSize: "Dimensione", .extract: "Estrai", .actionStart: "Usa come immagine di partenza", .actionMoodboard: "Aggiungi al Moodboard",
+    .extract: "Estrai", .actionStart: "Usa come immagine di partenza", .actionMoodboard: "Aggiungi al Moodboard",
     .actionSave: "Salva…", .actionSticker: "Rimetti come sticker", .actionPanorama: "Rimetti nel panorama (va ai Risultati)",
     .cutoutNothing: "Estrai prima la vista.", .putBackOff: "Il ritocco non si può rimettere.",
     .montageDescription: "Montaggio · ritaglio rimesso a yaw %.0f° pitch %.0f° FOV %.0f°",
     .putBackNoCutout: "Estrai prima una vista.", .putBackNoPatch: "Fai prima il ritocco: un RUN sul ritaglio.",
     .putBackWrongProportion: "Il ritocco non è 4:3 come il ritaglio: fallo alla dimensione del ritaglio.", .putBackPatchMissing: "Il file del ritocco non si legge.",
     .putBackNoPanorama: "Quando hai estratto non c'era un risultato: non c'è un panorama su cui incollarlo.",
-    .putBackPanoramaMissing: "Il panorama da cui hai estratto non c'è più.", .megapixels: "MP",
+    .putBackPanoramaMissing: "Il panorama da cui hai estratto non c'è più.",
     .viewPlane: "Piano", .viewSphere: "Sfera", .sourceCanvas: "Canvas", .sourceResult: "Risultato", .resetView: "Riporta la vista davanti",
     .noResultYet: "Nessun risultato ancora.\nFai un RUN e comparirà qui.", .resultUnreadable: "Il file dell'ultimo risultato non si legge.",
     .resultNotTwoToOne: "L'ultimo risultato non è 2:1: lo mostro lo stesso come panorama.",

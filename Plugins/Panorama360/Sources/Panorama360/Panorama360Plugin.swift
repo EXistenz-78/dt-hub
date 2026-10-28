@@ -8,7 +8,7 @@ final class Panorama360Plugin: DTHubPlugin {
   static let families = ["flux2_9b", "flux2_4b"]
 
   let manifest = DTHubManifest(
-    id: "com.exiztenz.dthub.panorama360", name: "Panorama 360", version: "1.3", symbol: "globe",
+    id: "com.exiztenz.dthub.panorama360", name: "Panorama 360", version: "1.4", symbol: "globe",
     families: Panorama360Plugin.families)
   private let state = PSState()
   private var host: DTHubHost?

@@ -58,7 +58,6 @@ struct PanoState: Codable, Equatable, Sendable {
   var viewMode = PSViewMode.plane
   var source = PSSource.canvas
   var camera = PSCamera()
-  var cutoutMegapixels = 1.0
   var lastCutout: PSCutoutMemory?
 
   init() {}
@@ -78,7 +77,6 @@ struct PanoState: Codable, Equatable, Sendable {
     source = (try? c.decodeIfPresent(PSSource.self, forKey: .source)) ?? .canvas
     camera = (try? c.decodeIfPresent(PSCamera.self, forKey: .camera)) ?? PSCamera()
     camera.clamp()
-    cutoutMegapixels = (try? c.decodeIfPresent(Double.self, forKey: .cutoutMegapixels)) ?? 1
     lastCutout = (try? c.decodeIfPresent(PSCutoutMemory.self, forKey: .lastCutout)) ?? nil
   }
 

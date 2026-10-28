@@ -39,6 +39,19 @@ extension PSRendering {
 
 /// Pictures as bytes: premultiplied RGBA, 8 bits, sRGB, the first row on top.
 enum PSPixels {
+  /// The picture at `width × height` (high-quality interpolation); the picture itself when it already is that size.
+  static func scaled(_ image: CGImage, width: Int, height: Int) -> CGImage? {
+    guard image.width != width || image.height != height else { return image }
+    guard let context = CGContext(
+      data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+      bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)
+    else { return nil }
+    context.interpolationQuality = .high
+    context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+    return context.makeImage()
+  }
+
+
   static func rgba(of image: CGImage) -> (bytes: [UInt8], width: Int, height: Int) {
     let width = image.width, height = image.height
     var bytes = [UInt8](repeating: 0, count: width * height * 4)

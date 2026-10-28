@@ -64,7 +64,6 @@ struct PSModelsTests {
     let state = PanoState.load(from: folder)
     #expect(state.stickers.count == 1 && state.description == "harbour" && state.mode == .fast && !state.guides)
     #expect(state.viewMode == .plane && state.source == .canvas && state.camera == PSCamera() && state.lastCutout == nil)
-    #expect(state.cutoutMegapixels == 1)
     #expect(!FileManager.default.fileExists(atPath: folder.appendingPathComponent("state.json.bak").path))
   }
 
@@ -74,7 +73,6 @@ struct PSModelsTests {
     state.viewMode = .sphere
     state.source = .result
     state.camera = PSCamera(yaw: 30, pitch: -10, fov: 70)
-    state.cutoutMegapixels = 2
     state.lastCutout = PSCutoutMemory(
       yaw: 30, pitch: -10, fov: 70, width: 1152, height: 896, resultPathAtExtraction: "/r/a.png", patchPath: "/r/b.png")
     try state.save(to: folder)
@@ -89,7 +87,7 @@ struct PSModelsTests {
     ).write(to: folder.appendingPathComponent("state.json"))
     let state = PanoState.load(from: folder)
     #expect(state.description == "x" && state.camera == PSCamera() && state.viewMode == .plane && state.source == .canvas)
-    #expect(state.cutoutMegapixels == 1 && state.lastCutout == nil)
+    #expect(state.lastCutout == nil)
   }
 
   @Test func aDamagedStickerIsStillACorruptFileNotAnEmptyOne() throws {

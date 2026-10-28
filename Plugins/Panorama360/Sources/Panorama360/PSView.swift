@@ -36,6 +36,8 @@ struct PSView: View {
       DSPanelHeader(icon: "globe", title: state.text(.canvasTitle))
       VStack(alignment: .leading, spacing: DS.rowGap) {
         HStack(spacing: DS.controlGap) {
+          Toggle(state.text(.guides), isOn: Binding(get: { state.doc.guides }, set: { value in state.mutate { $0.guides = value } }))
+            .toggleStyle(DSCheckboxToggleStyle())
           Picker("", selection: Binding(get: { state.doc.viewMode }, set: { state.setView($0) })) {
             Label(state.text(.viewPlane), systemImage: "rectangle").tag(PSViewMode.plane)
             Label(state.text(.viewSphere), systemImage: "globe").tag(PSViewMode.sphere)
@@ -48,21 +50,6 @@ struct PSView: View {
             }
             .pickerStyle(.segmented).labelsHidden().frame(maxWidth: 220)
           }
-          Spacer(minLength: 0)
-          Text(verbatim: isSphere ? "4:3" : "2048 × 1024 · 360°")
-            .font(.caption.monospaced()).foregroundStyle(.secondary)
-        }
-        HStack(spacing: DS.controlGap) {
-          Button { choosingFiles = true } label: { Image(systemName: "plus") }
-            .buttonStyle(DSGlassCircleButtonStyle()).help(state.text(.add)).disabled(viewOnly)
-          Button { confirmingClear = true } label: { Image(systemName: "trash") }
-            .buttonStyle(DSGlassCircleButtonStyle()).help(state.text(.clearAll)).disabled(state.doc.stickers.isEmpty || viewOnly)
-          if isSphere {
-            Button { state.resetCamera() } label: { Image(systemName: "scope") }
-              .buttonStyle(DSGlassCircleButtonStyle()).help(state.text(.resetView))
-          }
-          Toggle(state.text(.guides), isOn: Binding(get: { state.doc.guides }, set: { value in state.mutate { $0.guides = value } }))
-            .toggleStyle(DSCheckboxToggleStyle())
           Spacer(minLength: 0)
           Button { actions.fixSeam() } label: { Text(state.text(.seamButton)).lineLimit(1) }
             .buttonStyle(DSPillButtonStyle()).disabled(state.seamReason != nil || state.isSending)
@@ -88,6 +75,21 @@ struct PSView: View {
   private var area: some View {
     Group {
       if isSphere { PSSphereView(state: state) } else { PSCanvasView(state: state) }
+    }
+    // The buttons of the view sit on its corners: add (bottom left), delete all (bottom right), centre the view (top right, sphere only).
+    .overlay(alignment: .bottomLeading) {
+      Button { choosingFiles = true } label: { Image(systemName: "plus") }
+        .buttonStyle(DSGlassCircleButtonStyle()).help(state.text(.add)).disabled(viewOnly).padding(10)
+    }
+    .overlay(alignment: .bottomTrailing) {
+      Button { confirmingClear = true } label: { Image(systemName: "trash") }
+        .buttonStyle(DSGlassCircleButtonStyle()).help(state.text(.clearAll)).disabled(state.doc.stickers.isEmpty || viewOnly).padding(10)
+    }
+    .overlay(alignment: .topTrailing) {
+      if isSphere {
+        Button { state.resetCamera() } label: { Image(systemName: "scope") }
+          .buttonStyle(DSGlassCircleButtonStyle()).help(state.text(.resetView)).padding(10)
+      }
     }
     .overlay {
       if dropTargeted {

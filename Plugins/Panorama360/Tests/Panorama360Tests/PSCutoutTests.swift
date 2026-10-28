@@ -29,26 +29,70 @@ struct PSCutoutTests {
 
   func size(of url: URL) -> (Int, Int)? { PSCutout.pixelSize(of: url).map { ($0.width, $0.height) } }
 
-  @Test func theCutoutSizeIsFourByThreeInMultiplesOf64() {
-    for (mp, expected) in [(1.0, (1280, 960)), (0.25, (512, 384)), (4.0, (2304, 1728))] {
-      let s = PSCutout.size(megapixels: mp)
-      #expect(s.width == expected.0 && s.height == expected.1, "\(mp) MP → \(s)")
-      #expect(s.width % 64 == 0 && s.height % 64 == 0)
-      #expect(s.width * 3 == s.height * 4, "exactly 4:3: \(s)")
+  @Test func theCutoutKeepsTheRealResolutionAndItsSidesAreMultiplesOf64() {
+    // 2048 px at 90°: 651.9 × 489.0 pixels across the view; each side is extended to the next multiple of 64 and the field of view widens with it
+    // (more picture, the same pixels per degree), so nothing is stretched.
+    let a = PSCutout.cutoutFrame(panoramaWidth: 2048, fov: 90)
+    #expect(a.width == 704 && a.height == 512)
+    #expect(abs(a.fov - 94.4) < 0.1)
+    let b = PSCutout.cutoutFrame(panoramaWidth: 4096, fov: 90)
+    #expect(b.width == 1344 && b.height == 1024)
+    #expect(abs(b.fov - 91.7) < 0.1)
+  }
+
+  @Test func theDensityOfTheCutoutEqualsTheDensityOfThePanorama() {
+    for (width, fov) in [(2048, 90.0), (4096, 70.0), (3072, 110.0), (6144, 85.0)] {
+      let frame = PSCutout.cutoutFrame(panoramaWidth: width, fov: fov)
+      let pixelsPerTan = Double(frame.width) / (2 * tan(frame.fov * .pi / 360))
+      let panoramaPerTan = Double(width) / (2 * .pi)
+      #expect(abs(pixelsPerTan - panoramaPerTan) / panoramaPerTan < 0.001, "width \(width), fov \(fov)")
+      #expect(frame.width % 64 == 0 && frame.height % 64 == 0)
     }
-    #expect(PSCutout.size(megapixels: 0).width == PSCutout.size(megapixels: 0.25).width)
-    #expect(PSCutout.size(megapixels: 99).width == PSCutout.size(megapixels: 4).width)
+  }
+
+  @Test func aSmallOrHugeViewKeepsItsFieldOfViewAndTheSizeLimits() {
+    let small = PSCutout.cutoutFrame(panoramaWidth: 2048, fov: 60)
+    #expect(small.width == 512 && small.height == 384 && small.fov == 60, "never below 512 × 384")
+    let huge = PSCutout.cutoutFrame(panoramaWidth: 8192, fov: 150)
+    #expect(huge.width == 4096 && huge.height == 3072 && huge.fov == 150, "never above 4096 × 3072")
+  }
+
+  @Test func theRetouchIsBroughtToThePixelDensityOfThePanorama() {
+    #expect(PSCutout.patchDensityWidth(panoramaWidth: 2048, fov: 90) == 652)
+    #expect(PSCutout.patchDensityWidth(panoramaWidth: 4096, fov: 60) == 753)
+    let frame = PSCutout.cutoutFrame(panoramaWidth: 2048, fov: 90)
+    #expect(PSCutout.patchDensityWidth(panoramaWidth: 2048, fov: frame.fov) == frame.width)
+  }
+
+  @Test func theCutoutOfTheResultIsTakenAtTheRealResolutionOfThePanoramaFile() throws {
+    // 4400 px wide: the picture the tab shows is cut to 4096, the cutout must be read from the file at its own size.
+    let state = readyState(result: file(4400, 2200, (10, 120, 200), name: "big.png"))
+    state.setSource(.result)
+    state.mutate { $0.camera = PSCamera(yaw: 0, pitch: 0, fov: 60) }
+    let image = try state.extractCutout()
+    #expect(image.width == 832 && image.height == 640, "from 4400 px, not from 4096")
+    #expect(state.doc.lastCutout?.width == 832)
+  }
+
+  @Test func theCutoutOfTheCanvasIsTakenAtTheResolutionOfTheCanvas() throws {
+    let state = readyState()
+    state.mutate { $0.camera = PSCamera(yaw: 0, pitch: 0, fov: 90) }
+    let image = try state.extractCutout()
+    #expect(image.width == 704 && image.height == 512, "the canvas is 2048 px wide")
+    let memory = try #require(state.doc.lastCutout)
+    #expect(abs(memory.fov - 94.4) < 0.1, "the field of view that was really drawn")
   }
 
   @Test func extractRendersTheViewAtThatSizeAndRemembersThePose() throws {
     let result = file(256, 128, (10, 120, 200), name: "r.png")
     let state = readyState(result: result)
-    state.mutate { $0.cutoutMegapixels = 0.25 }
     let image = try state.extractCutout()
     #expect(image.width == 512 && image.height == 384)
     #expect(TestImages.pixel(image, 288, 224).r > 150, "the sticker is in the middle of the view")
     let memory = try #require(state.doc.lastCutout)
-    #expect(memory.yaw == 20 && memory.pitch == 0 && memory.fov == 70 && memory.width == 512 && memory.height == 384)
+    #expect(memory.yaw == 20 && memory.pitch == 0 && memory.width == 512 && memory.height == 384)
+    // 456.5 px across the view at 70° from the 2048 px canvas: rounded up to 512, so the field of view widens to match.
+    #expect(abs(memory.fov - PSCutout.cutoutFrame(panoramaWidth: 2048, fov: 70).fov) < 0.001 && memory.fov > 70 && memory.fov < 80)
     #expect(memory.resultPathAtExtraction == result.path && memory.patchPath == nil)
     #expect(state.cutoutImage != nil)
   }
@@ -69,10 +113,17 @@ struct PSCutoutTests {
     // The retouch RUN is made at the size of the cutout, not at the 2:1 size of the panorama.
     let fields = try #require(start["fields"] as? [String: Any])
     #expect(fields["width"] as? Int == 1280 && fields["height"] as? Int == 960)
+    #expect(fields["highRes"] == nil, "HiRes only above 2048")
     #expect(fields["prompt"] == nil, "the prompt is the user's: the cutout does not write one")
     let mood = PSCutoutActions.moodboardBody(file: url)
     let list = try #require(mood["moodboard"] as? [[String: Any]])
     #expect(list.count == 1 && list[0]["path"] as? String == "/tmp/c.png")
+  }
+
+  @Test func aCutoutWithASideAbove2048AsksForHiRes() throws {
+    let big = PSCutoutActions.startImageBody(file: URL(fileURLWithPath: "/t/c.png"), width: 3072, height: 2304)
+    let fields = try #require(big["fields"] as? [String: Any])
+    #expect(fields["width"] as? Int == 3072 && fields["height"] as? Int == 2304 && fields["highRes"] as? Bool == true)
   }
 
   @Test func theActionsSendTheExtractedPicture() async throws {
@@ -87,9 +138,9 @@ struct PSCutoutTests {
     await state.addCutoutToMoodboard(contribute: send)
     #expect(bodies.count == 2 && bodies[0]["startImage"] != nil && bodies[1]["moodboard"] != nil)
     let sent = try #require(bodies[0]["fields"] as? [String: Any])
-    #expect(sent["width"] as? Int == 1280 && sent["height"] as? Int == 960)
+    #expect(sent["width"] as? Int == 512 && sent["height"] as? Int == 384)
     let path = try #require((bodies[0]["startImage"] as? [String: Any])?["path"] as? String)
-    #expect(size(of: URL(fileURLWithPath: path))! == (1280, 960))
+    #expect(size(of: URL(fileURLWithPath: path))! == (512, 384))
   }
 
   // MARK: Put back — when it is allowed
@@ -135,7 +186,7 @@ struct PSCutoutTests {
     state.putBackAsSticker()
     #expect(state.error == nil && state.doc.stickers.count == 2)
     let placed = state.doc.stickers[1]
-    #expect(placed.yaw == 20 && placed.pitch == 0 && placed.hfov == 70 && placed.rot == 0)
+    #expect(placed.yaw == 20 && placed.pitch == 0 && placed.hfov == state.doc.lastCutout?.fov && placed.rot == 0)
     #expect(state.doc.selectedID == placed.id && state.doc.viewMode == .plane && state.doc.source == .canvas)
     #expect(FileManager.default.fileExists(atPath: state.projectFolder!.appendingPathComponent(placed.file).path))
     #expect(state.doc.lastCutout?.patchPath == retouch.path)
@@ -198,7 +249,7 @@ struct PSCutoutTests {
     _ = try state.extractCutout()
     let target = TestImages.tempFolder().appendingPathComponent("saved.png")
     try state.saveCutout(to: target)
-    #expect(size(of: target)! == (1280, 960))
+    #expect(size(of: target)! == (512, 384))
     let empty = PSState(italian: false)
     #expect(throws: PSCutoutError.nothingExtracted) { try empty.saveCutout(to: target) }
   }
