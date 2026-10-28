@@ -65,8 +65,21 @@ struct GuidedPipelineContractTests {
     #expect(
       answer(pass.replacingOccurrences(of: #""height":1024"#, with: #""height":2112"#))
         == .invalid("size is larger than 2048"))
-    #expect(answer(#"{"size":{"width":512,"height":512}}"#) == .invalid("the pass has no startImage"))
     #expect(answer(#"{"startImage":{"path":"/t/a.png"}}"#) == .invalid("the pass has no size"))
+  }
+
+  @Test func aPassMayHaveNoStartImageWhenItHasASize() throws {
+    // An empty canvas of the size of the pass (with or without a Moodboard of its own).
+    guard case .pass(let bare) = answer(#"{"size":{"width":512,"height":512}}"#) else { Issue.record("not a pass"); return }
+    #expect(bare.startImage == nil && bare.moodboard == nil)
+    let json = #"{"title":"Panorama","preset":"PANO F3","moodboard":[{"path":"/t/r1.png","name":"r1"},{"path":"/t/r2.png","name":"r2"}],"size":{"width":2048,"height":1024}}"#
+    guard case .pass(let step) = answer(json) else { Issue.record("not a pass"); return }
+    #expect(step.startImage == nil && step.moodboard?.count == 2 && step.size == PipelineSize(width: 2048, height: 1024))
+  }
+
+  @Test func aMaskNeedsAStartImage() {
+    #expect(
+      answer(#"{"mask":{"path":"/t/m.png"},"size":{"width":512,"height":512}}"#) == .invalid("a mask needs a startImage"))
   }
 
   @Test func doneAndNoAnswer() {

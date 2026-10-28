@@ -160,6 +160,19 @@ struct GuidedPassInputsTests {
       GuidedPassInputs.inputs(for: step, enableInpainting: false, usesMoodboard: true).failure == .maskWithoutImage)
   }
 
+  /// The pass the Pano 360 F3 plug-in answers first: it goes through the app's parser, then through `GuidedPassInputs`, as a real run does.
+  @Test func aPanoramaPassAnswerParsesAndGivesAMoodboardOnlyInput() throws {
+    let ref = png("ref.png", width: 8, height: 8, gray: false) { _ in 30 }
+    let json =
+      #"{"title":"Panorama","preset":"PANO F3","moodboard":[{"path":"\#(ref.path)","name":"ref.png"}],"size":{"width":2048,"height":1024},"fields":{"prompt":"starting from <image 1>","highRes":true,"randomSeed":true},"loras":[{"file":"f3_360_lora_f16.ckpt","weight":1.0,"mode":0,"trigger":"create a 360 hdr"}]}"#
+    guard case .pass(let step) = SessionAnswer.parse(Data(json.utf8), tileLimit: 8192) else {
+      Issue.record("the app's parser refused the pass")
+      return
+    }
+    let inputs = try GuidedPassInputs.inputs(for: step, enableInpainting: false, usesMoodboard: true).get()
+    #expect(inputs.image == nil && inputs.hints.count == 1)
+  }
+
   @Test func aStartImagePassWithoutTheNewArgumentStillRunsAsBefore() throws {
     let tile = png("tile.png", width: 8, height: 4, gray: false) { _ in 200 }
     let inputs = try GuidedPassInputs.inputs(

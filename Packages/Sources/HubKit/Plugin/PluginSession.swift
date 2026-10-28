@@ -57,7 +57,8 @@ public enum SessionAnswer: Equatable, Sendable {
   case done
   case invalid(String)
 
-  /// A pass needs a start image and a size that is a multiple of 64 and at most `tileLimit` on each side.
+  /// A pass needs a size that is a multiple of 64 and at most `tileLimit` on each side. The start image is optional (no start image: an empty canvas),
+  /// but a mask needs one.
   public static func parse(_ data: Data?, tileLimit: Int) -> SessionAnswer {
     guard let data, let root = try? JSONDecoder().decode(JSONValue.self, from: data), case .object(let object) = root
     else { return .invalid("no answer") }
@@ -65,8 +66,9 @@ public enum SessionAnswer: Equatable, Sendable {
     var step = PipelineStep(object)
     // The strength is read from a guided pass only: a static pass of a plug-in never sets it (see `PipelineStep`).
     step.strength = PluginContribution.strength(object["strength"])
-    guard step.startImage != nil else { return .invalid("the pass has no startImage") }
     guard let size = step.size else { return .invalid("the pass has no size") }
+    // Without a start image the pass draws on an empty canvas of its size; a mask belongs to the picture it covers.
+    guard step.startImage != nil || step.mask == nil else { return .invalid("a mask needs a startImage") }
     guard size.width > 0, size.height > 0, size.width % 64 == 0, size.height % 64 == 0 else {
       return .invalid("size must be a multiple of 64")
     }
