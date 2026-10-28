@@ -4,12 +4,14 @@ import Foundation
 enum L {
   enum Key: CaseIterable {
     case moodboardTitle, add, toggleVisible, delete, unreadableFile, openProjectFirst, dropHere, imageMissing
-    case promptTitle, promptPlaceholder, improve, improving, undo, words, emptyDescription, answerNotEnglish, answerRejected, improveStale
+    case promptTitle, promptPlaceholder, improve, improving, undo, emptyDescription, answerNotEnglish, answerRejected, improveStale
     case sizeLabel, sizeUp, sizeDown
     case send, noVisibleImage, sendFailed, noAnswerFromApp, pipelineName, pipelineReady, modelNote
     case resultCorrected, resultRaw, runStopped, runClosed, runFailed, runNoPicture, runWrongSize, runUnreadable, runDone
     case viewerTitle, fixSeam, seamNoResult, seamUnreadable, seamNotTwoToOne, seamSize, seamTooBig, seamPipelineName, seamReady
     case noResultYet, resetView, dropResult
+    case extract, actionStart, actionMoodboard, actionSave, actionPanorama, cutoutNothing, putBackOff, montageDescription, megapixels
+    case putBackNoCutout, putBackNoPatch, putBackWrongProportion, putBackPatchMissing, putBackNoPanorama, putBackPanoramaMissing
   }
 
   static var systemIsItalian: Bool { Locale.preferredLanguages.first?.hasPrefix("it") ?? false }
@@ -28,7 +30,7 @@ enum L {
     .unreadableFile: "“%@” could not be read.", .openProjectFirst: "Open a project first.", .dropHere: "Drop pictures here",
     .imageMissing: "The file of “%@” is gone: remove it and add it again.",
     .promptTitle: "Prompt", .promptPlaceholder: "Describe the place (light, season, style): optional",
-    .improve: "Improve prompt", .improving: "Improving…", .undo: "Undo", .words: "%d words",
+    .improve: "Improve prompt", .improving: "Improving…", .undo: "Undo",
     .emptyDescription: "Write a few words first, or add a picture.", .answerNotEnglish: "The model did not answer in English: try again.",
     .answerRejected: "The model's answer cannot be used: try again.", .improveStale: "The text changed meanwhile: the answer was dropped.",
     .sizeLabel: "Size", .sizeUp: "Larger", .sizeDown: "Smaller",
@@ -46,6 +48,14 @@ enum L {
     .seamSize: "The height of the picture is not a multiple of 64.", .seamTooBig: "The picture is too tall: the limit is 4096 px.",
     .seamPipelineName: "Pano 360 F3 · seam", .seamReady: "Ready: press RUN in DT Hub.",
     .noResultYet: "No panorama yet", .resetView: "Look straight ahead", .dropResult: "Drop a picture to look at it",
+    .extract: "Extract", .actionStart: "Use as start image", .actionMoodboard: "Add to Moodboard", .actionSave: "Save…",
+    .actionPanorama: "Put back in the panorama (goes to the Results)", .cutoutNothing: "Extract the view first.",
+    .putBackOff: "The retouch cannot be put back.", .montageDescription: "Montage · cutout put back at yaw %.0f° pitch %.0f° FOV %.0f°",
+    .megapixels: "MP", .putBackNoCutout: "Extract a view first.", .putBackNoPatch: "Make the retouch first: a RUN on the cutout.",
+    .putBackWrongProportion: "The retouch is not 4:3 like the cutout: make it at the size of the cutout.",
+    .putBackPatchMissing: "The retouch's file cannot be read.",
+    .putBackNoPanorama: "There was no result when the cutout was taken, so there is no panorama to paste it on.",
+    .putBackPanoramaMissing: "The panorama the cutout was taken from is not there any more.",
   ]
 
   private static let it: [Key: String] = [
@@ -53,7 +63,7 @@ enum L {
     .unreadableFile: "«%@» non si può leggere.", .openProjectFirst: "Apri prima un progetto.", .dropHere: "Trascina qui le immagini",
     .imageMissing: "Il file di «%@» non c'è più: toglila e aggiungila di nuovo.",
     .promptTitle: "Prompt", .promptPlaceholder: "Descrivi il luogo (luce, stagione, stile): facoltativo",
-    .improve: "Migliora prompt", .improving: "Miglioro…", .undo: "Annulla", .words: "%d parole",
+    .improve: "Migliora prompt", .improving: "Miglioro…", .undo: "Annulla",
     .emptyDescription: "Scrivi prima qualche parola, oppure aggiungi un'immagine.",
     .answerNotEnglish: "Il modello non ha risposto in inglese: riprova.", .answerRejected: "La risposta del modello non è utilizzabile: riprova.",
     .improveStale: "Il testo è cambiato nel frattempo: la risposta è stata scartata.",
@@ -72,5 +82,13 @@ enum L {
     .seamSize: "L'altezza dell'immagine non è un multiplo di 64.", .seamTooBig: "L'immagine è troppo alta: il limite è 4096 px.",
     .seamPipelineName: "Pano 360 F3 · giunzione", .seamReady: "Pronto: premi RUN in DT Hub.",
     .noResultYet: "Ancora nessun panorama", .resetView: "Guarda dritto davanti", .dropResult: "Trascina un'immagine per guardarla",
+    .extract: "Estrai", .actionStart: "Usa come immagine di partenza", .actionMoodboard: "Aggiungi al Moodboard", .actionSave: "Salva…",
+    .actionPanorama: "Rimetti nel panorama (va ai Risultati)", .cutoutNothing: "Estrai prima la vista.",
+    .putBackOff: "Il ritocco non si può rimettere.", .montageDescription: "Montaggio · ritaglio rimesso a yaw %.0f° pitch %.0f° FOV %.0f°",
+    .megapixels: "MP", .putBackNoCutout: "Estrai prima una vista.", .putBackNoPatch: "Fai prima il ritocco: un RUN sul ritaglio.",
+    .putBackWrongProportion: "Il ritocco non è 4:3 come il ritaglio: fallo alla dimensione del ritaglio.",
+    .putBackPatchMissing: "Il file del ritocco non si legge.",
+    .putBackNoPanorama: "Quando hai estratto non c'era un risultato: non c'è un panorama su cui incollarlo.",
+    .putBackPanoramaMissing: "Il panorama da cui hai estratto non c'è più.",
   ]
 }

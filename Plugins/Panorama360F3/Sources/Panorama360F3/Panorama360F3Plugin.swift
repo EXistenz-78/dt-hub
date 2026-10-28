@@ -27,7 +27,10 @@ final class Panorama360F3Plugin: DTHubPlugin {
         state: state,
         actions: PFViewActions(
           improve: { [weak self] in self?.improve() }, send: { [weak self] in self?.send() },
-          fixSeam: { [weak self] in self?.fixSeam() })))
+          fixSeam: { [weak self] in self?.fixSeam() },
+          cutoutStart: { [weak self] in self?.cutout { await $0.sendCutoutAsStartImage(contribute: $1) } },
+          cutoutMoodboard: { [weak self] in self?.cutout { await $0.addCutoutToMoodboard(contribute: $1) } },
+          putBackPanorama: { [weak self] in self?.cutout { await $0.putBackInPanorama(contribute: $1) } })))
   }
 
   func start(host: DTHubHost) {
@@ -53,6 +56,12 @@ final class Panorama360F3Plugin: DTHubPlugin {
       await registerPresets(using: { await host.registerPresets($0) })
       await state.send(contribute: { await host.contribute($0) })
     }
+  }
+
+  /// Runs a Cutout action with the app's `contribute`.
+  private func cutout(_ action: @escaping (PFState, PFContribute) async -> Void) {
+    guard let host else { return }
+    Task { await action(state, { await host.contribute($0) }) }
   }
 
   private func fixSeam() {

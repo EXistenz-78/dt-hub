@@ -24,6 +24,9 @@ struct PanoState: Codable, Equatable, Sendable {
   var description = ""
   var size = PFSize(width: 2048, height: 1024)
   var viewerOpen = false
+  /// The size of the cutout in megapixels, and where the last one was taken.
+  var cutoutMegapixels = 1.0
+  var lastCutout: PFCutoutMemory?
 
   init() {}
 
@@ -35,6 +38,8 @@ struct PanoState: Codable, Equatable, Sendable {
     description = try container.decodeIfPresent(String.self, forKey: .description) ?? ""
     size = try container.decodeIfPresent(PFSize.self, forKey: .size) ?? PFSize(width: 2048, height: 1024)
     viewerOpen = try container.decodeIfPresent(Bool.self, forKey: .viewerOpen) ?? false
+    cutoutMegapixels = try container.decodeIfPresent(Double.self, forKey: .cutoutMegapixels) ?? 1.0
+    lastCutout = try container.decodeIfPresent(PFCutoutMemory.self, forKey: .lastCutout)
   }
 }
 

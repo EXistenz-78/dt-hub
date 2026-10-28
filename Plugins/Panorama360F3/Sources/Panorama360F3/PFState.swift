@@ -30,6 +30,8 @@ final class PFState: ObservableObject {
   /// Where the viewer looks, and the picture it draws (one render at a time; only the newest request waits).
   @Published var camera = PSCamera()
   @Published var preview: CGImage?
+  /// The last cutout taken from the viewer (in memory only: the actions need it, the document keeps only where it was taken).
+  @Published var cutoutImage: CGImage?
   var previewBusy = false
   var pendingPreviewSize: (width: Int, height: Int)?
   var shownPath: String? { lastResultPath }
@@ -73,6 +75,7 @@ final class PFState: ObservableObject {
     error = nil
     notice = nil
     session = nil
+    cutoutImage = nil
     // A picture dropped on the viewer stays with the project it was dropped in: the result is the one the app knows again.
     if droppedPath != nil {
       droppedPath = nil

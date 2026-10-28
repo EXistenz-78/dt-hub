@@ -19,8 +19,9 @@ struct PFMoodboardCard: View {
         HStack(spacing: DS.controlGap) {
           Button { choosingFiles = true } label: { Image(systemName: "plus") }
             .buttonStyle(DSGlassCircleButtonStyle()).help(state.text(.add))
-          Spacer(minLength: 0)
           if state.doc.images.isEmpty { Text(state.text(.dropHere)).font(.caption).foregroundStyle(.secondary) }
+          Spacer(minLength: 0)
+          sizeSelector
         }
       }
       .padding(DS.panelPadding)
@@ -36,6 +37,19 @@ struct PFMoodboardCard: View {
       let opened = urls.filter { $0.startAccessingSecurityScopedResource() }
       state.addImages(urls)
       opened.forEach { $0.stopAccessingSecurityScopedResource() }
+    }
+  }
+
+  /// The size of the panorama (always 2:1): the number, and the arrows that take it one step up or down.
+  private var sizeSelector: some View {
+    HStack(spacing: DS.controlGap) {
+      Text(verbatim: "\(state.doc.size.width) × \(state.doc.size.height)").font(.body.monospaced())
+      VStack(spacing: 2) {
+        Button { state.sizeUp() } label: { Image(systemName: "chevron.up") }
+          .buttonStyle(.plain).help(state.text(.sizeUp)).disabled(PFSizes.larger(state.doc.size) == nil)
+        Button { state.sizeDown() } label: { Image(systemName: "chevron.down") }
+          .buttonStyle(.plain).help(state.text(.sizeDown)).disabled(PFSizes.smaller(state.doc.size) == nil)
+      }
     }
   }
 

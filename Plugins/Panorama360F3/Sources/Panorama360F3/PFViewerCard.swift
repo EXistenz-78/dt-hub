@@ -20,6 +20,7 @@ struct PFViewerCard: View {
             .buttonStyle(DSPillButtonStyle()).disabled(reason != nil || state.isSending)
             .help(reason.map { state.seamReasonText($0) } ?? "")
           Spacer(minLength: 0)
+          PFCutoutControls(state: state, actions: actions)
         }
         if state.doc.viewerOpen { PFSphereView(state: state) }
       }
