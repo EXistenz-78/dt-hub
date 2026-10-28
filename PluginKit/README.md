@@ -106,9 +106,9 @@ language models of the app's models folder (`family`: the family the user assign
     "maskSettings":{"blur","outset","preserveOriginal"},
     "size":{"width","height"},"preset","fields","loras","strength"}`, or `{"done":true}` to end before `count` (not an error).
     `startImage` is a PNG of exactly `size` (a multiple of 64, at most the model's size limit): the app sends it as it is,
-    never reframed or resampled. Since DT Hub 0.7.0 (the number is provisional) it is **optional**: a pass with no
+    never reframed or resampled. Since DT Hub 0.7.1 it is **optional**: a pass with no
     `startImage` draws on an empty canvas of `size`, which is what a model that takes its pictures from the Moodboard
-    wants; `strength` then means nothing. `moodboard` (since DT Hub 0.7.0, provisional) is the pass's own Moodboard, files in
+    wants; `strength` then means nothing. `moodboard` (since DT Hub 0.7.1) is the pass's own Moodboard, files in
     the `tempFolder`, in the order they are numbered for the model (`<image 1>`, `<image 2>`…); it can go with or without a
     `startImage`, and is left out for a family that does not read the Moodboard. `mask` is an optional grey PNG of the same
     size, **255 where the model regenerates**, 0 where the picture is kept (it needs no multiple of 64 for its inner

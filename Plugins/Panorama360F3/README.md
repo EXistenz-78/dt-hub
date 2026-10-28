@@ -2,7 +2,7 @@
 
 A plug-in for DT Hub that makes **360° panoramas** (equirectangular, 2:1) with **FLUX.3 [klein]** and two LoRAs by [denrakeiw](https://civitai.com/user/denrakeiw): *360 Degree [Flux]* (Flux 3 Klein version) and *360 Flux 2/3 Klein Seamfix*. You put one or more **reference pictures** in the Moodboard of the plug-in, write (if you want) a few words about the place, and press **Send to Generation**: DT Hub then runs **two passes in one pipeline**, the panorama and the repair of its seam, and puts the finished panorama in the Results.
 
-**Works with:** FLUX.3 [klein] 5.6B (`flux3_5b`). Needs **DT Hub 0.7.0 or later** (provisional number: it uses an addition to the guided pipelines, a pass with its own Moodboard and no start image).
+**Works with:** FLUX.3 [klein] 5.6B (`flux3_5b`). Needs **DT Hub 0.7.1 or later** (it uses an addition to the guided pipelines, a pass with its own Moodboard and no start image).
 
 For the same job on FLUX.2 [klein], with pictures placed on a canvas, see [Panorama 360](../Panorama360/README.md): the 360 LoRA of FLUX.3 does not outpaint a green canvas, it builds the panorama from reference pictures.
 
