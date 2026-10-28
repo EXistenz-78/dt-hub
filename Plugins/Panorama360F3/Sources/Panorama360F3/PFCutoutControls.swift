@@ -3,27 +3,15 @@ import DTHubDesign
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// The Cutout, on the header of the Viewer: the size in megapixels, **Extract** (the view as it is now, as a flat 4:3 picture) and what can be done with it
+/// The Cutout, on the header of the Viewer: **Extract** (the view as it is now, as a flat 4:3 picture at the real resolution of the panorama) and what can be done with it
 /// (start image, Moodboard, save) and with its retouched version (put it back in the panorama). The same buttons as in Panorama 360.
 struct PFCutoutControls: View {
   @ObservedObject var state: PFState
   let actions: PFViewActions
 
-  private var size: (width: Int, height: Int) { PFCutout.size(megapixels: state.doc.cutoutMegapixels) }
-
   var body: some View {
     HStack(spacing: DS.controlGap) {
       thumbnail
-      TextField(
-        "",
-        value: Binding(
-          get: { state.doc.cutoutMegapixels },
-          set: { value in state.mutate { $0.cutoutMegapixels = min(PFCutout.megapixelRange.upperBound, max(PFCutout.megapixelRange.lowerBound, value)) } }),
-        format: .number.precision(.fractionLength(0...2))
-      )
-      .textFieldStyle(.roundedBorder).font(.body.monospaced()).frame(width: 56)
-      Text(state.text(.megapixels)).font(.caption).foregroundStyle(.secondary)
-        .help("\(size.width) × \(size.height) px")
       Button { extract() } label: { Text(state.text(.extract)).lineLimit(1) }
         .buttonStyle(DSPillButtonStyle()).fixedSize().disabled(state.resultImage == nil)
       iconButton("square.and.arrow.up", help: state.text(.actionStart), enabled: state.cutoutImage != nil) { actions.cutoutStart() }

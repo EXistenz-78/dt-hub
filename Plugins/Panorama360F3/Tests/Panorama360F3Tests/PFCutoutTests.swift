@@ -22,12 +22,11 @@ struct PFCutoutTests {
     TestImages.writePNG(TestImages.coordinates(width: width, height: height), to: TestImages.tempFolder().appendingPathComponent(name))
   }
 
-  /// A state that shows a 512×256 panorama and has taken a 0.25 MP cutout (512×384) from it.
+  /// A state that shows a 512×256 panorama and has taken a cutout (512×384, the real resolution rounded up) from it.
   private func extracted() throws -> (state: PFState, panorama: URL) {
     let state = ready()
     let panorama = picture(512, 256)
     state.dropPictures([panorama])
-    state.mutate { $0.cutoutMegapixels = 0.25 }
     state.camera = PSCamera(yaw: 30, pitch: 10, fov: 80)
     _ = try state.extractCutout()
     return (state, panorama)
@@ -35,29 +34,40 @@ struct PFCutoutTests {
 
   // MARK: the pure rules
 
-  @Test func theSizeIsExactlyFourToThreeAndFollowsTheMegapixels() {
-    #expect(PFCutout.size(megapixels: 1.0) == (1280, 960))
-    #expect(PFCutout.size(megapixels: 0.25) == (512, 384))
-    #expect(PFCutout.size(megapixels: 4.0) == (2304, 1728))
-    #expect(PFCutout.size(megapixels: 99) == (2304, 1728) && PFCutout.size(megapixels: 0) == (512, 384))
+  @Test func theCutoutKeepsTheRealResolutionAndItsSidesAreMultiplesOf64() {
+    // 2048 px at 90°: 651.9 × 489.0 pixels across the view; each side is extended to the next multiple of 64 and the field of view widens with it
+    // (more picture, the same pixels per degree), so nothing is stretched.
+    let a = PFCutout.cutoutFrame(panoramaWidth: 2048, fov: 90)
+    #expect(a.width == 704 && a.height == 512)
+    #expect(abs(a.fov - 94.4) < 0.1)
+    let b = PFCutout.cutoutFrame(panoramaWidth: 4096, fov: 90)
+    #expect(b.width == 1344 && b.height == 1024)
+    #expect(abs(b.fov - 91.7) < 0.1)
   }
 
-  @Test func theMontageIsEnlargedSoThatTheRetouchKeepsItsPixels() {
-    // 1280 px over 90° need π·1280/tan(45°) ≈ 4021 px of panorama width, rounded up to a multiple of 128.
-    #expect(PFCutout.montageSize(background: (2048, 1024), patchWidth: 1280, fov: 90) == (4096, 2048))
-    #expect(PFCutout.montageSize(background: (512, 256), patchWidth: 512, fov: 80) == (1920, 960))
+  @Test func theDensityOfTheCutoutEqualsTheDensityOfThePanorama() {
+    for (width, fov) in [(2048, 90.0), (4096, 70.0), (3072, 110.0), (6144, 85.0)] {
+      let frame = PFCutout.cutoutFrame(panoramaWidth: width, fov: fov)
+      let pixelsPerTan = Double(frame.width) / (2 * tan(frame.fov * .pi / 360))
+      let panoramaPerTan = Double(width) / (2 * .pi)
+      #expect(abs(pixelsPerTan - panoramaPerTan) / panoramaPerTan < 0.001, "width \(width), fov \(fov)")
+      #expect(frame.width % 64 == 0 && frame.height % 64 == 0)
+    }
   }
 
-  @Test func theMontageIsNeverSmallerThanThePanoramaAndNeverAboveTheCap() {
-    #expect(PFCutout.montageSize(background: (4096, 2048), patchWidth: 512, fov: 90) == (4096, 2048))
-    #expect(PFCutout.montageSize(background: (2048, 1024), patchWidth: 256, fov: 90) == (2048, 1024))
-    #expect(PFCutout.montageSize(background: (2048, 1024), patchWidth: 2304, fov: 20) == (8192, 4096), "the cap is 8192 px wide")
-    #expect(PFCutout.montageSize(background: (9000, 4500), patchWidth: 2304, fov: 20) == (9000, 4500), "a panorama already above the cap is kept")
+  @Test func aSmallOrHugeViewKeepsItsFieldOfViewAndTheSizeLimits() {
+    let small = PFCutout.cutoutFrame(panoramaWidth: 2048, fov: 60)
+    #expect(small.width == 512 && small.height == 384 && small.fov == 60, "never below 512 × 384")
+    let huge = PFCutout.cutoutFrame(panoramaWidth: 8192, fov: 150)
+    #expect(huge.width == 4096 && huge.height == 3072 && huge.fov == 150, "never above 4096 × 3072")
   }
 
-  @Test func aPanoramaThatIsNotTwoToOneKeepsItsProportionWhenEnlarged() {
-    let size = PFCutout.montageSize(background: (3000, 1000), patchWidth: 1280, fov: 90)
-    #expect(size.0 == 4096 && size.1 == 1365)
+  @Test func theRetouchIsBroughtToThePixelDensityOfThePanorama() {
+    #expect(PFCutout.patchDensityWidth(panoramaWidth: 2048, fov: 90) == 652)
+    #expect(PFCutout.patchDensityWidth(panoramaWidth: 4096, fov: 60) == 753)
+    // The frame of a cutout has exactly this density: nothing is squeezed when it is put back.
+    let frame = PFCutout.cutoutFrame(panoramaWidth: 2048, fov: 90)
+    #expect(PFCutout.patchDensityWidth(panoramaWidth: 2048, fov: frame.fov) == frame.width)
   }
 
   @Test func putBackReasonsInOrder() {
@@ -89,15 +99,23 @@ struct PFCutoutTests {
     #expect(throws: PFCutoutError.noResult) { try state.extractCutout() }
   }
 
-  @Test func theMegapixelsAndTheMemorySurviveAReload() throws {
+  @Test func theMemoryOfTheCutoutSurvivesAReload() throws {
     let (state, _) = try extracted()
     let project = try #require(state.projectFolder)
     let other = PFState(italian: false)
     other.switchProject(folder: project)
-    #expect(other.doc.cutoutMegapixels == 0.25 && other.doc.lastCutout?.width == 512)
+    #expect(other.doc.lastCutout?.width == 512)
   }
 
   // MARK: sending
+
+  @Test func theStartImageBodyAsksForHiResOnlyWhenASideIsAbove2048() {
+    let small = PFCutoutActions.startImageBody(file: URL(fileURLWithPath: "/t/c.png"), width: 1536, height: 1152)
+    #expect((small["fields"] as? [String: Any])?["highRes"] == nil)
+    let big = PFCutoutActions.startImageBody(file: URL(fileURLWithPath: "/t/c.png"), width: 3072, height: 2304)
+    let fields = big["fields"] as? [String: Any]
+    #expect(fields?["width"] as? Int == 3072 && fields?["height"] as? Int == 2304 && fields?["highRes"] as? Bool == true)
+  }
 
   @Test func asAStartImageItCarriesTheCutoutSizeToo() async throws {
     let (state, _) = try extracted()
@@ -156,7 +174,7 @@ struct PFCutoutTests {
     let result = try #require(recorder.bodies.first?["result"] as? [String: Any])
     let path = try #require(result["path"] as? String)
     let size = try #require(TestImages.size(of: URL(fileURLWithPath: path)))
-    #expect(size.width == 1920 && size.height == 960, "the montage is the panorama enlarged so that the retouch keeps its pixels")
+    #expect(size.width == 512 && size.height == 256, "the montage has the size of the panorama it was taken from")
     #expect((result["description"] as? String)?.contains("yaw") == true)
     #expect(state.doc.lastCutout?.patchPath == patch.path)
     #expect(FileManager.default.fileExists(atPath: panorama.path))

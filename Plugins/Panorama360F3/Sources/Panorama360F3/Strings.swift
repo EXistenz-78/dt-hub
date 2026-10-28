@@ -10,7 +10,7 @@ enum L {
     case resultCorrected, resultRaw, runStopped, runClosed, runFailed, runNoPicture, runWrongSize, runUnreadable, runDone
     case viewerTitle, fixSeam, seamNoResult, seamUnreadable, seamNotTwoToOne, seamSize, seamTooBig, seamPipelineName, seamReady
     case noResultYet, resetView, dropResult
-    case extract, actionStart, actionMoodboard, actionSave, actionPanorama, cutoutNothing, putBackOff, montageDescription, megapixels
+    case extract, actionStart, actionMoodboard, actionSave, actionPanorama, cutoutNothing, putBackOff, montageDescription
     case putBackNoCutout, putBackNoPatch, putBackWrongProportion, putBackPatchMissing, putBackNoPanorama, putBackPanoramaMissing
   }
 
@@ -51,7 +51,7 @@ enum L {
     .extract: "Extract", .actionStart: "Use as start image", .actionMoodboard: "Add to Moodboard", .actionSave: "Save…",
     .actionPanorama: "Put back in the panorama (goes to the Results)", .cutoutNothing: "Extract the view first.",
     .putBackOff: "The retouch cannot be put back.", .montageDescription: "Montage · cutout put back at yaw %.0f° pitch %.0f° FOV %.0f°",
-    .megapixels: "MP", .putBackNoCutout: "Extract a view first.", .putBackNoPatch: "Make the retouch first: a RUN on the cutout.",
+    .putBackNoCutout: "Extract a view first.", .putBackNoPatch: "Make the retouch first: a RUN on the cutout.",
     .putBackWrongProportion: "The retouch is not 4:3 like the cutout: make it at the size of the cutout.",
     .putBackPatchMissing: "The retouch's file cannot be read.",
     .putBackNoPanorama: "There was no result when the cutout was taken, so there is no panorama to paste it on.",
@@ -85,7 +85,7 @@ enum L {
     .extract: "Estrai", .actionStart: "Usa come immagine di partenza", .actionMoodboard: "Aggiungi al Moodboard", .actionSave: "Salva…",
     .actionPanorama: "Rimetti nel panorama (va ai Risultati)", .cutoutNothing: "Estrai prima la vista.",
     .putBackOff: "Il ritocco non si può rimettere.", .montageDescription: "Montaggio · ritaglio rimesso a yaw %.0f° pitch %.0f° FOV %.0f°",
-    .megapixels: "MP", .putBackNoCutout: "Estrai prima una vista.", .putBackNoPatch: "Fai prima il ritocco: un RUN sul ritaglio.",
+    .putBackNoCutout: "Estrai prima una vista.", .putBackNoPatch: "Fai prima il ritocco: un RUN sul ritaglio.",
     .putBackWrongProportion: "Il ritocco non è 4:3 come il ritaglio: fallo alla dimensione del ritaglio.",
     .putBackPatchMissing: "Il file del ritocco non si legge.",
     .putBackNoPanorama: "Quando hai estratto non c'era un risultato: non c'è un panorama su cui incollarlo.",

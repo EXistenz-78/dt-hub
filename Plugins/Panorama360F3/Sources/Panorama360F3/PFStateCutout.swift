@@ -33,14 +33,22 @@ extension PFState {
   /// Draws the view as it is now at the cutout size, remembers where it was taken and keeps the picture for the actions.
   @discardableResult
   func extractCutout() throws -> CGImage {
-    guard let panorama = resultImage else { throw PFCutoutError.noResult }
-    let size = PFCutout.size(megapixels: doc.cutoutMegapixels)
-    let camera = self.camera
-    let image = try PSRendererFactory.make().renderView(.panorama(panorama), camera: camera, width: size.width, height: size.height)
+    guard var panorama = resultImage else { throw PFCutoutError.noResult }
+    // The viewer's picture is reduced to 4096 px; a wider panorama is read again at its own size, so that the cutout is taken at its real resolution.
+    if let path = lastResultPath, let real = PFCutout.pixelSize(of: URL(fileURLWithPath: path)), real.width > panorama.width,
+      let full = PFResultLoader.load(URL(fileURLWithPath: path), maxSide: nil)
+    {
+      panorama = full
+    }
+    // The camera of the viewer, with the field of view widened so that the sides are multiples of 64 at the real resolution of the panorama.
+    var camera = self.camera
+    let frame = PFCutout.cutoutFrame(panoramaWidth: panorama.width, fov: camera.fov)
+    camera.fov = frame.fov
+    let image = try PSRendererFactory.make().renderView(.panorama(panorama), camera: camera, width: frame.width, height: frame.height)
     cutoutImage = image
     mutate {
       $0.lastCutout = PFCutoutMemory(
-        yaw: camera.yaw, pitch: camera.pitch, fov: camera.fov, width: size.width, height: size.height,
+        yaw: camera.yaw, pitch: camera.pitch, fov: camera.fov, width: frame.width, height: frame.height,
         resultPathAtExtraction: lastResultPath, patchPath: nil)
     }
     return image
@@ -98,12 +106,17 @@ extension PFState {
     let folder = projectFolder
     do {
       let place = Sticker(name: "patch", file: "", yaw: memory.yaw, pitch: memory.pitch, rot: 0, hfov: memory.fov)
-      var layer = PSLayer(image: patch, basis: PSProjection.basis(for: place, aspect: Double(patch.width) / Double(patch.height)), opacity: 1)
+      // The retouch is brought to the pixel density it has in the panorama with a quality resize, so that it is pasted without the stair-steps of a
+      // bilinear read squeezed by a factor of two or more.
+      let density = PFCutout.patchDensityWidth(panoramaWidth: background.width, fov: memory.fov)
+      var pasted = patch
+      if patch.width > density {
+        let height = max(1, Int((Double(patch.height) * Double(density) / Double(patch.width)).rounded()))
+        pasted = PFPixels.scaled(patch, width: density, height: height) ?? patch
+      }
+      var layer = PSLayer(image: pasted, basis: PSProjection.basis(for: place, aspect: Double(patch.width) / Double(patch.height)), opacity: 1)
       layer.feather = 0.03
-      // The panorama is enlarged so that the retouch keeps its pixels instead of being squeezed to the density of the panorama.
-      let target = PFCutout.montageSize(background: (background.width, background.height), patchWidth: patch.width, fov: memory.fov)
-      guard let enlarged = PFPixels.scaled(background, width: target.0, height: target.1) else { throw PFCutoutError.cannotWrite }
-      let montage = try PSRendererFactory.make().render([layer], width: target.0, height: target.1, uOffset: 0, background: enlarged)
+      let montage = try PSRendererFactory.make().render([layer], width: background.width, height: background.height, uOffset: 0, background: background)
       let file = try writeTemporary(montage, prefix: "pano-360-f3-montage")
       let description = text(.montageDescription, memory.yaw, memory.pitch, memory.fov)
       if let message = problem(in: await contribute(PFCutoutActions.montageBody(file: file, description: description))) {
