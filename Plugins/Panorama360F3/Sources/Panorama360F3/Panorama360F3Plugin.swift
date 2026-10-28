@@ -25,7 +25,9 @@ final class Panorama360F3Plugin: DTHubPlugin {
     NSHostingController(
       rootView: PFView(
         state: state,
-        actions: PFViewActions(improve: { [weak self] in self?.improve() }, send: { [weak self] in self?.send() })))
+        actions: PFViewActions(
+          improve: { [weak self] in self?.improve() }, send: { [weak self] in self?.send() },
+          fixSeam: { [weak self] in self?.fixSeam() })))
   }
 
   func start(host: DTHubHost) {
@@ -50,6 +52,14 @@ final class Panorama360F3Plugin: DTHubPlugin {
     Task {
       await registerPresets(using: { await host.registerPresets($0) })
       await state.send(contribute: { await host.contribute($0) })
+    }
+  }
+
+  private func fixSeam() {
+    guard let host else { return }
+    Task {
+      await registerPresets(using: { await host.registerPresets($0) })
+      await state.fixSeam(contribute: { await host.contribute($0) })
     }
   }
 

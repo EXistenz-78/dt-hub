@@ -20,8 +20,19 @@ final class PFState: ObservableObject {
   @Published var isImproving = false
   /// The description before the last «Improve prompt», for «Undo».
   @Published var previousDescription: String?
-  /// The newest result of the project, from the app's context.
-  @Published var lastResultPath: String?
+  /// The panorama the viewer shows: the newest result of the project (from the app's context) or a picture dropped on the viewer.
+  @Published private(set) var lastResultPath: String?
+  @Published private(set) var resultImage: CGImage?
+  /// The newest result the app told about, and a picture the user dropped on the viewer: while there is one it stands for the result until the app
+  /// tells about another result or another project is opened.
+  private var contextResultPath: String?
+  private(set) var droppedPath: String?
+  /// Where the viewer looks, and the picture it draws (one render at a time; only the newest request waits).
+  @Published var camera = PSCamera()
+  @Published var preview: CGImage?
+  var previewBusy = false
+  var pendingPreviewSize: (width: Int, height: Int)?
+  var shownPath: String? { lastResultPath }
   /// The run that is waiting for RUN (and running).
   var session: PFSession?
   /// Where DT Hub keeps the presets (the model of a preset is read from there for the note after a send).
@@ -62,14 +73,37 @@ final class PFState: ObservableObject {
     error = nil
     notice = nil
     session = nil
+    // A picture dropped on the viewer stays with the project it was dropped in: the result is the one the app knows again.
+    if droppedPath != nil {
+      droppedPath = nil
+      setShown(contextResultPath)
+    }
   }
 
   func apply(context: Data) {
     guard let context = try? JSONDecoder().decode(DTHubContext.self, from: context) else { return }
     modelFile = context.model
     tempFolder = context.tempFolder
-    lastResultPath = context.lastResult?.path
+    let incoming = context.lastResult?.path
+    // A context is sent for many reasons: only a different result takes the place of a dropped picture, and opens the viewer.
+    if incoming != contextResultPath {
+      contextResultPath = incoming
+      droppedPath = nil
+      if incoming != nil, !doc.viewerOpen { mutate { $0.viewerOpen = true } }
+    }
+    setShown(droppedPath ?? incoming)
   }
+
+  func setShown(_ path: String?) {
+    // A result that was deleted or moved after it was loaded is no longer there to show.
+    if let path, resultImage != nil, !FileManager.default.fileExists(atPath: path) { resultImage = nil }
+    if path != lastResultPath || (path != nil && resultImage == nil) {
+      lastResultPath = path
+      resultImage = path.flatMap { PFResultLoader.load(URL(fileURLWithPath: $0)) }
+    }
+  }
+
+  func markDropped(_ path: String) { droppedPath = path }
 
   private func persist() {
     guard !isLoading, let projectFolder else { return }

@@ -18,6 +18,7 @@ struct PFView: View {
         PFMoodboardCard(state: state).frame(maxWidth: .infinity)
         PFPromptCard(state: state, actions: actions).frame(maxWidth: .infinity)
       }
+      PFViewerCard(state: state, actions: actions)
     }
     .padding(DS.groupGap)
   }
