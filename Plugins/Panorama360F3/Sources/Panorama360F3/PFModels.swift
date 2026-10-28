@@ -37,3 +37,23 @@ struct PanoState: Codable, Equatable, Sendable {
     viewerOpen = try container.decodeIfPresent(Bool.self, forKey: .viewerOpen) ?? false
   }
 }
+
+extension PanoState {
+  /// The state saved in a project's folder; a file that cannot be read (or is from a newer plug-in) is set aside as `state.json.bak` and the state starts empty.
+  static func load(from folder: URL) -> PanoState {
+    let url = folder.appendingPathComponent(fileName)
+    guard let data = try? Data(contentsOf: url) else { return PanoState() }
+    if let state = try? JSONDecoder().decode(PanoState.self, from: data), state.version <= currentVersion { return state }
+    let backup = folder.appendingPathComponent(fileName + ".bak")
+    try? FileManager.default.removeItem(at: backup)
+    try? FileManager.default.moveItem(at: url, to: backup)
+    return PanoState()
+  }
+
+  func save(to folder: URL) throws {
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.sortedKeys, .prettyPrinted]
+    try encoder.encode(self).write(to: folder.appendingPathComponent(Self.fileName), options: .atomic)
+  }
+}
