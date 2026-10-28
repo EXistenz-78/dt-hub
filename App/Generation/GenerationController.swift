@@ -527,7 +527,10 @@ final class GenerationController {
     let inputs: GenerationInputs
     var replacesStart = false
     if intermediate != nil {
-      switch GuidedPassInputs.inputs(for: pass, enableInpainting: passModel?.capabilities.needsInpaintControl ?? false) {
+      switch GuidedPassInputs.inputs(
+        for: pass, enableInpainting: passModel?.capabilities.needsInpaintControl ?? false,
+        usesMoodboard: FamilyTraits.of(family).usesMoodboard)
+      {
       case .success(let value): inputs = value
       case .failure(let error):
         session.fail(

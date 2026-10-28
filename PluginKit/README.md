@@ -102,16 +102,22 @@ language models of the app's models folder (`family`: the family the user assign
   - `{"type":"session.next","index":3,"count":12,"previous":{"path","width","height"}}`: the pass wanted (1-based),
     the total, and the picture the previous pass made, a PNG in the `tempFolder` (absent at the first pass). The plug-in
     answers within 60 seconds with **one self-contained pass**:
-    `{"title","startImage":{"path","name"},"mask":{"path","name"},"maskSettings":{"blur","outset","preserveOriginal"},
+    `{"title","startImage":{"path","name"},"moodboard":[{"path","name"}],"mask":{"path","name"},
+    "maskSettings":{"blur","outset","preserveOriginal"},
     "size":{"width","height"},"preset","fields","loras","strength"}`, or `{"done":true}` to end before `count` (not an error).
     `startImage` is a PNG of exactly `size` (a multiple of 64, at most the model's size limit): the app sends it as it is,
-    never reframed or resampled. `mask` is an optional grey PNG of the same size, **255 where the model regenerates**, 0
-    where the picture is kept (it needs no multiple of 64 for its inner edge); without a mask the whole picture is
-    regenerated. `maskSettings` is how Draw Things treats the mask (blur 0–30, outset 0–100, keep the original outside it);
+    never reframed or resampled. Since DT Hub 0.7.0 (the number is provisional) it is **optional**: a pass with no
+    `startImage` draws on an empty canvas of `size`, which is what a model that takes its pictures from the Moodboard
+    wants; `strength` then means nothing. `moodboard` (since DT Hub 0.7.0, provisional) is the pass's own Moodboard, files in
+    the `tempFolder`, in the order they are numbered for the model (`<image 1>`, `<image 2>`…); it can go with or without a
+    `startImage`, and is left out for a family that does not read the Moodboard. `mask` is an optional grey PNG of the same
+    size, **255 where the model regenerates**, 0 where the picture is kept (it needs no multiple of 64 for its inner
+    edge) and **needs a `startImage`**; without a mask the whole picture is regenerated. `maskSettings` is how Draw Things treats the mask (blur 0–30, outset 0–100, keep the original outside it);
     without it the Control tab's are used. `preset`, `fields` (a size in them is ignored: `size` rules), `loras` and
     `strength` (0–1, default 1) work as in a step of `pipeline`. The model is always the header's, and the Control tab (its
-    picture, mask and Moodboard) is not used. An answer that does not fit (no `startImage` or `size`, a size not multiple
-    of 64 or too big, a file that cannot be read or a mask of another size, no answer in time) ends the pipeline.
+    picture, mask and Moodboard) is not used. An answer that does not fit (no `size`, a size not multiple
+    of 64 or too big, a `startImage` that cannot be read or of another size, a mask of another size or with no `startImage`,
+    no answer in time) ends the pipeline. A Moodboard picture that cannot be read is left out, as in a step of `pipeline`.
   - `{"type":"session.end","reason":"finished"|"stopped"|"failed"|"closed"}`: sent once when the pipeline is over (all
     passes done or `done`; Stop; a pass failed; the plug-in did not answer or the model was changed meanwhile). The plug-in
     frees its memory and files, and with `finished` sends its `result`. Its answer is ignored. When the run ends the app

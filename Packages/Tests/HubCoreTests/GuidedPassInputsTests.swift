@@ -116,6 +116,57 @@ struct GuidedPassInputsTests {
   @Test func aStepWithoutAStartImageOrSizeFails() {
     #expect(GuidedPassInputs.inputs(for: PipelineStep(), enableInpainting: false).failure == .imageUnreadable)
   }
+
+  // MARK: a pass with no start image and a Moodboard of its own
+
+  @Test func aPassWithoutAStartImageStartsFromAnEmptyCanvasOfItsSize() throws {
+    let inputs = try GuidedPassInputs.inputs(
+      for: PipelineStep(size: PipelineSize(width: 2048, height: 1024)), enableInpainting: false, usesMoodboard: true
+    ).get()
+    #expect(inputs.image == nil, "no start image: the model draws on an empty canvas")
+    #expect(inputs.mask == nil)
+    #expect(inputs.hints.isEmpty)
+  }
+
+  @Test func theMoodboardOfThePassBecomesTheHintsInTheOrderGiven() throws {
+    let first = png("ref1.png", width: 8, height: 8, gray: false) { _ in 30 }
+    let second = png("ref2.png", width: 8, height: 8, gray: false) { _ in 220 }
+    let step = PipelineStep(moodboard: [first, second], size: PipelineSize(width: 2048, height: 1024))
+    let inputs = try GuidedPassInputs.inputs(for: step, enableInpainting: false, usesMoodboard: true).get()
+    let expected = try [first, second].map { try #require(PluginImages.hint($0)).imageData }
+    #expect(inputs.hints.map(\.imageData) == expected)
+    #expect(inputs.image == nil)
+  }
+
+  @Test func theMoodboardIsLeftOutForAModelThatDoesNotReadIt() throws {
+    let reference = png("ref.png", width: 8, height: 8, gray: false) { _ in 30 }
+    let step = PipelineStep(moodboard: [reference], size: PipelineSize(width: 2048, height: 1024))
+    let inputs = try GuidedPassInputs.inputs(for: step, enableInpainting: false, usesMoodboard: false).get()
+    #expect(inputs.hints.isEmpty)
+  }
+
+  @Test func aStartImageAndAMoodboardCanGoTogether() throws {
+    let tile = png("tile.png", width: 8, height: 4, gray: false) { _ in 200 }
+    let reference = png("ref.png", width: 8, height: 8, gray: false) { _ in 30 }
+    let step = PipelineStep(moodboard: [reference], startImage: tile, size: PipelineSize(width: 8, height: 4))
+    let inputs = try GuidedPassInputs.inputs(for: step, enableInpainting: false, usesMoodboard: true).get()
+    #expect(inputs.image?.width == 8 && inputs.hints.count == 1)
+  }
+
+  @Test func aMaskNeedsAStartImage() {
+    let mask = png("mask.png", width: 8, height: 8, gray: true) { _ in 255 }
+    let step = PipelineStep(mask: mask, size: PipelineSize(width: 8, height: 8))
+    #expect(
+      GuidedPassInputs.inputs(for: step, enableInpainting: false, usesMoodboard: true).failure == .maskWithoutImage)
+  }
+
+  @Test func aStartImagePassWithoutTheNewArgumentStillRunsAsBefore() throws {
+    let tile = png("tile.png", width: 8, height: 4, gray: false) { _ in 200 }
+    let inputs = try GuidedPassInputs.inputs(
+      for: step(start: tile, size: PipelineSize(width: 8, height: 4)), enableInpainting: false
+    ).get()
+    #expect(inputs.image != nil && inputs.hints.isEmpty, "Tiled Upscale answers keep working untouched")
+  }
 }
 
 extension Result {

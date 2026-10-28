@@ -4,16 +4,18 @@ import HubKit
 
 /// Why a pass a plug-in handed over cannot run.
 public enum GuidedPassError: Error, Equatable, Sendable {
-  /// The pass has no start image, or its file cannot be read.
+  /// The pass has no size, or the start image it names cannot be read.
   case imageUnreadable
   case imageSize(expected: PipelineSize, got: PipelineSize)
   case maskUnreadable
   case maskSize(expected: PipelineSize, got: PipelineSize)
+  /// The pass has a mask but no start image: a mask belongs to the picture it covers.
+  case maskWithoutImage
 }
 
 /// The inputs of a pass of a pipeline the plug-in guides: its own start image and mask, 1:1 on the size of the pass (no
-/// reframing, so a tile and the picture it came from line up to the pixel). The Control tab's picture, mask and Moodboard
-/// are not used.
+/// reframing, so a tile and the picture it came from line up to the pixel), and its own Moodboard. A pass with no start
+/// image draws on an empty canvas of its size. The Control tab's picture, mask and Moodboard are not used.
 public enum GuidedPassInputs {
   /// Longest side read back from a pass's files (a tile is at most 2048).
   static let maxPixel = 4096
@@ -35,11 +37,19 @@ public enum GuidedPassInputs {
 
   /// The mask file is a grey PNG the size of the pass, 255 where the model regenerates (`MaskBitmap`); what Draw Things
   /// gets is transparent where it regenerates and opaque where it keeps (`GenerationInputs.mask`). A pass with no
-  /// mask regenerates the whole picture (`mask` nil).
-  public static func inputs(for step: PipelineStep, enableInpainting: Bool) -> Result<GenerationInputs, GuidedPassError> {
-    guard let ref = step.startImage, let size = step.size, let image = PluginImages.image(ref, maxPixel: maxPixel) else {
-      return .failure(.imageUnreadable)
+  /// mask regenerates the whole picture (`mask` nil). A pass with no start image (`image` nil) has an empty canvas of
+  /// the size of the pass, and cannot have a mask. The Moodboard of the pass becomes the hints in the order given (a
+  /// picture that cannot be read is left out, as in any pipeline); `usesMoodboard` is false for models that do not read it.
+  public static func inputs(
+    for step: PipelineStep, enableInpainting: Bool, usesMoodboard: Bool = true
+  ) -> Result<GenerationInputs, GuidedPassError> {
+    guard let size = step.size else { return .failure(.imageUnreadable) }
+    let hints = usesMoodboard ? (step.moodboard ?? []).compactMap { PluginImages.hint($0) } : []
+    guard let ref = step.startImage else {
+      if step.mask != nil { return .failure(.maskWithoutImage) }
+      return .success(GenerationInputs(image: nil, hints: hints, mask: nil, enableInpainting: enableInpainting))
     }
+    guard let image = PluginImages.image(ref, maxPixel: maxPixel) else { return .failure(.imageUnreadable) }
     guard image.width == size.width, image.height == size.height else {
       return .failure(.imageSize(expected: size, got: PipelineSize(width: image.width, height: image.height)))
     }
@@ -56,6 +66,6 @@ public enum GuidedPassInputs {
         framing: Framing())
       if mask == nil { return .failure(.maskUnreadable) }
     }
-    return .success(GenerationInputs(image: image, hints: [], mask: mask, enableInpainting: enableInpainting))
+    return .success(GenerationInputs(image: image, hints: hints, mask: mask, enableInpainting: enableInpainting))
   }
 }
