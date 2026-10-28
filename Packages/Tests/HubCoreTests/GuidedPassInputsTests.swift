@@ -173,6 +173,18 @@ struct GuidedPassInputsTests {
     #expect(inputs.image == nil && inputs.hints.count == 1)
   }
 
+  @Test func aMoodboardPictureIsSentUpTo2048PixelsOnItsLongSide() throws {
+    func longSide(of hint: GenerationHint) throws -> Int {
+      let source = try #require(CGImageSourceCreateWithData(hint.imageData as CFData, nil))
+      let properties = try #require(CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any])
+      return max(properties[kCGImagePropertyPixelWidth] as? Int ?? 0, properties[kCGImagePropertyPixelHeight] as? Int ?? 0)
+    }
+    let big = png("big.png", width: 3000, height: 1500, gray: false) { _ in 90 }
+    let small = png("small.png", width: 1500, height: 750, gray: false) { _ in 90 }
+    #expect(try longSide(of: #require(PluginImages.hint(big))) == 2048, "a bigger picture is reduced to 2048")
+    #expect(try longSide(of: #require(PluginImages.hint(small))) == 1500, "a smaller one is sent as it is")
+  }
+
   @Test func aStartImagePassWithoutTheNewArgumentStillRunsAsBefore() throws {
     let tile = png("tile.png", width: 8, height: 4, gray: false) { _ in 200 }
     let inputs = try GuidedPassInputs.inputs(

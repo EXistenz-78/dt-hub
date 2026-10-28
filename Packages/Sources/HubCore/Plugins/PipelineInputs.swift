@@ -6,7 +6,7 @@ import HubKit
 /// image and the Moodboard the pass asks for put in their place.
 public enum PipelineInputs {
   /// Longest side of a Moodboard picture when it is sent (as for the Moodboard of the Control tab).
-  static let hintPixels = 1024
+  static let hintPixels = 2048
 
   /// `base` is what the tab would send (framed to the pass's canvas). A pass that takes the previous
   /// output, or names its own start image, replaces the start image: framed to the canvas, with no mask (the
@@ -63,7 +63,7 @@ public enum PluginImages {
     PNGImageStore.image(at: URL(fileURLWithPath: ref.path), maxPixel: maxPixel)
   }
 
-  /// A Moodboard picture of a RUN (PNG, long side at most 1024); nil when it cannot be read.
+  /// A Moodboard picture of a RUN (PNG, long side at most 2048); nil when it cannot be read.
   public static func hint(_ ref: PluginImageRef) -> GenerationHint? {
     guard let image = image(ref, maxPixel: PipelineInputs.hintPixels), let data = ControlStore.pngData(of: image) else {
       return nil

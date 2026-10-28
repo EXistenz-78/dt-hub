@@ -91,11 +91,11 @@ struct PipelineInputsTests {
     #expect(run(PipelineStep(moodboard: [sphere]), usesMoodboard: false).hints.isEmpty)
   }
 
-  @Test func aMoodboardPictureIsReducedToTheLongSideOf1024() throws {
-    let big = write(solid(0.2, 0.2, 0.2, side: 2000), as: "big.png")
+  @Test func aMoodboardPictureIsReducedToTheLongSideOf2048() throws {
+    let big = write(solid(0.2, 0.2, 0.2, side: 3000), as: "big.png")
     let hint = try #require(PluginImages.hint(big))
     let source = try #require(CGImageSourceCreateWithData(hint.imageData as CFData, nil))
     let image = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
-    #expect(max(image.width, image.height) == 1024)
+    #expect(max(image.width, image.height) == 2048)
   }
 }
