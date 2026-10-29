@@ -56,8 +56,8 @@ public enum ModelTree {
     let searching = !text.isEmpty
     return catalog.modelsBySource.compactMap { group -> ModelTreeSection? in
       let families = group.families.compactMap { family -> ModelTreeFamily? in
-        // No video yet (see `VideoFamilies`).
-        guard !VideoFamilies.contains(family.family) else { return nil }
+        // Video families not enabled yet stay out (see `VideoFamilies`).
+        guard !VideoFamilies.isHidden(family.family) else { return nil }
         let models = searching ? family.models.filter { matches($0, text) } : family.models
         guard !models.isEmpty else { return nil }
         let id = ModelTreeFamilyID(source: group.source, family: family.family)

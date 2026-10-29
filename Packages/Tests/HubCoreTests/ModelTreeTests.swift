@@ -119,21 +119,24 @@ struct ModelTreeTests {
       models: [
         model("flux_1_dev_q8p.ckpt", name: "FLUX.1 [dev]", family: "flux1", .official),
         model("wan_2.1_14b_t2v_q8p.ckpt", name: "Wan 2.1 14B", family: "wan_v2.1_14b", .official),
+        model("minimax_h3_q8p.ckpt", name: "MiniMax H3", family: "minimax_h3", .official),
         model("ltx_2.3_q8p.ckpt", name: "LTX 2.3", family: "ltx2.3", .uncurated),
-      ], loras: [], fileCount: 3)
+      ], loras: [], fileCount: 4)
   }
 
-  @Test func videoModelsAreNotInTheTree() {
-    // DT Hub does not generate video yet: the picker leaves those models out (they stay in the catalog).
+  @Test func onlyTheEnabledVideoFamiliesAreInTheTree() {
+    // The picker leaves out the video families not enabled yet (they stay in the catalog).
     let sections = ModelTree.sections(for: catalogWithVideo, query: "", state: ModelTreeState())
-    #expect(files(sections) == ["flux_1_dev_q8p.ckpt"])
-    #expect(sections.map(\.count) == [1])
-    #expect(catalogWithVideo.models.count == 3)
+    #expect(files(sections) == ["flux_1_dev_q8p.ckpt", "minimax_h3_q8p.ckpt", "ltx_2.3_q8p.ckpt"])
+    #expect(sections.map(\.count) == [2, 1])
+    #expect(catalogWithVideo.models.count == 4)
   }
 
-  @Test func aListWithOnlyVideoModelsIsOmittedAndSearchNeverFindsThem() {
-    #expect(ModelTree.sections(for: catalogWithVideo, query: "", state: ModelTreeState()).map(\.source) == [.official])
+  @Test func searchFindsEnabledVideoModelsButNeverHiddenOnes() {
     #expect(ModelTree.sections(for: catalogWithVideo, query: "wan", state: ModelTreeState()).isEmpty)
-    #expect(ModelTree.sections(for: catalogWithVideo, query: "ltx", state: ModelTreeState()).isEmpty)
+    #expect(files(ModelTree.sections(for: catalogWithVideo, query: "ltx", state: ModelTreeState())) == ["ltx_2.3_q8p.ckpt"])
+    #expect(
+      files(ModelTree.sections(for: catalogWithVideo, query: "minimax", state: ModelTreeState()))
+        == ["minimax_h3_q8p.ckpt"])
   }
 }
