@@ -25,7 +25,7 @@ public final class ModelSelection {
 
   /// The user chose this model in the header: selects it, and, if it is another model than the one selected and
   /// the table knows it (by its file, then by its family), returns `parameters` with the recommended steps,
-  /// guidance, sampler and shift. Nil when nothing about the parameters should change. Only the header's menu
+  /// guidance, sampler and shift (for an enabled video family, its video defaults instead). Nil when nothing about the parameters should change. Only the header's menu
   /// goes through here: a preset, the JSON editor, "resume parameters" and the restored session choose models
   /// with `select`, and keep their own values.
   public func choose(
@@ -33,9 +33,10 @@ public final class ModelSelection {
   ) -> GenerationParameters? {
     let previous = selectedFile
     select(file)
-    guard file != previous, let values = table.values(forFile: file, family: catalog.model(forFile: file)?.family) else {
-      return nil
-    }
+    guard file != previous else { return nil }
+    let family = catalog.model(forFile: file)?.family
+    if let video = VideoDefaults.applying(to: parameters, file: file, family: family) { return video }
+    guard let values = table.values(forFile: file, family: family) else { return nil }
     return parameters.applying(values)
   }
 

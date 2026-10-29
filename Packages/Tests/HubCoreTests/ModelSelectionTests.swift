@@ -42,4 +42,22 @@ struct ModelSelectionTests {
     #expect(selection.selectedFile == nil)
     #expect(ModelSelection(defaults: defaults).selectedFile == nil)
   }
+
+  @Test func choosingAnotherH3ModelAppliesVideoDefaults() throws {
+    let h3 = CatalogModel(file: "minimax_h3_ref2va_i4x.ckpt", name: "H3", family: "minimax_h3")
+    let catalog = ModelCatalog(models: [h3, klein], loras: [], fileCount: 2)
+    let selection = ModelSelection(defaults: try freshDefaults())
+    selection.select(klein.file)
+    let result = selection.choose(h3.file, applyingTo: GenerationParameters(), from: .empty, in: catalog)
+    #expect(result?.steps == 50)
+    #expect(result?.width == 576)
+  }
+
+  @Test func choosingTheSameVideoModelTwiceReturnsNilTheSecondTime() throws {
+    let h3 = CatalogModel(file: "minimax_h3_ref2va_i4x.ckpt", name: "H3", family: "minimax_h3")
+    let catalog = ModelCatalog(models: [h3], loras: [], fileCount: 1)
+    let selection = ModelSelection(defaults: try freshDefaults())
+    #expect(selection.choose(h3.file, applyingTo: GenerationParameters(), from: .empty, in: catalog) != nil)
+    #expect(selection.choose(h3.file, applyingTo: GenerationParameters(), from: .empty, in: catalog) == nil)
+  }
 }
