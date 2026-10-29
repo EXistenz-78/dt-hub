@@ -162,7 +162,8 @@ public struct DrawThingsConfigurationCodec: ConfigurationCodec {
     "tiledDecoding", "decodingTileWidth", "decodingTileHeight", "decodingTileOverlap", "tiledDiffusion",
     "diffusionTileWidth", "diffusionTileHeight", "diffusionTileOverlap", "teaCache", "teaCacheStart",
     "teaCacheEnd", "teaCacheThreshold", "teaCacheMaxSkipSteps", "colorCalibration", "compressionArtifacts",
-    "compressionArtifactsQuality",
+    "compressionArtifactsQuality", "numFrames", "shiftForAudio", "usesSolAttention", "solAttentionStart",
+    "solAttentionTau",
   ]
 
   /// Keys that identify the configuration, not a setting.
@@ -259,6 +260,14 @@ public struct DrawThingsConfigurationCodec: ConfigurationCodec {
     a.compressionArtifacts = CompressionArtifacts(rawValue: Int(c.compressionArtifacts.rawValue)) ?? .none
     a.compressionQuality = d(c.compressionArtifactsQuality)
     p.advanced = a
+    // A still image's configuration keeps the library's 14 frames: that is no clip, so the video block stays.
+    if c.numFrames != DrawThingsConfiguration().numFrames || base.video.numFrames > 1 {
+      p.video.numFrames = Int(c.numFrames)
+    }
+    p.video.shiftForAudio = d(c.shiftForAudio)
+    p.video.usesSolAttention = c.usesSolAttention
+    p.video.solAttentionStart = Int(c.solAttentionStart)
+    p.video.solAttentionTau = d(c.solAttentionTau)
     return p
   }
 }

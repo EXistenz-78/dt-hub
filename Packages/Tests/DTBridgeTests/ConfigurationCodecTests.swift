@@ -72,13 +72,13 @@ struct ConfigurationCodecTests {
   }
 
   @Test func settingsWithoutACardAreKeptAsExtra() throws {
-    let result = try codec.apply(json: #"{"fps": 24, "solAttentionTau": 0.7, "steps": 20}"#, to: state)
-    #expect(result.parameters.extra == ["fps": .int(24), "solAttentionTau": .double(0.7)])
+    let result = try codec.apply(json: #"{"fps": 24, "guidingFrameNoise": 0.7, "steps": 20}"#, to: state)
+    #expect(result.parameters.extra == ["fps": .int(24), "guidingFrameNoise": .double(0.7)])
     #expect(result.parameters.steps == 20)
     // They go out with the next request and come back in the export.
     let request = JobMapper.request(for: GenerationJob(prompt: "p", model: "m", parameters: result.parameters)).configuration
     #expect(request.fps == 24)
-    #expect(abs(request.solAttentionTau - 0.7) < 0.0001)
+    #expect(abs(request.guidingFrameNoise - 0.7) < 0.0001)
     #expect(object(codec.exportJSON(result))["fps"] as? Int == 24)
   }
 
@@ -234,5 +234,17 @@ struct ConfigurationCodecTests {
     #expect(DrawThingsConfigurationCodec.extraKeys.contains("fps"))
     #expect(!DrawThingsConfigurationCodec.extraKeys.contains("steps"))
     #expect(!DrawThingsConfigurationCodec.extraKeys.contains("name"))
+  }
+
+  @Test func videoKeysAreModeledNotExtra() throws {
+    let result = try codec.apply(json: "{\"numFrames\": 56, \"shiftForAudio\": 5}", to: state)
+    #expect(result.parameters.video.numFrames == 56)
+    #expect(result.parameters.video.shiftForAudio == 5)
+    #expect(result.parameters.extra["numFrames"] == nil)
+    #expect(result.parameters.extra["shiftForAudio"] == nil)
+    #expect(codec.unknownKeys(in: "{\"numFrames\": 56}").isEmpty)
+    // An image state keeps its still-image video block.
+    let image = try codec.apply(json: "{\"steps\": 4}", to: state)
+    #expect(image.parameters.video == VideoParameters())
   }
 }

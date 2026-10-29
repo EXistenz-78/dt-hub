@@ -152,8 +152,16 @@ public actor DrawThingsBackend: GenerationBackend {
         do {
           let service = await self.currentService()
           await self.registerRemoteSpec(for: job.model, loras: job.parameters.loras.map(\.file), on: service)
+          // The actor's state, read before the events come in.
+          let runsLocally = await self.runsLocally(job.model)
+          let hires = job.parameters.advanced.hiresFix ? job.parameters.advanced.hiresFixStrength : nil
           for try await event in service.stream(try JobMapper.request(for: job, inputs: inputs)) {
-            if let update = try JobMapper.update(for: event, expected: job.parameters.batchSize) { continuation.yield(update) }
+            if let update = try JobMapper.update(
+              for: event, expected: job.parameters.batchSize, videoFPS: job.videoFPS, runsLocally: runsLocally,
+              requestedFrames: job.parameters.video.numFrames, hiresFixStrength: hires)
+            {
+              continuation.yield(update)
+            }
           }
           continuation.finish()
         } catch {
@@ -163,6 +171,9 @@ public actor DrawThingsBackend: GenerationBackend {
       continuation.onTermination = { _ in task.cancel() }
     }
   }
+
+  /// The model's files are on the server (otherwise the cloud runs it).
+  private func runsLocally(_ model: String) -> Bool { installedFiles.contains(model) }
 
   public func shutdown() async {
     await service?.shutdown()

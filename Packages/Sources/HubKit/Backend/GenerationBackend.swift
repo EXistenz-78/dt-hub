@@ -8,6 +8,8 @@ public enum BackendError: Error, Equatable, Sendable {
   case noImages
   /// The server failed the generation; the detail is its message, for display.
   case generationFailed(String)
+  /// A video model returned a single frame in the cloud: the cloud does not run it as a video.
+  case videoNotAvailable
 }
 
 /// The generation server as HubCore sees it (spec §4). DTBridge implements it with gRPC;

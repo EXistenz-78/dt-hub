@@ -3367,6 +3367,23 @@
         }
       }
     },
+    "generation.error.videoNotAvailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This video model does not run in the cloud"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il modello video non gira sul cloud"
+          }
+        }
+      }
+    },
     "header.stop.step": {
       "extractionState": "manual",
       "localizations": {

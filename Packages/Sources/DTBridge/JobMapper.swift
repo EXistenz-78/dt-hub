@@ -70,6 +70,15 @@ enum JobMapper {
     // The extra settings are keys of the configuration JSON the cards do not cover; a text
     // the library cannot take is left out rather than stopping the RUN.
     if let extra = JSONValue.text(of: parameters.extra) { try? configuration.mergeJSON(extra) }
+    // The video fields only describe a clip: a still image leaves the library's defaults alone.
+    if parameters.video.numFrames > 1 {
+      let video = parameters.video
+      configuration.numFrames = Int32(video.numFrames)
+      configuration.shiftForAudio = Float(video.shiftForAudio)
+      configuration.usesSolAttention = video.usesSolAttention
+      configuration.solAttentionStart = Int32(video.solAttentionStart)
+      configuration.solAttentionTau = Float(video.solAttentionTau)
+    }
     return configuration
   }
 
@@ -127,24 +136,47 @@ enum JobMapper {
     configuration.compressionArtifactsQuality = Float(advanced.compressionQuality)
   }
 
+  /// The step and total a progress stage shows. The library's `totalSteps` counts only the first pass; with the Hires
+  /// fix the second pass runs about `steps * strength` more steps, and its steps follow the first pass's.
+  static func progressSteps(
+    stage: GenerationStage, steps: Int, hiresFixStrength: Double?
+  ) -> (step: Int?, total: Int) {
+    let total = hiresFixStrength.map { Int((Double(steps) * (1 + $0)).rounded(.up)) } ?? steps
+    switch stage {
+    case .sampling(let step):
+      return (step, total)
+    case .secondPassSampling(let step):
+      return (hiresFixStrength == nil ? step : steps + step, total)
+    default:
+      return (nil, total)
+    }
+  }
+
   /// The update for a library event; nil for events DT Hub does not show (audio, downloads,
   /// single images: the batch's full list arrives with `.completed`).
-  /// `expected` is how many images the job asked for (its batch size).
-  static func update(for event: GenerationEvent, expected: Int = 1) throws -> GenerationUpdate? {
+  /// - Parameters:
+  ///   - expected: how many images the job asked for (its batch size).
+  ///   - videoFPS: the clip's frame rate for a video job, nil for an image job.
+  ///   - runsLocally: the model's files are on the server (not run by the cloud).
+  ///   - requestedFrames: how many frames the job asked for.
+  ///   - hiresFixStrength: the second pass's strength when the Hires fix is on, for the progress.
+  static func update(
+    for event: GenerationEvent, expected: Int = 1, videoFPS: Double? = nil, runsLocally: Bool = true,
+    requestedFrames: Int = 1, hiresFixStrength: Double? = nil
+  ) throws -> GenerationUpdate? {
     switch event {
     case .progress(let progress):
-      switch progress.stage {
-      case .sampling(let step), .secondPassSampling(let step):
-        return .progress(step: step, totalSteps: progress.totalSteps)
-      default:
-        break
-      }
-      return .progress(step: nil, totalSteps: progress.totalSteps)
+      let shown = progressSteps(stage: progress.stage, steps: progress.totalSteps, hiresFixStrength: hiresFixStrength)
+      return .progress(step: shown.step, totalSteps: shown.total)
     case .preview(let image):
       return .preview(image)
     case .completed(let result):
       guard !result.images.isEmpty else { throw BackendError.noImages }
-      return .finished(finalImages(result.images, expected: expected))
+      guard let videoFPS else { return .finished(finalImages(result.images, expected: expected)) }
+      // The cloud answers a video model with a single picture when it cannot run it as a video.
+      if result.images.count == 1, !runsLocally, requestedFrames > 1 { throw BackendError.videoNotAvailable }
+      let audio = result.audio.first.map { GeneratedAudioTrack(channels: $0.channels, sampleRate: $0.sampleRate) }
+      return .finishedVideo(GeneratedVideo(frames: result.images, audio: audio, framesPerSecond: videoFPS))
     case .image(let image, _):
       // In Bridge Mode the cloud sends the picture several times while it works: shown as it comes, like a preview.
       return .preview(image)
