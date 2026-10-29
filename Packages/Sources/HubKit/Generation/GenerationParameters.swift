@@ -25,6 +25,8 @@ public struct GenerationParameters: Equatable, Codable, Sendable {
   public var loras: [LoRASelection]
   /// The Advanced cards (spec §6, level 2).
   public var advanced: AdvancedParameters
+  /// The video-only parameters; they matter only for video families.
+  public var video: VideoParameters
   /// Draw Things settings DT Hub has no card for, from the JSON editor (spec §6, level 3):
   /// kept as they are, sent with every RUN, saved with the session and in the PNG.
   public var extra: [String: JSONValue]
@@ -35,7 +37,7 @@ public struct GenerationParameters: Equatable, Codable, Sendable {
     sampler: Sampler = .uniPCTrailing, shift: Double = 3, resolutionDependentShift: Bool = true,
     seed: UInt32 = 0, randomSeed: Bool = true, highRes: Bool = false, batchSize: Int = 1, batchCount: Int = 1,
     loras: [LoRASelection] = [], advanced: AdvancedParameters = .default,
-    extra: [String: JSONValue] = [:]
+    video: VideoParameters = .default, extra: [String: JSONValue] = [:]
   ) {
     self.width = width
     self.height = height
@@ -53,6 +55,7 @@ public struct GenerationParameters: Equatable, Codable, Sendable {
     self.batchCount = batchCount
     self.loras = loras
     self.advanced = advanced
+    self.video = video
     self.extra = extra
   }
 
@@ -80,6 +83,7 @@ public struct GenerationParameters: Equatable, Codable, Sendable {
     batchCount = value(.batchCount, fallback.batchCount)
     loras = value(.loras, fallback.loras)
     advanced = value(.advanced, fallback.advanced)
+    video = value(.video, fallback.video)
     extra = value(.extra, fallback.extra)
   }
 
@@ -200,6 +204,7 @@ public struct GenerationParameters: Equatable, Codable, Sendable {
       copy.loras[index].weight = min(max(copy.loras[index].weight, range.lowerBound), range.upperBound)
     }
     copy.advanced = advanced.clamped()
+    copy.video = video.clamped(for: nil)
     return copy
   }
 

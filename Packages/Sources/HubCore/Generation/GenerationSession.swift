@@ -144,6 +144,7 @@ public final class GenerationSession {
               // Saved before the strip is cut: what leaves the strip stays in the history file.
               persistHistory()
               trimStrip()
+            case .finishedVideo: break  // handled in Task 6
             }
           }
         }

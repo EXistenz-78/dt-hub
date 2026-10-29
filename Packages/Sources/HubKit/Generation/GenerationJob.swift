@@ -14,10 +14,13 @@ public struct GenerationJob: Equatable, Codable, Sendable {
   public var moodboardCount: Int
   /// What Draw Things does with the mask; nil when the RUN has no mask.
   public var maskSettings: MaskSettings?
+  /// The frame rate of the family when the RUN makes a video; nil for images.
+  public var videoFPS: Double?
 
   public init(
     prompt: String, negativePrompt: String = "", model: String, parameters: GenerationParameters,
-    imageStrength: Double? = nil, moodboardCount: Int = 0, maskSettings: MaskSettings? = nil
+    imageStrength: Double? = nil, moodboardCount: Int = 0, maskSettings: MaskSettings? = nil,
+    videoFPS: Double? = nil
   ) {
     self.prompt = prompt
     self.negativePrompt = negativePrompt
@@ -26,7 +29,13 @@ public struct GenerationJob: Equatable, Codable, Sendable {
     self.imageStrength = imageStrength
     self.moodboardCount = moodboardCount
     self.maskSettings = maskSettings
+    self.videoFPS = videoFPS
   }
+
+  public var isVideo: Bool { videoFPS != nil }
+
+  /// The clip length in seconds; nil for images.
+  public var videoSeconds: Double? { videoFPS.map { Double(parameters.video.numFrames) / $0 } }
 
   /// What Draw Things receives: the trigger words of the job's LoRAs, in order, then the
   /// prompt, separated by spaces; edges trimmed where they join.
@@ -46,6 +55,7 @@ public struct GenerationJob: Equatable, Codable, Sendable {
     imageStrength = try? container.decodeIfPresent(Double.self, forKey: .imageStrength)
     moodboardCount = (try? container.decodeIfPresent(Int.self, forKey: .moodboardCount)) ?? 0
     maskSettings = try? container.decodeIfPresent(MaskSettings.self, forKey: .maskSettings)
+    videoFPS = try? container.decodeIfPresent(Double.self, forKey: .videoFPS)
   }
 }
 
@@ -57,6 +67,8 @@ public enum GenerationUpdate: Sendable {
   case preview(CGImage)
   /// All the final images of the RUN.
   case finished([CGImage])
+  /// The clip of a video RUN.
+  case finishedVideo(GeneratedVideo)
 }
 
 extension GenerationJob {

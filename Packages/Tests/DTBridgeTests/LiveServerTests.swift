@@ -49,6 +49,7 @@ struct LiveServerTests {
       case .progress: sawProgress = true
       case .preview: break
       case .finished(let final): images = final
+      case .finishedVideo: break
       }
     }
     await backend.shutdown()
