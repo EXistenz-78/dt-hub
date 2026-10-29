@@ -48,16 +48,16 @@ struct VideoSettingsCard: View {
   private func framesRow(_ info: VideoFamilyInfo) -> some View {
     let frames = $controller.parameters.video.numFrames
     return CardRow(label: String(localized: "card.video.frames")) {
-      Text(
-        String(
-          format: String(localized: "card.video.frames.seconds"),
-          info.seconds(forFrames: frames.wrappedValue).formatted(.number.precision(.fractionLength(1)))))
-        .font(.callout)
-        .foregroundStyle(.secondary)
-        .monospacedDigit()
-    } control: {
-      FramesField(
-        label: String(localized: "card.video.frames"), value: frames, info: info)
+      HStack(spacing: DS.controlGap) {
+        FramesField(label: String(localized: "card.video.frames"), value: frames, info: info)
+        Text(
+          String(
+            format: String(localized: "card.video.frames.seconds"),
+            info.seconds(forFrames: frames.wrappedValue).formatted(.number.precision(.fractionLength(1)))))
+          .font(.callout)
+          .foregroundStyle(.secondary)
+          .monospacedDigit()
+      }
     }
   }
 
@@ -119,7 +119,9 @@ private struct FramesField: View {
   }
 
   private func move(_ direction: Int) {
-    value = info.step(info.snap(value), by: direction)
+    // Commit what is typed first, so the step starts from it.
+    let typed = NumberText.int(text, in: info.minFrames...info.maxFrames) ?? value
+    value = info.step(info.snap(typed), by: direction)
     text = String(value)
   }
 

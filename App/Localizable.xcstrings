@@ -9578,13 +9578,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Accelerators"
+            "value": "Accelerator Settings"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Acceleratori"
+            "value": "Impostazioni acceleratori"
           }
         }
       }
@@ -9765,13 +9765,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Video"
+            "value": "Video Settings"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Video"
+            "value": "Impostazioni video"
           }
         }
       }
@@ -9782,7 +9782,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Audio shift"
+            "value": "Audio Shift"
           }
         },
         "it": {
@@ -9884,7 +9884,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Strategic stochastic sampling"
+            "value": "Strategic Stochastic Sampling"
           }
         },
         "it": {

@@ -30,4 +30,13 @@ struct VideoCardRowsTests {
     #expect(!VideoCardRows(model: model("ltx2.3"), sampler: .eulerAncestral).showsStochasticSampling)
     #expect(!VideoCardRows(model: model("ltx2.3"), sampler: .tcd).showsAccelerators)
   }
+
+  @Test func h3WithANonTCDSamplerShowsNoStochasticRow() {
+    #expect(!VideoCardRows(model: model("minimax_h3"), sampler: .eulerAncestral).showsStochasticSampling)
+  }
+
+  @Test func hiddenVideoFamilyHasNoVideoRows() {
+    let rows = VideoCardRows(model: model("wan_v2.1_14b"), sampler: .tcd)
+    #expect(!rows.showsVideoCard && !rows.showsAccelerators && !rows.showsAudioShift && !rows.showsStochasticSampling)
+  }
 }
