@@ -21,6 +21,12 @@ extension ImageStore {
   }
 
   public func trash(_ url: URL) throws {
+    try Self.trashOne(url)
+    // A video's poster takes its MP4 along (a twin that is not there is no error).
+    if url.pathExtension.lowercased() == "png" { try Self.trashOne(Self.videoURL(forPoster: url)) }
+  }
+
+  private static func trashOne(_ url: URL) throws {
     do {
       try FileManager.default.trashItem(at: url, resultingItemURL: nil)
     } catch let error as CocoaError where error.code == .fileNoSuchFile || error.code == .fileReadNoSuchFile {
@@ -28,6 +34,26 @@ extension ImageStore {
     } catch {
       throw ImageStoreError.cannotTrash(error.localizedDescription)
     }
+  }
+
+  /// The MP4 that sits next to a video's poster: same name, extension `mp4`.
+  public static func videoURL(forPoster poster: URL) -> URL {
+    poster.deletingPathExtension().appendingPathExtension("mp4")
+  }
+
+  /// Saves a clip: its first frame as the poster PNG (which carries the job) and the MP4 next to it.
+  /// Returns the poster. If the MP4 cannot be written the poster is removed again.
+  public func saveVideo(_ video: GeneratedVideo, job: GenerationJob, date: Date, elapsed: TimeInterval?) async throws -> URL {
+    guard let first = video.frames.first else { throw ImageStoreError.cannotWrite(MP4EncoderError.noFrames.localizedDescription) }
+    let poster = try save(first, job: job, index: 0, date: date, elapsed: elapsed)
+    do {
+      try await MP4Encoder.write(video, to: Self.videoURL(forPoster: poster))
+    } catch {
+      try? FileManager.default.removeItem(at: poster)
+      try? FileManager.default.removeItem(at: Self.videoURL(forPoster: poster))
+      throw ImageStoreError.cannotWrite("\(error)")
+    }
+    return poster
   }
 }
 

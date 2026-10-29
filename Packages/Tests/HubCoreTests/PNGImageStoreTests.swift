@@ -92,4 +92,32 @@ struct PNGImageStoreTests {
     #expect(ElapsedText.label(1234) == "1234sec")
     #expect(ElapsedText.label(nil) == nil)
   }
+
+  @Test func saveVideoWritesPosterAndMP4Together() async throws {
+    let store = PNGImageStore(folder: tempFolder())
+    let frames = (0..<3).map { _ in testImage(width: 256, height: 144) }
+    let poster = try await store.saveVideo(
+      GeneratedVideo(frames: frames, audio: nil, framesPerSecond: 24), job: job, date: date, elapsed: 2)
+    let twin = PNGImageStore.videoURL(forPoster: poster)
+    #expect(poster.pathExtension == "png")
+    #expect(twin.pathExtension == "mp4")
+    #expect(twin.deletingPathExtension() == poster.deletingPathExtension())
+    #expect(FileManager.default.fileExists(atPath: poster.path))
+    #expect(FileManager.default.fileExists(atPath: twin.path))
+    #expect(PNGImageStore.job(in: poster) == job)
+  }
+
+  @Test func trashRemovesBothFiles() async throws {
+    let store = PNGImageStore(folder: tempFolder())
+    let frames = (0..<3).map { _ in testImage(width: 256, height: 144) }
+    let poster = try await store.saveVideo(
+      GeneratedVideo(frames: frames, audio: nil, framesPerSecond: 24), job: job, date: date, elapsed: nil)
+    let twin = PNGImageStore.videoURL(forPoster: poster)
+    try store.trash(poster)
+    #expect(!FileManager.default.fileExists(atPath: poster.path))
+    #expect(!FileManager.default.fileExists(atPath: twin.path))
+    // A twin that is already gone is not an error.
+    let lone = try store.save(testImage(), job: job, index: 5, date: date)
+    try store.trash(lone)
+  }
 }
