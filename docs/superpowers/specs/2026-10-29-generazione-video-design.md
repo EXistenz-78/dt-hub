@@ -106,6 +106,12 @@ Le anteprime H3 hanno 24 canali e possono non decodificarsi. In quel caso resta 
 - Un solo frame da un modello video cloud: errore "modello non disponibile sul cloud", non un video di un frame.
 - Annullamento con `stream.cancel()`. Se erano gia' arrivati frame non si salva nulla.
 
+## Documentazione
+
+Il `README.md` dichiara che il supporto ai modelli video e' ancora in sviluppo e che alcune funzioni potrebbero non
+funzionare come previsto. Questo copre in particolare i modelli locali, non provati. Nessun altro meccanismo di
+avviso nell'app.
+
 ## Fuori dalla prima release
 
 Wan, video-to-video, estensione clip, audio-to-video, upscale video, fps modificabile, ProRes, stima CU senza misure.
