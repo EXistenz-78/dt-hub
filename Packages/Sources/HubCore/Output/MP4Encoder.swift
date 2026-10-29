@@ -73,6 +73,9 @@ public enum MP4Encoder {
       guard writer.canAdd(videoInput) else { throw MP4EncoderError.cannotWrite("video input not accepted") }
       writer.add(videoInput)
 
+      if let audio = video.audio, !(audio.sampleRate.isFinite && audio.sampleRate >= 1000 && audio.sampleRate <= 384_000) {
+        throw MP4EncoderError.cannotWrite("unsupported audio sample rate \(audio.sampleRate)")
+      }
       if let audio = video.audio, let samples = Self.interleavedStereo(audio), !samples.isEmpty {
         var description = AudioStreamBasicDescription(
           mSampleRate: audio.sampleRate, mFormatID: kAudioFormatLinearPCM,
@@ -114,21 +117,40 @@ public enum MP4Encoder {
 
     func run() async throws {
       guard writer.startWriting() else {
-        throw MP4EncoderError.cannotWrite(writer.error?.localizedDescription ?? "cannot start writing")
+        let message = writer.error?.localizedDescription ?? "cannot start writing"
+        discard()
+        throw MP4EncoderError.cannotWrite(message)
       }
       writer.startSession(atSourceTime: .zero)
-      try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-        queue.async {
-          self.continuation = continuation
-          self.pending = self.audioInput == nil ? 1 : 2
-          self.videoInput.requestMediaDataWhenReady(on: self.queue) { self.feedVideo() }
-          self.audioInput?.requestMediaDataWhenReady(on: self.queue) { self.feedAudio() }
+      do {
+        try await withTaskCancellationHandler {
+          try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            queue.async {
+              self.continuation = continuation
+              self.pending = self.audioInput == nil ? 1 : 2
+              self.videoInput.requestMediaDataWhenReady(on: self.queue) { self.feedVideo() }
+              self.audioInput?.requestMediaDataWhenReady(on: self.queue) { self.feedAudio() }
+            }
+          }
+        } onCancel: {
+          queue.async { if self.failure == nil { self.failure = CancellationError() } }
         }
+      } catch {
+        discard()
+        throw error
       }
       await writer.finishWriting()
       if writer.status != .completed {
-        throw MP4EncoderError.cannotWrite(writer.error?.localizedDescription ?? "writing did not complete")
+        let message = writer.error?.localizedDescription ?? "writing did not complete"
+        discard()
+        throw MP4EncoderError.cannotWrite(message)
       }
+    }
+
+    /// Gives up on the file: stops the writer and removes what it left at `url`.
+    private func discard() {
+      writer.cancelWriting()
+      try? FileManager.default.removeItem(at: url)
     }
 
     private func inputDone() {
@@ -140,28 +162,53 @@ public enum MP4Encoder {
       }
     }
 
+    private var videoFinished = false
+    private var audioFinished = false
+
+    /// Finishes the video input once, whatever the writer state, and counts it as done.
+    private func finishVideo() {
+      guard !videoFinished else { return }
+      videoFinished = true
+      if writer.status == .writing { videoInput.markAsFinished() }
+      inputDone()
+    }
+
+    private func finishAudio() {
+      guard !audioFinished, let input = audioInput else { return }
+      audioFinished = true
+      if writer.status == .writing { input.markAsFinished() }
+      inputDone()
+    }
+
+    /// Records the first failure and finishes both inputs, so the waiting task is always resumed.
     private func fail(_ message: String) {
       if failure == nil { failure = MP4EncoderError.cannotWrite(message) }
+      abortAll()
+    }
+
+    private func abortAll() {
+      finishVideo()
+      finishAudio()
     }
 
     private func feedVideo() {
-      while videoInput.isReadyForMoreMediaData {
-        if failure != nil || nextFrame >= video.frames.count || writer.status == .failed {
-          if writer.status == .failed { fail(writer.error?.localizedDescription ?? "writer failed") }
-          videoInput.markAsFinished()
-          inputDone()
-          return
-        }
+      while !videoFinished && videoInput.isReadyForMoreMediaData {
+        if failure != nil { return abortAll() }
+        if writer.status == .failed { return fail(writer.error?.localizedDescription ?? "writer failed") }
+        if nextFrame >= video.frames.count { return finishVideo() }
         guard let pool = adaptor.pixelBufferPool, let buffer = pixelBuffer(video.frames[nextFrame], pool: pool) else {
-          fail("cannot make a pixel buffer for frame \(nextFrame)")
-          continue
+          return fail("cannot make a pixel buffer for frame \(nextFrame)")
         }
         let time = CMTimeMultiply(frameDuration, multiplier: Int32(nextFrame))
         if !adaptor.append(buffer, withPresentationTime: time) {
-          fail(writer.error?.localizedDescription ?? "cannot append frame \(nextFrame)")
-          continue
+          return fail(writer.error?.localizedDescription ?? "cannot append frame \(nextFrame)")
         }
         nextFrame += 1
+      }
+      // Not ready any more: a failed writer never becomes ready again, so check here too.
+      if failure != nil || writer.status == .failed {
+        if failure == nil { failure = MP4EncoderError.cannotWrite(writer.error?.localizedDescription ?? "writer failed") }
+        abortAll()
       }
     }
 
@@ -169,21 +216,21 @@ public enum MP4Encoder {
       guard let input = audioInput, let format = audioFormat else { return }
       let chunk = 4096
       let total = audioSamples.count / 2
-      while input.isReadyForMoreMediaData {
-        if failure != nil || nextAudioSample >= total || writer.status == .failed {
-          if writer.status == .failed { fail(writer.error?.localizedDescription ?? "writer failed") }
-          input.markAsFinished()
-          inputDone()
-          return
-        }
+      while !audioFinished && input.isReadyForMoreMediaData {
+        if failure != nil { return abortAll() }
+        if writer.status == .failed { return fail(writer.error?.localizedDescription ?? "writer failed") }
+        if nextAudioSample >= total { return finishAudio() }
         let count = min(chunk, total - nextAudioSample)
         guard let sample = sampleBuffer(start: nextAudioSample, count: count, format: format),
           input.append(sample)
         else {
-          fail(writer.error?.localizedDescription ?? "cannot append audio")
-          continue
+          return fail(writer.error?.localizedDescription ?? "cannot append audio")
         }
         nextAudioSample += count
+      }
+      if failure != nil || writer.status == .failed {
+        if failure == nil { failure = MP4EncoderError.cannotWrite(writer.error?.localizedDescription ?? "writer failed") }
+        abortAll()
       }
     }
 
@@ -206,7 +253,7 @@ public enum MP4Encoder {
       var sample: CMSampleBuffer?
       let status = CMAudioSampleBufferCreateReadyWithPacketDescriptions(
         allocator: nil, dataBuffer: block, formatDescription: format, sampleCount: count,
-        presentationTimeStamp: CMTime(value: CMTimeValue(start), timescale: CMTimeScale(rate)),
+        presentationTimeStamp: CMTime(value: CMTimeValue(start), timescale: CMTimeScale(rate.rounded())),
         packetDescriptions: nil, sampleBufferOut: &sample)
       return status == noErr ? sample : nil
     }

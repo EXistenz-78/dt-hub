@@ -120,4 +120,18 @@ struct PNGImageStoreTests {
     let lone = try store.save(testImage(), job: job, index: 5, date: date)
     try store.trash(lone)
   }
+
+  @Test func saveVideoFailureRemovesThePoster() async throws {
+    let folder = tempFolder()
+    let store = PNGImageStore(folder: folder)
+    let frames = (0..<2).map { _ in testImage(width: 256, height: 144) }
+    let bad = GeneratedAudioTrack(channels: [[0, 0.1]], sampleRate: 0)
+    await #expect(throws: ImageStoreError.self) {
+      try await store.saveVideo(
+        GeneratedVideo(frames: frames, audio: bad, framesPerSecond: 24), job: job, date: date, elapsed: nil)
+    }
+    let files = (FileManager.default.enumerator(at: folder, includingPropertiesForKeys: nil)?.allObjects as? [URL] ?? [])
+      .filter { !$0.hasDirectoryPath }
+    #expect(files.isEmpty)
+  }
 }

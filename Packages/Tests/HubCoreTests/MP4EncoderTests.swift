@@ -48,4 +48,19 @@ struct MP4EncoderTests {
       try await MP4Encoder.write(GeneratedVideo(frames: [], audio: nil, framesPerSecond: 24), to: tempFile())
     }
   }
+
+  @Test(.timeLimit(.minutes(1))) func writingToAMissingFolderThrowsAndLeavesNothing() async throws {
+    let url = FileManager.default.temporaryDirectory
+      .appendingPathComponent("MP4EncoderTests-missing-\(UUID())", isDirectory: true).appendingPathComponent("x.mp4")
+    await #expect(throws: MP4EncoderError.self) { try await MP4Encoder.write(video(audio: true), to: url) }
+    #expect(!FileManager.default.fileExists(atPath: url.path))
+  }
+
+  @Test func anAudioTrackWithRateZeroThrowsInsteadOfTrapping() async throws {
+    var clip = video(audio: false)
+    clip.audio = GeneratedAudioTrack(channels: [[0, 0.1], [0, 0.1]], sampleRate: 0)
+    let url = tempFile()
+    await #expect(throws: MP4EncoderError.self) { try await MP4Encoder.write(clip, to: url) }
+    #expect(!FileManager.default.fileExists(atPath: url.path))
+  }
 }
