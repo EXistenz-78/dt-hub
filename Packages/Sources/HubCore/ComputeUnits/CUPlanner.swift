@@ -98,6 +98,8 @@ public enum CUPlanner {
     _ parameters: GenerationParameters, model: CatalogModel?, hasImage: Bool, strength: Double, references: Int
   ) -> CUInputs? {
     guard let model, let family = model.family else { return nil }
+    // No estimate for video: its consumption is measured and tuned in the field (the meter shows a dash).
+    guard !VideoFamilies.isEnabled(family) else { return nil }
     return CUInputs(
       family: family, modelFile: model.file, capabilities: model.capabilities, width: parameters.width,
       height: parameters.height, steps: parameters.steps, strength: hasImage ? strength : 1,

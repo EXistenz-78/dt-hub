@@ -61,6 +61,21 @@ struct CUPlannerTests {
     #expect(passes(pipeline, presets: ["p": preset])[0].inputs == nil)
   }
 
+  @Test func aVideoModelGivesNoEstimate() throws {
+    let video = CatalogModel(file: "h3.ckpt", name: "H3", family: "minimax_h3")
+    let ltx = CatalogModel(file: "ltx.ckpt", name: "LTX", family: "ltx2.3")
+    let withVideo = ModelCatalog(models: [flux, zimage, sdxl, video, ltx], loras: [], fileCount: 5, upscalers: [])
+    for model in [video, ltx] {
+      let result = CUPlanner.passes(
+        fields: fields(), model: model, control: control, pipeline: nil, presets: [:], catalog: withVideo,
+        headerModel: model.file, strengthOfPass: { _, _, _, _, _ in 0.7 })
+      #expect(result.count == 1)
+      #expect(result[0].inputs == nil)
+    }
+    // The same request on an image model still has an estimate.
+    #expect(passes(model: zimage)[0].inputs != nil)
+  }
+
   @Test func theMoodboardCountsOnlyForAFamilyThatUsesIt() throws {
     // SD XL has no Moodboard in DT Hub; FLUX.2 and Z Image do.
     let old = try #require(passes(model: sdxl)[0].inputs)
