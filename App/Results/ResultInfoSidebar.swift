@@ -41,11 +41,16 @@ struct ResultInfoSidebar: View {
     VStack(alignment: .leading, spacing: 1) {
       label(row.field)
         .font(.caption).foregroundStyle(.secondary)
-      Text(verbatim: row.value)
+      Text(verbatim: displayValue(row))
         .font(Self.isLongText(row.field) ? .body : .system(.callout, design: .monospaced))
         .textSelection(.enabled)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
+  }
+
+  /// The partial-video row carries the stable token "yes"; the sidebar words it.
+  private func displayValue(_ row: ResultInfo.Row) -> String {
+    row.field == .partial ? String(localized: "results.info.partial.value") : row.value
   }
 
   private static func isLongText(_ field: ResultInfo.Field) -> Bool {

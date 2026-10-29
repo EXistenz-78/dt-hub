@@ -69,11 +69,22 @@ struct ResultsView: View {
     return selected?.image
   }
 
+  /// The clip of the chosen result, shown in place of its still; the live preview of a running generation wins.
+  private var shownVideoURL: URL? {
+    if session.isRunning, session.preview != nil { return nil }
+    return selected?.videoURL
+  }
+
   private var imageArea: some View {
     ZStack {
       RoundedRectangle(cornerRadius: DS.minorRadius, style: .continuous)
         .fill(Color.primary.opacity(0.06))
-      if let shownImage {
+      if let videoURL = shownVideoURL {
+        VideoPlayerView(url: videoURL)
+          .id(videoURL)
+          .clipShape(RoundedRectangle(cornerRadius: DS.minorRadius, style: .continuous))
+          .padding(6)
+      } else if let shownImage {
         Image(decorative: shownImage, scale: 1)
           .resizable()
           .interpolation(.high)
@@ -88,6 +99,15 @@ struct ResultsView: View {
       }
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .overlay(alignment: .bottomLeading) {
+      if shownVideoURL != nil, selected?.isPartialVideo == true {
+        Text("results.video.partial")
+          .font(.caption)
+          .padding(.horizontal, 8).padding(.vertical, 3)
+          .background(Capsule().fill(.regularMaterial))
+          .padding(10)
+      }
+    }
     .contextMenu {
       // Lists again the project's pictures the history file forgot (it keeps the last 2000, the strip shows 100).
       if let folder = controller.projectFolder {
@@ -177,7 +197,7 @@ struct ResultsView: View {
       // Dragging a picture of the selection takes the whole selection; any other picture goes alone.
       .dragContainer(for: DraggedResult.self) { ids in
         session.results.filter { ids.contains($0.id) }.compactMap { result in
-          result.fileURL.map { DraggedResult(id: result.id, url: $0) }
+          result.exportURL.map { DraggedResult(id: result.id, url: $0) }
         }
       }
       .dragContainerSelection(Array(picks.ids))
@@ -205,6 +225,7 @@ struct ResultsView: View {
             .strokeBorder(isSelected ? DS.accent : Color.clear, lineWidth: 2)
         )
         .overlay(alignment: .top) { elapsedLabel(result.elapsed) }
+        .overlay(alignment: .bottomTrailing) { videoBadge(result) }
     }
     .buttonStyle(.plain)
     .accessibilityLabel(result.job.prompt)
@@ -214,7 +235,7 @@ struct ResultsView: View {
       Button("results.addToMoodboard") { addToMoodboard(targets) }
       Button("results.trash") { trash(targets.map(\.id)) }
     }
-    if let url = result.fileURL {
+    if result.exportURL != nil {
       button.draggable(containerItemID: result.id)
     } else {
       button
@@ -231,6 +252,23 @@ struct ResultsView: View {
         .background(Capsule().fill(Color.black.opacity(0.6)))
         .padding(.top, 3)
         .accessibilityLabel(text)
+    }
+  }
+
+  /// A small play icon and the clip length ("5 s") over the thumbnail of a video; nothing for a picture.
+  @ViewBuilder private func videoBadge(_ result: GeneratedImage) -> some View {
+    if let seconds = result.videoBadgeSeconds {
+      let text = String(format: String(localized: "results.video.badge"), seconds)
+      HStack(spacing: 2) {
+        Image(systemName: "play.fill")
+        Text(verbatim: text)
+      }
+      .font(.system(size: 9, weight: .semibold))
+      .foregroundStyle(.white)
+      .padding(.horizontal, 5).padding(.vertical, 1)
+      .background(Capsule().fill(Color.black.opacity(0.6)))
+      .padding(3)
+      .accessibilityLabel(text)
     }
   }
 
@@ -329,7 +367,7 @@ struct ResultsView: View {
         Button("results.resume") { controller.resume(result, with: connection) }
           .buttonStyle(DSPillButtonStyle())
       }
-      let urls = chosen.compactMap(\.fileURL)
+      let urls = chosen.compactMap(\.exportURL)
       if !urls.isEmpty {
         Button { NSWorkspace.shared.activateFileViewerSelecting(urls) } label: {
           Image(systemName: "folder.fill")
