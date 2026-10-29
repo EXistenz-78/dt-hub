@@ -78,6 +78,9 @@ struct ResultInfoSidebar: View {
     case .fileName: Text("results.info.field.fileName")
     case .folder: Text("results.info.field.folder")
     case .notSaved: Text("results.info.field.notSaved")
+    case .frames: Text("results.info.field.frames")
+    case .duration: Text("results.info.field.duration")
+    case .partial: Text("results.info.field.partial")
     }
   }
 

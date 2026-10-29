@@ -19,6 +19,12 @@ public struct GeneratedImage: Identifiable, Sendable {
   public var elapsed: TimeInterval?
   /// True for a picture read back from its file at launch: `image` is a small version of it.
   public var isRestored = false
+  /// The MP4 next to the poster when the result is a video; nil for pictures (and for a video whose file is gone).
+  public var videoURL: URL?
+  /// The clip length in seconds; nil for pictures.
+  public var videoSeconds: Double?
+  /// True for a clip cut short (Stop or an error): it holds the frames made so far.
+  public var isPartialVideo = false
 }
 
 /// The picture a pass of a pipeline the plug-in guides made: written to a file of its own, kept out of the strip and
@@ -144,7 +150,19 @@ public final class GenerationSession {
               // Saved before the strip is cut: what leaves the strip stays in the history file.
               persistHistory()
               trimStrip()
-            case .finishedVideo: break  // handled in Task 6
+            case .finishedVideo(let video) where intermediate != nil:
+              if let intermediate, let image = video.frames.first, await Self.writePNG(image, to: intermediate) {
+                intermediateResult = IntermediateResult(url: intermediate, width: image.width, height: image.height)
+              }
+            case .finishedVideo(let video):
+              let took = began.duration(to: .now)
+              began = .now
+              let seconds = Double(took.components.seconds) + Double(took.components.attoseconds) / 1e18
+              if let saved = await Self.saveVideo(video, of: job, elapsed: seconds, in: store) {
+                results.insert(saved, at: 0)
+                persistHistory()
+                trimStrip()
+              }
             }
           }
         }
@@ -247,9 +265,15 @@ public final class GenerationSession {
     guard let job = PNGImageStore.job(in: url),
       let image = PNGImageStore.image(at: url, maxPixel: restoredThumbnailSize)
     else { return nil }
-    return GeneratedImage(
+    var restored = GeneratedImage(
       image: image, job: job, date: entry.date, fileURL: url, saveError: nil, elapsed: PNGImageStore.elapsed(in: url),
       isRestored: true)
+    if job.isVideo {
+      let mp4 = PNGImageStore.videoURL(forPoster: url)
+      if FileManager.default.fileExists(atPath: mp4.path) { restored.videoURL = mp4 }
+      restored.videoSeconds = job.videoSeconds
+    }
+    return restored
   }
 
   /// Writes the strip's files, newest first, keeping the older entries not read back yet (but not
@@ -319,6 +343,31 @@ public final class GenerationSession {
         } catch {
           return GeneratedImage(image: image, job: job, date: date, fileURL: nil, saveError: String(describing: error), elapsed: elapsed)
         }
+      }
+    }.value
+  }
+
+  /// Writes a clip (its poster and MP4) away from the main actor. The strip gets the poster reduced, with the clip's URL and
+  /// length; if the MP4 cannot be written the first frame stays as an unsaved image with the reason. Nil for a clip with
+  /// no frames.
+  private nonisolated static func saveVideo(
+    _ video: GeneratedVideo, of job: GenerationJob, elapsed: TimeInterval, in store: any ImageStore
+  ) async -> GeneratedImage? {
+    guard let first = video.frames.first else { return nil }
+    return await Task.detached(priority: .userInitiated) {
+      let date = Date()
+      let length = video.framesPerSecond > 0 ? Double(video.frames.count) / video.framesPerSecond : nil
+      do {
+        let poster = try await store.saveVideo(video, job: job, date: date, elapsed: elapsed)
+        var result = GeneratedImage(
+          image: reduced(first, to: displayPixels), job: job, date: date, fileURL: poster, saveError: nil, elapsed: elapsed)
+        result.videoURL = PNGImageStore.videoURL(forPoster: poster)
+        result.videoSeconds = length
+        result.isPartialVideo = video.isPartial
+        return result
+      } catch {
+        return GeneratedImage(
+          image: first, job: job, date: date, fileURL: nil, saveError: String(describing: error), elapsed: elapsed)
       }
     }.value
   }

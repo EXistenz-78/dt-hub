@@ -156,4 +156,26 @@ struct ResultInfoTests {
   @Test func dateRowFollowsTheLocale() {
     #expect(value(info(result(job()), en), .date) != value(info(result(job()), it), .date))
   }
+
+  @Test func videoJobShowsFramesAndDuration() {
+    var params = GenerationParameters()
+    params.video.numFrames = 124
+    let video = GenerationJob(prompt: "a cat", model: "ltx.ckpt", parameters: params, videoFPS: 24)
+    let i = info(result(video))
+    #expect(value(i, .frames) == "124")
+    #expect(value(i, .duration) == "5.17")
+    #expect(rows(i, .model).map(\.field).contains(.frames))
+    #expect(value(i, .partial) == nil)
+    var clip = result(video)
+    clip.isPartialVideo = true
+    let partial = info(clip)
+    #expect(rows(partial, .file).map(\.field).contains(.partial))
+  }
+
+  @Test func imageJobHasNoVideoRows() {
+    let i = info(result(job()))
+    #expect(value(i, .frames) == nil)
+    #expect(value(i, .duration) == nil)
+    #expect(value(i, .partial) == nil)
+  }
 }

@@ -11,6 +11,7 @@ public struct ResultInfo: Equatable, Sendable {
     case imageStrength, moodboard, mask
     case advanced(key: String), extra(key: String)
     case time, date, fileName, folder, notSaved
+    case frames, duration, partial
   }
 
   public enum Kind: Equatable, Sendable { case prompt, model, loras, input, advanced, extra, file }
@@ -55,6 +56,12 @@ public struct ResultInfo: Equatable, Sendable {
     model.append(Row(field: .guidance, value: number(p.guidanceScale)))
     model.append(Row(field: .sampler, value: p.sampler.displayName))
     model.append(Row(field: .shift, value: p.resolutionDependentShift ? "auto" : number(p.shift)))
+    if job.isVideo {
+      model.append(Row(field: .frames, value: integer(p.video.numFrames)))
+      if let seconds = image.videoSeconds ?? job.videoSeconds {
+        model.append(Row(field: .duration, value: number(seconds)))
+      }
+    }
     if p.cfgZeroStar { model.append(Row(field: .cfgZero, value: integer(p.cfgZeroInitSteps))) }
 
     let loras = p.loras.map { lora -> Row in
@@ -95,6 +102,7 @@ public struct ResultInfo: Equatable, Sendable {
       file.append(Row(field: .fileName, value: url.lastPathComponent))
       file.append(Row(field: .folder, value: url.deletingLastPathComponent().path))
     }
+    if job.isVideo && image.isPartialVideo { file.append(Row(field: .partial, value: "yes")) }
     if let error = image.saveError { file.append(Row(field: .notSaved, value: error)) }
 
     let all: [(Kind, [Row])] = [
