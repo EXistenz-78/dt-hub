@@ -174,12 +174,23 @@ public actor DrawThingsBackend: GenerationBackend {
           // The actor's state, read before the events come in.
           let runsLocally = await self.runsLocally(job.model)
           let hires = job.parameters.advanced.hiresFix ? job.parameters.advanced.hiresFixStrength : nil
-          for try await event in service.stream(try JobMapper.request(for: job, inputs: inputs)) {
-            if let update = try JobMapper.update(
+          let request = try JobMapper.request(for: job, inputs: inputs)
+          func update(for event: GenerationEvent) throws -> GenerationUpdate? {
+            try JobMapper.update(
               for: event, expected: job.parameters.batchSize, videoFPS: job.videoFPS, runsLocally: runsLocally,
               requestedFrames: job.parameters.video.numFrames, hiresFixStrength: hires)
-            {
-              continuation.yield(update)
+          }
+          if let fps = job.videoFPS {
+            // A video: one retry when nothing arrived, a partial clip when the stream fails after some frames.
+            let partial = try await VideoStreamTools.consume(
+              open: { service.stream(request) }, framesPerSecond: fps
+            ) { event in
+              if let update = try update(for: event) { continuation.yield(update) }
+            }
+            if let partial { continuation.yield(.finishedVideo(partial)) }
+          } else {
+            for try await event in service.stream(request) {
+              if let update = try update(for: event) { continuation.yield(update) }
             }
           }
           continuation.finish()
