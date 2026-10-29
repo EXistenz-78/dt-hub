@@ -13,7 +13,7 @@ struct AdvancedCardView: View {
   private var advanced: Binding<AdvancedParameters> { $controller.parameters.advanced }
 
   private func shows(_ field: AdvancedField) -> Bool {
-    field.isShown(for: model, sampler: controller.parameters.sampler)
+    field.isShown(for: model, sampler: controller.parameters.sampler) && !field.isInVideoCards(for: model)
   }
 
   var body: some View {

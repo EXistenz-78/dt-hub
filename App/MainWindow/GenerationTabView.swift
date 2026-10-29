@@ -1,3 +1,4 @@
+import HubCore
 import HubKit
 import SwiftUI
 
@@ -21,10 +22,32 @@ struct GenerationTabView: View {
           SamplingCard(controller: controller, connection: connection)
           LoRACard(controller: controller, connection: connection)
         }
+        VideoCardsRow(controller: controller, connection: connection)
         AdvancedSection(controller: controller, connection: connection)
       }
       .padding(.bottom, DS.groupGap)
     }
     .scrollIndicators(.automatic)
+  }
+}
+
+/// The video cards, after Sampling/LoRA and before the Advanced switch; nothing for an image model.
+private struct VideoCardsRow: View {
+  let controller: GenerationController
+  let connection: DrawThingsConnection
+
+  var body: some View {
+    let rows = VideoCardRows(
+      model: controller.selectedModel(in: connection), sampler: controller.parameters.sampler)
+    if rows.showsVideoCard {
+      DSCardRow {
+        VideoSettingsCard(controller: controller, connection: connection)
+        if rows.showsAccelerators {
+          AcceleratorCard(controller: controller, connection: connection)
+        } else {
+          Color.clear
+        }
+      }
+    }
   }
 }

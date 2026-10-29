@@ -15,7 +15,9 @@ struct AdvancedSection: View {
 
   private var visibleCards: [AdvancedCard] {
     AdvancedCard.allCases.filter { card in
-      card.fields.contains { $0.isShown(for: model, sampler: controller.parameters.sampler) }
+      card.fields.contains {
+        $0.isShown(for: model, sampler: controller.parameters.sampler) && !$0.isInVideoCards(for: model)
+      }
     }
   }
 

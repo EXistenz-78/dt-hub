@@ -111,6 +111,9 @@ struct ModelPickerView: View {
         if model.isRemote {
           Image(systemName: "cloud").font(.system(size: 11)).foregroundStyle(.secondary)
         }
+        if model.isLocalOnly {
+          Text("model.local").font(.caption2).foregroundStyle(.secondary)
+        }
       }
       .padding(.leading, 28)
       .padding(.vertical, 3)
