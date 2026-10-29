@@ -79,6 +79,16 @@ public enum AdvancedField: String, CaseIterable, Identifiable, Sendable {
     }
   }
 
+  /// Whether the video cards of the Generation tab take this field over (enabled video
+  /// families only). It does not change `isShown`: the composer still sends the field.
+  public func isInVideoCards(for model: CatalogModel?) -> Bool {
+    guard VideoFamilies.isEnabled(model?.family) else { return false }
+    switch self {
+    case .teaCache, .compressionArtifacts, .stochasticSamplingGamma: return true
+    default: return false
+    }
+  }
+
   /// True when the field's values differ from Draw Things' defaults.
   public func isModified(in advanced: AdvancedParameters) -> Bool {
     var reset = advanced

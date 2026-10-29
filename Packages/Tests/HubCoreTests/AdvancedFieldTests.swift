@@ -29,6 +29,21 @@ struct AdvancedFieldTests {
     Set(AdvancedField.allCases.filter { $0.isShown(for: model, sampler: sampler) })
   }
 
+  @Test func videoCardsFollowTheVideoFamily() {
+    let h3 = CatalogModel(
+      file: "h3.ckpt", name: "H3", family: "minimax_h3",
+      capabilities: ModelCapabilities(
+        guidanceEmbed: false, teaCache: true, clipL: false, openClipG: false, t5: false,
+        optionalT5: false, clipSkip: false, nativeSize: 576))
+    #expect(AdvancedField.teaCache.isInVideoCards(for: h3))
+    #expect(AdvancedField.compressionArtifacts.isInVideoCards(for: h3))
+    #expect(AdvancedField.stochasticSamplingGamma.isInVideoCards(for: h3))
+    #expect(!AdvancedField.teaCache.isInVideoCards(for: klein))
+    #expect(!AdvancedField.teaCache.isInVideoCards(for: nil))
+    #expect(!AdvancedField.guidanceEmbed.isInVideoCards(for: h3))
+    #expect(AdvancedField.teaCache.isShown(for: h3, sampler: .uniPCTrailing))
+  }
+
   @Test func fieldsFollowWhatTheModelSupports() {
     #expect(shown(flux1).isSuperset(of: [.guidanceEmbed, .teaCache, .separateClipL, .separateT5]))
     #expect(shown(flux1).isDisjoint(with: [.clipSkip, .separateOpenClipG, .sdxlConditioning, .zeroNegativePrompt]))

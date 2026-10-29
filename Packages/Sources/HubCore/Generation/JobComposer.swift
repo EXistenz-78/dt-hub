@@ -16,11 +16,23 @@ public enum JobComposer {
     sent.loras = parameters.loras.filter { catalog.status(of: $0, family: family) == .usable }
     if !traits.usesShift { sent.cfgZeroStar = false }
     sent.advanced = advanced(parameters, model: catalog.model(forFile: model), catalog: catalog)
+    let videoInfo = VideoFamilies.info(for: family)
+    if let videoInfo {
+      sent.video = parameters.video.clamped(for: videoInfo)
+      sent.batchSize = 1
+      if !videoInfo.usesAudioShift { sent.video.shiftForAudio = VideoParameters.default.shiftForAudio }
+      if !videoInfo.usesAccelerators {
+        sent.video.usesSolAttention = false
+        sent.advanced.teaCache = false
+      }
+    } else {
+      sent.video = .default
+    }
     let negative = traits.usesNegativePrompt ? negativePrompt : ""
     return sent.batchesForRun(randomSeed: draw).map {
       GenerationJob(
         prompt: prompt, negativePrompt: negative, model: model, parameters: $0, imageStrength: imageStrength,
-        moodboardCount: moodboardCount, maskSettings: maskSettings)
+        moodboardCount: moodboardCount, maskSettings: maskSettings, videoFPS: videoInfo?.framesPerSecond)
     }
   }
 
