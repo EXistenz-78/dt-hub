@@ -157,4 +157,17 @@ struct CatalogBuilderTests {
     #expect(catalog.model(forFile: file)?.name == "From the list")
     #expect(catalog.model(forFile: "fasth3_omni_q8p.ckpt")?.name != nil)
   }
+
+  @Test func localOnlySurvivesWithSourceAndRemote() {
+    let model = CatalogModel(file: "a.ckpt", name: "A", family: "minimax_h3", isLocalOnly: true)
+    #expect(model.with(source: .community, isRemote: false).isLocalOnly)
+  }
+
+  @Test func emptyCloudKeepsOnlyLocalVideoModels() {
+    let video = CatalogModel(file: "minimax_h3_ref2va_q8p.ckpt", name: "H3", family: "minimax_h3")
+    let catalog = CatalogBuilder.cloudCatalog(
+      local: ModelCatalog(models: [video, CatalogModel(file: klein, name: "K", family: "flux2_9b")], loras: [], fileCount: 2),
+      specs: [:], sources: [:], deprecated: [], cloudFiles: [], cloudLoRAs: [])
+    #expect(catalog.models.map(\.file) == [video.file])
+  }
 }

@@ -85,9 +85,16 @@ public actor DrawThingsBackend: GenerationBackend {
     // right specification.
     installedFiles = Set(reply.files)
     let live: [String: Data] = await communityModels?.specs() ?? [:]
-    if !live.isEmpty || reply.files.contains(where: { VideoModelSpecs.byFile[$0] != nil }) {
+    if !live.isEmpty {
       await service.modelSpecs.register(Self.specs(toRegisterFor: reply.files, live: live))
     }
+    // The bundled video specs, only for the files nobody (the server, the lists) describes.
+    var described: Set<String> = []
+    for file in reply.files where VideoModelSpecs.byFile[file] != nil {
+      if await service.modelSpecs.spec(for: file) != nil { described.insert(file) }
+    }
+    let bundled = Self.bundledSpecs(toRegisterFor: reply.files, described: described)
+    if !bundled.isEmpty { await service.modelSpecs.register(bundled) }
     // The imported models the server did not describe: their specification is in a custom.json.
     if let customModels {
       var described: Set<String> = []
@@ -149,8 +156,13 @@ public actor DrawThingsBackend: GenerationBackend {
 
   /// The specifications of the live list for the files the server has.
   static func specs(toRegisterFor files: [String], live: [String: Data]) -> [ModelSpec] {
-    let all = VideoModelSpecs.filling(live)
-    return files.compactMap { all[$0] }.compactMap { ModelSpec(json: $0) }
+    files.compactMap { live[$0] }.compactMap { ModelSpec(json: $0) }
+  }
+
+  /// The bundled specs of the video files that nothing describes yet (`described`: the files the service already has a
+  /// spec for); a spec of the server or of a list is never replaced.
+  static func bundledSpecs(toRegisterFor files: [String], described: Set<String>) -> [ModelSpec] {
+    files.filter { !described.contains($0) }.compactMap { VideoModelSpecs.data(for: $0) }.compactMap { ModelSpec(json: $0) }
   }
 
   public nonisolated func generate(_ job: GenerationJob, inputs: GenerationInputs) -> AsyncThrowingStream<GenerationUpdate, any Error> {

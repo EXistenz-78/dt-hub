@@ -23,4 +23,21 @@ struct VideoModelSpecsTests {
   @Test func unknownFileHasNoSpec() {
     #expect(VideoModelSpecs.data(for: "flux_2_klein_9b_q6p.ckpt") == nil)
   }
+
+  @Test func aBundledFileTheServiceDescribesIsNotRegistered() {
+    let file = "fasth3_omni_i4x.ckpt"
+    #expect(DrawThingsBackend.bundledSpecs(toRegisterFor: [file], described: [file]).isEmpty)
+  }
+
+  @Test func aBundledFileNobodyDescribesIsRegistered() {
+    let files = ["fasth3_omni_i4x.ckpt", "flux_2_klein_9b_q6p.ckpt"]
+    #expect(DrawThingsBackend.bundledSpecs(toRegisterFor: files, described: []).count == 1)
+  }
+
+  @Test func aListSpecWinsAndStillRegistersForInstalledFiles() {
+    let file = "fasth3_omni_i4x.ckpt"
+    let live = [file: Data(#"{"file":"fasth3_omni_i4x.ckpt","name":"List","version":"minimax_h3"}"#.utf8)]
+    #expect(DrawThingsBackend.specs(toRegisterFor: [file], live: live).count == 1)
+    #expect(DrawThingsBackend.specs(toRegisterFor: [file], live: [:]).isEmpty)
+  }
 }
