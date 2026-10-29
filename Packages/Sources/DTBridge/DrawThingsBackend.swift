@@ -85,7 +85,7 @@ public actor DrawThingsBackend: GenerationBackend {
     // right specification.
     installedFiles = Set(reply.files)
     let live: [String: Data] = await communityModels?.specs() ?? [:]
-    if !live.isEmpty {
+    if !live.isEmpty || reply.files.contains(where: { VideoModelSpecs.byFile[$0] != nil }) {
       await service.modelSpecs.register(Self.specs(toRegisterFor: reply.files, live: live))
     }
     // The imported models the server did not describe: their specification is in a custom.json.
@@ -107,8 +107,10 @@ public actor DrawThingsBackend: GenerationBackend {
     // Official first, then Community (`live`), then Uncurated: a file in two lists keeps the description of the first.
     let official: [String: Data] = await officialModels?.specs() ?? [:]
     let uncurated: [String: Data] = await uncuratedModels?.specs() ?? [:]
-    let remote = uncurated.merging(live) { _, community in community }.merging(official) { _, official in official }
-    let sources = CatalogBuilder.sources(official: official, community: live, uncurated: uncurated)
+    let remote = VideoModelSpecs.filling(
+      uncurated.merging(live) { _, community in community }.merging(official) { _, official in official })
+    let sources = CatalogBuilder.sources(
+      official: official, community: live, uncurated: uncurated, bundled: Set(VideoModelSpecs.byFile.keys))
     // The cloud's own list: only what it can run. Without it (never reached, nothing saved) every model of the lists.
     if let cloudFiles = await cloud?.files() {
       let cloudLoRAs = await cloud?.loras() ?? []
@@ -130,6 +132,10 @@ public actor DrawThingsBackend: GenerationBackend {
       if json == nil { json = (await communityModels?.specs() ?? [:])[file] }
       if json == nil { json = (await uncuratedModels?.specs() ?? [:])[file] }
     }
+    // A video model that neither the server nor the service describes (installed or not) gets the bundled spec.
+    if json == nil, let bundled = VideoModelSpecs.data(for: file), await service.modelSpecs.spec(for: file) == nil {
+      json = bundled
+    }
     var specs = [json.flatMap { ModelSpec(json: $0) }].compactMap { $0 }
     // The cloud's LoRAs with their official description (otherwise the override would carry a minimal one).
     if !lorasFiles.isEmpty, let cloudLoRAs = await cloud?.loraSpecs() {
@@ -143,7 +149,8 @@ public actor DrawThingsBackend: GenerationBackend {
 
   /// The specifications of the live list for the files the server has.
   static func specs(toRegisterFor files: [String], live: [String: Data]) -> [ModelSpec] {
-    files.compactMap { live[$0] }.compactMap { ModelSpec(json: $0) }
+    let all = VideoModelSpecs.filling(live)
+    return files.compactMap { all[$0] }.compactMap { ModelSpec(json: $0) }
   }
 
   public nonisolated func generate(_ job: GenerationJob, inputs: GenerationInputs) -> AsyncThrowingStream<GenerationUpdate, any Error> {

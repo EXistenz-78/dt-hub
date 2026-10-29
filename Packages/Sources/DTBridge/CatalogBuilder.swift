@@ -62,10 +62,12 @@ enum CatalogBuilder {
   }
 
   /// The list a file comes from: Official, then Community, then Uncurated (the first one that has it).
+  /// `bundled` files (the video specs shipped with the app) that no list has count as Community.
   static func sources(
-    official: [String: Data], community: [String: Data], uncurated: [String: Data]
+    official: [String: Data], community: [String: Data], uncurated: [String: Data], bundled: Set<String> = []
   ) -> [String: ModelSource] {
     var result: [String: ModelSource] = [:]
+    for file in bundled { result[file] = .community }
     for file in uncurated.keys { result[file] = .uncurated }
     for file in community.keys { result[file] = .community }
     for file in official.keys { result[file] = .official }
@@ -84,8 +86,12 @@ enum CatalogBuilder {
     cloudFiles: Set<String>, cloudLoRAs: [CatalogLoRA]
   ) -> ModelCatalog {
     let localModels = local.models.compactMap { model -> CatalogModel? in
-      guard cloudFiles.contains(model.file) else { return nil }
-      return model.with(source: sources[model.file], isRemote: false)
+      if cloudFiles.contains(model.file) { return model.with(source: sources[model.file], isRemote: false) }
+      // An installed video model the cloud does not list stays: the server can run it.
+      guard VideoFamilies.isEnabled(model.family) else { return nil }
+      return CatalogModel(
+        file: model.file, name: model.name, family: model.family, capabilities: model.capabilities, isRemote: false,
+        source: sources[model.file], isLocalOnly: true)
     }
     let localFiles = Set(local.models.map(\.file))
     let remote = specs.keys.sorted().filter {
@@ -184,5 +190,14 @@ enum CatalogBuilder {
       paddedTextEncodingLength: spec["padded_text_encoding_length"] as? Int ?? 0,
       isConsistencyModel: spec["is_consistency_model"] as? Bool ?? false,
       dualAttentionLayers: (spec["mmdit"] as? [String: Any])?["dual_attention_layers"] as? [Int] ?? [])
+  }
+}
+
+extension VideoModelSpecs {
+  /// The specs of the lists plus the bundled ones for the files the lists do not have (the lists win).
+  static func filling(_ lists: [String: Data]) -> [String: Data] {
+    byFile.reduce(into: lists) { result, entry in
+      if result[entry.key] == nil { result[entry.key] = Data(entry.value.utf8) }
+    }
   }
 }

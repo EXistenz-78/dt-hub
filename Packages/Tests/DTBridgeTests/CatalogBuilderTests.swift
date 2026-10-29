@@ -131,4 +131,30 @@ struct CatalogBuilderTests {
     let plain = CatalogBuilder.specInfo(json: Data(#"{"file":"b.ckpt","version":"sd3"}"#.utf8), file: "b.ckpt")
     #expect(plain.capabilities.dualAttentionLayers.isEmpty)
   }
+
+  @Test func localVideoModelStaysWhenNotOnCloud() {
+    let video = CatalogModel(file: "minimax_h3_ref2va_q8p.ckpt", name: "H3", family: "minimax_h3")
+    let image = CatalogModel(file: klein, name: "Klein", family: "flux2_9b")
+    let catalog = CatalogBuilder.cloudCatalog(
+      local: ModelCatalog(models: [video, image], loras: [], fileCount: 2), specs: [:], sources: [:], deprecated: [],
+      cloudFiles: ["other.ckpt"], cloudLoRAs: [])
+    #expect(catalog.models.map(\.file) == [video.file])
+    #expect(catalog.models.first?.isLocalOnly == true)
+    #expect(catalog.models.first?.isRemote == false)
+  }
+
+  @Test func listsWinOverBundledSpecs() throws {
+    let file = "fasth3_omni_i4x.ckpt"
+    let list = Data(#"{"file":"fasth3_omni_i4x.ckpt","name":"From the list","version":"minimax_h3"}"#.utf8)
+    let merged = VideoModelSpecs.filling([file: list])
+    #expect(merged[file] == list)
+    #expect(merged["fasth3_omni_q8p.ckpt"] != nil)
+    let sources = CatalogBuilder.sources(
+      official: [:], community: [file: list], uncurated: [:], bundled: Set(VideoModelSpecs.byFile.keys))
+    #expect(sources[file] == .community)
+    #expect(sources["fasth3_omni_q8p.ckpt"] == .community)
+    let catalog = CatalogBuilder.addingRemoteModels(to: .empty, live: merged, sources: sources)
+    #expect(catalog.model(forFile: file)?.name == "From the list")
+    #expect(catalog.model(forFile: "fasth3_omni_q8p.ckpt")?.name != nil)
+  }
 }

@@ -11,11 +11,14 @@ public struct CatalogModel: Identifiable, Equatable, Sendable {
   public let isRemote: Bool
   /// The Draw Things list the model comes from; nil outside DT+ (the menu does not group by it there).
   public let source: ModelSource?
+  /// Installed on the server but not in the cloud's list: a video model the cloud does not have yet (DT+).
+  public let isLocalOnly: Bool
 
   public init(
     file: String, name: String, family: String?, capabilities: ModelCapabilities = .unknown, isRemote: Bool = false,
-    source: ModelSource? = nil
+    source: ModelSource? = nil, isLocalOnly: Bool = false
   ) {
+    self.isLocalOnly = isLocalOnly
     self.isRemote = isRemote
     self.source = source
     self.file = file
@@ -26,7 +29,9 @@ public struct CatalogModel: Identifiable, Equatable, Sendable {
 
   /// The same model with its list and cloud mark set (DT+).
   public func with(source: ModelSource?, isRemote: Bool) -> CatalogModel {
-    CatalogModel(file: file, name: name, family: family, capabilities: capabilities, isRemote: isRemote, source: source)
+    CatalogModel(
+      file: file, name: name, family: family, capabilities: capabilities, isRemote: isRemote, source: source,
+      isLocalOnly: isLocalOnly)
   }
 }
 
