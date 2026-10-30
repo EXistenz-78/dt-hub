@@ -64,6 +64,99 @@ struct LAStateTests {
     #expect(state.groups[0].loras.map(\.name) == ["Alpha", "Piu luce"])
   }
 
+  // MARK: Min, Base and Max
+
+  @Test func theWeightsAreNormalisedAndSentToTheApp() async {
+    state.apply(context: context())
+    var sent: [(String, Double?, Double?, Double?)] = []
+    state.saveWeights = { file, low, base, high in
+      sent.append((file, low, base, high))
+      return ["type": "ok"]
+    }
+    await state.setWeights(min: 0.5, base: 2, max: 1.2, for: "a.ckpt")
+    #expect(sent.count == 1 && sent[0].1 == 0.5 && sent[0].2 == 1.2 && sent[0].3 == 1.2)
+    let lora = state.catalog.first { $0.file == "a.ckpt" }
+    #expect(lora?.minWeight == 0.5 && lora?.weight == 1.2 && lora?.maxWeight == 1.2)
+    await state.setWeights(min: 0.5, base: 2, max: 1.2, for: "a.ckpt")  // nothing changed: nothing sent
+    #expect(sent.count == 1 && state.weightsMessage == nil)
+    await state.setWeights(min: nil, base: nil, max: nil, for: "a.ckpt")
+    #expect(sent.count == 2 && sent[1].1 == nil && sent[1].2 == 1 && sent[1].3 == nil)
+  }
+
+  @Test func anAppThatDoesNotAnswerLeavesAMessage() async {
+    state.apply(context: context())
+    state.saveWeights = { _, _, _, _ in nil }
+    await state.setWeights(min: 0.1, base: nil, max: nil, for: "a.ckpt")
+    #expect(state.weightsMessage == state.text(.weightsNotSaved))
+  }
+
+  @Test func theWeightsOfTheCatalogComeFromTheContext() {
+    state.apply(context: context(catalog: #"[{"file":"a.ckpt","name":"A","family":"b","weight":0.8,"minWeight":0.4,"maxWeight":1.1}]"#))
+    #expect(LAWeights.values(of: state.catalog[0]) == LAWeights.Values(min: 0.4, base: 0.8, max: 1.1))
+  }
+
+  @Test func theAdviceStaysWithinTheLimitsOfEachLoRA() {
+    state.apply(context: context(catalog: #"[{"file":"a.ckpt","name":"A","family":"b","maxWeight":0.7},{"file":"p.ckpt","name":"P","family":"b","minWeight":0.5}]"#))
+    state.setAdvice(#"[{"n":1,"weight":1.4},{"n":2,"weight":0.1}]"#, candidates: state.candidates())
+    #expect(state.suggestions.map(\.weight) == [0.7, 0.5])
+  }
+
+  @Test func typedWeightsAreReadWithCommaOrPoint() {
+    #expect(LAWeights.parse("0,75") == 0.75 && LAWeights.parse(" 1.2 ") == 1.2)
+    #expect(LAWeights.parse("") == nil && LAWeights.parse("abc") == nil)
+    #expect(LAWeights.parse(LAWeights.format(0.75)) == 0.75 && LAWeights.format(nil) == "")
+  }
+
+  // MARK: Collapsible families
+
+  private func open(_ state: LAState) -> [String?] { state.groups.filter { state.isOpen($0) }.map(\.family) }
+
+  @Test func onlyTheCurrentFamilyStartsOpen() {
+    state.apply(context: context())
+    #expect(open(state) == ["b"])
+  }
+
+  @Test func aFamilyOpensAndClosesByHand() {
+    state.apply(context: context())
+    state.toggle(state.groups[1])
+    #expect(open(state) == ["b", "a"])
+    state.toggle(state.groups[0])
+    #expect(open(state) == ["a"])
+    state.toggle(state.groups[2])
+    #expect(open(state) == ["a", nil])
+  }
+
+  @Test func aNewModelOpensItsFamilyAndLeavesTheRestAlone() {
+    state.apply(context: context())
+    state.toggle(state.groups[0])  // the user closes "b"
+    state.apply(context: context(family: "b", prompt: "altro"))  // same model: nothing opens again
+    #expect(open(state).isEmpty)
+    state.apply(context: context(family: "a", model: "n.ckpt"))
+    #expect(open(state) == ["a"])
+    state.apply(context: context(family: "b", model: "m.ckpt"))
+    #expect(open(state) == ["b", "a"])
+  }
+
+  @Test func aSearchShowsTheResultsInClosedFamilies() {
+    state.apply(context: context())
+    state.filter = "zeta"
+    #expect(state.groups.map(\.family) == ["a"])
+    #expect(open(state) == ["a"])
+    state.toggle(state.groups[0])  // ignored while searching
+    #expect(open(state) == ["a"])
+    state.filter = ""
+    #expect(open(state) == ["b"])  // and the family stayed closed
+  }
+
+  @Test func thePreviewFollowsTheOpenRow() {
+    state.apply(context: context())
+    #expect(state.openLoRA == nil)
+    state.openFile = "z.ckpt"
+    #expect(state.openLoRA?.name == "Zeta")
+    state.openFile = "gone.ckpt"
+    #expect(state.openLoRA == nil)
+  }
+
   @Test func theFilterLooksAtNameTriggerAndNotes() {
     state.apply(context: context())
     store.setNotesByUser("grana da pellicola", for: "z.ckpt")

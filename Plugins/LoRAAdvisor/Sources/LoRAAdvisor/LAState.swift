@@ -21,6 +21,10 @@ final class LAState: ObservableObject {
   @Published var openFile: String? {
     didSet { if oldValue != openFile { flushNotes() } }
   }
+  /// The families of the list that are open, by `familyKey`. A new tab starts with none: the current model's family
+  /// is opened as soon as the context says which it is, and again whenever the model changes.
+  @Published private(set) var openFamilies: Set<String> = []
+  private var openedFor: String?
   /// What to advise on: the prompt of the Generation tab until the user writes something else.
   @Published private(set) var request = ""
   private(set) var requestEditedByUser = false
@@ -37,6 +41,8 @@ final class LAState: ObservableObject {
   /// Set by the plug-in, which has the host: `contribute` puts LoRAs on the Generation tab, `askModel` asks the
   /// language model (system prompt, prompt).
   var contribute: (([String: Any]) async -> [String: Any]?)?
+  /// Sends the weights of a LoRA to the app (file, min, base, max).
+  var saveWeights: ((String, Double?, Double?, Double?) async -> [String: Any]?)?
   var askModel: ((String, String) async -> DTHubLLMAnswer)?
 
   private var saveNotes: Task<Void, Never>?
@@ -60,6 +66,7 @@ final class LAState: ObservableObject {
     guard let new = try? JSONDecoder().decode(DTHubContext.self, from: data) else { return }
     let modelChanged = context != nil && context?.model != new.model
     context = new
+    openCurrentFamily(new.family)
     // A server parked to make room for the language model lists no LoRAs until it is back: the list that was there
     // stays, and so does the advice just given.
     if let listed = new.loraCatalog, !listed.isEmpty { catalog = listed }
@@ -115,6 +122,32 @@ final class LAState: ObservableObject {
       Group(family: family, isCurrent: family != nil && family == current, loras: shown.filter { $0.family == family })
     }
   }
+
+  /// The key a family is kept under in `openFamilies`: the empty one is for the LoRAs of no family.
+  static func familyKey(_ family: String?) -> String { family ?? "" }
+
+  /// The current model's family opens when it is a new one; the rest stay as the user left them.
+  private func openCurrentFamily(_ family: String?) {
+    guard let family, family != openedFor else { return }
+    openedFor = family
+    openFamilies.insert(Self.familyKey(family))
+  }
+
+  /// Searching, the list shows every family that has a result, so the user does not have to open them one by one.
+  var isSearching: Bool { !filter.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+
+  /// Whether the LoRAs of a family are shown: it is open, or a search is on (the groups are then only those with
+  /// results).
+  func isOpen(_ group: Group) -> Bool { isSearching || openFamilies.contains(Self.familyKey(group.family)) }
+
+  func toggle(_ group: Group) {
+    guard !isSearching else { return }
+    let key = Self.familyKey(group.family)
+    if openFamilies.contains(key) { openFamilies.remove(key) } else { openFamilies.insert(key) }
+  }
+
+  /// The LoRA whose row is open: the one the preview card shows.
+  var openLoRA: DTHubCatalogLoRA? { openFile.flatMap { file in catalog.first { $0.file == file } } }
 
   /// The name of the current model's family, as the app's guide calls it when it has one.
   var familyLabel: String { context?.promptGuide?.label ?? context?.family ?? "—" }
@@ -317,6 +350,26 @@ final class LAState: ObservableObject {
     objectWillChange.send()
   }
 
+  // MARK: Min, Base and Max
+
+  /// The three weights the user typed on the preview card: kept by the app (the Generation tab uses them), and shown
+  /// here at once, before the app's next context brings them back.
+  func setWeights(min: Double?, base: Double?, max: Double?, for file: String) async {
+    let values = LAWeights.normalised(min: min, base: base, max: max)
+    if let current = catalog.first(where: { $0.file == file }), LAWeights.values(of: current) == values { return }
+    if let index = catalog.firstIndex(where: { $0.file == file }) {
+      catalog[index].minWeight = values.min
+      catalog[index].weight = values.base
+      catalog[index].maxWeight = values.max
+    }
+    weightsMessage = nil
+    guard let saveWeights else { return }
+    let answer = await saveWeights(file, values.min, values.base, values.max)
+    if answer == nil || answer?["type"] as? String == "error" { weightsMessage = text(.weightsNotSaved) }
+  }
+
+  @Published private(set) var weightsMessage: String?
+
   // MARK: The advice
 
   var hasLanguageModel: Bool { context?.languageModels?.isEmpty == false }
@@ -367,7 +420,14 @@ final class LAState: ObservableObject {
       adviceMessage = text(.adviceNotUnderstood)
       return
     }
-    suggestions = read
+    // The weights stay within the limits the user set for each LoRA.
+    suggestions = read.map { suggestion in
+      var suggestion = suggestion
+      if let lora = catalog.first(where: { $0.file == suggestion.file }) {
+        suggestion.weight = LAWeights.limited(suggestion.weight, by: lora)
+      }
+      return suggestion
+    }
     adviceMessage = read.isEmpty ? text(.noSuitable) : nil
   }
 

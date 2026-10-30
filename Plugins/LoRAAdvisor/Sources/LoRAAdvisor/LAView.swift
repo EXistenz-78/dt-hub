@@ -13,7 +13,11 @@ struct LAView: View {
     HStack(alignment: .top, spacing: DS.groupGap) {
       LAListCard(state: state)
         .frame(maxWidth: .infinity)
-      LAAdviceCard(state: state)
+      VStack(spacing: DS.groupGap) {
+        LAPreviewCard(state: state)
+        LAAdviceCard(state: state)
+      }
+      .frame(width: LAView.sideWidth)
     }
     .padding(DS.groupGap)
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)

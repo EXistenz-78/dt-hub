@@ -5,12 +5,14 @@ import SwiftUI
 @MainActor
 final class LoRAAdvisorPlugin: DTHubPlugin {
   let manifest = DTHubManifest(
-    id: "com.exiztenz.dthub.loraadvisor", name: "LoRA Advisor", version: "1.3", symbol: "square.stack.3d.down.right",
+    id: "com.exiztenz.dthub.loraadvisor", name: "LoRA Advisor", version: "1.4", symbol: "square.stack.3d.down.right",
     families: nil)
   private var host: DTHubHost?
   private let state: LAState
 
   init() {
+    // The master prompt, written to Data/LoRAAdvisor if missing or older (and custom/ made).
+    LAPrompts.install()
     let store = LAStore(folder: LAStore.defaultFolder)
     let fetcher = LAFetcher()
     let asker = Asker()
@@ -27,6 +29,9 @@ final class LoRAAdvisorPlugin: DTHubPlugin {
     self.host = host
     asker.host = host
     state.contribute = { [weak self] body in await self?.host?.contribute(body) }
+    state.saveWeights = { [weak self] file, low, base, high in
+      await self?.host?.setLoRAWeights(file: file, min: low, base: base, max: high)
+    }
     state.askModel = { [weak self] system, prompt in await self?.asker.answer(system, prompt) ?? .failure("No answer.") }
   }
 

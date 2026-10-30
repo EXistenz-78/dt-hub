@@ -108,7 +108,7 @@ final class LAStore {
   }
 
   /// ~/Library/Application Support/DT Hub/Data/LoRAAdvisor.
-  static var defaultFolder: URL {
+  nonisolated static var defaultFolder: URL {
     FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
       .appendingPathComponent("DT Hub", isDirectory: true)
       .appendingPathComponent("Data", isDirectory: true)

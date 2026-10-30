@@ -236,8 +236,16 @@ public struct DTHubCatalogLoRA: Decodable, Equatable, Sendable {
   public var trigger: String
   /// The weight the LoRA starts with.
   public var weight: Double
+  /// The user's lowest and highest weight for the LoRA; nil when there is no limit.
+  public var minWeight: Double?
+  public var maxWeight: Double?
 
-  public init(file: String, name: String, family: String? = nil, trigger: String = "", weight: Double = 1) {
+  public init(
+    file: String, name: String, family: String? = nil, trigger: String = "", weight: Double = 1, minWeight: Double? = nil,
+    maxWeight: Double? = nil
+  ) {
+    self.minWeight = minWeight
+    self.maxWeight = maxWeight
     self.file = file
     self.name = name
     self.family = family
@@ -255,10 +263,12 @@ public struct DTHubCatalogLoRA: Decodable, Equatable, Sendable {
     family = (try? container.decodeIfPresent(String.self, forKey: .family)) ?? nil
     trigger = ((try? container.decodeIfPresent(String.self, forKey: .trigger)) ?? nil) ?? ""
     weight = ((try? container.decodeIfPresent(Double.self, forKey: .weight)) ?? nil) ?? 1
+    minWeight = (try? container.decodeIfPresent(Double.self, forKey: .minWeight)) ?? nil
+    maxWeight = (try? container.decodeIfPresent(Double.self, forKey: .maxWeight)) ?? nil
   }
 
   private enum CodingKeys: String, CodingKey {
-    case file, name, family, trigger, weight
+    case file, name, family, trigger, weight, minWeight, maxWeight
   }
 }
 
@@ -470,6 +480,16 @@ public final class DTHubHost {
   /// optional (see the README; `preset` names a saved preset applied first) — and returns the app's answer: `{"type":"ok","conflicts":n}` or an `error`.
   public func contribute(_ body: [String: Any]) async -> [String: Any]? {
     await sendJSON(body.merging(["type": "contribute"]) { _, new in new })
+  }
+
+  /// Sends a `loraWeights` message: the lowest, default and highest weight the user wants for a LoRA of the server (kept
+  /// with the app's LoRA manager data). A nil clears that value. The answer is `{"type":"ok"}` or an `error`.
+  public func setLoRAWeights(file: String, min: Double?, base: Double?, max: Double?) async -> [String: Any]? {
+    var body: [String: Any] = ["type": "loraWeights", "file": file]
+    if let min { body["min"] = min }
+    if let base { body["base"] = base }
+    if let max { body["max"] = max }
+    return await sendJSON(body)
   }
 
   /// Sends a `presets` message: presets for the app's Preset menu, each `{"name", "fields", "loras"}` (the keys of

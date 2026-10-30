@@ -151,4 +151,17 @@ struct PluginPresetsRoutingTests {
     #expect(parsed.presets[2].model == "")
     #expect(parsed.presets[2].parameters.advanced == AdvancedParameters.default)
   }
+
+  @Test func aPluginSetsTheWeightsOfALoRA() async throws {
+    let (registry, loader) = try started()
+    var seen: [(String, Double?, Double?, Double?)] = []
+    registry.setLoRAWeights = { file, low, base, high in
+      seen.append((file, low, base, high))
+      return file == "fox.ckpt"
+    }
+    let ok = try await send(#"{"type":"loraWeights","file":"fox.ckpt","min":0.4,"base":0.8}"#, loader)
+    #expect(ok["type"] as? String == "ok" && seen.count == 1 && seen[0].1 == 0.4 && seen[0].2 == 0.8 && seen[0].3 == nil)
+    #expect(try await send(#"{"type":"loraWeights","file":"gone.ckpt"}"#, loader)["type"] as? String == "error")
+    #expect(try await send(#"{"type":"loraWeights"}"#, loader)["type"] as? String == "error")
+  }
 }

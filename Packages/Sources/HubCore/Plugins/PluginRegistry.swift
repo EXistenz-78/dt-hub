@@ -64,6 +64,9 @@ public final class PluginRegistry: PluginHosting {
 
   /// What the active plug-ins contributed (teal fields, conflicts, the pipeline); the app sets its `target`.
   public let contributions = ContributionStore()
+  /// Sets the weights of a LoRA (file, min, base, max) in the app's LoRA manager data; false when the server has no such
+  /// LoRA. Set by the app.
+  @ObservationIgnored public var setLoRAWeights: (@MainActor (String, Double?, Double?, Double?) -> Bool)?
   /// The Preset menu's store, where the presets a plug-in brings go; set by the app.
   @ObservationIgnored public var presetStore: PresetStore?
   /// Answers a plug-in's question to the language model (`llm` message); nil = no language model. `modelName` is the
@@ -415,6 +418,8 @@ public final class PluginRegistry: PluginHosting {
     switch PluginMessageType.of(message) {
     case PluginMessageType.contribute:
       return contribute(message, from: pluginID)
+    case PluginMessageType.loraWeights:
+      return changeLoRAWeights(message, from: pluginID)
     case PluginMessageType.presets:
       return addPresets(message, from: pluginID)
     case PluginMessageType.llm:
@@ -447,6 +452,20 @@ public final class PluginRegistry: PluginHosting {
     var answer: [String: Any] = ["type": PluginMessageType.ok, "conflicts": contributions.conflicts.count]
     if !problems.isEmpty { answer["problems"] = problems }
     return (try? JSONSerialization.data(withJSONObject: answer)) ?? PluginMessageType.bare(PluginMessageType.ok)
+  }
+
+  /// `{"type":"loraWeights","file":…,"min":…,"base":…,"max":…}`: the user's weights for one LoRA.
+  private func changeLoRAWeights(_ message: Data, from pluginID: String) -> Data {
+    guard isActive(pluginID) else { return PluginMessageType.failure("The plug-in is not active.") }
+    guard let object = (try? JSONSerialization.jsonObject(with: message)) as? [String: Any],
+      let file = object["file"] as? String, !file.isEmpty
+    else { return PluginMessageType.failure("The message has no file.") }
+    func number(_ key: String) -> Double? { (object[key] as? NSNumber).map(\.doubleValue) }
+    guard setLoRAWeights?(file, number("min"), number("base"), number("max")) == true else {
+      return PluginMessageType.failure("The LoRA is not on the server.")
+    }
+    refreshContext()
+    return PluginMessageType.bare(PluginMessageType.ok)
   }
 
   /// Presets for the Preset menu; a name already there is left alone, a name the file system does not take is

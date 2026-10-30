@@ -86,12 +86,28 @@ struct LAListCard: View {
     ScrollView {
       LazyVStack(alignment: .leading, spacing: 4) {
         ForEach(state.groups, id: \.family) { group in
-          Text(verbatim: title(of: group))
-            .font(.caption.weight(.semibold))
+          let isOpen = state.isOpen(group)
+          Button { withAnimation(.easeInOut(duration: 0.15)) { state.toggle(group) } } label: {
+            HStack(spacing: 4) {
+              Image(systemName: isOpen ? "chevron.down" : "chevron.right")
+                .font(.caption2.weight(.semibold))
+                .frame(width: 10)
+                .accessibilityHidden(true)
+              Text(verbatim: title(of: group)).font(.caption.weight(.semibold))
+              Text(verbatim: "· \(group.loras.count)").font(.caption).monospacedDigit()
+              Spacer(minLength: 0)
+            }
             .foregroundStyle(.secondary)
-            .padding(.top, DS.controlGap)
-          ForEach(group.loras, id: \.file) { lora in
-            LARow(state: state, lora: lora)
+            .contentShape(Rectangle())
+          }
+          .buttonStyle(.plain)
+          .disabled(state.isSearching)
+          .padding(.top, DS.controlGap)
+          .accessibilityLabel(title(of: group))
+          if isOpen {
+            ForEach(group.loras, id: \.file) { lora in
+              LARow(state: state, lora: lora)
+            }
           }
         }
       }
@@ -107,7 +123,7 @@ struct LAListCard: View {
 }
 
 /// One LoRA: closed, its thumbnail, name, trigger word, weight and the first line of its notes; open, the notes to
-/// write, the link of its page and the thumbnail's menu. "Add" is on both.
+/// write and the link of its page (its thumbnail, with the menu, is on the preview card). "Add" is on both.
 struct LARow: View {
   @ObservedObject var state: LAState
   let lora: DTHubCatalogLoRA
@@ -121,10 +137,7 @@ struct LARow: View {
 
   var body: some View {
     HStack(alignment: .top, spacing: DS.rowGap) {
-      VStack(alignment: .leading, spacing: 6) {
-        LAThumbnailView(url: state.thumbnailURL(for: file), side: isOpen ? 112 : 64)
-        if isOpen { thumbnailMenu }
-      }
+      LAThumbnailView(url: state.thumbnailURL(for: file), side: 64)
       VStack(alignment: .leading, spacing: 3) {
         HStack(alignment: .firstTextBaseline, spacing: DS.controlGap) {
           Text(verbatim: lora.name).fontWeight(.semibold).lineLimit(1).truncationMode(.middle)
@@ -344,27 +357,6 @@ struct LARow: View {
       state.dropHadNoPicture(for: file)
     }
     return true
-  }
-
-  /// A picture of the user's own for the thumbnail: a file, or the start image of the Control tab.
-  private var thumbnailMenu: some View {
-    Menu(state.text(.thumbnail)) {
-      Button(state.text(.chooseFile)) { chooseFile() }
-      Button(state.text(.useControlImage)) { state.useControlImage(for: file) }
-        .disabled(!state.canUseControlImage)
-      Button(state.text(.removeThumbnail)) { state.removeThumbnail(for: file) }
-        .disabled(entry.thumbnail == nil)
-    }
-    .menuStyle(.borderlessButton)
-    .fixedSize()
-  }
-
-  private func chooseFile() {
-    let panel = NSOpenPanel()
-    panel.allowedContentTypes = [.png, .jpeg, .webP, .heic]
-    panel.allowsMultipleSelection = false
-    guard panel.runModal() == .OK, let url = panel.url else { return }
-    state.setThumbnail(fromFile: url, for: file)
   }
 
   static func format(_ weight: Double) -> String {

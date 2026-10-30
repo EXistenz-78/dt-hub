@@ -47,7 +47,8 @@ struct LAAdviceTests {
     #expect(prompt.contains("2. B | bb | " + String(repeating: "x", count: 300) + "\n"))
     #expect(prompt.contains("3. C | - | -"))
     #expect(prompt.contains("un ritratto") && prompt.contains("FLUX.2"))
-    #expect(LAAdvice.system(italian: true).contains("JSON") && LAAdvice.system(italian: true).contains("italiano"))
+    #expect(LAAdvice.system(italian: true, folder: tempPrompts()).contains("JSON")
+        && LAAdvice.system(italian: true, folder: tempPrompts()).contains("italiano"))
   }
 
   @Test func aListIsReadWhateverIsAroundIt() {
@@ -68,10 +69,10 @@ struct LAAdviceTests {
     #expect(read?.map(\.weight) == [4, -4, 1])
   }
 
-  @Test func atMostFiveAreKept() {
+  @Test func atMostThreeAreKept() {
     let many = (1...8).map { LAAdvice.Candidate(lora: lora("L\($0)"), notes: "") }
     let answer = "[" + (1...7).map { #"{"n":\#($0)}"# }.joined(separator: ",") + "]"
-    #expect(LAAdvice.parse(answer, candidates: many)?.map(\.file) == ["l1.ckpt", "l2.ckpt", "l3.ckpt", "l4.ckpt", "l5.ckpt"])
+    #expect(LAAdvice.parse(answer, candidates: many)?.map(\.file) == ["l1.ckpt", "l2.ckpt", "l3.ckpt"])
   }
 
   @Test func noListIsNotAnEmptyList() {
@@ -94,5 +95,51 @@ struct LAAdviceTests {
   @Test func replacingAsksTheAppToTakeTheOthersOff() {
     #expect(LAAdvice.contribution(lora("A"), replacing: true)["replaceLoRAs"] as? Bool == true)
     #expect(LAAdvice.contribution(lora("A"))["replaceLoRAs"] == nil)
+  }
+
+  // MARK: The master prompt
+
+  private func tempPrompts() -> DTHubPromptFolder {
+    DTHubPromptFolder(folder: FileManager.default.temporaryDirectory.appendingPathComponent("la-prompt-\(UUID().uuidString)", isDirectory: true))
+  }
+
+  @Test func theBuiltInCopyIsTheFileOfTheData() throws {
+    let file = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+      .appendingPathComponent("Data/master-prompt.md")
+    #expect(try String(contentsOf: file, encoding: .utf8).trimmingCharacters(in: .newlines) == EmbeddedData.masterPrompt.trimmingCharacters(in: .newlines))
+  }
+
+  @Test func atMostThreeAndTheLanguageAreFilledIn() {
+    #expect(LAAdvice.most == 3)
+    let text = LAAdvice.system(italian: false, folder: tempPrompts())
+    #expect(text.contains("at most 3 LoRAs") && text.contains("in English") && !text.contains("{max}") && !text.contains("{language}"))
+  }
+
+  @Test func installWritesTheMasterPromptAndCustom() {
+    let folder = tempPrompts()
+    folder.install([LAPrompts.masterPath: EmbeddedData.masterPrompt])
+    #expect(FileManager.default.fileExists(atPath: folder.folder.appendingPathComponent("master-prompt.md").path))
+    var isFolder: ObjCBool = false
+    #expect(FileManager.default.fileExists(atPath: folder.folder.appendingPathComponent("custom").path, isDirectory: &isFolder) && isFolder.boolValue)
+  }
+
+  @Test func theUsersCustomFileIsAddedOrReplaces() throws {
+    let folder = tempPrompts()
+    folder.install([LAPrompts.masterPath: EmbeddedData.masterPrompt])
+    let custom = folder.folder.appendingPathComponent("custom/master-prompt.md")
+    try "Prefer LoRAs for skin.".write(to: custom, atomically: true, encoding: .utf8)
+    let added = LAPrompts.system(italian: true, in: folder)
+    #expect(added.contains("Pick at most 3") && added.hasSuffix("Prefer LoRAs for skin.") && added.contains(DTHubPromptFolder.priorityLine))
+    try "---\nmode: replace\n---\nOnly {max} in {language}.".write(to: custom, atomically: true, encoding: .utf8)
+    #expect(LAPrompts.system(italian: true, in: folder) == "Only 3 in italiano.")
+  }
+
+  @Test func aMasterPromptFileOfTheUserIsUsedWhenNotOlder() throws {
+    let folder = tempPrompts()
+    try FileManager.default.createDirectory(at: folder.folder, withIntermediateDirectories: true)
+    try "---\nversion: 9\n---\nMy own, {max}.".write(to: folder.folder.appendingPathComponent("master-prompt.md"), atomically: true, encoding: .utf8)
+    #expect(LAPrompts.system(italian: false, in: folder) == "My own, 3.")
+    try "---\nversion: 0\n---\nOld".write(to: folder.folder.appendingPathComponent("master-prompt.md"), atomically: true, encoding: .utf8)
+    #expect(LAPrompts.system(italian: false, in: folder).contains("Pick at most 3") && !LAPrompts.problems(in: folder).isEmpty)
   }
 }

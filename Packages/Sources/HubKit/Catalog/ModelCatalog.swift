@@ -46,8 +46,16 @@ public struct CatalogLoRA: Identifiable, Equatable, Sendable {
   public let trigger: String
   /// The weight suggested by its metadata, when there is one.
   public let defaultWeight: Double?
+  /// The user's own lowest and highest weight for it (LoRA Advisor); nil is no limit.
+  public let minWeight: Double?
+  public let maxWeight: Double?
 
-  public init(file: String, name: String, family: String?, trigger: String = "", defaultWeight: Double? = nil) {
+  public init(
+    file: String, name: String, family: String?, trigger: String = "", defaultWeight: Double? = nil,
+    minWeight: Double? = nil, maxWeight: Double? = nil
+  ) {
+    self.minWeight = minWeight
+    self.maxWeight = maxWeight
     self.file = file
     self.name = name
     self.family = family

@@ -7,13 +7,18 @@ public struct LoRAOverride: Equatable, Codable, Sendable {
   public var trigger: String?
   /// Present when the user chose another weight than the default.
   public var weight: Double?
+  /// The lowest and the highest weight the user allows for the LoRA (nil: no limit).
+  public var minWeight: Double?
+  public var maxWeight: Double?
 
-  public init(trigger: String? = nil, weight: Double? = nil) {
+  public init(trigger: String? = nil, weight: Double? = nil, minWeight: Double? = nil, maxWeight: Double? = nil) {
     self.trigger = trigger
     self.weight = weight
+    self.minWeight = minWeight
+    self.maxWeight = maxWeight
   }
 
-  var isEmpty: Bool { trigger == nil && weight == nil }
+  var isEmpty: Bool { trigger == nil && weight == nil && minWeight == nil && maxWeight == nil }
 }
 
 /// The user's own trigger words and weights for the LoRAs of the server (`loras.json`). Draw Things' own files are never
@@ -53,6 +58,30 @@ public struct LoRAOverrides: Equatable, Sendable {
     store(entry, for: lora.file)
   }
 
+  /// The three weights of a LoRA together (LoRA Advisor): lowest, default and highest. A nil is cleared; all are brought
+  /// into the range, and the default into the limits (Min ≤ Base ≤ Max; a Min above the Max is raised to it).
+  public mutating func setWeights(min low: Double?, base: Double?, max high: Double?, for lora: CatalogLoRA) {
+    let range = Self.weightRange
+    func clean(_ value: Double?) -> Double? {
+      guard let value, value.isFinite else { return nil }
+      return Swift.min(Swift.max(value, range.lowerBound), range.upperBound)
+    }
+    var low = clean(low)
+    let high = clean(high)
+    if let l = low, let h = high, l > h { low = h }
+    var base = clean(base)
+    if let b = base {
+      if let l = low { base = Swift.max(b, l) }
+      if let h = high, let b2 = base { base = Swift.min(b2, h) }
+    }
+    var entry = entries[lora.file] ?? LoRAOverride()
+    entry.minWeight = low
+    entry.maxWeight = high
+    // With a limit the weight is written even when it is the default, so the three go together in the file.
+    entry.weight = base == Self.defaultWeight && low == nil && high == nil ? nil : base
+    store(entry, for: lora.file)
+  }
+
   /// Back to the server's trigger word and the default weight.
   public mutating func reset(_ lora: CatalogLoRA) {
     entries[lora.file] = nil
@@ -68,7 +97,7 @@ public struct LoRAOverrides: Equatable, Sendable {
         let entry = entries[lora.file]
         return CatalogLoRA(
           file: lora.file, name: lora.name, family: lora.family, trigger: entry?.trigger ?? lora.trigger,
-          defaultWeight: entry?.weight ?? Self.defaultWeight)
+          defaultWeight: entry?.weight ?? Self.defaultWeight, minWeight: entry?.minWeight, maxWeight: entry?.maxWeight)
       },
       fileCount: catalog.fileCount, upscalers: catalog.upscalers, faceRestorers: catalog.faceRestorers)
   }

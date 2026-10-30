@@ -28,10 +28,12 @@ public struct LoRAOverridesStore: Sendable {
       file.schema == Self.schema
     else { return LoRAOverrides() }
     var entries = file.loras
+    let range = LoRAOverrides.weightRange
+    func clamped(_ value: Double?) -> Double? { value.flatMap { $0.isFinite ? min(max($0, range.lowerBound), range.upperBound) : nil } }
     for (name, entry) in entries {
-      guard let weight = entry.weight else { continue }
-      let range = LoRAOverrides.weightRange
-      entries[name]?.weight = weight.isFinite ? min(max(weight, range.lowerBound), range.upperBound) : nil
+      entries[name]?.weight = clamped(entry.weight)
+      entries[name]?.minWeight = clamped(entry.minWeight)
+      entries[name]?.maxWeight = clamped(entry.maxWeight)
     }
     return LoRAOverrides(entries: entries)
   }

@@ -115,4 +115,48 @@ struct LoRAOverridesTests {
     #expect(merged.loras.map(\.file) == [bare.file])
     #expect(overrides.entries[fox.file]?.trigger == "mine")
   }
+
+  // MARK: Min / Base / Max
+
+  @Test func theThreeWeightsReachTheCatalog() {
+    var overrides = LoRAOverrides()
+    overrides.setWeights(min: 0.4, base: 0.8, max: 1.2, for: fox)
+    let lora = overrides.apply(to: catalog([fox])).loras[0]
+    #expect(lora.minWeight == 0.4 && lora.defaultWeight == 0.8 && lora.maxWeight == 1.2)
+    #expect(overrides.apply(to: catalog([bare])).loras[0].minWeight == nil)
+  }
+
+  @Test func theBaseStaysBetweenTheLimitsAndEverythingInTheRange() {
+    var overrides = LoRAOverrides()
+    overrides.setWeights(min: 0.5, base: 0.1, max: 0.9, for: fox)
+    #expect(overrides.entries[fox.file]?.weight == 0.5)
+    overrides.setWeights(min: 0.5, base: 3, max: 0.9, for: fox)
+    #expect(overrides.entries[fox.file]?.weight == 0.9)
+    overrides.setWeights(min: -9, base: nil, max: 9, for: fox)
+    #expect(overrides.entries[fox.file]?.minWeight == -4 && overrides.entries[fox.file]?.maxWeight == 4)
+    overrides.setWeights(min: 2, base: nil, max: 1, for: fox)
+    #expect(overrides.entries[fox.file]?.minWeight == 1 && overrides.entries[fox.file]?.maxWeight == 1)
+  }
+
+  @Test func clearingAllThreeRemovesTheEntry() {
+    var overrides = LoRAOverrides()
+    overrides.setWeights(min: 0.4, base: 0.8, max: 1.2, for: fox)
+    overrides.setWeights(min: nil, base: nil, max: nil, for: fox)
+    #expect(overrides.entries[fox.file] == nil)
+  }
+
+  @Test func theTriggerSurvivesAChangeOfWeights() {
+    var overrides = LoRAOverrides()
+    overrides.setTrigger("mine", for: fox)
+    overrides.setWeights(min: 0.4, base: nil, max: nil, for: fox)
+    #expect(overrides.entries[fox.file]?.trigger == "mine")
+  }
+
+  @Test func withALimitTheBaseIsWrittenEvenWhenItIsTheDefault() {
+    var overrides = LoRAOverrides()
+    overrides.setWeights(min: 0.4, base: 1, max: 1.5, for: fox)
+    #expect(overrides.entries[fox.file]?.weight == 1 && overrides.entries[fox.file]?.minWeight == 0.4 && overrides.entries[fox.file]?.maxWeight == 1.5)
+    overrides.setWeights(min: nil, base: 1, max: nil, for: fox)
+    #expect(overrides.entries[fox.file] == nil)
+  }
 }
