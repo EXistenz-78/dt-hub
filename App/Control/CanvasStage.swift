@@ -110,8 +110,11 @@ struct CanvasStage: View {
         GeometryReader { proxy in
           let ratio = Double(canvasWidth) / Double(max(canvasHeight, 1))
           let width = min(proxy.size.width, proxy.size.height * ratio)
-          painting(image: image, crop: cropRect(of: image), size: CGSize(width: width, height: width / ratio))
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+          painting(
+            image: image, crop: cropRect(of: image), size: CGSize(width: width, height: width / ratio),
+            viewport: proxy.size
+          )
+          .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         if tool != .brush || control.inputs.mask != nil { maskSettings }
       } else {
@@ -586,7 +589,10 @@ struct CanvasStage: View {
   /// The picture, the drawing and the mask are layers of their own, so a stroke only changes the
   /// layer it draws on; the cursor ring moves over them. The wheel and the pinch zoom the view (never
   /// below the fit); with Space held a drag moves it instead of drawing.
-  private func painting(image: ReferenceImage, crop: CGRect, size: CGSize) -> some View {
+  /// `viewport` is the room the zoomed canvas may take (the whole pane of the card's own window); without it, the canvas
+  /// itself. The box grows with the zoom, so the free room of the window is used.
+  private func painting(image: ReferenceImage, crop: CGRect, size: CGSize, viewport: CGSize? = nil) -> some View {
+    let port = CGSize(width: max(viewport?.width ?? size.width, size.width), height: max(viewport?.height ?? size.height, size.height))
     // The whole image, placed so that the cut fills the view: what shows is what is sent.
     let scale = size.width / crop.width
     let frame = CGSize(width: Double(image.pixelWidth) * scale, height: Double(image.pixelHeight) * scale)
@@ -601,12 +607,12 @@ struct CanvasStage: View {
       .position(x: origin.x + frame.width / 2, y: origin.y + frame.height / 2)
     }
     let fill = generation.marginFill
-    let view = CGPoint(x: size.width / 2, y: size.height / 2)
-    // From a point of the view (as the gesture gives it) to the same point on the unzoomed picture.
+    let view = CGPoint(x: port.width / 2, y: port.height / 2)
+    // From a point of the viewport (as the gesture gives it) to the same point on the unzoomed canvas.
     func unzoomed(_ point: CGPoint) -> CGPoint {
       CGPoint(
-        x: (point.x - view.x - drawZoom.offset.x) / drawZoom.scale + view.x,
-        y: (point.y - view.y - drawZoom.offset.y) / drawZoom.scale + view.y)
+        x: (point.x - view.x - drawZoom.offset.x) / drawZoom.scale + size.width / 2,
+        y: (point.y - view.y - drawZoom.offset.y) / drawZoom.scale + size.height / 2)
     }
     let content = ZStack(alignment: .topLeading) {
       if fill == .green { Color(red: 0, green: 1, blue: 0) } else { Color(white: 0.5) }
@@ -628,10 +634,11 @@ struct CanvasStage: View {
       }
     }
     .frame(width: size.width, height: size.height)
+    .clipShape(RoundedRectangle(cornerRadius: DS.boxRadius, style: .continuous))
     .scaleEffect(drawZoom.scale)
     .offset(x: drawZoom.offset.x, y: drawZoom.offset.y)
     return ZStack(alignment: .topLeading) {
-      content
+      content.frame(width: port.width, height: port.height)
       if let hover {
         let radius = brushSize / 2 * size.width / Double(max(canvasWidth, 1)) * drawZoom.scale
         ZStack {
@@ -643,8 +650,8 @@ struct CanvasStage: View {
         .allowsHitTesting(false)
       }
     }
-    .frame(width: size.width, height: size.height)
-    .clipShape(RoundedRectangle(cornerRadius: DS.boxRadius, style: .continuous))
+    .frame(width: port.width, height: port.height)
+    .clipped()
     .contentShape(Rectangle())
     .onContinuousHover { phase in
       switch phase {
@@ -660,7 +667,7 @@ struct CanvasStage: View {
             let step = CGSize(
               width: value.translation.width - panLast.width, height: value.translation.height - panLast.height)
             panLast = value.translation
-            drawZoom.pan(by: step, view: size, fitted: size)
+            drawZoom.pan(by: step, view: port, fitted: size)
             return
           }
           drawing.stroke(
@@ -675,14 +682,14 @@ struct CanvasStage: View {
       MagnifyGesture()
         .onChanged { value in
           let anchor = CGPoint(x: value.startLocation.x - view.x, y: value.startLocation.y - view.y)
-          drawZoom.zoom(by: value.magnification / pinchLast, at: anchor, view: size, fitted: size)
+          drawZoom.zoom(by: value.magnification / pinchLast, at: anchor, view: port, fitted: size)
           pinchLast = value.magnification
         }
         .onEnded { _ in pinchLast = 1 }
     )
     .background(
       CanvasWheelMonitor(isActive: true) { point, factor in
-        drawZoom.zoom(by: factor, at: point, view: size, fitted: size)
+        drawZoom.zoom(by: factor, at: point, view: port, fitted: size)
       }
     )
     .background(SpaceKeyMonitor(isDown: $spaceDown))
