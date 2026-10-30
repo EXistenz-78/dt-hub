@@ -21,6 +21,10 @@ struct ResultsView: View {
   @State private var restoredFull: (id: GeneratedImage.ID, image: CGImage)?
   /// The information sidebar (prompt, settings, file); open the first time, then as the user left it.
   @AppStorage("results.sidebar.open") private var sidebarOpen = true
+  /// The zoom of the large picture (wheel, pinch, drag to move, double-click to fit).
+  @State private var zoom = ResultZoom()
+  @State private var dragLast: CGSize = .zero
+  @State private var pinchLast: CGFloat = 1
 
   private var session: GenerationSession { controller.session }
   private var selected: GeneratedImage? {
@@ -55,6 +59,10 @@ struct ResultsView: View {
     // Coming back to this window (a RUN brings it to the front) the keys are not on the strip.
     .onChange(of: activeState) { if activeState == .inactive { stripActive = false } }
     .background(DeleteKeyMonitor(isActive: stripActive) { trash(selectedResults.map(\.id)) })
+    .background(ArrowKeyMonitor { delta in picks.step(delta, order: session.results.map(\.id)) })
+    // A new picture, or a RUN, goes back to the fitted view.
+    .onChange(of: selected?.id) { zoom.reset() }
+    .onChange(of: session.isRunning) { zoom.reset() }
     .task(id: selected?.id) {
       // A picture read back at launch is a small one: the chosen one is loaded from its file.
       guard let chosen = selected, chosen.isRestored, let url = chosen.fileURL else { return restoredFull = nil }
@@ -85,11 +93,7 @@ struct ResultsView: View {
           .clipShape(RoundedRectangle(cornerRadius: DS.minorRadius, style: .continuous))
           .padding(6)
       } else if let shownImage {
-        Image(decorative: shownImage, scale: 1)
-          .resizable()
-          .interpolation(.high)
-          .scaledToFit()
-          .padding(6)
+        zoomableImage(shownImage)
       } else if session.isRunning {
         ProgressView()
       } else {
@@ -126,6 +130,64 @@ struct ResultsView: View {
       .accessibilityLabel(String(localized: "results.info.toggle"))
       .padding(10)
     }
+  }
+
+  /// The wheel, the pinch and the drag work on a still while nothing is generating; never on a clip or the live preview.
+  private var canZoom: Bool { !session.isRunning && shownVideoURL == nil }
+
+  private func fittedSize(of image: CGImage, in view: CGSize) -> CGSize {
+    let w = CGFloat(image.width), h = CGFloat(image.height)
+    guard w > 0, h > 0, view.width > 0, view.height > 0 else { return .zero }
+    let scale = min(view.width / w, view.height / h)
+    return CGSize(width: w * scale, height: h * scale)
+  }
+
+  private func zoomableImage(_ image: CGImage) -> some View {
+    GeometryReader { geo in
+      let area = CGSize(width: max(geo.size.width - 12, 1), height: max(geo.size.height - 12, 1))
+      let fitted = fittedSize(of: image, in: area)
+      let center = CGPoint(x: geo.size.width / 2, y: geo.size.height / 2)
+      ZStack {
+        Image(decorative: image, scale: 1)
+          .resizable()
+          .interpolation(.high)
+          .scaledToFit()
+          .padding(6)
+          .scaleEffect(canZoom ? zoom.scale : 1)
+          .offset(x: canZoom ? zoom.offset.x : 0, y: canZoom ? zoom.offset.y : 0)
+      }
+      .frame(width: geo.size.width, height: geo.size.height)
+      .contentShape(Rectangle())
+      .clipped()
+      .background(
+        ZoomEventMonitor(isActive: canZoom) { anchor, factor in
+          zoom.zoom(by: factor, at: anchor, view: area, fitted: fitted)
+        }
+      )
+      .onTapGesture(count: 2) { if canZoom { zoom.reset() } }
+      .gesture(
+        DragGesture(minimumDistance: 2)
+          .onChanged { value in
+            guard canZoom, zoom.isZoomed else { return }
+            let step = CGSize(
+              width: value.translation.width - dragLast.width, height: value.translation.height - dragLast.height)
+            dragLast = value.translation
+            zoom.pan(by: step, view: area, fitted: fitted)
+          }
+          .onEnded { _ in dragLast = .zero }
+      )
+      .gesture(
+        MagnifyGesture()
+          .onChanged { value in
+            guard canZoom else { return }
+            let anchor = CGPoint(x: value.startLocation.x - center.x, y: value.startLocation.y - center.y)
+            zoom.zoom(by: value.magnification / pinchLast, at: anchor, view: area, fitted: fitted)
+            pinchLast = value.magnification
+          }
+          .onEnded { _ in pinchLast = 1 }
+      )
+    }
+    .padding(0)
   }
 
   @ViewBuilder private var statusLine: some View {
@@ -187,6 +249,16 @@ struct ResultsView: View {
   }
 
   private var strip: some View {
+    ScrollViewReader { proxy in
+      stripScroll
+        // The arrow keys can move the choice out of sight: the strip follows it.
+        .onChange(of: picks.primary) {
+          if let id = picks.primary { withAnimation(.easeOut(duration: 0.15)) { proxy.scrollTo(id) } }
+        }
+    }
+  }
+
+  private var stripScroll: some View {
     ScrollView(.horizontal) {
       HStack(spacing: DS.controlGap) {
         ForEach(session.results) { result in
@@ -429,6 +501,112 @@ private struct DeleteKeyMonitor: NSViewRepresentable {
           let flags = unsafeEvent.modifierFlags.intersection(.deviceIndependentFlagsMask)
           guard flags.isEmpty || flags == .command else { return false }
           self.onDelete()
+          return true
+        }
+        return taken ? nil : event
+      }
+    }
+
+    func remove() {
+      if let monitor { NSEvent.removeMonitor(monitor) }
+      monitor = nil
+    }
+  }
+}
+
+/// ← and → while the Results window is the key one: calls `onStep(-1)` / `onStep(1)` and takes the key. Not with a
+/// modifier, and not while a text is being edited. An AppKit monitor, like ⌫ above (SwiftUI never got the arrows here).
+private struct ArrowKeyMonitor: NSViewRepresentable {
+  var onStep: (Int) -> Void
+
+  func makeCoordinator() -> Coordinator { Coordinator() }
+
+  func makeNSView(context: Context) -> NSView {
+    let view = NSView()
+    context.coordinator.view = view
+    context.coordinator.install()
+    return view
+  }
+
+  func updateNSView(_ nsView: NSView, context: Context) { context.coordinator.onStep = onStep }
+
+  static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) { coordinator.remove() }
+
+  @MainActor
+  final class Coordinator {
+    weak var view: NSView?
+    var onStep: (Int) -> Void = { _ in }
+    private var monitor: Any?
+
+    func install() {
+      monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+        nonisolated(unsafe) let unsafeEvent = event
+        let taken = MainActor.assumeIsolated { () -> Bool in
+          guard let self, unsafeEvent.keyCode == 123 || unsafeEvent.keyCode == 124,
+            let window = self.view?.window, unsafeEvent.window === window, window.isKeyWindow,
+            !(window.firstResponder is NSText)
+          else { return false }
+          // The arrow keys always carry .numericPad and .function.
+          let flags = unsafeEvent.modifierFlags.intersection(.deviceIndependentFlagsMask)
+            .subtracting([.numericPad, .function])
+          guard flags.isEmpty else { return false }
+          self.onStep(unsafeEvent.keyCode == 123 ? -1 : 1)
+          return true
+        }
+        return taken ? nil : event
+      }
+    }
+
+    func remove() {
+      if let monitor { NSEvent.removeMonitor(monitor) }
+      monitor = nil
+    }
+  }
+}
+
+/// The scroll wheel over the large picture: calls `onZoom(anchor, factor)` with the point under the cursor (from the
+/// centre of this view, y down) and takes the event. Only when `isActive`.
+private struct ZoomEventMonitor: NSViewRepresentable {
+  var isActive: Bool
+  var onZoom: (CGPoint, CGFloat) -> Void
+
+  func makeCoordinator() -> Coordinator { Coordinator() }
+
+  func makeNSView(context: Context) -> NSView {
+    let view = NSView()
+    context.coordinator.view = view
+    context.coordinator.install()
+    return view
+  }
+
+  func updateNSView(_ nsView: NSView, context: Context) {
+    context.coordinator.isActive = isActive
+    context.coordinator.onZoom = onZoom
+  }
+
+  static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) { coordinator.remove() }
+
+  @MainActor
+  final class Coordinator {
+    weak var view: NSView?
+    var isActive = false
+    var onZoom: (CGPoint, CGFloat) -> Void = { _, _ in }
+    private var monitor: Any?
+
+    func install() {
+      monitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
+        nonisolated(unsafe) let unsafeEvent = event
+        let taken = MainActor.assumeIsolated { () -> Bool in
+          guard let self, self.isActive, let view = self.view, let window = view.window,
+            unsafeEvent.window === window
+          else { return false }
+          let local = view.convert(unsafeEvent.locationInWindow, from: nil)
+          guard view.bounds.contains(local), unsafeEvent.scrollingDeltaY != 0 else { return false }
+          // A wheel notch is a coarse step; a trackpad sends many small ones.
+          let rate: CGFloat = unsafeEvent.hasPreciseScrollingDeltas ? 0.01 : 0.08
+          let factor = exp(unsafeEvent.scrollingDeltaY * rate)
+          let anchor = CGPoint(x: local.x - view.bounds.midX, y: view.bounds.midY - local.y)
+          self.onZoom(anchor, factor)
           return true
         }
         return taken ? nil : event
