@@ -66,7 +66,7 @@ Compaiono solo con un modello video.
 ### Valori predefiniti
 Nessun menu preset. Alla selezione di un modello video si applicano i suoi valori predefiniti, con lo stesso
 meccanismo dei modelli immagine (da individuare nel codice in fase di piano).
-- FastH3: 8 step, DDIM Trailing (sampler 16), guidance 1, shift 12, audio shift 3, 768 di lato corto.
+- FastH3: 8 step, DDIM Trailing (sampler 16), guidance 1, shift 12, audio shift 3, 832x512 (la configurazione provata sul cloud; la nota del modello consiglia 768 di lato corto).
 - H3: shift 12, 50 step (valori delle prove funzionanti).
 - LTX-2.3: 8 step, TCD Trailing (sampler 19), shift 5, guidance 1, 121 frame, correzione ad alta risoluzione 640x384 -> 1280x768, strength 0,7, fissa.
 - Gli fps non sono un campo: li fornisce la famiglia e servono solo all'export.
@@ -93,7 +93,7 @@ un fotogramma di copertina (il primo). I frame grezzi non si tengono: 124 frame 
 - `JobMapper.finalImages` taglia le immagini a `batchSize`: per i video non deve farlo. Il batch e' sempre 1.
 
 ### Striscia Risultati
-Il video e' una miniatura normale (la copertina) con un piccolo badge (play + durata). Doppio clic: visualizzatore con AVPlayer,
+Il video e' una miniatura normale (la copertina) con un piccolo badge (play + durata). Selezionando il risultato, il video si vede nell'area grande con un lettore AVPlayer in linea (parte in pausa),
 ripetizione automatica, barra di avanzamento, audio. Trascinamento ed export danno il file MP4.
 
 ### Anteprima durante la generazione
