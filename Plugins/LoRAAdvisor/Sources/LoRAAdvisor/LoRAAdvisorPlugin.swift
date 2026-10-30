@@ -5,7 +5,7 @@ import SwiftUI
 @MainActor
 final class LoRAAdvisorPlugin: DTHubPlugin {
   let manifest = DTHubManifest(
-    id: "com.exiztenz.dthub.loraadvisor", name: "LoRA Advisor", version: "1.3", symbol: "square.stack.3d.down.right",
+    id: "com.exiztenz.dthub.loraadvisor", name: "LoRA Advisor", version: "1.4", symbol: "square.stack.3d.down.right",
     families: nil)
   private var host: DTHubHost?
   private let state: LAState

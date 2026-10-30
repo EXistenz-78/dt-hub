@@ -64,6 +64,56 @@ struct LAStateTests {
     #expect(state.groups[0].loras.map(\.name) == ["Alpha", "Piu luce"])
   }
 
+  // MARK: Collapsible families
+
+  private func open(_ state: LAState) -> [String?] { state.groups.filter { state.isOpen($0) }.map(\.family) }
+
+  @Test func onlyTheCurrentFamilyStartsOpen() {
+    state.apply(context: context())
+    #expect(open(state) == ["b"])
+  }
+
+  @Test func aFamilyOpensAndClosesByHand() {
+    state.apply(context: context())
+    state.toggle(state.groups[1])
+    #expect(open(state) == ["b", "a"])
+    state.toggle(state.groups[0])
+    #expect(open(state) == ["a"])
+    state.toggle(state.groups[2])
+    #expect(open(state) == ["a", nil])
+  }
+
+  @Test func aNewModelOpensItsFamilyAndLeavesTheRestAlone() {
+    state.apply(context: context())
+    state.toggle(state.groups[0])  // the user closes "b"
+    state.apply(context: context(family: "b", prompt: "altro"))  // same model: nothing opens again
+    #expect(open(state).isEmpty)
+    state.apply(context: context(family: "a", model: "n.ckpt"))
+    #expect(open(state) == ["a"])
+    state.apply(context: context(family: "b", model: "m.ckpt"))
+    #expect(open(state) == ["b", "a"])
+  }
+
+  @Test func aSearchShowsTheResultsInClosedFamilies() {
+    state.apply(context: context())
+    state.filter = "zeta"
+    #expect(state.groups.map(\.family) == ["a"])
+    #expect(open(state) == ["a"])
+    state.toggle(state.groups[0])  // ignored while searching
+    #expect(open(state) == ["a"])
+    state.filter = ""
+    #expect(open(state) == ["b"])  // and the family stayed closed
+  }
+
+  @Test func thePreviewFollowsTheOpenRow() {
+    state.apply(context: context())
+    #expect(state.openLoRA == nil)
+    state.openFile = "z.ckpt"
+    #expect(state.openLoRA?.name == "Zeta")
+    state.openFile = "gone.ckpt"
+    #expect(state.openLoRA == nil)
+  }
+
   @Test func theFilterLooksAtNameTriggerAndNotes() {
     state.apply(context: context())
     store.setNotesByUser("grana da pellicola", for: "z.ckpt")

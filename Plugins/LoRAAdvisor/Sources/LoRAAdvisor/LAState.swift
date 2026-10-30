@@ -21,6 +21,10 @@ final class LAState: ObservableObject {
   @Published var openFile: String? {
     didSet { if oldValue != openFile { flushNotes() } }
   }
+  /// The families of the list that are open, by `familyKey`. A new tab starts with none: the current model's family
+  /// is opened as soon as the context says which it is, and again whenever the model changes.
+  @Published private(set) var openFamilies: Set<String> = []
+  private var openedFor: String?
   /// What to advise on: the prompt of the Generation tab until the user writes something else.
   @Published private(set) var request = ""
   private(set) var requestEditedByUser = false
@@ -60,6 +64,7 @@ final class LAState: ObservableObject {
     guard let new = try? JSONDecoder().decode(DTHubContext.self, from: data) else { return }
     let modelChanged = context != nil && context?.model != new.model
     context = new
+    openCurrentFamily(new.family)
     // A server parked to make room for the language model lists no LoRAs until it is back: the list that was there
     // stays, and so does the advice just given.
     if let listed = new.loraCatalog, !listed.isEmpty { catalog = listed }
@@ -115,6 +120,32 @@ final class LAState: ObservableObject {
       Group(family: family, isCurrent: family != nil && family == current, loras: shown.filter { $0.family == family })
     }
   }
+
+  /// The key a family is kept under in `openFamilies`: the empty one is for the LoRAs of no family.
+  static func familyKey(_ family: String?) -> String { family ?? "" }
+
+  /// The current model's family opens when it is a new one; the rest stay as the user left them.
+  private func openCurrentFamily(_ family: String?) {
+    guard let family, family != openedFor else { return }
+    openedFor = family
+    openFamilies.insert(Self.familyKey(family))
+  }
+
+  /// Searching, the list shows every family that has a result, so the user does not have to open them one by one.
+  var isSearching: Bool { !filter.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+
+  /// Whether the LoRAs of a family are shown: it is open, or a search is on (the groups are then only those with
+  /// results).
+  func isOpen(_ group: Group) -> Bool { isSearching || openFamilies.contains(Self.familyKey(group.family)) }
+
+  func toggle(_ group: Group) {
+    guard !isSearching else { return }
+    let key = Self.familyKey(group.family)
+    if openFamilies.contains(key) { openFamilies.remove(key) } else { openFamilies.insert(key) }
+  }
+
+  /// The LoRA whose row is open: the one the preview card shows.
+  var openLoRA: DTHubCatalogLoRA? { openFile.flatMap { file in catalog.first { $0.file == file } } }
 
   /// The name of the current model's family, as the app's guide calls it when it has one.
   var familyLabel: String { context?.promptGuide?.label ?? context?.family ?? "—" }

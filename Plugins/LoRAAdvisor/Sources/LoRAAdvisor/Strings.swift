@@ -4,7 +4,7 @@ import Foundation
 /// `.strings` files: the table is here.
 enum L {
   enum Key: CaseIterable {
-    case dropOnlyAddress, choosePage, useThis, openInBrowser, downloads, needsNewApp, notActive, noLoRAs, unreadableStore, listTitle, adviceTitle, filterPlaceholder, filterIncomplete, replaceHelp, findPages, summariseAll, jobsNote, stop, progress, currentModel, unknownFamily, trigger, noTrigger, weight, noNotes, foundAuto, pageNotFound, toSummarise, add, onTab, otherFamily,
+    case dropOnlyAddress, choosePage, useThis, openInBrowser, downloads, needsNewApp, notActive, noLoRAs, unreadableStore, listTitle, previewTitle, previewEmpty, adviceTitle, filterPlaceholder, filterIncomplete, replaceHelp, findPages, summariseAll, jobsNote, stop, progress, currentModel, unknownFamily, trigger, noTrigger, weight, noNotes, foundAuto, pageNotFound, toSummarise, add, onTab, otherFamily,
       notes, link, importPage, cancel, summarise, notThisOne, searchAgain, thumbnail, chooseFile, useControlImage, removeThumbnail, unreadableImage, replaceNotesQuestion, replace, keepMine, linkNotRecognised, needsAccess, noImageInPage, notFound, unreachable, unreadableAnswer, tooLarge, notAllowed,
       rateLimited, imported, summaryFailed,
       needsLLM, request, onlyFamily, advise, resetRequest, noSuitable, adviceNotUnderstood, noLoRAsForFamily, updateWeight, addAll, sent, sentWithConflicts, notAnswered, languageName
@@ -34,6 +34,8 @@ enum L {
     .noLoRAs: "Il server non ha LoRA.",
     .unreadableStore: "Il file delle note non si legge: resta com'è finché non modifichi qualcosa.",
     .listTitle: "I tuoi LoRA",
+    .previewTitle: "LoRA selezionato",
+    .previewEmpty: "Apri un LoRA dell'elenco per vederne l'anteprima qui.",
     .adviceTitle: "Consiglia",
     .filterPlaceholder: "Filtra per nome, trigger o note",
     .replaceHelp: "Toglie gli altri LoRA dalla tab Generation e lascia solo questo",
@@ -108,6 +110,8 @@ enum L {
     .noLoRAs: "The server has no LoRAs.",
     .unreadableStore: "The notes file cannot be read: it stays as it is until you change something.",
     .listTitle: "Your LoRAs",
+    .previewTitle: "Selected LoRA",
+    .previewEmpty: "Open a LoRA in the list to see its thumbnail here.",
     .adviceTitle: "Advise",
     .filterPlaceholder: "Filter by name, trigger or notes",
     .replaceHelp: "Takes the other LoRAs off the Generation tab and leaves only this one",
