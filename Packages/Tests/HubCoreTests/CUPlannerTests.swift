@@ -76,6 +76,13 @@ struct CUPlannerTests {
       let inputs = try #require(result[0].inputs)
       #expect(inputs.numFrames == 124)
     }
+    // A hidden LTX-2 (a pipeline preset can reach it) gets its frames too.
+    let ltx2 = CatalogModel(file: "ltx2.ckpt", name: "LTX2", family: "ltx2")
+    let withLtx2 = ModelCatalog(models: [ltx2], loras: [], fileCount: 1, upscalers: [])
+    let hidden = CUPlanner.passes(
+      fields: GenerationFields(parameters: parameters), model: ltx2, control: control, pipeline: nil, presets: [:],
+      catalog: withLtx2, headerModel: ltx2.file, strengthOfPass: { _, _, _, _, _ in 0.7 })
+    #expect(try #require(hidden[0].inputs).numFrames == 124)
     // A video family the port does not cover is passed on like any family; the estimator has no estimate for it
     // (ComputeUnitsEstimatorTests.aVideoFamilyThePortDoesNotCoverHasNoEstimate).
     let uncovered = CUPlanner.passes(

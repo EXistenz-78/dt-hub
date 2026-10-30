@@ -350,6 +350,17 @@ struct ComputeUnitsEstimatorTests {
       ComputeUnitsEstimator.estimate(
         video("minimax_h3", width: 4096, height: 4096, frames: 1_000_000, steps: 50, hasImage: true, references: 20, modifier: "ref2va")))
     #expect(h3 == ComputeUnitsEstimator.ceiling)
+    // Absurd frame counts at the smallest size (audio and text rows count too) hit the ceiling and do not trap.
+    for frames in [1_000_000, 10_000_000, Int.max] {
+      #expect(
+        ComputeUnitsEstimator.estimate(video("minimax_h3", width: 64, height: 64, frames: frames, steps: 50, guidance: 3))
+          == ComputeUnitsEstimator.ceiling, "h3 \(frames)")
+    }
+    for frames in [5_000_000, Int.max] {
+      #expect(
+        ComputeUnitsEstimator.estimate(video("ltx2.3", width: 64, height: 64, frames: frames, steps: 8, guidance: 3))
+          == ComputeUnitsEstimator.ceiling, "ltx \(frames)")
+    }
     // Nonsense frame counts do not trap.
     #expect(ComputeUnitsEstimator.estimate(video("minimax_h3", width: 576, height: 448, frames: -5, steps: 8)) != nil)
     #expect(ComputeUnitsEstimator.estimate(video("ltx2.3", width: 576, height: 448, frames: 0, steps: 8)) != nil)

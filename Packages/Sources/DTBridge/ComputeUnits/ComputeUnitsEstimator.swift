@@ -112,8 +112,8 @@ enum ComputeUnitsEstimator {
     let startHeight = max(1, inputs.height / 64) * startFactor(family)
     // The Draw Things app counts one base reference for the models that take references (Kontext and the like)
     // whether or not there is a start image: the user's readings of its CU bar (15 Oct 2026, ReferenceTests) match
-    // only so, and the start image moves nothing there. `inputs.hasImage` is therefore not used here.
-    // The video modifiers (ref2va, fl2va) count a base reference only when there really is a start image.
+    // only so, and the start image moves nothing there. `inputs.hasImage` is therefore not used for these image
+    // modifiers. The video modifiers (ref2va, fl2va) count a base reference only when there really is a start image.
     let hasBaseReference = (modifier == .ref2va || modifier == .fl2va) ? inputs.hasImage : true
     let references = referenceImageCount(modifier: modifier, hasImage: hasBaseReference, extra: inputs.referenceImages)
     let imageTokens = max(1, (startHeight / 2) * (startWidth / 2))
@@ -123,7 +123,12 @@ enum ComputeUnitsEstimator {
     switch family {
     case .ltx2, .ltx2_3:
       // LTX has no patchify: the start size is the latent grid (video tokens = frames × h × w).
-      sequence = Double(startHeight) * Double(startWidth) * Double(latent)
+      // Plus the audio stream (8 frames per latent one), which the cross attention with the video also counts.
+      sequence = Double(startHeight) * Double(startWidth) * Double(latent) + Double((latent - 1) * 8 + 1)
+    case .minimaxH3:
+      // The attention runs over text + audio + video + reference rows.
+      let audio = 2 * Int((Double(h3VideoFrames(latentFrames: latent)) / Double(h3FramesPerSecond) * 40).rounded())
+      sequence = Double(baseTokenLength) + Double(audio) + Double(imageTokens) * Double(latent) + Double(referenceLength)
     default:
       sequence = Double(imageTokens) * Double(latent) + Double(referenceLength)
     }
@@ -388,8 +393,10 @@ enum ComputeUnitsEstimator {
 
   /// The latent frames of a request (`batchSizeAndNumFrames`): H3 packs 17 frames per 5 latent ones after the first
   /// 5 (and 1 for a single frame); LTX one per 8 after the first.
-  static func latentFrames(family: CUFamily, numFrames: Int) -> Int {
-    switch family {
+  static func latentFrames(family: CUFamily, numFrames rawFrames: Int) -> Int {
+    // Far beyond any clip; keeps the Int arithmetic below clear of overflow.
+    let numFrames = min(rawFrames, 1_000_000_000)
+    return switch family {
     case .minimaxH3:
       numFrames == 1 ? 1 : ((max(numFrames, 5) - 5 + 16) / 17) * 5 + 2
     case .ltx2, .ltx2_3:

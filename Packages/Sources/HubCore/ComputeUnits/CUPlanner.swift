@@ -106,6 +106,6 @@ public enum CUPlanner {
       guidanceScale: parameters.guidanceScale, batchSize: parameters.batchSize, hasImage: hasImage,
       speedUpWithGuidanceEmbed: parameters.advanced.speedUpWithGuidanceEmbed,
       referenceImages: FamilyTraits.of(family).usesMoodboard ? references : 0,
-      numFrames: VideoFamilies.isEnabled(family) ? parameters.video.numFrames : 1)
+      numFrames: VideoFamilies.keys.contains(family) ? parameters.video.numFrames : 1)
   }
 }
