@@ -41,6 +41,8 @@ final class LAState: ObservableObject {
   /// Set by the plug-in, which has the host: `contribute` puts LoRAs on the Generation tab, `askModel` asks the
   /// language model (system prompt, prompt).
   var contribute: (([String: Any]) async -> [String: Any]?)?
+  /// Sends the weights of a LoRA to the app (file, min, base, max).
+  var saveWeights: ((String, Double?, Double?, Double?) async -> [String: Any]?)?
   var askModel: ((String, String) async -> DTHubLLMAnswer)?
 
   private var saveNotes: Task<Void, Never>?
@@ -348,6 +350,26 @@ final class LAState: ObservableObject {
     objectWillChange.send()
   }
 
+  // MARK: Min, Base and Max
+
+  /// The three weights the user typed on the preview card: kept by the app (the Generation tab uses them), and shown
+  /// here at once, before the app's next context brings them back.
+  func setWeights(min: Double?, base: Double?, max: Double?, for file: String) async {
+    let values = LAWeights.normalised(min: min, base: base, max: max)
+    if let current = catalog.first(where: { $0.file == file }), LAWeights.values(of: current) == values { return }
+    if let index = catalog.firstIndex(where: { $0.file == file }) {
+      catalog[index].minWeight = values.min
+      catalog[index].weight = values.base
+      catalog[index].maxWeight = values.max
+    }
+    weightsMessage = nil
+    guard let saveWeights else { return }
+    let answer = await saveWeights(file, values.min, values.base, values.max)
+    if answer == nil || answer?["type"] as? String == "error" { weightsMessage = text(.weightsNotSaved) }
+  }
+
+  @Published private(set) var weightsMessage: String?
+
   // MARK: The advice
 
   var hasLanguageModel: Bool { context?.languageModels?.isEmpty == false }
@@ -398,7 +420,14 @@ final class LAState: ObservableObject {
       adviceMessage = text(.adviceNotUnderstood)
       return
     }
-    suggestions = read
+    // The weights stay within the limits the user set for each LoRA.
+    suggestions = read.map { suggestion in
+      var suggestion = suggestion
+      if let lora = catalog.first(where: { $0.file == suggestion.file }) {
+        suggestion.weight = LAWeights.limited(suggestion.weight, by: lora)
+      }
+      return suggestion
+    }
     adviceMessage = read.isEmpty ? text(.noSuitable) : nil
   }
 

@@ -19,6 +19,7 @@ struct LAPreviewCard: View {
           thumbnailMenu(for: lora.file)
         }
         .frame(maxWidth: .infinity)
+        LAWeightFields(state: state, lora: lora)
       }
       .padding(DS.panelPadding)
       .frame(width: LAView.sideWidth, alignment: .topLeading)

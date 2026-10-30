@@ -11,6 +11,9 @@ public enum PluginMessageType {
   public static let notice = "notice"
   /// Plug-in → app: values, LoRAs, pictures, a pipeline (`PluginContribution`).
   public static let contribute = "contribute"
+  /// Plug-in → app: the lowest, default and highest weight of one LoRA (`{"file", "min", "base", "max"}`; a missing or
+  /// null value is cleared).
+  public static let loraWeights = "loraWeights"
   /// Plug-in → app: presets to add to the Preset menu (`PluginPresets`).
   public static let presets = "presets"
   /// Plug-in → app: a question for the language model; the answer is `{"type":"llm","text":…}`.
@@ -121,8 +124,13 @@ public struct PluginCatalogLoRA: Codable, Equatable, Sendable {
   /// Empty when the LoRA has none.
   public var trigger: String
   public var weight: Double
+  /// The user's lowest and highest weight for the LoRA; left out when there is no limit.
+  public var minWeight: Double?
+  public var maxWeight: Double?
 
   public init(_ lora: CatalogLoRA) {
+    minWeight = lora.minWeight
+    maxWeight = lora.maxWeight
     file = lora.file
     name = lora.name
     family = lora.family

@@ -31,6 +31,7 @@ struct LoRACard: View {
             choices: choices(replacing: selection.file),
             selection: binding(for: selection),
             name: catalog.lora(forFile: selection.file)?.name ?? selection.file,
+            limits: limits(of: catalog.lora(forFile: selection.file)),
             status: catalog.status(of: selection, family: family),
             isContributed: contributions?.loraPlugins[selection.file] != nil,
             remove: { controller.parameters.removeLoRA(selection.file) })
@@ -42,6 +43,14 @@ struct LoRACard: View {
         }
       }
     }
+  }
+
+  /// The user's lowest and highest weight for a LoRA, when it has any (the missing side is the range's own).
+  private func limits(of lora: CatalogLoRA?) -> ClosedRange<Double>? {
+    guard let lora, lora.minWeight != nil || lora.maxWeight != nil else { return nil }
+    let range = LoRASelection.weightRange
+    let low = lora.minWeight ?? range.lowerBound
+    return low...max(low, lora.maxWeight ?? range.upperBound)
   }
 
   /// A row's binding found by file, not by array index: a row still editing when its LoRA
@@ -126,6 +135,7 @@ private struct LoRARow<Choices: View>: View {
   let choices: Choices
   @Binding var selection: LoRASelection
   let name: String
+  let limits: ClosedRange<Double>?
   let status: LoRAStatus
   /// A plug-in added this LoRA: teal at 30%.
   let isContributed: Bool
@@ -174,7 +184,7 @@ private struct LoRARow<Choices: View>: View {
         Spacer(minLength: DS.controlGap)
         DecimalField(
           label: String(localized: "card.lora.weight"), value: $selection.weight,
-          range: LoRASelection.weightRange, step: 0.05, fractionDigits: 2)
+          range: LoRASelection.weightRange, step: 0.05, fractionDigits: 2, limits: limits)
       }
       HStack(spacing: DS.controlGap) {
         Text("card.lora.trigger")

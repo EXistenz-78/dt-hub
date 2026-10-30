@@ -29,6 +29,9 @@ final class LoRAAdvisorPlugin: DTHubPlugin {
     self.host = host
     asker.host = host
     state.contribute = { [weak self] body in await self?.host?.contribute(body) }
+    state.saveWeights = { [weak self] file, low, base, high in
+      await self?.host?.setLoRAWeights(file: file, min: low, base: base, max: high)
+    }
     state.askModel = { [weak self] system, prompt in await self?.asker.answer(system, prompt) ?? .failure("No answer.") }
   }
 

@@ -1,3 +1,4 @@
+import HubKit
 import Foundation
 import Testing
 
@@ -76,5 +77,17 @@ struct LoRAOverridesStoreTests {
 
   @Test func theDefaultFileSitsNextToTheOtherStateFiles() {
     #expect(LoRAOverridesStore.defaultFileURL.path.hasSuffix("DT Hub/loras.json"))
+  }
+
+  @Test func minAndMaxAreSavedAndBroughtIntoRange() throws {
+    let url = file()
+    let fox = CatalogLoRA(file: "fox.ckpt", name: "Fox", family: nil)
+    var overrides = LoRAOverrides()
+    overrides.setWeights(min: 0.3, base: nil, max: 1.5, for: fox)
+    LoRAOverridesStore(fileURL: url).save(overrides)
+    #expect(LoRAOverridesStore(fileURL: url).load().entries["fox.ckpt"]?.maxWeight == 1.5)
+    try #"{"schema":1,"loras":{"a":{"minWeight":-9,"maxWeight":9}}}"#.write(to: url, atomically: true, encoding: .utf8)
+    let read = LoRAOverridesStore(fileURL: url).load().entries["a"]
+    #expect(read?.minWeight == -4 && read?.maxWeight == 4)
   }
 }

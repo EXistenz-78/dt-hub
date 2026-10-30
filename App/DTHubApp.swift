@@ -82,6 +82,11 @@ struct DTHubApp: App {
         to: prompt, images: images, options: options, modelNamed: name, history: history)
     }
     plugins.currentParameters = { generation.parameters }
+    plugins.setLoRAWeights = { file, low, base, high in
+      guard let lora = connection.monitor.serverCatalog.loras.first(where: { $0.file == file }) else { return false }
+      connection.monitor.loraOverrides.setWeights(min: low, base: base, max: high, for: lora)
+      return true
+    }
     plugins.loraCatalog = { connection.monitor.catalog.loras }
     plugins.currentPrompts = { (generation.prompt, generation.negativePrompt) }
     plugins.promptGuide = {

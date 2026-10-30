@@ -18,6 +18,10 @@ Three steps fill the list in, each with its own button and **never by themselves
 
 Each step works only on what is missing: the first time on everything, afterwards on the new LoRAs and on those whose link you gave or changed. Notes you wrote or corrected yourself are never touched by a later step (an import asks before replacing them), and neither is a thumbnail you chose from a file or from the Control tab's start image.
 
+## The selected LoRA (right, top)
+
+When a row is open, a card above "Advise" shows its thumbnail large (with the **Thumbnail** menu) under the LoRA's name; with no row open the card is not there. It also has three fields, **Min**, **Base** and **Max**: the lowest weight, the weight the LoRA starts with and the highest you want for it (an empty Min or Max is no limit, an empty Base is 1; Min ≤ Base ≤ Max, all between -4 and 4). They are kept by DT Hub together with the data of **Manage LoRAs** (Base is the weight you see there), so they hold on the Generation tab too: the arrows of the weight field never go beyond Min and Max, and a value you type beyond them is kept, with an orange border round the field. **Advise** keeps its weights within the limits, and **Add** starts from Base. Needs DT Hub 0.7.2 or later.
+
 ## Advise (right)
 
 A text field that starts as the current prompt; leave it to get advice for the prompt, or write what you are after ("80s film look"). **Advise** has the LLM pick up to **three** LoRAs among those of the **current model's family**, each with a weight you can change and one sentence of explanation. **Add** (or **Update the weight** for a LoRA already on the tab) sends it to the Generation tab; **Add all** sends them all. The model sees the name, the trigger word and the first 300 characters of the notes of each LoRA, so better notes give better advice. It needs a language model assigned to plug-ins (Settings › LLM).
