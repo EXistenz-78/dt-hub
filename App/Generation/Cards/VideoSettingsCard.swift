@@ -49,7 +49,7 @@ struct VideoSettingsCard: View {
     let frames = $controller.parameters.video.numFrames
     return CardRow(label: String(localized: "card.video.frames")) {
       HStack(spacing: DS.controlGap) {
-        FramesField(label: String(localized: "card.video.frames"), value: frames, info: info)
+        // The estimate sits to the left of the field (the user asked for it there).
         Text(
           String(
             format: String(localized: "card.video.frames.seconds"),
@@ -57,6 +57,7 @@ struct VideoSettingsCard: View {
           .font(.callout)
           .foregroundStyle(.secondary)
           .monospacedDigit()
+        FramesField(label: String(localized: "card.video.frames"), value: frames, info: info)
       }
     }
   }
