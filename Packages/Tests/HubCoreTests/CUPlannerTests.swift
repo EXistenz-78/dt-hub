@@ -94,6 +94,27 @@ struct CUPlannerTests {
     #expect(image.numFrames == 1)
   }
 
+  @Test func aStartImageDoesNotScaleTheStrengthOfAVideoEstimateButDoesOfAnImageOne() throws {
+    let h3 = CatalogModel(file: "h3.ckpt", name: "H3", family: "minimax_h3")
+    let ltx = CatalogModel(file: "ltx.ckpt", name: "LTX", family: "ltx2.3")
+    let all = ModelCatalog(models: [flux, zimage, h3, ltx], loras: [], fileCount: 4, upscalers: [])
+    let withImage = CUControlSummary(hasImage: true, moodboardCount: 0, strength: 0.7)
+    let without = CUControlSummary(hasImage: false, moodboardCount: 0, strength: 0.7)
+    func inputs(_ model: CatalogModel, _ control: CUControlSummary) throws -> CUInputs {
+      let result = CUPlanner.passes(
+        fields: fields(), model: model, control: control, pipeline: nil, presets: [:], catalog: all,
+        headerModel: model.file, strengthOfPass: { _, _, _, _, _ in 0.7 })
+      return try #require(result[0].inputs)
+    }
+    for model in [h3, ltx] {
+      #expect(try inputs(model, withImage).strength == 1, "\(model.name)")
+      #expect(try inputs(model, without).strength == 1)
+    }
+    // Image families still scale with the strength of the start image.
+    #expect(try inputs(zimage, withImage).strength == 0.7)
+    #expect(try inputs(flux, withImage).strength == 0.7)
+  }
+
   @Test func theMoodboardCountsOnlyForAFamilyThatUsesIt() throws {
     // SD XL has no Moodboard in DT Hub; FLUX.2 and Z Image do.
     let old = try #require(passes(model: sdxl)[0].inputs)

@@ -98,11 +98,13 @@ public enum CUPlanner {
     _ parameters: GenerationParameters, model: CatalogModel?, hasImage: Bool, strength: Double, references: Int
   ) -> CUInputs? {
     guard let model, let family = model.family else { return nil }
+    // A video job sends strength 1 (`JobComposer.usesFullStrength`), so the Control tab's strength does not scale its
+    // estimate; the start image changes nothing there, as in the Draw Things bar.
     // Video (H3, LTX-2.3) is estimated with Draw Things' formula like any family: the frame count goes along. A video
     // family the estimator does not cover has no estimate (the meter shows a dash).
     return CUInputs(
       family: family, modelFile: model.file, capabilities: model.capabilities, width: parameters.width,
-      height: parameters.height, steps: parameters.steps, strength: hasImage ? strength : 1,
+      height: parameters.height, steps: parameters.steps, strength: hasImage && !VideoFamilies.isEnabled(family) ? strength : 1,
       guidanceScale: parameters.guidanceScale, batchSize: parameters.batchSize, hasImage: hasImage,
       speedUpWithGuidanceEmbed: parameters.advanced.speedUpWithGuidanceEmbed,
       referenceImages: FamilyTraits.of(family).usesMoodboard ? references : 0,
