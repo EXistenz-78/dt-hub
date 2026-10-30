@@ -20,7 +20,9 @@ Each step works only on what is missing: the first time on everything, afterward
 
 ## Advise (right)
 
-A text field that starts as the current prompt; leave it to get advice for the prompt, or write what you are after ("80s film look"). **Advise** has the LLM pick up to five LoRAs among those of the **current model's family**, each with a weight you can change and one sentence of explanation. **Add** (or **Update the weight** for a LoRA already on the tab) sends it to the Generation tab; **Add all** sends them all. The model sees the name, the trigger word and the first 300 characters of the notes of each LoRA, so better notes give better advice. It needs a language model assigned to plug-ins (Settings › LLM).
+A text field that starts as the current prompt; leave it to get advice for the prompt, or write what you are after ("80s film look"). **Advise** has the LLM pick up to **three** LoRAs among those of the **current model's family**, each with a weight you can change and one sentence of explanation. **Add** (or **Update the weight** for a LoRA already on the tab) sends it to the Generation tab; **Add all** sends them all. The model sees the name, the trigger word and the first 300 characters of the notes of each LoRA, so better notes give better advice. It needs a language model assigned to plug-ins (Settings › LLM).
+
+The instructions sent to the LLM are in `master-prompt.md` in `…/Data/LoRAAdvisor/` (written by the plug-in at launch if it is missing or older; the old one is kept as `.md.bak`; `{max}` and `{language}` are filled in). To add your own, write them in `custom/master-prompt.md` in the same folder: they go after the master prompt (a header `mode: replace` replaces it instead). Changing the master prompt itself is not recommended.
 
 ## Network
 

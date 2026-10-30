@@ -11,6 +11,8 @@ final class LoRAAdvisorPlugin: DTHubPlugin {
   private let state: LAState
 
   init() {
+    // The master prompt, written to Data/LoRAAdvisor if missing or older (and custom/ made).
+    LAPrompts.install()
     let store = LAStore(folder: LAStore.defaultFolder)
     let fetcher = LAFetcher()
     let asker = Asker()
