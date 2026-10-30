@@ -13,13 +13,14 @@ struct ComputeUnitsReferenceTests {
 
   func reading(
     _ expected: Int, family: String, file: String, width: Int, height: Int, steps: Int, guidance: Double,
-    batch: Int = 1, strength: Double = 1, hasImage: Bool = false, references: Int = 0,
+    batch: Int = 1, strength: Double = 1, hasImage: Bool = false, references: Int = 0, numFrames: Int = 1,
     capabilities: ModelCapabilities = ComputeUnitsReferenceTests.plain, tolerance: Int? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
   ) {
     let inputs = CUInputs(
       family: family, modelFile: file, capabilities: capabilities, width: width, height: height, steps: steps,
-      strength: strength, guidanceScale: guidance, batchSize: batch, hasImage: hasImage, referenceImages: references)
+      strength: strength, guidanceScale: guidance, batchSize: batch, hasImage: hasImage, referenceImages: references,
+      numFrames: numFrames)
     let estimate = ComputeUnitsEstimator.estimate(inputs)
     #expect(estimate != nil, sourceLocation: sourceLocation)
     guard let estimate else { return }
@@ -125,5 +126,52 @@ struct ComputeUnitsReferenceTests {
     reading(
       expected, family: family, file: "\(family).ckpt", width: side, height: side, steps: steps, guidance: guidance,
       tolerance: 1)
+  }
+
+  // MARK: Video, read by the user on the Draw Things app on 30 Oct 2026
+  // The bar shows thousands with one decimal, truncated: reading r.k means the value is in [r.k * 1000, r.k * 1000 + 100).
+  // The helper takes the middle of the bucket with a tolerance of 50 (the ends are inclusive).
+
+  static func video(_ modifier: String?) -> ModelCapabilities {
+    ModelCapabilities(
+      guidanceEmbed: false, teaCache: false, clipL: false, openClipG: false, t5: false, optionalT5: false,
+      clipSkip: false, nativeSize: nil, modifier: modifier)
+  }
+
+  /// MiniMax H3 ref2va (4-bit S), 576x448, 56 frames, 50 steps, guidance 1, no start image and no Moodboard: 31.1k.
+  @Test func h3Ref2vaWithoutAnyImage() {
+    reading(
+      31_150, family: "minimax_h3", file: "minimax_h3_ref2va_i4x.ckpt", width: 576, height: 448, steps: 50, guidance: 1,
+      numFrames: 56, capabilities: Self.video("ref2va"), tolerance: 50)
+  }
+
+  /// FastH3 Omni (4-bit S, modifier ref2va), 832x512, 124 frames, 8 steps, guidance 1, no image: 21.7k.
+  @Test func fastH3WithoutAnyImage() {
+    reading(
+      21_750, family: "minimax_h3", file: "fasth3_omni_i4x.ckpt", width: 832, height: 512, steps: 8, guidance: 1,
+      numFrames: 124, capabilities: Self.video("ref2va"), tolerance: 50)
+  }
+
+  /// MiniMax H3 ref2va, 832x512, 124 frames, 50 steps, guidance 1, no image: 135.7k. The port gives 135 688, 12 units
+  /// (0.009 %) under the bucket [135 700, 135 800) of the truncated reading: a tolerance of 100 covers it (it is not
+  /// known where the 12 come from; the other four readings fall inside their bucket).
+  @Test func h3Ref2vaAtFastH3SizeWith50Steps() {
+    reading(
+      135_750, family: "minimax_h3", file: "minimax_h3_ref2va_i4x.ckpt", width: 832, height: 512, steps: 50,
+      guidance: 1, numFrames: 124, capabilities: Self.video("ref2va"), tolerance: 100)
+  }
+
+  /// LTX-2.3 22B distilled, 1280x768, 121 frames, 8 steps, Hires fix on (640x384): 12.4k, so only the final size counts.
+  @Test func ltx23WithHiresFix() {
+    reading(
+      12_450, family: "ltx2.3", file: "ltx_2.3_22b_distilled_1.1_q8p.ckpt", width: 1280, height: 768, steps: 8,
+      guidance: 1, numFrames: 121, capabilities: Self.video(nil), tolerance: 50)
+  }
+
+  /// LTX-2 19B distilled, 1280x768, 121 frames, 8 steps, Hires fix off: 12.3k.
+  @Test func ltx2WithoutHiresFix() {
+    reading(
+      12_350, family: "ltx2", file: "ltx_2_19b_distilled_q8p.ckpt", width: 1280, height: 768, steps: 8, guidance: 1,
+      numFrames: 121, capabilities: Self.video(nil), tolerance: 50)
   }
 }

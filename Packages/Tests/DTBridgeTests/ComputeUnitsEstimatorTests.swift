@@ -303,34 +303,32 @@ struct ComputeUnitsEstimatorTests {
     #expect(on > off && Double(on) / Double(off) < 2.1)
   }
 
-  @Test func aRef2vaReferenceCostsMoreAndNeedsARealImage() {
+  @Test func aRef2vaModelAlwaysCountsTheBaseReferenceAndTheMoodboardAddsToIt() {
     func h3(_ hasImage: Bool, _ refs: Int, _ modifier: String = "ref2va") -> Int {
       estimate(
         video(
           "minimax_h3", width: 576, height: 448, frames: 56, steps: 50, hasImage: hasImage, references: refs,
           modifier: modifier))
     }
-    let none = h3(false, 0)
-    #expect(none > 0)
-    #expect(h3(true, 0) > none)  // the start image is a reference
-    #expect(h3(false, 1) == h3(true, 0))  // a Moodboard picture is a reference as well
-    #expect(h3(true, 2) > h3(true, 1))
-    // fl2va: first frame plus at most one more (the last frame); nothing without a first frame.
-    #expect(h3(false, 3, "fl2va") == h3(false, 0, "fl2va"))
-    #expect(h3(true, 5, "fl2va") == h3(true, 1, "fl2va"))
-    #expect(h3(true, 1, "fl2va") > h3(true, 0, "fl2va"))
-    // The ref2va pictures also raise the estimate of the smallest request.
-    #expect(h3(true, 0, "ref2va") > h3(false, 0, "none"))
+    // The Draw Things bar counts the base reference with or without a start image (readings of 30 Oct 2026).
+    #expect(h3(false, 0) == h3(true, 0))
+    #expect(h3(false, 0) > h3(false, 0, "none"))
+    #expect(h3(false, 1) > h3(false, 0) && h3(false, 2) > h3(false, 1))
+    // fl2va (unverified against the bar): the base reference plus at most one more.
+    #expect(h3(false, 5, "fl2va") == h3(false, 1, "fl2va"))
+    #expect(h3(false, 1, "fl2va") > h3(false, 0, "fl2va"))
   }
 
   /// A regression pin of the port as written on 30 Oct 2026 (the first-pass size is not used: the original counts
-  /// the final size once). Not Draw Things' bar.
+  /// the final size once; H3 counts the base reference of ref2va without an image, the real model is ref2va). Not Draw Things' bar.
   @Test(arguments: [
-    ("minimax_h3", 576, 448, 56, 50, 29_388), ("minimax_h3", 832, 512, 124, 8, 20_968),
+    ("minimax_h3", 576, 448, 56, 50, 31_126), ("minimax_h3", 832, 512, 124, 8, 21_712),
     ("ltx2.3", 768, 448, 25, 8, 857), ("ltx2.3", 1280, 768, 121, 8, 12_455), ("ltx2", 768, 448, 25, 8, 782),
   ])
   func theVideoEstimatesAreStable(family: String, width: Int, height: Int, frames: Int, steps: Int, expected: Int) {
-    let value = estimate(video(family, width: width, height: height, frames: frames, steps: steps))
+    let modifier = family == "minimax_h3" ? "ref2va" : nil  // every H3 model is ref2va or fl2va
+    let value = estimate(
+      video(family, width: width, height: height, frames: frames, steps: steps, modifier: modifier))
     #expect(value == expected, "\(family) -> \(value)")
   }
 

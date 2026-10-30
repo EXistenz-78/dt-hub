@@ -110,12 +110,11 @@ enum ComputeUnitsEstimator {
     // Draw Things' configuration holds the size in units of 64 pixels; the model starts from `unit × factor`.
     let startWidth = max(1, inputs.width / 64) * startFactor(family)
     let startHeight = max(1, inputs.height / 64) * startFactor(family)
-    // The Draw Things app counts one base reference for the models that take references (Kontext and the like)
-    // whether or not there is a start image: the user's readings of its CU bar (15 Oct 2026, ReferenceTests) match
-    // only so, and the start image moves nothing there. `inputs.hasImage` is therefore not used for these image
-    // modifiers. The video modifiers (ref2va, fl2va) count a base reference only when there really is a start image.
-    let hasBaseReference = (modifier == .ref2va || modifier == .fl2va) ? inputs.hasImage : true
-    let references = referenceImageCount(modifier: modifier, hasImage: hasBaseReference, extra: inputs.referenceImages)
+    // The Draw Things app counts one base reference for the models that take references (Kontext, ref2va and the
+    // like) whether or not there is a start image: the user's readings of its CU bar (15 Oct 2026 for Kontext,
+    // 30 Oct 2026 for H3 / FastH3 ref2va, ReferenceTests) match only so. `inputs.hasImage` is therefore not used.
+    // fl2va (the other H3 modifier) follows the same rule here, but no reading of it exists: unverified against the bar.
+    let references = referenceImageCount(modifier: modifier, hasImage: true, extra: inputs.referenceImages)
     let imageTokens = max(1, (startHeight / 2) * (startWidth / 2))
     let referenceLength = imageTokens * references
     let latent = family.isVideo ? latentFrames(family: family, numFrames: inputs.numFrames) : 1
