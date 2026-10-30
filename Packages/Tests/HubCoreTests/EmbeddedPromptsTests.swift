@@ -1,14 +1,19 @@
+import Foundation
 import Testing
 
 @testable import HubCore
 
 struct EmbeddedPromptsTests {
-  @Test func fifteenFamiliesAllParseAsValid() {
-    #expect(EmbeddedPrompts.families.count == 15)
+  @Test func seventeenFamiliesAllParseAsValid() {
+    #expect(EmbeddedPrompts.families.count == 17)
     for (id, text) in EmbeddedPrompts.families {
       let file = PromptFile.parse(text)
       #expect(file.isValid, "\(id)")
       #expect(["label", "negative", "words", "maxWords", "version"].allSatisfy { file.header[$0] != nil }, "\(id)")
+    }
+    for id in ["minimax_h3", "ltx2.3"] {
+      let file = PromptFile.parse(EmbeddedPrompts.families[id] ?? "")
+      #expect(file.isValid && file.header["kind"] == "video" && file.header["version"] == "1", "\(id)")
     }
   }
 
@@ -60,5 +65,52 @@ struct EmbeddedPromptsTests {
     for name in ["enhance", "describe"] {
       #expect(PromptFile.parse(EmbeddedPrompts.rules[name] ?? "").isValid, Comment(rawValue: name))
     }
+  }
+
+  @Test func miniMaxH3IsAVideoFamilyWithPictureTags() {
+    let family = PromptLibrary.builtIn.family("minimax_h3")
+    #expect(family?.label == "MiniMax H3")
+    #expect(family?.negative == false && family?.isVideo == true)
+    #expect(family?.words == "80-250" && family?.maxWords == "350")
+    #expect(family?.body.contains("{words}") == false)
+    #expect(family?.body.contains("<Picture 1>") == true)
+    #expect(family?.body.contains("Image 1: the start image") == true)
+    #expect(family?.body.contains("[Shot 1]") == true)
+  }
+
+  @Test func ltx23IsAVideoFamilyThatAsksForSoundAndNoMusic() {
+    let family = PromptLibrary.builtIn.family("ltx2.3")
+    #expect(family?.label == "LTX-2.3")
+    #expect(family?.negative == false && family?.isVideo == true)
+    #expect(family?.words == "80-180" && family?.maxWords == "220")
+    #expect(family?.body.contains("Image 1: the start image") == true)
+    #expect(family?.body.contains("no music") == true)
+  }
+
+  @Test func imageFamiliesAreNotVideo() {
+    #expect(PromptLibrary.builtIn.families().filter(\.isVideo).map(\.id).sorted() == ["ltx2.3", "minimax_h3"])
+  }
+
+  @Test func theRulesNameAVideoModelOnlyForAVideoFamily() {
+    let library = PromptLibrary.builtIn
+    for task in PromptTask.allCases {
+      let video = library.system(task: task, family: "minimax_h3")
+      #expect(video.contains("video model") && !video.contains("image model"))
+      #expect(video.hasPrefix("You write prompts for the video model \"MiniMax H3\"."))
+      #expect(library.system(task: task, family: "flux2_9b").contains("image model"))
+      #expect(!library.system(task: task, family: "flux2_9b").contains("video model"))
+    }
+  }
+
+  @Test func installWritesTheVideoFamiliesAndListsThem() throws {
+    let dir = FileManager.default.temporaryDirectory.appendingPathComponent("prompt-video-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    PromptLibrary(folder: dir).install()
+    for id in ["minimax_h3", "ltx2.3"] {
+      #expect(FileManager.default.fileExists(atPath: dir.appendingPathComponent("family/\(id).md").path), "\(id)")
+    }
+    let list = try String(contentsOf: dir.appendingPathComponent("custom/families.txt"), encoding: .utf8)
+    #expect(list.contains("MiniMax H3 = minimax_h3 (no negative prompt)"))
+    #expect(list.contains("LTX-2.3 = ltx2.3 (no negative prompt)"))
   }
 }

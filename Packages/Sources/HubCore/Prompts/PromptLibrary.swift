@@ -5,12 +5,14 @@ public enum PromptTask: String, Sendable, CaseIterable {
   case enhance, describe
 }
 
-/// One family of image models, as the Family prompt file describes it.
+/// One family of image or video models, as the Family prompt file describes it.
 public struct FamilyPrompt: Equatable, Sendable {
   public let id: String
   public let label: String
   /// The family reads a negative prompt (the answer is a JSON object).
   public let negative: Bool
+  /// A video family (header `kind: video`): the Rules say "video model" instead of "image model".
+  public let isVideo: Bool
   public let words: String
   public let maxWords: String
   /// The text for the language model, placeholders resolved: the answer rule and the notes.
@@ -89,7 +91,7 @@ public struct PromptLibrary: Sendable {
     let notes = body.range(of: "Model notes:\n").map { String(body[$0.upperBound...]) } ?? body
     let prompt = FamilyPrompt(
       id: id, label: file.header["label"] ?? id, negative: file.header["negative"] == "true",
-      words: file.header["words"] ?? "", maxWords: file.header["maxWords"] ?? "", body: body, notes: notes,
+      isVideo: file.header["kind"] == "video", words: file.header["words"] ?? "", maxWords: file.header["maxWords"] ?? "", body: body, notes: notes,
       isCustomized: custom("family-\(id).md") != nil)
     return (prompt, problems)
   }
@@ -143,6 +145,7 @@ public struct PromptLibrary: Sendable {
     if let known {
       let file = load("rules/\(task.rawValue).md", embedded: EmbeddedPrompts.rules[task.rawValue] ?? "").file
       rules = file.resolved(["label": known.label]).trimmingCharacters(in: .whitespacesAndNewlines)
+      if known.isVideo { rules = rules.replacingOccurrences(of: "image model", with: "video model") }
       familyText = known.body
     } else {
       rules = EmbeddedPrompts.genericIntro

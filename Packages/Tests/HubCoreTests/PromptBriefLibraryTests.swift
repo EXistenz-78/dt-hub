@@ -48,7 +48,7 @@ struct PromptBriefLibraryTests {
 
   @Test func theFamilyMenuListsTheLibraryAndTheUnknownCatalogOnes() throws {
     let list = LanguageModelFamilyOptions.list(catalogFamilies: ["flux2", "nuova_famiglia"], library: try library())
-    #expect(list.count == 16)
+    #expect(list.count == 18)
     #expect(list.first { $0.key == "nuova_famiglia" }?.label == "nuova_famiglia")
     #expect(list.first { $0.key == "flux2" }?.label == "FLUX.2 [dev]")
   }

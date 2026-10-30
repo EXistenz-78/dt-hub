@@ -153,6 +153,52 @@ Model notes:
 - Numeric weights are read as literal text: never use them.
 - A negative prompt is supported but must stay minimal and targeted, naming only specific artifacts or objects to avoid.
 """#,
+    "ltx2.3": #"""
+---
+kind: video
+label: LTX-2.3
+maxWords: 220
+negative: false
+version: 1
+words: 80-180
+---
+The final prompt must be written exclusively in English, whatever the language of the input. Reply with the prompt only: no title, no quotation marks around it, no explanation, no comments, no markdown, no alternatives.
+
+Model notes:
+- Length: aim for {words} words. When the description and the terms need more room, go on, but never beyond {maxWords} words: the reference guide advises staying near 200 words, and a longer prompt is rarely better. A longer clip needs a longer prompt, or the action rushes.
+- This is a video model with synchronized audio, not a still-picture generator: write ONE flowing paragraph of about 4-8 sentences per shot, in the present tense, like a director's note. No tag lists, no headings, no numeric weights, no quality tags.
+- Order: subject, action and movement, camera, scene and light, then sound. Describe what is seen and heard happening in sequence, not only adjectives. What the prompt details (expressions, timing, pauses) the model follows faithfully.
+- Always include motion: a prompt that describes a still picture gives an almost still clip. Use concrete verbs with speed and direction ("walks quickly", not "runs") and describe each movement as a trajectory: where it starts, how it moves, where it ends.
+- Camera: use standard terms (static shot, locked-off, dolly in, pan right, tracking shot) and give ONE camera direction per shot, never contradictory ones. Say what the subject does while the camera moves and after it.
+- When the request says "Image 1: the start image", the clip begins with that picture: describe only what changes (movement, action, camera, sound) and never what is already visible (room, clothes, light, color grading). Example: "A man stands on a windy rooftop. His coat flaps in the wind."
+- Always describe the sound: ambience (city traffic, wind), effects tied to the actions, and the music or, when none is wanted, the words "no music". Unrequested music is the most common surprise, so state "no music" unless music is asked for.
+- Dialogue is written out in full inside straight double quotes, in short lines, with physical delivery cues between the lines, never emotional labels ("pauses, looks to the side, then continues"). Dialogue stays in its own language; say the language and accent when it is not English. A voice style may be named (energetic, flat and robotic, childlike curiosity).
+- No negative prompt: say in positive words what the clip shows; turn "avoid" terms into positive description. No markdown.
+"""#,
+    "minimax_h3": #"""
+---
+kind: video
+label: MiniMax H3
+maxWords: 350
+negative: false
+version: 1
+words: 80-250
+---
+The final prompt must be written exclusively in English, whatever the language of the input. Reply with the prompt only: no title, no quotation marks around it, no explanation, no comments, no markdown, no alternatives.
+
+Model notes:
+- Length: aim for {words} words. When the description and the terms need more room, go on, but never beyond {maxWords} words: the text encoder runs with a 512-token window by default, about 350 words, and drops the rest.
+- This is a video model with synchronized stereo audio, not a still-picture generator: write flowing prose in the present tense, like a director's note, with no tag lists, no headings, no numeric weights and no quality tags.
+- Order: subject, action and movement, camera, scene and light, then sound. Describe what is seen and heard happening in sequence, not only adjectives. Use concrete verbs with speed and direction, and describe each movement as a trajectory: where it starts, how it moves, where it ends. Always include motion: a prompt that describes a still picture gives an almost still clip.
+- Camera: natural language with standard terms (medium-wide shot, tight close-up, tracking shot, dolly in, locked-off), ONE camera direction per shot, never contradictory ones. Say what the subject does while the camera moves and after it.
+- For a clip with cuts, mark the shots [Shot 1], [Shot 2] and give the action of each by time span ("0-3 s", "3-6 s"); keep the subject's movement, the camera movement and the cuts apart. A single shot needs no markers.
+- When the request says "Image 1: the start image", the clip opens on that picture: describe only what changes (movement, action, camera, sound) and never what is already visible (room, clothes, light, color grading). A second picture may be the last frame: then describe the movement that leads to it.
+- References are called <Picture 1>, <Picture 2>, in the order they are attached; if the input says "image 1" in the sense of a reference, write <Picture 1>. Never invent a reference that is not attached. Give each one an explicit role (identity, outfit, setting, style); when it matters, say what NOT to take from it ("ignore the lighting of <Picture 2>"), and say which one wins when two control the same attribute. Keep any other tag in angle brackets unchanged.
+- With references and no start image, a reference guides the generated scene and is not the opening frame: state what stays invariant (identity, outfit, look) apart from what moves (pose, action, camera), and put the scene in the prompt.
+- Always describe the sound: effects tied to the actions, the ambience (and where a sound grows louder), and the music that comments on the scene or, when none is wanted, the words "no music".
+- Dialogue is written out in full inside straight double quotes, in short lines, with physical delivery cues, never emotional labels; do not imply it. Dialogue stays in its own language, with the language named when it is not English. Dialogue already inside <d>...</d> tags stays unchanged.
+- No negative prompt: say in positive words what the clip shows; turn "avoid" terms into positive description. No markdown.
+"""#,
     "moss_image": #"""
 ---
 label: MOSS Image
