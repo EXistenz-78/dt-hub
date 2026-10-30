@@ -98,13 +98,14 @@ public enum CUPlanner {
     _ parameters: GenerationParameters, model: CatalogModel?, hasImage: Bool, strength: Double, references: Int
   ) -> CUInputs? {
     guard let model, let family = model.family else { return nil }
-    // No estimate for video: its consumption is measured and tuned in the field (the meter shows a dash).
-    guard !VideoFamilies.isEnabled(family) else { return nil }
+    // Video (H3, LTX-2.3) is estimated with Draw Things' formula like any family: the frame count goes along. A video
+    // family the estimator does not cover has no estimate (the meter shows a dash).
     return CUInputs(
       family: family, modelFile: model.file, capabilities: model.capabilities, width: parameters.width,
       height: parameters.height, steps: parameters.steps, strength: hasImage ? strength : 1,
       guidanceScale: parameters.guidanceScale, batchSize: parameters.batchSize, hasImage: hasImage,
       speedUpWithGuidanceEmbed: parameters.advanced.speedUpWithGuidanceEmbed,
-      referenceImages: FamilyTraits.of(family).usesMoodboard ? references : 0)
+      referenceImages: FamilyTraits.of(family).usesMoodboard ? references : 0,
+      numFrames: VideoFamilies.isEnabled(family) ? parameters.video.numFrames : 1)
   }
 }

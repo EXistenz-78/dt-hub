@@ -4,7 +4,8 @@ import HubKit
 // The compute-unit (CU) estimate of one request, ported from Draw Things (GPL-3.0):
 // Libraries/ModelZoo/Sources/ComputeUnits.swift and the CFG helpers of Libraries/SwiftDiffusion/Sources/Samplers/Sampler.swift,
 // at drawthingsai/draw-things-community commit 3338389349ad7771e1b626e60913bf8c4fff3a26. The formula and the per-family
-// calls are the original's; the input is DT Hub's `CUInputs` instead of Draw Things' `GenerationConfiguration`.
+// calls are the original's (the video families MiniMax H3 and LTX-2 / LTX-2.3 come from commit
+// bd372b2f860d1eb9a148afcff88f8962cb00993b of the same repository); the input is DT Hub's `CUInputs` instead of Draw Things' `GenerationConfiguration`.
 
 /// The families the estimate covers (the keys are Draw Things' model versions). A family not listed has no estimate.
 enum CUFamily: String {
@@ -34,6 +35,17 @@ enum CUFamily: String {
   case auraflow = "auraflow"
   case hiDreamI1 = "hidream_i1"
   case hiDreamO1 = "hidream_o1"
+  case minimaxH3 = "minimax_h3"
+  case ltx2 = "ltx2"
+  case ltx2_3 = "ltx2.3"
+
+  /// The video families of the estimate: their batch is the CFG channels alone and the frames count.
+  var isVideo: Bool {
+    switch self {
+    case .minimaxH3, .ltx2, .ltx2_3: true
+    default: false
+    }
+  }
 }
 
 /// The spec's `modifier` of a model (Draw Things' `SamplerModifier`).
@@ -79,7 +91,8 @@ enum ComputeUnitsEstimator {
       inputs.batchSize >= 1, inputs.strength.isFinite, inputs.guidanceScale.isFinite,
       inputs.imageGuidanceScale.isFinite
     else { return nil }
-    let batch = min(inputs.batchSize, 64)
+    // The batch of a video model is the CFG channels alone in the original (`batchSizeAndNumFrames`).
+    let batch = family.isVideo ? 1 : min(inputs.batchSize, 64)
     if Double(inputs.width) * Double(inputs.height) * Double(batch) > sizeGuard { return ceiling }
 
     let capabilities = inputs.capabilities
@@ -100,14 +113,47 @@ enum ComputeUnitsEstimator {
     // The Draw Things app counts one base reference for the models that take references (Kontext and the like)
     // whether or not there is a start image: the user's readings of its CU bar (15 Oct 2026, ReferenceTests) match
     // only so, and the start image moves nothing there. `inputs.hasImage` is therefore not used here.
-    let references = referenceImageCount(modifier: modifier, hasImage: true, extra: inputs.referenceImages)
+    // The video modifiers (ref2va, fl2va) count a base reference only when there really is a start image.
+    let hasBaseReference = (modifier == .ref2va || modifier == .fl2va) ? inputs.hasImage : true
+    let references = referenceImageCount(modifier: modifier, hasImage: hasBaseReference, extra: inputs.referenceImages)
     let imageTokens = max(1, (startHeight / 2) * (startWidth / 2))
     let referenceLength = imageTokens * references
-    let sequence = Double(imageTokens) + Double(referenceLength)
+    let latent = family.isVideo ? latentFrames(family: family, numFrames: inputs.numFrames) : 1
+    let sequence: Double
+    switch family {
+    case .ltx2, .ltx2_3:
+      // LTX has no patchify: the start size is the latent grid (video tokens = frames × h × w).
+      sequence = Double(startHeight) * Double(startWidth) * Double(latent)
+    default:
+      sequence = Double(imageTokens) * Double(latent) + Double(referenceLength)
+    }
     if Double(imageBatch) * sequence * sequence > attentionGuard { return ceiling }
 
     let counts: (main: Int, fixed: Int)
     switch family {
+    case .minimaxH3:
+      let videoFrames = h3VideoFrames(latentFrames: latent)
+      let audioLength = 2 * Int((Double(videoFrames) / Double(h3FramesPerSecond) * 40).rounded())
+      let main = MiniMaxH3InstructionCount(
+        videoTime: latent, videoHeight: startHeight, videoWidth: startWidth, audioLength: audioLength,
+        textLength: baseTokenLength, referenceSequenceLength: referenceLength)
+      let fixed = MiniMaxH3FixedInstructionCount(
+        timesteps: max(1, inputs.steps), hiddenSize: 5_376, layers: 50,
+        textLength: (cfg > 1 ? baseTokenLength : 0, baseTokenLength), referenceSequenceLength: referenceLength)
+      // The original does not multiply the fixed part by the CFG channels.
+      counts = (main * imageBatch, fixed)
+    case .ltx2, .ltx2_3:
+      let is23 = family == .ltx2_3
+      let audioFrames = (latent - 1) * 8 + 1
+      let paddedTextLength = max(baseTokenLength, 1024)
+      let main = LTX2InstructionCount(
+        time: latent, h: startHeight, w: startWidth, textLength: paddedTextLength, audioFrames: audioFrames,
+        channels: (4096, 2048), layers: 48, tokenModulation: inputs.hasImage, KV: !is23, useGatedAttention: is23,
+        textCrossAttentionAdaLN: is23)
+      let fixed = LTX2FixedInstructionCount(
+        time: latent, textLength: paddedTextLength, audioFrames: audioFrames, timesteps: 1,
+        channels: (4096, 2048), layers: 48, contextProjection: !is23, textCrossAttentionAdaLN: is23, KV: !is23)
+      counts = (main * imageBatch, fixed * imageBatch)
     case .zImage:
       let main = ZImageInstructionCount(
         batchSize: 1, height: startHeight, width: startWidth, textLength: baseTokenLength, channels: 3840, layers: 30)
@@ -314,8 +360,8 @@ enum ComputeUnitsEstimator {
   /// The factor between the size in units of 64 pixels and the model's start size (`modelStartSizeFromConfiguration`).
   static func startFactor(_ family: CUFamily) -> Int {
     switch family {
-    case .qwenImage2_1: return 4
-    case .hiDreamO1: return 2
+    case .qwenImage2_1, .minimaxH3: return 4
+    case .hiDreamO1, .ltx2, .ltx2_3: return 2
     default: return 8
     }
   }
@@ -325,8 +371,9 @@ enum ComputeUnitsEstimator {
     if padded > 0 { return padded }
     switch family {
     case .zImage, .qwenImage, .qwenImage2_1, .ernieImage, .ideogram4, .flux1, .flux2, .flux2_9b, .flux2_4b, .flux3_5b,
-      .mossImage:
+      .mossImage, .minimaxH3:
       return 512
+    case .ltx2, .ltx2_3: return 128
     case .krea2: return 256
     case .hiDreamI1: return 128
     case .sd3, .sd3Large, .pixart, .auraflow, .hiDreamO1, .sd15, .sd2, .sdxlBase, .sdxlRefiner, .ssd1b,
@@ -334,6 +381,27 @@ enum ComputeUnitsEstimator {
       return 77
     case .seedvr2_3b, .seedvr2_7b: return 77
     }
+  }
+
+  /// `MiniMaxH3Configuration.framesPerSecond`: the audio length of the estimate follows it.
+  static let h3FramesPerSecond = 24
+
+  /// The latent frames of a request (`batchSizeAndNumFrames`): H3 packs 17 frames per 5 latent ones after the first
+  /// 5 (and 1 for a single frame); LTX one per 8 after the first.
+  static func latentFrames(family: CUFamily, numFrames: Int) -> Int {
+    switch family {
+    case .minimaxH3:
+      numFrames == 1 ? 1 : ((max(numFrames, 5) - 5 + 16) / 17) * 5 + 2
+    case .ltx2, .ltx2_3:
+      max(1, (numFrames - 1) / 8 + 1)
+    default:
+      1
+    }
+  }
+
+  /// The frames H3's estimate re-derives from the latent ones (`(numFrames - 2) / 5 * 17 + 5`), for the audio length.
+  static func h3VideoFrames(latentFrames: Int) -> Int {
+    latentFrames == 1 ? 1 : (latentFrames - 2) / 5 * 17 + 5
   }
 
   /// `referenceImageCount` of the original: pictures that go with the request through the model's modifier.

@@ -14,18 +14,22 @@ public struct CUInputs: Equatable, Sendable {
   public var guidanceScale: Double
   public var imageGuidanceScale: Double
   public var batchSize: Int
-  /// Whether a start image goes with the request. The Draw Things app's estimate does not depend on it (a Kontext
-  /// model always counts one base reference); kept for callers that describe the request.
+  /// Whether a start image goes with the request. The Draw Things app's estimate does not depend on it for Kontext
+  /// and the like (they always count one base reference); it does for the video modifiers (ref2va, fl2va), where
+  /// the start image is a reference only when there is one.
   public var hasImage: Bool
   /// Advanced › guidance embed shortcut (on by default): a guidance-embed model then runs without CFG.
   public var speedUpWithGuidanceEmbed: Bool
   /// Moodboard (and edit-model) pictures that go with the request.
   public var referenceImages: Int
+  /// The frames of a video request (video families only; 1 for an image).
+  public var numFrames: Int
 
   public init(
     family: String, modelFile: String, capabilities: ModelCapabilities, width: Int, height: Int, steps: Int,
     strength: Double = 1, guidanceScale: Double = 1, imageGuidanceScale: Double = 1.5, batchSize: Int = 1,
-    hasImage: Bool = false, speedUpWithGuidanceEmbed: Bool = true, referenceImages: Int = 0
+    hasImage: Bool = false, speedUpWithGuidanceEmbed: Bool = true, referenceImages: Int = 0,
+    numFrames: Int = 1
   ) {
     self.family = family
     self.modelFile = modelFile
@@ -40,6 +44,7 @@ public struct CUInputs: Equatable, Sendable {
     self.hasImage = hasImage
     self.speedUpWithGuidanceEmbed = speedUpWithGuidanceEmbed
     self.referenceImages = referenceImages
+    self.numFrames = numFrames
   }
 }
 

@@ -212,4 +212,146 @@ struct ComputeUnitsEstimatorTests {
     #expect(ComputeUnitsEstimator.usageBias(.sd15) == 2.5 && ComputeUnitsEstimator.usageBias(.sdxlBase) == 2.5)
     #expect(ComputeUnitsEstimator.usageBias(.cosmos2_5_2b) == 1.0 && ComputeUnitsEstimator.usageBias(.zImage) == 1.0)
   }
+
+  // MARK: Video (MiniMax H3, LTX-2.3)
+  // These pin the port against itself (the formulas as written in draw-things-community at bd372b2): they are not
+  // Draw Things' bar. The independent check is the user comparing with the CU bar of the Draw Things app.
+
+  func video(
+    _ family: String, width: Int, height: Int, frames: Int, steps: Int, guidance: Double = 1, hasImage: Bool = false,
+    references: Int = 0, modifier: String? = nil
+  ) -> CUInputs {
+    let caps = ModelCapabilities(
+      guidanceEmbed: false, teaCache: false, clipL: false, openClipG: false, t5: false, optionalT5: false,
+      clipSkip: false, nativeSize: nil, modifier: modifier)
+    return CUInputs(
+      family: family, modelFile: "video.ckpt", capabilities: caps, width: width, height: height, steps: steps,
+      guidanceScale: guidance, hasImage: hasImage, referenceImages: references, numFrames: frames)
+  }
+
+  @Test func h3LatentFramesFollowTheOriginalAndRoundTrip() {
+    let expected = [(5, 2), (22, 7), (56, 17), (124, 37)]
+    for (frames, latent) in expected {
+      #expect(ComputeUnitsEstimator.latentFrames(family: .minimaxH3, numFrames: frames) == latent, "\(frames)")
+      #expect(ComputeUnitsEstimator.h3VideoFrames(latentFrames: latent) == frames, "\(latent)")
+    }
+    #expect(ComputeUnitsEstimator.latentFrames(family: .minimaxH3, numFrames: 1) == 1)
+    #expect(ComputeUnitsEstimator.h3VideoFrames(latentFrames: 1) == 1)
+  }
+
+  @Test func ltxLatentFramesAreOneEighthPlusOne() {
+    #expect(ComputeUnitsEstimator.latentFrames(family: .ltx2_3, numFrames: 25) == 4)
+    #expect(ComputeUnitsEstimator.latentFrames(family: .ltx2_3, numFrames: 121) == 16)
+    #expect(ComputeUnitsEstimator.latentFrames(family: .ltx2, numFrames: 1) == 1)
+    #expect(ComputeUnitsEstimator.latentFrames(family: .ltx2_3, numFrames: 0) == 1)
+  }
+
+  @Test func theStartSizeOfVideoIsRawTimesFourForH3AndTwoForLTX() {
+    #expect(ComputeUnitsEstimator.startFactor(.minimaxH3) == 4)
+    #expect(ComputeUnitsEstimator.startFactor(.ltx2) == 2 && ComputeUnitsEstimator.startFactor(.ltx2_3) == 2)
+  }
+
+  @Test func ltxFixedCountMatchesTheHandComputedFormula() {
+    // channels (32, 32), one timestep, no KV, no context projection, no text AdaLN: per stream the AdaLN blocks
+    // with 6, 4 and 1 projections cost t*256*c + (1+n)*t*c*c each = 15360 + 13312 + 10240 = 38912; two streams.
+    #expect(
+      LTX2FixedInstructionCount(
+        time: 1, textLength: 1, audioFrames: 1, timesteps: 1, channels: (32, 32), layers: 1,
+        contextProjection: false, textCrossAttentionAdaLN: false, KV: false) == 2 * 38912)
+  }
+
+  @Test func h3FixedCountMatchesTheHandComputedFormula() {
+    // hidden 8, one layer, one timestep, text (0, 2), no reference: rows = 2.
+    // 4096 + 43008 + 20 * 43008 + 81920 + 0 + 2 * 517216 + 2 * 688128 = 3_399_872
+    #expect(
+      MiniMaxH3FixedInstructionCount(timesteps: 1, hiddenSize: 8, layers: 1, textLength: (0, 2)) == 3_399_872)
+  }
+
+  @Test func h3GrowsWithTheFramesAndTheSteps() {
+    let short = estimate(video("minimax_h3", width: 576, height: 448, frames: 22, steps: 50))
+    let mid = estimate(video("minimax_h3", width: 576, height: 448, frames: 56, steps: 50))
+    let long = estimate(video("minimax_h3", width: 576, height: 448, frames: 124, steps: 50))
+    #expect(short > 0 && short < mid && mid < long)
+    #expect(estimate(video("minimax_h3", width: 576, height: 448, frames: 56, steps: 8)) < mid)
+  }
+
+  @Test(arguments: ["ltx2", "ltx2.3"])
+  func ltxGrowsWithTheFramesAndTheSteps(family: String) {
+    let short = estimate(video(family, width: 768, height: 448, frames: 25, steps: 8))
+    let mid = estimate(video(family, width: 768, height: 448, frames: 81, steps: 8))
+    let long = estimate(video(family, width: 768, height: 448, frames: 121, steps: 8))
+    #expect(short > 0 && short < mid && mid < long)
+    #expect(estimate(video(family, width: 768, height: 448, frames: 25, steps: 16)) > short)
+  }
+
+  @Test(arguments: ["wan_v2.2_5b", "wan_v2.1_14b", "hunyuan_video", "svd_i2v"])
+  func aVideoFamilyThePortDoesNotCoverHasNoEstimate(family: String) {
+    #expect(ComputeUnitsEstimator.estimate(video(family, width: 768, height: 448, frames: 25, steps: 8)) == nil)
+  }
+
+  @Test func theBatchSizeDoesNotChangeAVideoEstimate() {
+    // In the original the batch of a video model is the CFG channels alone.
+    var one = video("ltx2.3", width: 768, height: 448, frames: 25, steps: 8)
+    let base = estimate(one)
+    one.batchSize = 3
+    #expect(estimate(one) == base)
+  }
+
+  @Test func cfgDoublesTheWorkOfAVideoModel() {
+    let off = estimate(video("ltx2.3", width: 768, height: 448, frames: 25, steps: 8, guidance: 1))
+    let on = estimate(video("ltx2.3", width: 768, height: 448, frames: 25, steps: 8, guidance: 3))
+    #expect(on > off && Double(on) / Double(off) < 2.1)
+  }
+
+  @Test func aRef2vaReferenceCostsMoreAndNeedsARealImage() {
+    func h3(_ hasImage: Bool, _ refs: Int, _ modifier: String = "ref2va") -> Int {
+      estimate(
+        video(
+          "minimax_h3", width: 576, height: 448, frames: 56, steps: 50, hasImage: hasImage, references: refs,
+          modifier: modifier))
+    }
+    let none = h3(false, 0)
+    #expect(none > 0)
+    #expect(h3(true, 0) > none)  // the start image is a reference
+    #expect(h3(false, 1) == h3(true, 0))  // a Moodboard picture is a reference as well
+    #expect(h3(true, 2) > h3(true, 1))
+    // fl2va: first frame plus at most one more (the last frame); nothing without a first frame.
+    #expect(h3(false, 3, "fl2va") == h3(false, 0, "fl2va"))
+    #expect(h3(true, 5, "fl2va") == h3(true, 1, "fl2va"))
+    #expect(h3(true, 1, "fl2va") > h3(true, 0, "fl2va"))
+    // The ref2va pictures also raise the estimate of the smallest request.
+    #expect(h3(true, 0, "ref2va") > h3(false, 0, "none"))
+  }
+
+  /// A regression pin of the port as written on 30 Oct 2026 (the first-pass size is not used: the original counts
+  /// the final size once). Not Draw Things' bar.
+  @Test(arguments: [
+    ("minimax_h3", 576, 448, 56, 50, 29_388), ("minimax_h3", 832, 512, 124, 8, 20_968),
+    ("ltx2.3", 768, 448, 25, 8, 857), ("ltx2.3", 1280, 768, 121, 8, 12_455), ("ltx2", 768, 448, 25, 8, 782),
+  ])
+  func theVideoEstimatesAreStable(family: String, width: Int, height: Int, frames: Int, steps: Int, expected: Int) {
+    let value = estimate(video(family, width: width, height: height, frames: frames, steps: steps))
+    #expect(value == expected, "\(family) -> \(value)")
+  }
+
+  @Test func theLargestDefaultVideoRequestsAreSaneAndFarBelowTheCeiling() throws {
+    let ltx = try #require(
+      ComputeUnitsEstimator.estimate(video("ltx2.3", width: 1280, height: 768, frames: 121, steps: 8)))
+    let h3 = try #require(
+      ComputeUnitsEstimator.estimate(video("minimax_h3", width: 832, height: 512, frames: 124, steps: 8)))
+    for value in [ltx, h3] { #expect(value > 0 && value < 1_000_000, "\(value)") }
+  }
+
+  @Test func absurdVideoRequestsAreCappedWithoutTrapping() throws {
+    let ltx = try #require(
+      ComputeUnitsEstimator.estimate(video("ltx2.3", width: 8192, height: 8192, frames: 100_000, steps: 8)))
+    #expect(ltx == ComputeUnitsEstimator.ceiling)
+    let h3 = try #require(
+      ComputeUnitsEstimator.estimate(
+        video("minimax_h3", width: 4096, height: 4096, frames: 1_000_000, steps: 50, hasImage: true, references: 20, modifier: "ref2va")))
+    #expect(h3 == ComputeUnitsEstimator.ceiling)
+    // Nonsense frame counts do not trap.
+    #expect(ComputeUnitsEstimator.estimate(video("minimax_h3", width: 576, height: 448, frames: -5, steps: 8)) != nil)
+    #expect(ComputeUnitsEstimator.estimate(video("ltx2.3", width: 576, height: 448, frames: 0, steps: 8)) != nil)
+  }
 }

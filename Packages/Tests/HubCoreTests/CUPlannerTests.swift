@@ -61,19 +61,30 @@ struct CUPlannerTests {
     #expect(passes(pipeline, presets: ["p": preset])[0].inputs == nil)
   }
 
-  @Test func aVideoModelGivesNoEstimate() throws {
+  @Test func videoInputsCarryTheFrameCountAndImagesKeepOne() throws {
     let video = CatalogModel(file: "h3.ckpt", name: "H3", family: "minimax_h3")
     let ltx = CatalogModel(file: "ltx.ckpt", name: "LTX", family: "ltx2.3")
-    let withVideo = ModelCatalog(models: [flux, zimage, sdxl, video, ltx], loras: [], fileCount: 5, upscalers: [])
+    let wan = CatalogModel(file: "wan.ckpt", name: "Wan", family: "wan_v2.2_5b")
+    let withVideo = ModelCatalog(models: [flux, zimage, sdxl, video, ltx, wan], loras: [], fileCount: 6, upscalers: [])
+    var parameters = GenerationParameters(width: 832, height: 512, steps: 8)
+    parameters.video.numFrames = 124
     for model in [video, ltx] {
       let result = CUPlanner.passes(
-        fields: fields(), model: model, control: control, pipeline: nil, presets: [:], catalog: withVideo,
-        headerModel: model.file, strengthOfPass: { _, _, _, _, _ in 0.7 })
+        fields: GenerationFields(parameters: parameters), model: model, control: control, pipeline: nil,
+        presets: [:], catalog: withVideo, headerModel: model.file, strengthOfPass: { _, _, _, _, _ in 0.7 })
       #expect(result.count == 1)
-      #expect(result[0].inputs == nil)
+      let inputs = try #require(result[0].inputs)
+      #expect(inputs.numFrames == 124)
     }
-    // The same request on an image model still has an estimate.
-    #expect(passes(model: zimage)[0].inputs != nil)
+    // A video family the port does not cover is passed on like any family; the estimator has no estimate for it
+    // (ComputeUnitsEstimatorTests.aVideoFamilyThePortDoesNotCoverHasNoEstimate).
+    let uncovered = CUPlanner.passes(
+      fields: GenerationFields(parameters: parameters), model: wan, control: control, pipeline: nil, presets: [:],
+      catalog: withVideo, headerModel: wan.file, strengthOfPass: { _, _, _, _, _ in 0.7 })
+    #expect(try #require(uncovered[0].inputs).family == "wan_v2.2_5b")
+    // The same request on an image model still has an estimate, and its frame count stays 1.
+    let image = try #require(passes(model: zimage)[0].inputs)
+    #expect(image.numFrames == 1)
   }
 
   @Test func theMoodboardCountsOnlyForAFamilyThatUsesIt() throws {
