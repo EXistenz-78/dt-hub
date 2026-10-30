@@ -144,12 +144,17 @@ public struct MaskBitmap: Equatable, Sendable {
 
   /// Where a point of the paint view falls in the mask. The view shows the cut `crop` (in the start
   /// image's pixels) of the image `imageWidth` pixels wide, and fills `viewSize`.
-  public func point(forViewPoint point: CGPoint, viewSize: CGSize, crop: CGRect, imageWidth: Int) -> CGPoint {
+  /// With a `rotation` the image is shown turned about its centre (degrees, clockwise): the point is turned back.
+  public func point(
+    forViewPoint point: CGPoint, viewSize: CGSize, crop: CGRect, imageWidth: Int, rotation: Double = 0
+  ) -> CGPoint {
     guard viewSize.width > 0, viewSize.height > 0, imageWidth > 0 else { return .zero }
     let toMask = Double(width) / Double(imageWidth)
-    return CGPoint(
-      x: (crop.minX + point.x / viewSize.width * crop.width) * toMask,
-      y: (crop.minY + point.y / viewSize.height * crop.height) * toMask)
+    let imageHeight = Int((Double(height) / toMask).rounded())
+    let window = CGPoint(
+      x: crop.minX + point.x / viewSize.width * crop.width, y: crop.minY + point.y / viewSize.height * crop.height)
+    let onImage = FramingMath.unrotated(window, imageWidth: imageWidth, imageHeight: imageHeight, rotation: rotation)
+    return CGPoint(x: onImage.x * toMask, y: onImage.y * toMask)
   }
 
   /// The brush's radius in mask pixels for a brush `diameter` wide in canvas pixels.

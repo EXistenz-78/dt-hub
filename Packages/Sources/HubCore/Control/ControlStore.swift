@@ -370,13 +370,36 @@ public final class ControlStore {
   }
 
   public func setOffset(x: Double, y: Double) {
-    inputs.framing = Framing(zoom: inputs.framing.zoom, offsetX: x, offsetY: y).clamped()
+    var framing = inputs.framing
+    framing.offsetX = x
+    framing.offsetY = y
+    inputs.framing = framing.clamped()
     save()
   }
 
   /// The zoom of the image in the canvas (−100…+100; below 0 the margins are regenerated).
   public func setZoom(_ value: Double) {
-    inputs.framing = Framing(zoom: value, offsetX: inputs.framing.offsetX, offsetY: inputs.framing.offsetY).clamped()
+    var framing = inputs.framing
+    framing.zoom = value
+    inputs.framing = framing.clamped()
+    save()
+  }
+
+  /// Zoom and offsets together (the wheel and the pinch move both to keep a point still).
+  public func setZoom(_ value: Double, offsetX: Double, offsetY: Double) {
+    var framing = inputs.framing
+    framing.zoom = value
+    framing.offsetX = offsetX
+    framing.offsetY = offsetY
+    inputs.framing = framing.clamped()
+    save()
+  }
+
+  /// The turn of the image in the canvas, in degrees (−180…+180, clockwise).
+  public func setRotation(_ value: Double) {
+    var framing = inputs.framing
+    framing.rotation = value
+    inputs.framing = framing.clamped()
     save()
   }
 

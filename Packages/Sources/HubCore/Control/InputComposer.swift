@@ -27,7 +27,10 @@ public enum InputComposer {
     let drawn = CGRect(
       x: -crop.minX * scale, y: -(Double(image.height) - crop.maxY) * scale,
       width: Double(image.width) * scale, height: Double(image.height) * scale)
+    let rotation = framing.clamped().rotation
     switch fill {
+    case .edges where rotation != 0:
+      extendRotatedEdges(of: image, drawn: drawn, rotation: rotation, in: context, width: width, height: height)
     case .edges:
       extendEdges(of: image, drawn: drawn, in: context, width: width, height: height)
     case .gray, .green:
@@ -35,9 +38,97 @@ public enum InputComposer {
       context.setFillColor(fill == .gray ? [0.5, 0.5, 0.5, 1] : [0, 1, 0, 1])
       context.fill(CGRect(x: 0, y: 0, width: width, height: height))
     }
+    context.saveGState()
+    turn(context, about: drawn, rotation: rotation)
     context.draw(image, in: drawn)
     if let layer = paint?.cgImage() { context.draw(layer, in: drawn) }
+    context.restoreGState()
     return context.makeImage()
+  }
+
+  /// Turns what is drawn next about the centre of `drawn` (degrees, clockwise on the screen; Core Graphics counts
+  /// angles the other way because its y axis points up).
+  private static func turn(_ context: CGContext, about drawn: CGRect, rotation: Double) {
+    guard rotation != 0 else { return }
+    context.translateBy(x: drawn.midX, y: drawn.midY)
+    context.rotate(by: -rotation * .pi / 180)
+    context.translateBy(x: -drawn.midX, y: -drawn.midY)
+  }
+
+  /// The margins of a turned image: the picture is drawn turned on a transparent bitmap, and every pixel it does not
+  /// cover takes the colour of the nearest one it does (two sweeps over the bitmap), so the corners continue the edges.
+  private static func extendRotatedEdges(
+    of image: CGImage, drawn: CGRect, rotation: Double, in context: CGContext, width: Int, height: Int
+  ) {
+    var bytes = [UInt8](repeating: 0, count: width * height * 4)
+    let drew = bytes.withUnsafeMutableBytes { buffer -> Bool in
+      guard
+        let scratch = CGContext(
+          data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
+          space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+      else { return false }
+      scratch.interpolationQuality = .high
+      turn(scratch, about: drawn, rotation: rotation)
+      scratch.draw(image, in: drawn)
+      return true
+    }
+    guard drew else { return }
+    let count = width * height
+    var nearest = [Int32](repeating: -1, count: count)
+    var covered = 0
+    for index in 0..<count where bytes[index * 4 + 3] == 255 {
+      nearest[index] = Int32(index)
+      covered += 1
+    }
+    guard covered > 0, covered < count else { return }
+    func distance(_ from: Int, _ source: Int32) -> Int {
+      let dx = from % width - Int(source) % width
+      let dy = from / width - Int(source) / width
+      return dx * dx + dy * dy
+    }
+    func relax(_ index: Int, _ neighbour: Int) {
+      let source = nearest[neighbour]
+      guard source >= 0 else { return }
+      if nearest[index] < 0 || distance(index, source) < distance(index, nearest[index]) { nearest[index] = source }
+    }
+    for y in 0..<height {
+      for x in 0..<width {
+        let index = y * width + x
+        if x > 0 { relax(index, index - 1) }
+        if y > 0 {
+          relax(index, index - width)
+          if x > 0 { relax(index, index - width - 1) }
+          if x < width - 1 { relax(index, index - width + 1) }
+        }
+      }
+    }
+    for y in stride(from: height - 1, through: 0, by: -1) {
+      for x in stride(from: width - 1, through: 0, by: -1) {
+        let index = y * width + x
+        if x < width - 1 { relax(index, index + 1) }
+        if y < height - 1 {
+          relax(index, index + width)
+          if x < width - 1 { relax(index, index + width + 1) }
+          if x > 0 { relax(index, index + width - 1) }
+        }
+      }
+    }
+    var filled = [UInt8](repeating: 255, count: count * 4)
+    for index in 0..<count {
+      let source = Int(nearest[index])
+      guard source >= 0 else { continue }
+      // A covered pixel is opaque, so its colour is its own, not premultiplied.
+      filled[index * 4] = bytes[source * 4]
+      filled[index * 4 + 1] = bytes[source * 4 + 1]
+      filled[index * 4 + 2] = bytes[source * 4 + 2]
+    }
+    guard let provider = CGDataProvider(data: Data(filled) as CFData),
+      let background = CGImage(
+        width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: width * 4,
+        space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipLast.rawValue),
+        provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)
+    else { return }
+    context.draw(background, in: CGRect(x: 0, y: 0, width: width, height: height))
   }
 
   /// Fills what the image leaves uncovered with its own edge pixels stretched outwards (and the corner
@@ -113,6 +204,7 @@ public enum InputComposer {
         x: -crop.minX * scale, y: -(Double(imageHeight) - crop.maxY) * scale, width: Double(imageWidth) * scale,
         height: Double(imageHeight) * scale)
       context.setFillColor(gray: 0, alpha: 1)
+      turn(context, about: drawn, rotation: framing.clamped().rotation)
       context.fill(drawn)
       if let gray { context.draw(gray, in: drawn) }
       return true

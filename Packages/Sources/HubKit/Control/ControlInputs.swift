@@ -37,6 +37,8 @@ public struct ReferenceImage: Identifiable, Equatable, Codable, Sendable {
 /// 0 it is larger and only a part of it is used.
 public struct Framing: Equatable, Codable, Sendable {
   public static let zoomRange = -100.0...100.0
+  /// Degrees, clockwise, about the centre of the image.
+  public static let rotationRange = -180.0...180.0
 
   /// −100…+100; 0 fills the canvas.
   public var zoom: Double
@@ -44,17 +46,21 @@ public struct Framing: Equatable, Codable, Sendable {
   /// image against the start (left or top) of the canvas, 0 centres it, 1 against the end.
   public var offsetX: Double
   public var offsetY: Double
+  /// −180…+180 degrees, clockwise, about the centre of the image; what the turn leaves uncovered is margin.
+  public var rotation: Double
 
-  public init(zoom: Double = 0, offsetX: Double = 0, offsetY: Double = 0) {
+  public init(zoom: Double = 0, offsetX: Double = 0, offsetY: Double = 0, rotation: Double = 0) {
     self.zoom = zoom
     self.offsetX = offsetX
     self.offsetY = offsetY
+    self.rotation = rotation
   }
 
   public func clamped() -> Framing {
     Framing(
       zoom: min(Self.zoomRange.upperBound, max(Self.zoomRange.lowerBound, zoom)),
-      offsetX: min(1, max(-1, offsetX)), offsetY: min(1, max(-1, offsetY)))
+      offsetX: min(1, max(-1, offsetX)), offsetY: min(1, max(-1, offsetY)),
+      rotation: min(Self.rotationRange.upperBound, max(Self.rotationRange.lowerBound, rotation)))
   }
 
   /// Lenient: a missing field takes its default and an old `mode` is ignored.
@@ -63,6 +69,7 @@ public struct Framing: Equatable, Codable, Sendable {
     zoom = (try? container.decodeIfPresent(Double.self, forKey: .zoom)) ?? 0
     offsetX = (try? container.decodeIfPresent(Double.self, forKey: .offsetX)) ?? 0
     offsetY = (try? container.decodeIfPresent(Double.self, forKey: .offsetY)) ?? 0
+    rotation = (try? container.decodeIfPresent(Double.self, forKey: .rotation)) ?? 0
     self = clamped()
   }
 }

@@ -65,9 +65,63 @@ public enum FramingMath {
     public var top: Double
     public var right: Double
     public var bottom: Double
+    /// The turn of the image leaves the corners of the canvas uncovered.
+    public var cornersUncovered = false
+
+    public init(left: Double, top: Double, right: Double, bottom: Double, cornersUncovered: Bool = false) {
+      self.left = left
+      self.top = top
+      self.right = right
+      self.bottom = bottom
+      self.cornersUncovered = cornersUncovered
+    }
 
     /// A margin under half a pixel is rounding, not margin.
-    public var isEmpty: Bool { max(left, top, right, bottom) < 0.5 }
+    public var isEmpty: Bool { !cornersUncovered && max(left, top, right, bottom) < 0.5 }
+  }
+
+  /// Where a point of the canvas, as a fraction of its width and height from the top-left, falls on the image, in the
+  /// image's pixels: the window of the cut, with the turn of the image about its centre undone.
+  public static func imagePoint(
+    forCanvasFraction fraction: CGPoint, imageWidth: Int, imageHeight: Int, canvasWidth: Int, canvasHeight: Int,
+    framing: Framing
+  ) -> CGPoint {
+    let crop = cropRect(
+      imageWidth: imageWidth, imageHeight: imageHeight, canvasWidth: canvasWidth, canvasHeight: canvasHeight,
+      framing: framing)
+    return unrotated(
+      CGPoint(x: crop.minX + fraction.x * crop.width, y: crop.minY + fraction.y * crop.height),
+      imageWidth: imageWidth, imageHeight: imageHeight, rotation: framing.rotation)
+  }
+
+  /// A point of the window (the image's pixels as if it were not turned) as it is on the image: the turn about the
+  /// centre of the image undone. The y axis points down, so a positive angle turns clockwise.
+  public static func unrotated(_ point: CGPoint, imageWidth: Int, imageHeight: Int, rotation: Double) -> CGPoint {
+    guard rotation != 0 else { return point }
+    let centre = CGPoint(x: Double(imageWidth) / 2, y: Double(imageHeight) / 2)
+    let angle = -rotation * .pi / 180
+    let dx = point.x - centre.x
+    let dy = point.y - centre.y
+    return CGPoint(
+      x: centre.x + dx * cos(angle) - dy * sin(angle), y: centre.y + dx * sin(angle) + dy * cos(angle))
+  }
+
+  /// Whether the image, turned, still covers the whole canvas.
+  public static func coversCanvas(
+    imageWidth: Int, imageHeight: Int, canvasWidth: Int, canvasHeight: Int, framing: Framing
+  ) -> Bool {
+    let crop = cropRect(
+      imageWidth: imageWidth, imageHeight: imageHeight, canvasWidth: canvasWidth, canvasHeight: canvasHeight,
+      framing: framing)
+    let slack = 0.01 * crop.width / Double(max(canvasWidth, 1))  // a hundredth of a canvas pixel
+    let corners = [
+      CGPoint(x: crop.minX, y: crop.minY), CGPoint(x: crop.maxX, y: crop.minY), CGPoint(x: crop.minX, y: crop.maxY),
+      CGPoint(x: crop.maxX, y: crop.maxY),
+    ]
+    return corners.allSatisfy { corner in
+      let p = unrotated(corner, imageWidth: imageWidth, imageHeight: imageHeight, rotation: framing.rotation)
+      return p.x >= -slack && p.x <= Double(imageWidth) + slack && p.y >= -slack && p.y <= Double(imageHeight) + slack
+    }
   }
 
   public static func margins(
@@ -79,7 +133,11 @@ public enum FramingMath {
     let scale = Double(canvasWidth) / crop.width
     return Margins(
       left: max(0, -crop.minX) * scale, top: max(0, -crop.minY) * scale,
-      right: max(0, crop.maxX - Double(imageWidth)) * scale, bottom: max(0, crop.maxY - Double(imageHeight)) * scale)
+      right: max(0, crop.maxX - Double(imageWidth)) * scale, bottom: max(0, crop.maxY - Double(imageHeight)) * scale,
+      cornersUncovered: framing.rotation != 0
+        && !coversCanvas(
+          imageWidth: imageWidth, imageHeight: imageHeight, canvasWidth: canvasWidth, canvasHeight: canvasHeight,
+          framing: framing))
   }
 
   /// The zoom (0 or less) at which the whole image just fits in the canvas.
