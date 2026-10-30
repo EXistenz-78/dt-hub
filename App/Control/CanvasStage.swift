@@ -25,6 +25,11 @@ struct CanvasStage: View {
   @State private var mode = Mode.canvas
   @State private var tool = DrawingTool.maskAdd
   @State private var dragStart: Framing?
+  /// The view zoom of the Draw mode (wheel and pinch; Space + drag moves it). Never below the fit.
+  @State private var drawZoom = ResultZoom()
+  @State private var spaceDown = false
+  @State private var panLast: CGSize = .zero
+  @State private var pinchLast: CGFloat = 1
   /// The mask and the drawing while they are drawn (the images are updated in place).
   @State private var drawing = CanvasDrawing()
   @State private var hover: CGPoint?
@@ -54,6 +59,8 @@ struct CanvasStage: View {
     }
     .task(id: key) { drawing.sync(with: control) }
     .onChange(of: brushColor) { brushRGB = rgb(of: brushColor) }
+    .onChange(of: mode) { drawZoom.reset() }
+    .onChange(of: control.inputs.image?.id) { drawZoom.reset() }
   }
 
   /// The card in the Control tab.
@@ -79,6 +86,7 @@ struct CanvasStage: View {
           if mode == .canvas {
             stage(for: image)
             zoomRow(for: image)
+            rotationRow
             if control.hasMargins(canvasWidth: canvasWidth, canvasHeight: canvasHeight) { fillRow }
             caption(for: image)
           } else {
@@ -196,8 +204,9 @@ struct CanvasStage: View {
         if picture != nil {
           imageLayer(picture, origin: origin, size: frame)
         } else {
-          Color.primary.opacity(0.08).frame(width: frame.width, height: frame.height).position(
-            x: origin.x + frame.width / 2, y: origin.y + frame.height / 2)
+          Color.primary.opacity(0.08).frame(width: frame.width, height: frame.height)
+            .rotationEffect(.degrees(control.inputs.framing.rotation))
+            .position(x: origin.x + frame.width / 2, y: origin.y + frame.height / 2)
         }
         imageLayer(drawing.paintImage, origin: origin, size: frame)
         imageLayer(drawing.maskImage, origin: origin, size: frame)
@@ -219,8 +228,34 @@ struct CanvasStage: View {
             dragStart = start
             move(from: start, by: value.translation, scale: scale, image: image, crop: crop)
           }
-          .onEnded { _ in dragStart = nil })
+          .onEnded { _ in dragStart = nil }
+      )
+      .gesture(
+        MagnifyGesture()
+          .onChanged { value in
+            zoomCanvas(by: value.magnification / pinchLast, at: value.startLocation, canvas: canvas, image: image)
+            pinchLast = value.magnification
+          }
+          .onEnded { _ in pinchLast = 1 }
+      )
+      .background(
+        CanvasWheelMonitor(isActive: true) { point, factor in
+          // The monitor reports from the centre of the view, y down.
+          let location = CGPoint(x: point.x + size.width / 2, y: point.y + size.height / 2)
+          zoomCanvas(by: factor, at: location, canvas: canvas, image: image)
+        }
+      )
     }
+  }
+
+  /// The wheel and the pinch move the zoom of the slider (same range) keeping still the point under the cursor.
+  private func zoomCanvas(by factor: Double, at location: CGPoint, canvas: CGRect, image: ReferenceImage) {
+    guard canvas.width > 0, canvas.height > 0 else { return }
+    let fraction = CGPoint(x: (location.x - canvas.minX) / canvas.width, y: (location.y - canvas.minY) / canvas.height)
+    let next = FramingMath.zoomed(
+      control.inputs.framing, by: factor, atCanvasFraction: fraction, imageWidth: image.pixelWidth,
+      imageHeight: image.pixelHeight, canvasWidth: canvasWidth, canvasHeight: canvasHeight)
+    control.setZoom(next.zoom, offsetX: next.offsetX, offsetY: next.offsetY)
   }
 
   /// A layer of the image's own size and place in the view.
@@ -229,6 +264,7 @@ struct CanvasStage: View {
       if let picture { Image(decorative: picture, scale: 1).resizable().interpolation(.high) }
     }
     .frame(width: size.width, height: size.height)
+    .rotationEffect(.degrees(control.inputs.framing.rotation))
     .position(x: origin.x + size.width / 2, y: origin.y + size.height / 2)
   }
 
@@ -285,11 +321,43 @@ struct CanvasStage: View {
       HStack(spacing: 2) {
         Text(verbatim: Int(zoom.rounded()).formatted(.number.sign(strategy: .always(includingZero: false))))
           .font(.callout).monospacedDigit().foregroundStyle(.secondary).frame(width: 44, alignment: .trailing)
-        iconButton("arrow.counterclockwise", "control.stage.zoom.reset", enabled: control.inputs.framing != Framing()) {
-          control.resetFraming()
+        iconButton(
+          "arrow.counterclockwise", "control.stage.zoom.reset",
+          enabled: control.inputs.framing.zoom != 0 || control.inputs.framing.offsetX != 0
+            || control.inputs.framing.offsetY != 0
+        ) {
+          control.setZoom(0, offsetX: 0, offsetY: 0)
         }
       }
     }
+  }
+
+  /// The turn of the image in the canvas, about its centre: −180° to +180°, clockwise, with a tick at 0.
+  private var rotationRow: some View {
+    let rotation = control.inputs.framing.rotation
+    return CardRow(label: String(localized: "control.stage.rotation")) {
+      Slider(
+        value: Binding(get: { rotation }, set: { setRotation($0) }), in: Framing.rotationRange
+      )
+      .frame(minWidth: 120)
+    } control: {
+      HStack(spacing: 2) {
+        Text(verbatim: "\(Int(rotation.rounded()).formatted(.number.sign(strategy: .always(includingZero: false))))°")
+          .font(.callout).monospacedDigit().foregroundStyle(.secondary).frame(width: 44, alignment: .trailing)
+        iconButton("arrow.counterclockwise", "control.stage.rotation.reset", enabled: rotation != 0) {
+          control.setRotation(0)
+        }
+      }
+    }
+  }
+
+  private func setRotation(_ raw: Double) {
+    var value = raw.rounded()
+    if abs(value) < 3 { value = 0 }
+    if value == 0, control.inputs.framing.rotation != 0 {
+      NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .now)
+    }
+    control.setRotation(value)
   }
 
   /// What fills the margins: automatic follows the LoRAs (an outpaint LoRA asks for a flat grey or green
@@ -352,7 +420,7 @@ struct CanvasStage: View {
       )
       .font(.caption).foregroundStyle(.secondary)
       if !margins.isEmpty {
-        Text(String(format: String(localized: "control.stage.margins"), marginList(margins)))
+        Text(String(format: String(localized: "control.stage.margins"), marginList(margins, corners: margins.cornersUncovered)))
           .font(.caption).foregroundStyle(.secondary)
       }
       if framing.zoom > 0 {
@@ -375,7 +443,7 @@ struct CanvasStage: View {
   }
 
   /// "left 12%, right 12%": the sides that have a margin, as a share of the canvas.
-  private func marginList(_ margins: FramingMath.Margins) -> String {
+  private func marginList(_ margins: FramingMath.Margins, corners: Bool = false) -> String {
     var parts: [String] = []
     func add(_ key: String.LocalizationValue, _ pixels: Double, of side: Int) {
       if pixels >= 0.5 {
@@ -386,6 +454,7 @@ struct CanvasStage: View {
     add("control.stage.margin.bottom", margins.bottom, of: canvasHeight)
     add("control.stage.margin.left", margins.left, of: canvasWidth)
     add("control.stage.margin.right", margins.right, of: canvasWidth)
+    if parts.isEmpty, corners { parts.append(String(localized: "control.stage.margin.corners")) }
     return parts.joined(separator: ", ")
   }
 
@@ -515,21 +584,31 @@ struct CanvasStage: View {
   }
 
   /// The picture, the drawing and the mask are layers of their own, so a stroke only changes the
-  /// layer it draws on; the cursor ring moves over them.
+  /// layer it draws on; the cursor ring moves over them. The wheel and the pinch zoom the view (never
+  /// below the fit); with Space held a drag moves it instead of drawing.
   private func painting(image: ReferenceImage, crop: CGRect, size: CGSize) -> some View {
     // The whole image, placed so that the cut fills the view: what shows is what is sent.
     let scale = size.width / crop.width
     let frame = CGSize(width: Double(image.pixelWidth) * scale, height: Double(image.pixelHeight) * scale)
     let origin = CGPoint(x: -crop.minX * scale, y: -crop.minY * scale)
+    let rotation = control.inputs.framing.rotation
     func layer(_ picture: CGImage?) -> some View {
       Group {
         if let picture { Image(decorative: picture, scale: 1).resizable().interpolation(.high) }
       }
       .frame(width: frame.width, height: frame.height)
+      .rotationEffect(.degrees(rotation))
       .position(x: origin.x + frame.width / 2, y: origin.y + frame.height / 2)
     }
     let fill = generation.marginFill
-    return ZStack(alignment: .topLeading) {
+    let view = CGPoint(x: size.width / 2, y: size.height / 2)
+    // From a point of the view (as the gesture gives it) to the same point on the unzoomed picture.
+    func unzoomed(_ point: CGPoint) -> CGPoint {
+      CGPoint(
+        x: (point.x - view.x - drawZoom.offset.x) / drawZoom.scale + view.x,
+        y: (point.y - view.y - drawZoom.offset.y) / drawZoom.scale + view.y)
+    }
+    let content = ZStack(alignment: .topLeading) {
       if fill == .green { Color(red: 0, green: 1, blue: 0) } else { Color(white: 0.5) }
       layer(picture)
       layer(drawing.paintImage)
@@ -539,13 +618,22 @@ struct CanvasStage: View {
       if fill.sendsMask {
         Path { path in
           path.addRect(CGRect(origin: .zero, size: size))
-          path.addRect(CGRect(origin: origin, size: frame))
+          let rect = CGRect(origin: origin, size: frame)
+          let turn = CGAffineTransform(translationX: rect.midX, y: rect.midY)
+            .rotated(by: rotation * .pi / 180).translatedBy(x: -rect.midX, y: -rect.midY)
+          path.addPath(Path(rect).applying(turn))
         }
         .fill(Color(red: 1, green: 140 / 255, blue: 0).opacity(0.55), style: FillStyle(eoFill: true))
         .allowsHitTesting(false)
       }
+    }
+    .frame(width: size.width, height: size.height)
+    .scaleEffect(drawZoom.scale)
+    .offset(x: drawZoom.offset.x, y: drawZoom.offset.y)
+    return ZStack(alignment: .topLeading) {
+      content
       if let hover {
-        let radius = brushSize / 2 * size.width / Double(max(canvasWidth, 1))
+        let radius = brushSize / 2 * size.width / Double(max(canvasWidth, 1)) * drawZoom.scale
         ZStack {
           Circle().stroke(Color.black.opacity(0.6), lineWidth: 2.5)
           Circle().stroke(Color.white, lineWidth: 1.2)
@@ -568,13 +656,36 @@ struct CanvasStage: View {
       DragGesture(minimumDistance: 0)
         .onChanged { value in
           hover = value.location
+          if spaceDown {
+            let step = CGSize(
+              width: value.translation.width - panLast.width, height: value.translation.height - panLast.height)
+            panLast = value.translation
+            drawZoom.pan(by: step, view: size, fitted: size)
+            return
+          }
           drawing.stroke(
-            tool: tool, to: value.location, viewSize: size, crop: crop, imageWidth: image.pixelWidth,
-            canvasWidth: canvasWidth, diameter: brushSize, color: brushRGB)
+            tool: tool, to: unzoomed(value.location), viewSize: size, crop: crop, imageWidth: image.pixelWidth,
+            canvasWidth: canvasWidth, diameter: brushSize, color: brushRGB, rotation: rotation)
         }
         .onEnded { _ in
+          if spaceDown || panLast != .zero { panLast = .zero; return }
           attempt { () throws(ControlError) in try drawing.endStroke(into: control) }
         })
+    .gesture(
+      MagnifyGesture()
+        .onChanged { value in
+          let anchor = CGPoint(x: value.startLocation.x - view.x, y: value.startLocation.y - view.y)
+          drawZoom.zoom(by: value.magnification / pinchLast, at: anchor, view: size, fitted: size)
+          pinchLast = value.magnification
+        }
+        .onEnded { _ in pinchLast = 1 }
+    )
+    .background(
+      CanvasWheelMonitor(isActive: true) { point, factor in
+        drawZoom.zoom(by: factor, at: point, view: size, fitted: size)
+      }
+    )
+    .background(SpaceKeyMonitor(isDown: $spaceDown))
   }
 
   private func rgb(of color: Color) -> (red: UInt8, green: UInt8, blue: UInt8) {
@@ -585,5 +696,106 @@ struct CanvasStage: View {
 
   private func attempt(_ action: () throws(ControlError) -> Void) {
     do { try action() } catch { report(.error(ControlText.error(error))) }
+  }
+}
+
+/// The scroll wheel over this view: calls `onZoom(anchor, factor)` with the point under the cursor, from the centre of
+/// the view with y down, and takes the event.
+private struct CanvasWheelMonitor: NSViewRepresentable {
+  var isActive: Bool
+  var onZoom: (CGPoint, CGFloat) -> Void
+
+  func makeCoordinator() -> Coordinator { Coordinator() }
+
+  func makeNSView(context: Context) -> NSView {
+    let view = NSView()
+    context.coordinator.view = view
+    context.coordinator.install()
+    return view
+  }
+
+  func updateNSView(_ nsView: NSView, context: Context) {
+    context.coordinator.isActive = isActive
+    context.coordinator.onZoom = onZoom
+  }
+
+  static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) { coordinator.remove() }
+
+  @MainActor
+  final class Coordinator {
+    weak var view: NSView?
+    var isActive = false
+    var onZoom: (CGPoint, CGFloat) -> Void = { _, _ in }
+    private var monitor: Any?
+
+    func install() {
+      monitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
+        nonisolated(unsafe) let unsafeEvent = event
+        let taken = MainActor.assumeIsolated { () -> Bool in
+          guard let self, self.isActive, let view = self.view, let window = view.window,
+            unsafeEvent.window === window
+          else { return false }
+          let local = view.convert(unsafeEvent.locationInWindow, from: nil)
+          guard view.bounds.contains(local), unsafeEvent.scrollingDeltaY != 0 else { return false }
+          // A wheel notch is a coarse step; a trackpad sends many small ones.
+          let rate: CGFloat = unsafeEvent.hasPreciseScrollingDeltas ? 0.01 : 0.08
+          let anchor = CGPoint(x: local.x - view.bounds.midX, y: view.bounds.midY - local.y)
+          self.onZoom(anchor, exp(unsafeEvent.scrollingDeltaY * rate))
+          return true
+        }
+        return taken ? nil : event
+      }
+    }
+
+    func remove() {
+      if let monitor { NSEvent.removeMonitor(monitor) }
+      monitor = nil
+    }
+  }
+}
+
+/// Whether Space is held while this window is the key one (it moves the zoomed drawing instead of drawing).
+private struct SpaceKeyMonitor: NSViewRepresentable {
+  @Binding var isDown: Bool
+
+  func makeCoordinator() -> Coordinator { Coordinator() }
+
+  func makeNSView(context: Context) -> NSView {
+    let view = NSView()
+    context.coordinator.view = view
+    context.coordinator.binding = $isDown
+    context.coordinator.install()
+    return view
+  }
+
+  func updateNSView(_ nsView: NSView, context: Context) { context.coordinator.binding = $isDown }
+
+  static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) { coordinator.remove() }
+
+  @MainActor
+  final class Coordinator {
+    weak var view: NSView?
+    var binding: Binding<Bool>?
+    private var monitor: Any?
+
+    func install() {
+      monitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp]) { [weak self] event in
+        nonisolated(unsafe) let unsafeEvent = event
+        let taken = MainActor.assumeIsolated { () -> Bool in
+          guard let self, unsafeEvent.keyCode == 49, let window = self.view?.window, unsafeEvent.window === window,
+            window.isKeyWindow, !(window.firstResponder is NSText)
+          else { return false }
+          self.binding?.wrappedValue = unsafeEvent.type == .keyDown
+          return true
+        }
+        return taken ? nil : event
+      }
+    }
+
+    func remove() {
+      if let monitor { NSEvent.removeMonitor(monitor) }
+      monitor = nil
+      binding?.wrappedValue = false
+    }
   }
 }

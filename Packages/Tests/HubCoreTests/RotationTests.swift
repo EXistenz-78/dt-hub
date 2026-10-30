@@ -106,3 +106,48 @@ struct RotationTests {
     #expect(abs(p.x - 0) < 0.001 && abs(p.y - 100) < 0.001)
   }
 }
+
+/// The wheel and the pinch on the canvas: the zoom of the slider, with the point under the cursor kept still.
+struct CanvasZoomTests {
+  @Test func zoomingAtTheCentreKeepsTheCentre() {
+    let framing = FramingMath.zoomed(
+      Framing(), by: 2, atCanvasFraction: CGPoint(x: 0.5, y: 0.5), imageWidth: 200, imageHeight: 100,
+      canvasWidth: 100, canvasHeight: 100)
+    #expect(abs(framing.zoom - 50) < 0.001 && abs(framing.offsetX) < 0.001 && abs(framing.offsetY) < 0.001)
+  }
+
+  @Test func zoomingAtACornerKeepsThePointUnderTheCursor() {
+    let framing = FramingMath.zoomed(
+      Framing(), by: 2, atCanvasFraction: CGPoint(x: 0, y: 0), imageWidth: 200, imageHeight: 100, canvasWidth: 100,
+      canvasHeight: 100)
+    let crop = FramingMath.cropRect(
+      imageWidth: 200, imageHeight: 100, canvasWidth: 100, canvasHeight: 100, framing: framing)
+    #expect(abs(crop.minX - 50) < 0.001 && abs(crop.minY) < 0.001 && abs(crop.width - 50) < 0.001)
+  }
+
+  @Test func theSliderRangeIsTheLimitInBothDirections() {
+    let out = FramingMath.zoomed(
+      Framing(zoom: -90), by: 0.01, atCanvasFraction: CGPoint(x: 0.5, y: 0.5), imageWidth: 200, imageHeight: 100,
+      canvasWidth: 100, canvasHeight: 100)
+    #expect(out.zoom == -100)
+    let into = FramingMath.zoomed(
+      Framing(zoom: 90), by: 100, atCanvasFraction: CGPoint(x: 0.5, y: 0.5), imageWidth: 200, imageHeight: 100,
+      canvasWidth: 100, canvasHeight: 100)
+    #expect(into.zoom == 100)
+  }
+
+  @Test func zoomingOutPastTheWholeImageIsAllowed() {
+    // 200×100 in a 100×100 canvas: the whole image fits at about −50.
+    let out = FramingMath.zoomed(
+      Framing(zoom: -50), by: 0.7, atCanvasFraction: CGPoint(x: 0.5, y: 0.5), imageWidth: 200, imageHeight: 100,
+      canvasWidth: 100, canvasHeight: 100)
+    #expect(out.zoom < -50)
+  }
+
+  @Test func theRotationIsKept() {
+    let out = FramingMath.zoomed(
+      Framing(rotation: 30), by: 1.5, atCanvasFraction: CGPoint(x: 0.2, y: 0.8), imageWidth: 200, imageHeight: 100,
+      canvasWidth: 100, canvasHeight: 100)
+    #expect(out.rotation == 30)
+  }
+}

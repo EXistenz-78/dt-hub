@@ -94,6 +94,34 @@ public enum FramingMath {
       imageWidth: imageWidth, imageHeight: imageHeight, rotation: framing.rotation)
   }
 
+  /// The framing after a zoom of `factor` (the wheel or the pinch) that keeps still the point of the window under the
+  /// cursor, given as a fraction of the canvas from its top-left. The zoom stays within the slider's range, with no
+  /// stop where the whole image fits; the rotation is kept.
+  public static func zoomed(
+    _ framing: Framing, by factor: Double, atCanvasFraction anchor: CGPoint, imageWidth: Int, imageHeight: Int,
+    canvasWidth: Int, canvasHeight: Int
+  ) -> Framing {
+    guard factor.isFinite, factor > 0 else { return framing }
+    let before = cropRect(
+      imageWidth: imageWidth, imageHeight: imageHeight, canvasWidth: canvasWidth, canvasHeight: canvasHeight,
+      framing: framing)
+    var next = framing
+    next.zoom = min(
+      Framing.zoomRange.upperBound, max(Framing.zoomRange.lowerBound, framing.zoom + 100 * log(factor) / log(4)))
+    // The window at the new zoom, centred; its size tells where it has to sit for the point to stay.
+    let sized = cropRect(
+      imageWidth: imageWidth, imageHeight: imageHeight, canvasWidth: canvasWidth, canvasHeight: canvasHeight,
+      framing: Framing(zoom: next.zoom))
+    let point = CGPoint(x: before.minX + anchor.x * before.width, y: before.minY + anchor.y * before.height)
+    let minX = point.x - anchor.x * sized.width
+    let minY = point.y - anchor.y * sized.height
+    let slackX = Double(imageWidth) - sized.width
+    let slackY = Double(imageHeight) - sized.height
+    if abs(slackX) > 0.5 { next.offsetX = 2 * minX / slackX - 1 }
+    if abs(slackY) > 0.5 { next.offsetY = 2 * minY / slackY - 1 }
+    return next.clamped()
+  }
+
   /// A point of the window (the image's pixels as if it were not turned) as it is on the image: the turn about the
   /// centre of the image undone. The y axis points down, so a positive angle turns clockwise.
   public static func unrotated(_ point: CGPoint, imageWidth: Int, imageHeight: Int, rotation: Double) -> CGPoint {

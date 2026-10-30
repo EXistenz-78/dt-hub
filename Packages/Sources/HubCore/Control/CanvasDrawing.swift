@@ -89,7 +89,7 @@ public final class CanvasDrawing {
   /// is the tool's size in canvas pixels. A new `tool` or `color` takes effect with the next stroke.
   public func stroke(
     tool: DrawingTool, to point: CGPoint, viewSize: CGSize, crop: CGRect, imageWidth: Int, canvasWidth: Int,
-    diameter: Double, color: (red: UInt8, green: UInt8, blue: UInt8)
+    diameter: Double, color: (red: UInt8, green: UInt8, blue: UInt8), rotation: Double = 0
   ) {
     guard let reference = mask, imageWidth > 0, viewSize.width > 0, viewSize.height > 0 else { return }
     if !smoother.isActive {
@@ -99,9 +99,14 @@ public final class CanvasDrawing {
       // A stroke that goes past the edge of the view stops at the edge of the cut: what is not shown is
       // not drawn on.
       let toMask = Double(reference.width) / Double(imageWidth)
-      strokeClip = CGRect(x: crop.minX * toMask, y: crop.minY * toMask, width: crop.width * toMask, height: crop.height * toMask)
+      // A turned image has no axis-aligned cut: the pointer is inside the view, the whole picture is allowed.
+      strokeClip =
+        rotation == 0
+        ? CGRect(x: crop.minX * toMask, y: crop.minY * toMask, width: crop.width * toMask, height: crop.height * toMask)
+        : CGRect(x: 0, y: 0, width: reference.width, height: reference.height)
     }
-    let target = reference.point(forViewPoint: point, viewSize: viewSize, crop: crop, imageWidth: imageWidth)
+    let target = reference.point(
+      forViewPoint: point, viewSize: viewSize, crop: crop, imageWidth: imageWidth, rotation: rotation)
     draw(smoother.add(target, spacing: max(strokeRadius / 2, 1)))
   }
 

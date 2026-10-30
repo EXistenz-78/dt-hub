@@ -3078,6 +3078,57 @@
         }
       }
     },
+    "control.stage.rotation": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rotation"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rotazione"
+          }
+        }
+      }
+    },
+    "control.stage.rotation.reset": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reset rotation"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Azzera la rotazione"
+          }
+        }
+      }
+    },
+    "control.stage.margin.corners": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "corners"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "angoli"
+          }
+        }
+      }
+    },
     "control.stage.zoom": {
       "extractionState": "manual",
       "localizations": {
