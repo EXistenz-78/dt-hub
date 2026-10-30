@@ -35,6 +35,15 @@ public struct ResultSelection: Equatable, Sendable {
     }
   }
 
+  /// The arrow keys: selects only the picture `delta` places along `order` from the shown one (the first when
+  /// nothing is shown), and stops at the ends.
+  public mutating func step(_ delta: Int, order: [UUID]) {
+    guard !order.isEmpty else { return }
+    let current = primary.flatMap { order.firstIndex(of: $0) }
+    let target = current.map { min(max($0 + delta, 0), order.count - 1) } ?? 0
+    self = ResultSelection(only: order[target])
+  }
+
   public mutating func selectAll(order: [UUID]) {
     ids = Set(order)
     if primary == nil || !ids.contains(primary!) { primary = order.first }
