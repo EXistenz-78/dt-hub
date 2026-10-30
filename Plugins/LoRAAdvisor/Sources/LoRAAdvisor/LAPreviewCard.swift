@@ -6,33 +6,24 @@ import SwiftUI
 /// The LoRA whose row is open, with its thumbnail large and the menu to change it; an empty card when none is open.
 struct LAPreviewCard: View {
   @ObservedObject var state: LAState
-  /// The thumbnail files are at most 256 pixels: this is as large as they can be shown without going soft.
-  static let side: CGFloat = 176
+  /// As wide as the text box of the advice card below.
+  static let side: CGFloat = LAView.sideWidth - 2 * DS.panelPadding
 
   var body: some View {
-    VStack(alignment: .leading, spacing: DS.rowGap) {
-      DSGroupHeader(title: state.text(.previewTitle), prominent: true)
-      if let lora = state.openLoRA {
+    // No LoRA open, no card: the advice card takes the column.
+    if let lora = state.openLoRA {
+      VStack(alignment: .leading, spacing: DS.rowGap) {
+        DSGroupHeader(title: lora.name, prominent: true)
         VStack(spacing: 6) {
           LAThumbnailView(url: state.thumbnailURL(for: lora.file), side: Self.side)
-          Text(verbatim: lora.name)
-            .fontWeight(.semibold)
-            .lineLimit(1)
-            .truncationMode(.middle)
           thumbnailMenu(for: lora.file)
         }
         .frame(maxWidth: .infinity)
-      } else {
-        Text(verbatim: state.text(.previewEmpty))
-          .font(.callout)
-          .foregroundStyle(.secondary)
-          .multilineTextAlignment(.center)
-          .frame(maxWidth: .infinity, minHeight: 96)
       }
+      .padding(DS.panelPadding)
+      .frame(width: LAView.sideWidth, alignment: .topLeading)
+      .dsPanel()
     }
-    .padding(DS.panelPadding)
-    .frame(width: LAView.sideWidth, alignment: .topLeading)
-    .dsPanel()
   }
 
   /// A picture of the user's own for the thumbnail: a file, or the start image of the Control tab.
