@@ -28,12 +28,20 @@ public enum JobComposer {
     } else {
       sent.video = .default
     }
+    // Video models have no inpainting: a mask on the Control tab never reaches their jobs.
+    let maskSettings = videoInfo == nil ? maskSettings : nil
     let negative = traits.usesNegativePrompt ? negativePrompt : ""
     return sent.batchesForRun(randomSeed: draw).map {
       GenerationJob(
         prompt: prompt, negativePrompt: negative, model: model, parameters: $0, imageStrength: imageStrength,
         moodboardCount: moodboardCount, maskSettings: maskSettings, videoFPS: videoInfo?.framesPerSecond)
     }
+  }
+
+  /// Whether the automatic strength is the edit model's 100%: edit models, and video models, whose image-to-video
+  /// starts from the image with strength 1 (a partial denoise would not follow it).
+  public static func usesFullStrength(editModel: Bool, family: String?) -> Bool {
+    editModel || VideoFamilies.isEnabled(family)
   }
 
   static func advanced(_ parameters: GenerationParameters, model: CatalogModel?, catalog: ModelCatalog)

@@ -64,4 +64,28 @@ struct ModelChoiceTests {
     selection.select("qwen_image_2.1_q8p.ckpt")
     #expect(selection.selectedFile == "qwen_image_2.1_q8p.ckpt")
   }
+
+  @Test func leavingLTXForAnImageModelSwitchesTheHiresFixOffEvenWithoutATableEntry() throws {
+    let video = CatalogModel(file: "ltx_2.3_q8p.ckpt", name: "LTX", family: "ltx2.3", capabilities: .unknown)
+    let h3 = CatalogModel(file: "minimax_h3_q8p.ckpt", name: "H3", family: "minimax_h3", capabilities: .unknown)
+    let image = CatalogModel(file: "other_image.ckpt", name: "Other", family: "flux2_9b", capabilities: .unknown)
+    let catalog = ModelCatalog(models: [video, h3, image], loras: [], fileCount: 3)
+    let empty = RecommendedSettings(models: [:], families: [:])
+    let selection = selection()
+    let ltx = try #require(selection.choose(video.file, applyingTo: GenerationParameters(), from: empty, in: catalog))
+    #expect(ltx.advanced.hiresFix)
+    let toImage = try #require(selection.choose(image.file, applyingTo: ltx, from: empty, in: catalog))
+    #expect(toImage.advanced.hiresFix == false)
+    let back = try #require(selection.choose(video.file, applyingTo: toImage, from: empty, in: catalog))
+    let toH3 = try #require(selection.choose(h3.file, applyingTo: back, from: empty, in: catalog))
+    #expect(toH3.advanced.hiresFix == false)
+  }
+
+  @Test func imageToImageKeepsTheHiresFix() {
+    var tab = GenerationParameters()
+    tab.advanced.hiresFix = true
+    let selection = selection()
+    selection.select("juggernaut_reborn_q6p_q8p.ckpt")
+    #expect(selection.choose("mystery.ckpt", applyingTo: tab, from: table, in: catalog()) == nil)
+  }
 }

@@ -130,4 +130,56 @@ struct VideoStreamToolsTests {
         onEvent: { _ in throw BackendError.noImages })
     }
   }
+
+  @Test func accumulatorDropsItsFramesOnceCompleted() {
+    var accumulator = VideoStreamTools.Accumulator()
+    accumulator.observe(.image(frame(), index: 0))
+    accumulator.observe(.image(frame(), index: 1))
+    #expect(accumulator.count == 2)
+    let request = GenerationRequest(prompt: "p", negativePrompt: "", configuration: DrawThingsConfiguration())
+    let result = GenerationResult(
+      request: request, images: [frame(), frame()], audio: [],
+      media: MediaProfile(family: .flux, isVideo: true, frameRate: 24, audioSampleRate: nil),
+      startedAt: Date(), completedAt: Date())
+    accumulator.observe(.completed(result))
+    #expect(accumulator.count == 0)
+  }
+
+  // A real Stop probably arrives as a gRPC error, not as a CancellationError: the cancelled task must still
+  // neither save a partial video nor retry.
+  @Test func cancelledTaskWithAnotherErrorSavesNothingAndDoesNotRetry() async {
+    let recorder = Recorder()
+    let task = Task { () async throws -> GeneratedVideo? in
+      try await VideoStreamTools.consume(
+        open: {
+          recorder.opened += 1
+          return stream(
+            [.image(frame(), index: 0), .image(frame(), index: 1)],
+            failingWith: DrawThingsError.server(code: "internalError", message: "x"))
+        },
+        framesPerSecond: 24, sleep: { _ in recorder.slept.append(.zero) },
+        onEvent: { _ in
+          recorder.seen += 1
+          if recorder.seen == 2 { withUnsafeCurrentTask { $0?.cancel() } }
+        })
+    }
+    var produced = false
+    do { produced = try await task.value != nil } catch {}
+    #expect(!produced)
+    #expect(recorder.seen == 2)
+    #expect(recorder.opened == 1)
+    #expect(recorder.slept.isEmpty)
+    // A generic error behaves the same.
+    let generic = Task { () async throws -> GeneratedVideo? in
+      try await VideoStreamTools.consume(
+        open: { stream([.image(frame(), index: 0), .image(frame(), index: 1)], failingWith: Boom()) },
+        framesPerSecond: 24, sleep: { _ in },
+        onEvent: { _ in withUnsafeCurrentTask { $0?.cancel() } })
+    }
+    var genericProduced = false
+    var thrown: (any Error)?
+    do { genericProduced = try await generic.value != nil } catch { thrown = error }
+    #expect(!genericProduced)
+    #expect(thrown != nil)
+  }
 }

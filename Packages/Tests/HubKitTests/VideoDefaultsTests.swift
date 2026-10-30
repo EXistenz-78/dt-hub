@@ -41,6 +41,7 @@ struct VideoDefaultsTests {
     #expect(result.sampler == .tcdTrailing)
     #expect(result.guidanceScale == 1)
     #expect(result.shift == 5)
+    #expect(result.resolutionDependentShift == false)
     #expect(result.video.numFrames == 121)
     #expect(result.width == 1280)
     #expect(result.height == 768)
@@ -79,5 +80,16 @@ struct VideoDefaultsTests {
     #expect(result.randomSeed == false)
     #expect(result.batchCount == 3)
     #expect(result.loras == start.loras)
+  }
+
+  @Test func h3SwitchesTheHiresFixOffAfterLTX() throws {
+    var start = GenerationParameters()
+    start.advanced.hiresFix = true
+    start.advanced.hiresFixWidth = 640
+    start.advanced.hiresFixHeight = 384
+    for file in ["minimax_h3_q8p.ckpt", "fasth3_omni_i4x.ckpt"] {
+      let result = try #require(VideoDefaults.applying(to: start, file: file, family: "minimax_h3"))
+      #expect(result.advanced.hiresFix == false)
+    }
   }
 }

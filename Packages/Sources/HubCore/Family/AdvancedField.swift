@@ -75,7 +75,8 @@ public enum AdvancedField: String, CaseIterable, Identifiable, Sendable {
     case .sdxlConditioning:
       guard let family else { return true }
       return Self.sdxlFamilies.contains(family)
-    case .teaCache: return capabilities.teaCache
+    // The H3 specs do not list TeaCache coefficients, but the video family uses it all the same.
+    case .teaCache: return capabilities.teaCache || VideoFamilies.info(for: family)?.usesAccelerators == true
     }
   }
 

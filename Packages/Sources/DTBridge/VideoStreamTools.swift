@@ -28,6 +28,16 @@ enum VideoStreamTools {
 
     mutating func add(_ image: CGImage) { frames.append(image) }
 
+    /// Collects a final frame. The completed event brings the whole clip again, so the frames kept for the
+    /// partial video are dropped then (a full clip would otherwise sit in memory twice).
+    mutating func observe(_ event: GenerationEvent) {
+      switch event {
+      case .image(let image, _): add(image)
+      case .completed: frames.removeAll()
+      default: break
+      }
+    }
+
     /// What arrived, as a partial video; nil when it is not enough for a clip (fewer than 2 frames).
     func partialVideo(framesPerSecond: Double) -> GeneratedVideo? {
       guard frames.count >= 2 else { return nil }
@@ -52,7 +62,7 @@ enum VideoStreamTools {
       var handlerError: (any Error)?
       do {
         for try await event in try open() {
-          if case .image(let image, _) = event { accumulator.add(image) }
+          accumulator.observe(event)
           do { try onEvent(event) } catch {
             handlerError = error
             throw error

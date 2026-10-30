@@ -524,7 +524,7 @@ final class GenerationController {
     let file = PipelinePresets.model(for: pass, presets: loaded, header: connection.selection.selectedFile)
     let passModel = file.flatMap { connection.monitor.catalog.model(forFile: $0) }
     let family = passModel?.family
-    let inputs: GenerationInputs
+    var inputs: GenerationInputs
     var replacesStart = false
     if intermediate != nil {
       switch GuidedPassInputs.inputs(
@@ -545,6 +545,8 @@ final class GenerationController {
         canvasHeight: used.parameters.height, usesMoodboard: FamilyTraits.of(family).usesMoodboard)
       replacesStart = inputs.image != nil && inputs.image !== base.image
     }
+    // Video models have no inpainting: a mask never reaches them.
+    if VideoFamilies.isEnabled(family) { inputs.mask = nil; inputs.enableInpainting = false }
     guard !Task.isCancelled, let backend = connection.monitor.backend, let model = file,
       RunAvailability.blocker(
         connection: connection.monitor.status, selectedModel: model, catalog: connection.monitor.catalog) == nil
@@ -555,7 +557,9 @@ final class GenerationController {
       : intermediate != nil
         ? (pass.strength ?? 1)
         : PipelineInputs.strength(
-          tab: control.inputs, replacesStart: replacesStart, editModel: passModel?.capabilities.isEditModel ?? false,
+          tab: control.inputs, replacesStart: replacesStart,
+          editModel: JobComposer.usesFullStrength(
+            editModel: passModel?.capabilities.isEditModel ?? false, family: family),
           hasMargins: control.hasMargins(canvasWidth: used.parameters.width, canvasHeight: used.parameters.height),
           step: pass.strength)
     let batches = JobComposer.batches(
@@ -668,6 +672,8 @@ final class GenerationController {
   /// The generation itself, once the memory is ready. The job is composed now, not at the
   /// click: a parked server has no catalog until it is back.
   private func start(with connection: DrawThingsConnection, inputs: GenerationInputs) {
+    var inputs = inputs
+    if VideoFamilies.isEnabled(family(in: connection)) { inputs.mask = nil; inputs.enableInpainting = false }
     guard !session.isRunning, let backend = connection.monitor.backend,
       let model = connection.selection.selectedFile,
       RunAvailability.blocker(
@@ -677,7 +683,7 @@ final class GenerationController {
       prompt: prompt, negativePrompt: negativePrompt, model: model, family: family(in: connection),
       parameters: parameters, catalog: connection.monitor.catalog,
       imageStrength: inputs.image == nil ? nil : control.inputs.effectiveStrength(
-        editModel: isEditModel(in: connection),
+        editModel: JobComposer.usesFullStrength(editModel: isEditModel(in: connection), family: family(in: connection)),
         hasMargins: control.hasMargins(canvasWidth: parameters.width, canvasHeight: parameters.height)),
       moodboardCount: inputs.hints.count,
       maskSettings: inputs.mask == nil ? nil : control.inputs.maskSettings)
@@ -896,6 +902,7 @@ extension GenerationController: ContributionTarget {
     shown.loras = []
     shown.batchSize = 1
     shown.batchCount = 1
+    shown.video = .default
     let job = GenerationJob(prompt: description, model: model, parameters: shown)
     let elapsed = guidedBegan.map { start -> TimeInterval in
       let took = start.duration(to: .now)

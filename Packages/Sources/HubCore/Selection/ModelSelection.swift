@@ -36,8 +36,17 @@ public final class ModelSelection {
     guard file != previous else { return nil }
     let family = catalog.model(forFile: file)?.family
     if let video = VideoDefaults.applying(to: parameters, file: file, family: family) { return video }
-    guard let values = table.values(forFile: file, family: family) else { return nil }
-    return parameters.applying(values)
+    // Leaving a video model: its Hires fix (LTX) does not belong to an image model.
+    let leavesVideo =
+      previous.map { VideoFamilies.isEnabled(catalog.model(forFile: $0)?.family) } == true
+      && !VideoFamilies.isEnabled(family)
+    var result: GenerationParameters? = table.values(forFile: file, family: family).map { parameters.applying($0) }
+    if leavesVideo, (result ?? parameters).advanced.hiresFix {
+      var reset = result ?? parameters
+      reset.advanced.hiresFix = false
+      result = reset
+    }
+    return result
   }
 
   /// An empty name means no model, as it does for RUN (`RunAvailability`).

@@ -24,7 +24,7 @@ public enum VideoDefaults {
     steps: 50, sampler: .ddimTrailing, shift: 12, resolutionDependentShift: false, width: 576, height: 448,
     numFrames: 56, shiftForAudio: 3, tiledDecoding: true, hiresSize: nil)
   private static let ltx = Values(
-    steps: 8, sampler: .tcdTrailing, shift: 5, resolutionDependentShift: nil, width: 1280, height: 768,
+    steps: 8, sampler: .tcdTrailing, shift: 5, resolutionDependentShift: false, width: 1280, height: 768,
     numFrames: 121, shiftForAudio: nil, tiledDecoding: false, hiresSize: (640, 384))
 
   /// The parameters with the model's video defaults, or nil when the family is not an enabled video family.
@@ -63,6 +63,9 @@ public enum VideoDefaults {
       copy.advanced.hiresFixWidth = hires.width
       copy.advanced.hiresFixHeight = hires.height
       copy.advanced.hiresFixStrength = 0.7
+    } else {
+      // A Hires fix left by the previous model (LTX) would send a two-pass job to a model that has none.
+      copy.advanced.hiresFix = false
     }
     var clamped = copy.clamped()
     clamped.video = clamped.video.clamped(for: info)
