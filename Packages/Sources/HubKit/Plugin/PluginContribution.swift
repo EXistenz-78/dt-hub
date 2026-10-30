@@ -4,19 +4,26 @@ import Foundation
 public struct PluginImageRef: Equatable, Sendable {
   public var name: String
   public var path: String
+  /// True for a drawing made on the framed start image (`space: "canvas"`): it is the size of the canvas and shows what
+  /// the canvas shows, so the app turns it back into the start image's own coordinates. False: the picture is in the
+  /// start image's own coordinates.
+  public var inCanvas = false
 
-  public init(name: String, path: String) {
+  public init(name: String, path: String, inCanvas: Bool = false) {
     self.name = name
     self.path = path
+    self.inCanvas = inCanvas
   }
 
   init?(_ value: JSONValue?) {
     guard case .object(let object)? = value, case .string(let path)? = object["path"], !path.isEmpty else { return nil }
     let fallback = URL(fileURLWithPath: path).lastPathComponent
+    var inCanvas = false
+    if case .string(let space)? = object["space"] { inCanvas = space == "canvas" }
     if case .string(let name)? = object["name"], !name.isEmpty {
-      self.init(name: name, path: path)
+      self.init(name: name, path: path, inCanvas: inCanvas)
     } else {
-      self.init(name: fallback, path: path)
+      self.init(name: fallback, path: path, inCanvas: inCanvas)
     }
   }
 }

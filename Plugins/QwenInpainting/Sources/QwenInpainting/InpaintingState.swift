@@ -38,11 +38,13 @@ final class InpaintingState: ObservableObject {
   func apply(context data: Data) {
     guard let decoded = try? JSONDecoder().decode(DTHubContext.self, from: data) else { return }
     context = decoded
-    if decoded.startImage != session.startImage {
+    // The picture the user draws on: the start image as the canvas has it (cut, zoomed, turned), when the app sends it.
+    let shown = decoded.startImageFramed ?? decoded.startImage
+    if shown != session.startImage {
       undoStack = []
       redoStack = []
       session.marks = []
-      session.startImage = decoded.startImage
+      session.startImage = shown
     }
   }
 
@@ -57,7 +59,9 @@ final class InpaintingState: ObservableObject {
 
   // MARK: Marks
 
-  var startImagePath: String? { context?.startImage }
+  var startImagePath: String? { context?.startImageFramed ?? context?.startImage }
+  /// True when the picture shown is the framed one: the drawing is then in the canvas's coordinates.
+  var drawsOnFramed: Bool { context?.startImageFramed != nil }
   var canUndo: Bool { !undoStack.isEmpty }
   var canRedo: Bool { !redoStack.isEmpty }
 
@@ -164,7 +168,9 @@ final class InpaintingState: ObservableObject {
       if !reason.isEmpty { peNote = L.format(.peFallback, reason, italian: italian) }
     }
 
-    var body: [String: Any] = ["paint": ["path": paintURL.path, "name": "Qwen 2.1 Inpainting"] as [String: Any]]
+    var paint: [String: Any] = ["path": paintURL.path, "name": "Qwen 2.1 Inpainting"]
+    if drawsOnFramed { paint["space"] = "canvas" }
+    var body: [String: Any] = ["paint": paint]
     if !prompt.isEmpty { body["fields"] = ["prompt": prompt] }
     let answer = await contribute(body)
     describe(answer, peNote: peNote)

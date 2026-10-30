@@ -125,6 +125,19 @@ public struct PaintBitmap: Equatable, Sendable {
     pixels = bytes
   }
 
+  /// A drawing from premultiplied RGBA bytes (row 0 at the top), turned into straight alpha.
+  static func fromPremultiplied(_ premultiplied: [UInt8], width: Int, height: Int) -> PaintBitmap? {
+    guard width > 0, height > 0, premultiplied.count == width * height * 4 else { return nil }
+    var bitmap = PaintBitmap(width: width, height: height)
+    var bytes = premultiplied
+    for base in stride(from: 0, to: bytes.count, by: 4) where bytes[base + 3] > 0 && bytes[base + 3] < 255 {
+      let alpha = Double(bytes[base + 3]) / 255
+      for channel in 0..<3 { bytes[base + channel] = UInt8(min(255, (Double(bytes[base + channel]) / alpha).rounded())) }
+    }
+    bitmap.pixels = bytes
+    return bitmap
+  }
+
   /// The image drawn, stretched, at `width × height` (the Brush layer has the ratio of the start image; a drawing with another
   /// ratio is stretched to it). Straight alpha, row 0 at the top, as `init?(image:)`.
   public static func fitted(from image: CGImage, width: Int, height: Int) -> PaintBitmap? {

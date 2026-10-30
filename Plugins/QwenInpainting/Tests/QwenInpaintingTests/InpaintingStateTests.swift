@@ -247,3 +247,16 @@ struct InpaintingStateTests {
     }
   }
 }
+
+@MainActor
+@Suite("Framed start image")
+struct FramedStartImageTests {
+  @Test func theUserDrawsOnTheFramedPictureAndTheDrawingIsSentAsCanvasSpace() throws {
+    let s = InpaintingState(store: InpaintingStore(folder: nil), italian: false)
+    let json = #"{"type":"context","tempFolder":"/tmp","startImage":"/a/raw.png","startImageFramed":"/a/framed.png"}"#
+    s.apply(context: Data(json.utf8))
+    #expect(s.startImagePath == "/a/framed.png" && s.drawsOnFramed)
+    s.apply(context: Data(#"{"type":"context","tempFolder":"/tmp","startImage":"/a/raw.png"}"#.utf8))
+    #expect(s.startImagePath == "/a/raw.png" && !s.drawsOnFramed, "an older app: the image itself")
+  }
+}

@@ -163,12 +163,17 @@ public struct DTHubContext: Decodable, Sendable {
   /// pixels from the top-left (it can be larger than the image: the rest is margin). nil without a start image or from
   /// an app older than 0.4.0.
   public var startImageWindow: DTHubImageWindow?
+  /// The start image as the canvas has it (the size of the canvas): cut, zoomed, turned, margins filled; a PNG. Nil without a
+  /// start image or from an older app. A plug-in where the user draws on the start image shows this one and sends the drawing
+  /// as `paint` with `"space": "canvas"`.
+  public var startImageFramed: String?
   /// The newest result of the open project (a file); nil when there is none or from an app older than the release after 0.4.3.
   public var lastResult: DTHubLastResult?
 
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
     startImageWindow = (try? container.decodeIfPresent(DTHubImageWindow.self, forKey: .startImageWindow)) ?? nil
+    startImageFramed = (try? container.decodeIfPresent(String.self, forKey: .startImageFramed)) ?? nil
     lastResult = (try? container.decodeIfPresent(DTHubLastResult.self, forKey: .lastResult)) ?? nil
     model = try container.decodeIfPresent(String.self, forKey: .model)
     family = try container.decodeIfPresent(String.self, forKey: .family)
@@ -189,7 +194,7 @@ public struct DTHubContext: Decodable, Sendable {
 
   private enum CodingKeys: String, CodingKey {
     case model, family, tempFolder, startImage, moodboard, languageModels, parameters, prompt, negativePrompt, strength
-    case promptGuide, loraCatalog, startImageWindow, lastResult
+    case promptGuide, loraCatalog, startImageWindow, startImageFramed, lastResult
   }
 }
 
@@ -210,12 +215,15 @@ public struct DTHubImageWindow: Decodable, Equatable, Sendable {
   public var y: Double
   public var width: Double
   public var height: Double
+  /// Degrees, clockwise, about the centre of the image; nil when it is not turned. The window is the cut before the turn.
+  public var rotation: Double?
 
-  public init(x: Double, y: Double, width: Double, height: Double) {
+  public init(x: Double, y: Double, width: Double, height: Double, rotation: Double? = nil) {
     self.x = x
     self.y = y
     self.width = width
     self.height = height
+    self.rotation = rotation
   }
 }
 

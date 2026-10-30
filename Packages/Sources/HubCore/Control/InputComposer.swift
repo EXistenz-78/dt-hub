@@ -46,6 +46,44 @@ public enum InputComposer {
     return context.makeImage()
   }
 
+  /// A drawing made on the framed picture (the size of the canvas) brought back to the start image's own coordinates, at
+  /// `width × height`: the opposite of `frame`. What the canvas does not show stays transparent.
+  public static func unframe(
+    _ drawing: CGImage, canvasWidth: Int, canvasHeight: Int, framing: Framing, imageWidth: Int, imageHeight: Int,
+    toWidth width: Int, height: Int
+  ) -> PaintBitmap? {
+    guard width > 0, height > 0, imageWidth > 0, imageHeight > 0, canvasWidth > 0, canvasHeight > 0 else { return nil }
+    let crop = FramingMath.cropRect(
+      imageWidth: imageWidth, imageHeight: imageHeight, canvasWidth: canvasWidth, canvasHeight: canvasHeight,
+      framing: framing)
+    let s = Double(canvasWidth) / crop.width
+    let drawn = CGRect(
+      x: -crop.minX * s, y: -(Double(imageHeight) - crop.maxY) * s, width: Double(imageWidth) * s,
+      height: Double(imageHeight) * s)
+    let angle = -framing.clamped().rotation * .pi / 180
+    // Image (y up) → canvas, as `frame` draws it; the drawing goes the other way.
+    let forward = CGAffineTransform(scaleX: s, y: s)
+      .concatenating(CGAffineTransform(translationX: drawn.minX, y: drawn.minY))
+      .concatenating(CGAffineTransform(translationX: -drawn.midX, y: -drawn.midY))
+      .concatenating(CGAffineTransform(rotationAngle: angle))
+      .concatenating(CGAffineTransform(translationX: drawn.midX, y: drawn.midY))
+    var bytes = [UInt8](repeating: 0, count: width * height * 4)
+    let done = bytes.withUnsafeMutableBytes { buffer -> Bool in
+      guard
+        let context = CGContext(
+          data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
+          space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+      else { return false }
+      context.interpolationQuality = .high
+      context.scaleBy(x: Double(width) / Double(imageWidth), y: Double(height) / Double(imageHeight))
+      context.concatenate(forward.inverted())
+      context.draw(drawing, in: CGRect(x: 0, y: 0, width: canvasWidth, height: canvasHeight))
+      return true
+    }
+    guard done else { return nil }
+    return PaintBitmap.fromPremultiplied(bytes, width: width, height: height)
+  }
+
   /// Turns what is drawn next about the centre of `drawn` (degrees, clockwise on the screen; Core Graphics counts
   /// angles the other way because its y axis points up).
   private static func turn(_ context: CGContext, about drawn: CGRect, rotation: Double) {

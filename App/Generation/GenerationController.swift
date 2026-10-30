@@ -878,9 +878,16 @@ extension GenerationController: ContributionTarget {
     guard let source = CGImageSourceCreateWithData(data as CFData, nil), let picture = CGImageSourceCreateImageAtIndex(source, 0, nil)
     else { throw ControlError.unreadable(image.name) }
     guard let size = control.maskSize else { return }
-    guard let bitmap = PaintBitmap.fitted(from: picture, width: size.width, height: size.height) else {
-      throw ControlError.unreadable(image.name)
+    let bitmap: PaintBitmap?
+    if image.inCanvas, let start = control.inputs.image {
+      // Drawn on the framed picture: back to the start image's own coordinates.
+      bitmap = InputComposer.unframe(
+        picture, canvasWidth: parameters.width, canvasHeight: parameters.height, framing: control.inputs.framing,
+        imageWidth: start.pixelWidth, imageHeight: start.pixelHeight, toWidth: size.width, height: size.height)
+    } else {
+      bitmap = PaintBitmap.fitted(from: picture, width: size.width, height: size.height)
     }
+    guard let bitmap else { throw ControlError.unreadable(image.name) }
     try control.commitPaint(bitmap)
   }
 

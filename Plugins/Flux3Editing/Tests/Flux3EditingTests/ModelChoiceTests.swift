@@ -81,3 +81,21 @@ struct ModelChoiceTests {
     #expect(EditModelChoice.mode(family: "flux3_5b", models: [describeOnly, model("qwen", family: "*")], readFile: { _ in nil }) == .standard(model: "qwen"))
   }
 }
+
+@MainActor
+@Suite("Framed start image")
+struct FramedStartImageTests {
+  @Test func theStageUsesTheFramedPictureAndNeedsNoWindow() throws {
+    let s = EditState(store: EditStore(storage: MemoryStorage()), italian: false)
+    let json = #"{"type":"context","tempFolder":"/tmp","startImage":"/a/raw.png","startImageFramed":"/a/framed.png","startImageWindow":{"x":10,"y":0,"width":80,"height":100,"rotation":30}}"#
+    s.update(context: try JSONDecoder().decode(DTHubContext.self, from: Data(json.utf8)))
+    #expect(s.startImage?.path == "/a/framed.png")
+    #expect(s.window == nil && s.windowNote == nil)
+  }
+
+  @Test func theWindowCarriesTheRotation() throws {
+    let json = #"{"type":"context","tempFolder":"/tmp","startImageWindow":{"x":0,"y":0,"width":1,"height":1,"rotation":30}}"#
+    let c = try JSONDecoder().decode(DTHubContext.self, from: Data(json.utf8))
+    #expect(c.startImageWindow?.rotation == 30)
+  }
+}

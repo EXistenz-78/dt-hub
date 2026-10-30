@@ -56,12 +56,16 @@ final class EditState: ObservableObject {
 
   func update(context: DTHubContext) {
     refs = RefNumbering.references(moodboard: context.moodboard ?? [], sizes: imageSize)
-    startImage = context.startImage.map { URL(fileURLWithPath: $0) }
-    startSize = context.startImage.flatMap(imageSize)
+    // The start image as the canvas has it, when the app sends it: it already is the canvas (zoom, offset and turn done),
+    // so the stage has no window to place it by.
+    let framed = context.startImageFramed
+    startImage = (framed ?? context.startImage).map { URL(fileURLWithPath: $0) }
+    startSize = (framed ?? context.startImage).flatMap(imageSize)
     if let width = context.parameters?.width, let height = context.parameters?.height, width > 0, height > 0 {
       generationSize = CGSize(width: width, height: height)
     }
-    window = context.startImageWindow
+    window = framed == nil ? context.startImageWindow : nil
+    hasFramedStart = framed != nil
     languageModels = context.languageModels ?? []
     contextFamily = context.family
     tempFolder = URL(fileURLWithPath: context.tempFolder, isDirectory: true)
@@ -118,7 +122,9 @@ final class EditState: ObservableObject {
   }
 
   /// Un'app che non manda `startImageWindow`: si dice, non si nasconde (spec §4).
-  var windowNote: String? { startImage != nil && window == nil ? L.text(.noWindow, italian: italian) : nil }
+  var windowNote: String? { startImage != nil && window == nil && !hasFramedStart ? L.text(.noWindow, italian: italian) : nil }
+  /// L'app manda l'immagine di partenza già inquadrata come il canvas.
+  private(set) var hasFramedStart = false
 
   // MARK: Le tele
 

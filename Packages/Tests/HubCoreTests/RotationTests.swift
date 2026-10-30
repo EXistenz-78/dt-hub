@@ -151,3 +151,50 @@ struct CanvasZoomTests {
     #expect(out.rotation == 30)
   }
 }
+
+/// A drawing made on the framed picture goes back to the start image's own coordinates.
+struct UnframeTests {
+  func halves() -> CGImage {  // 100×100, left half red, right half blue
+    let context = CGContext(
+      data: nil, width: 100, height: 100, bitsPerComponent: 8, bytesPerRow: 0,
+      space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+    context.setFillColor(CGColor(red: 0, green: 0, blue: 1, alpha: 1))
+    context.fill(CGRect(x: 0, y: 0, width: 100, height: 100))
+    context.setFillColor(CGColor(red: 1, green: 0, blue: 0, alpha: 1))
+    context.fill(CGRect(x: 0, y: 0, width: 50, height: 100))
+    return context.makeImage()!
+  }
+
+  func color(_ bitmap: PaintBitmap, _ x: Int, _ y: Int) -> [Int] {
+    let base = (y * bitmap.width + x) * 4
+    return (0..<4).map { Int(bitmap.pixels[base + $0]) }
+  }
+
+  @Test(arguments: [
+    Framing(), Framing(zoom: 30, rotation: 90), Framing(zoom: 30, offsetX: 0.2, rotation: -90),
+    Framing(zoom: -30, rotation: 180),
+  ])
+  func aDrawingOnTheFramedPictureLandsWhereItWasDrawn(framing: Framing) throws {
+    let framed = try #require(InputComposer.frame(halves(), toWidth: 100, height: 100, framing: framing))
+    let back = try #require(
+      InputComposer.unframe(
+        framed, canvasWidth: 100, canvasHeight: 100, framing: framing, imageWidth: 100, imageHeight: 100,
+        toWidth: 100, height: 100))
+    // Where both sides see the same thing: the left half red, the right half blue.
+    let left = color(back, 30, 50)
+    let right = color(back, 70, 50)
+    #expect(left[0] > 240 && left[2] < 15 && left[3] > 240, "\(left)")
+    #expect(right[2] > 240 && right[0] < 15 && right[3] > 240, "\(right)")
+  }
+
+  @Test func whatTheCanvasDoesNotShowStaysTransparent() throws {
+    let framing = Framing(zoom: 100)  // 4× in: only the middle quarter of the picture is in the canvas
+    let framed = try #require(InputComposer.frame(halves(), toWidth: 100, height: 100, framing: framing))
+    let back = try #require(
+      InputComposer.unframe(
+        framed, canvasWidth: 100, canvasHeight: 100, framing: framing, imageWidth: 100, imageHeight: 100,
+        toWidth: 100, height: 100))
+    #expect(color(back, 5, 5)[3] == 0)
+    #expect(color(back, 55, 50)[3] > 240)
+  }
+}

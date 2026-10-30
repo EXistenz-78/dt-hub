@@ -147,12 +147,16 @@ public struct PluginImageWindow: Codable, Equatable, Sendable {
   public var y: Double
   public var width: Double
   public var height: Double
+  /// The turn of the image about its centre, in degrees clockwise, when the Control tab has turned it. Absent (nil)
+  /// when it is not turned. The window above is the cut before the turn.
+  public var rotation: Double?
 
-  public init(x: Double, y: Double, width: Double, height: Double) {
+  public init(x: Double, y: Double, width: Double, height: Double, rotation: Double? = nil) {
     self.x = x
     self.y = y
     self.width = width
     self.height = height
+    self.rotation = rotation
   }
 }
 
@@ -195,6 +199,11 @@ public struct PluginContext: Codable, Equatable, Sendable {
   /// Where the start image sits in the canvas of the Generation (the framing of the Control tab). Absent without a start
   /// image or from an older app.
   public var startImageWindow: PluginImageWindow?
+  /// The start image as it is in the canvas of the Generation (the size of the canvas): cut, zoomed, turned and with the
+  /// margins filled as the Control tab has it, without the Brush drawing. A PNG in the `tempFolder`. Absent without a
+  /// start image or from an older app. A plug-in whose user draws on the start image shows this one and sends what it
+  /// draws as `paint` with `space: "canvas"`.
+  public var startImageFramed: String?
   /// The newest result of the open project (the first of the Results strip): its file. Absent when there is none or from an
   /// older app.
   public var lastResult: PluginLastResult?
@@ -204,8 +213,9 @@ public struct PluginContext: Codable, Equatable, Sendable {
     moodboard: [String]? = nil, languageModels: [PluginLanguageModel]? = nil, prompt: String? = nil,
     negativePrompt: String? = nil, strength: Double? = nil, promptGuide: PluginPromptGuide? = nil,
     loraCatalog: [PluginCatalogLoRA]? = nil, startImageWindow: PluginImageWindow? = nil,
-    lastResult: PluginLastResult? = nil
+    lastResult: PluginLastResult? = nil, startImageFramed: String? = nil
   ) {
+    self.startImageFramed = startImageFramed
     self.lastResult = lastResult
     self.startImageWindow = startImageWindow
     self.loraCatalog = loraCatalog

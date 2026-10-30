@@ -107,6 +107,14 @@ struct DTHubApp: App {
     plugins.startImageWindow = {
       control.startImageWindow(canvasWidth: generation.parameters.width, canvasHeight: generation.parameters.height)
     }
+    let framed = FramedStartImage(
+      folder: FileManager.default.temporaryDirectory.appendingPathComponent("DTHub-plugins", isDirectory: true))
+    framed.onChange = { [weak plugins] in plugins?.refreshContext() }
+    plugins.startImageFramedPath = {
+      framed.path(
+        for: control, canvasWidth: generation.parameters.width, canvasHeight: generation.parameters.height,
+        fill: generation.marginFill)
+    }
     plugins.lastResultPath = { generation.session.results.first?.fileURL?.path }
     plugins.moodboardPaths = { control.moodboardURLs.map(\.path) }
     plugins.languageModels = {
