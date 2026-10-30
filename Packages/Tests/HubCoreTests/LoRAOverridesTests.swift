@@ -151,4 +151,12 @@ struct LoRAOverridesTests {
     overrides.setWeights(min: 0.4, base: nil, max: nil, for: fox)
     #expect(overrides.entries[fox.file]?.trigger == "mine")
   }
+
+  @Test func withALimitTheBaseIsWrittenEvenWhenItIsTheDefault() {
+    var overrides = LoRAOverrides()
+    overrides.setWeights(min: 0.4, base: 1, max: 1.5, for: fox)
+    #expect(overrides.entries[fox.file]?.weight == 1 && overrides.entries[fox.file]?.minWeight == 0.4 && overrides.entries[fox.file]?.maxWeight == 1.5)
+    overrides.setWeights(min: nil, base: 1, max: nil, for: fox)
+    #expect(overrides.entries[fox.file] == nil)
+  }
 }

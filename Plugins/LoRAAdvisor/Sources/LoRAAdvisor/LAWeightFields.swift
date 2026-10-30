@@ -57,7 +57,8 @@ struct LAWeightFields: View {
     let (min, base, max) = (LAWeights.parse(low), LAWeights.parse(base), LAWeights.parse(high))
     Task {
       await state.setWeights(min: min, base: base, max: max, for: file)
-      sync()
+      // Never while another field is being written: the answer would put the old text back over what is typed.
+      if focus == nil { sync() }
     }
   }
 }

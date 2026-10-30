@@ -77,7 +77,8 @@ public struct LoRAOverrides: Equatable, Sendable {
     var entry = entries[lora.file] ?? LoRAOverride()
     entry.minWeight = low
     entry.maxWeight = high
-    entry.weight = base == Self.defaultWeight ? nil : base
+    // With a limit the weight is written even when it is the default, so the three go together in the file.
+    entry.weight = base == Self.defaultWeight && low == nil && high == nil ? nil : base
     store(entry, for: lora.file)
   }
 
