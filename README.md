@@ -17,6 +17,7 @@ This is an independent community project, not affiliated with or endorsed by Dra
 - **Projects.** Each project is a subfolder of the output folder with its own start image, mask, Moodboard, results strip and plug-in state; reopening one restores the prompt and settings of its last image. Switch from the **Project** menu in the header.
 - **Your own LoRA trigger words and weights.** *Manage LoRAs…* (LoRA card) lists the LoRAs of the server by model family, compactly: change a trigger word or the default weight (−4 to 4) of any of them. The server's trigger words are inherited and only your changes are kept, in a file of DT Hub's own: Draw Things' files are never touched.
 - **Presets and preset pipelines.** Save a configuration as a preset and chain several presets into one Run. Recommended settings per model family are suggested for you.
+- **Video generation (in development).** Text-to-video and image-to-video with **MiniMax H3**, **FastH3 Omni** and **LTX-2.3**, on the DT+ cloud (and with models you have downloaded, untested). A **Video Settings** card sets the number of frames (the valid counts of each model, with the length in seconds next to it), Audio Shift, Strategic Stochastic Sampling and compression artifacts; an **Accelerator Settings** card holds Sol Attention and TeaCache (H3). The result is an HEVC **MP4 with its sound**, shown in the Results strip with a small badge and played in the Results window; dragging it or *Show in Finder* gives the MP4. The CU meter estimates H3 and LTX-2.3 with Draw Things' own formula, and Enhance Prompt has a family prompt for each of the two. Support for video is still under development: some functions may not work as expected.
 - **A queue of generations.** The **Queue** sidebar (the button in the header opens and closes it) lines up generations to run one after the other: **+** saves the Generation tab, the pipeline on RUN and everything in Control (images included) as an entry, **Start** restores each entry and presses RUN, and an entry gets a green check when it finishes or an orange ✕ when it fails, after which the queue goes on. Stop ends the run and the queue. The queue is kept per project, on disk. Pipelines a plug-in guides (Tiled Upscale, the seam correction of Panorama 360) can be queued too.
 - **A local LLM (MLX)** that runs inside the app and can see images, with controls to free memory so the image model and the LLM can share a Mac. Nothing is downloaded unless you ask for it.
 - **Prompt tools.** *Enhance Prompt* rewrites your prompt for the selected model's family (and sees the start image and the Moodboard pictures, so "image 1", "image 2"… keep their meaning) and *Generate Prompt* writes one from the start image, both with the local language model.
@@ -62,7 +63,7 @@ This is an independent community project, not affiliated with or endorsed by Dra
 
 ## Install
 
-1. Download **`DT-Hub-0.7.1-macOS-arm64.zip`** from the [latest release](https://github.com/EXistenz-78/dt-hub/releases/latest).
+1. Download **`DT-Hub-0.8.0-macOS-arm64.zip`** from the [latest release](https://github.com/EXistenz-78/dt-hub/releases/latest).
 2. Unzip it and drag **DT Hub.app** into `/Applications`.
 3. Read **First launch** below before you open it.
 4. Optional: add the plug-ins (they are in the same release, see [`Plugins/`](Plugins/README.md#install)).
@@ -179,7 +180,7 @@ The interface of the app and of the plug-ins is available in **English and Itali
 
 > **Video (in development).** Support for video models (MiniMax H3, LTX-2.3) is still under development: some functions may not work as expected.
 
-An early version (0.7.1), used daily by its author. Feedback, bug reports and ideas are welcome: open an [Issue](../../issues).
+An early version (0.8.0), used daily by its author. Feedback, bug reports and ideas are welcome: open an [Issue](../../issues).
 
 ## License
 

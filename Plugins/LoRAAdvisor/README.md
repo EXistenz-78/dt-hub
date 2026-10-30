@@ -20,7 +20,7 @@ Each step works only on what is missing: the first time on everything, afterward
 
 ## The selected LoRA (right, top)
 
-When a row is open, a card above "Advise" shows its thumbnail large (with the **Thumbnail** menu) under the LoRA's name; with no row open the card is not there. It also has three fields, **Min**, **Base** and **Max**: the lowest weight, the weight the LoRA starts with and the highest you want for it (an empty Min or Max is no limit, an empty Base is 1; Min ≤ Base ≤ Max, all between -4 and 4). They are kept by DT Hub together with the data of **Manage LoRAs** (Base is the weight you see there), so they hold on the Generation tab too: the arrows of the weight field never go beyond Min and Max, and a value you type beyond them is kept, with an orange border round the field. **Advise** keeps its weights within the limits, and **Add** starts from Base. Needs DT Hub 0.7.2 or later.
+When a row is open, a card above "Advise" shows its thumbnail large (with the **Thumbnail** menu) under the LoRA's name; with no row open the card is not there. It also has three fields, **Min**, **Base** and **Max**: the lowest weight, the weight the LoRA starts with and the highest you want for it (an empty Min or Max is no limit, an empty Base is 1; Min ≤ Base ≤ Max, all between -4 and 4). They are kept by DT Hub together with the data of **Manage LoRAs** (Base is the weight you see there), so they hold on the Generation tab too: the arrows of the weight field never go beyond Min and Max, and a value you type beyond them is kept, with an orange border round the field. **Advise** keeps its weights within the limits, and **Add** starts from Base. Needs DT Hub 0.8.0 or later.
 
 ## Advise (right)
 
