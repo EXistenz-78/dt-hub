@@ -48,7 +48,10 @@ struct ExploreView: View {
       guard let path = model.selection.primary, let entry = model.entries.first(where: { $0.path == path }) else {
         return primaryImage = nil
       }
-      primaryImage = await GalleryActions.image(for: entry)
+      let loaded = await GalleryActions.image(for: entry)
+      // The choice moved while the file was being read: this picture is not the chosen one any more.
+      guard !Task.isCancelled else { return }
+      primaryImage = loaded
     }
     .onAppear { draft = model.query }
     .onChange(of: model.onlyFavorites) { model.clampSelection() }

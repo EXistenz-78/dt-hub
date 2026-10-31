@@ -18,8 +18,18 @@ public final class GalleryModel {
   @ObservationIgnored private let foldersStore: GalleryFoldersStore
   @ObservationIgnored private let favoritesStore: FavoritesStore
   @ObservationIgnored private let index: GalleryIndex
+  /// How the folders are scanned (the index's `refresh`; a test puts its own).
+  @ObservationIgnored private let scan: @Sendable (URL, [URL]) -> [GalleryEntry]
+  /// Which scan is the latest one: an older scan that ends later is dropped.
+  @ObservationIgnored private var latestScan = UUID()
+  /// The pictures taken out while a scan was running: that scan may still have seen them.
+  @ObservationIgnored private var removedDuringScan: Set<String> = []
 
-  public init(outputFolder: URL, folders: GalleryFoldersStore, favorites: FavoritesStore, index: GalleryIndex) {
+  public init(
+    outputFolder: URL, folders: GalleryFoldersStore, favorites: FavoritesStore, index: GalleryIndex,
+    scan: (@Sendable (URL, [URL]) -> [GalleryEntry])? = nil
+  ) {
+    self.scan = scan ?? { index.refresh(outputFolder: $0, extraFolders: $1) }
     self.outputFolder = outputFolder
     foldersStore = folders
     favoritesStore = favorites
@@ -38,10 +48,15 @@ public final class GalleryModel {
 
   /// Scans again; the pictures found replace `entries` at the end.
   public func refresh() async {
+    let mine = UUID()
+    latestScan = mine
+    removedDuringScan = []
     isIndexing = true
-    let (output, extras, index) = (outputFolder, extraFolders, index)
-    let found = await Task.detached { index.refresh(outputFolder: output, extraFolders: extras) }.value
-    entries = found
+    let (output, extras, scan) = (outputFolder, extraFolders, scan)
+    let found = await Task.detached { scan(output, extras) }.value
+    // A newer scan has started since: its result is the one that counts.
+    guard latestScan == mine else { return }
+    entries = found.filter { !removedDuringScan.contains($0.path) }
     isIndexing = false
     clampSelection()
   }
@@ -62,11 +77,14 @@ public final class GalleryModel {
   public func toggleFavorite(_ path: String) {
     if favorites.contains(path) { favorites.remove(path) } else { favorites.insert(path) }
     favoritesStore.save(favorites)
+    // With the star filter on, a picture that loses its star leaves the grid, and the selection with it.
+    if onlyFavorites { clampSelection() }
   }
 
   /// Takes pictures that were moved to the Trash out of the gallery, the stars and the selection.
   public func removeEntries(_ paths: Set<String>) {
     entries.removeAll { paths.contains($0.path) }
+    removedDuringScan.formUnion(paths)
     if !favorites.isDisjoint(with: paths) {
       favorites.subtract(paths)
       favoritesStore.save(favorites)

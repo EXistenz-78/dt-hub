@@ -427,7 +427,7 @@ struct ResultsView: View {
     return HStack(spacing: DS.controlGap) {
       HStack(spacing: 6) {
         tabButton(.results, title: "results.tab.results")
-        tabButton(.explore, title: "results.tab.explore")
+        tabButton(.explore, title: "results.tab.explore", count: controller.gallery.entries.count)
       }
       if tab == .explore {
         let picked = exploreSelected
@@ -472,7 +472,10 @@ struct ResultsView: View {
     }
     Button("results.addToMoodboard") { exploreMoodboard(picked) }
       .buttonStyle(DSPillButtonStyle())
-    if picked.count == 1, let exploreImage {
+    // Only for the picture that is chosen now: while the next one loads, `exploreImage` is still the old one.
+    if picked.count == 1, let exploreImage,
+      exploreImage.fileURL?.standardizedFileURL.path == controller.gallery.selection.primary
+    {
       Button("results.resume") { controller.resume(exploreImage, with: connection) }
         .buttonStyle(DSPillButtonStyle())
     }
@@ -528,11 +531,15 @@ struct ResultsView: View {
       removed: Set(entries.map(\.path)), order: before, remaining: gallery.visible.map(\.path))
   }
 
-  private func tabButton(_ target: ResultsTab, title: LocalizedStringKey) -> some View {
+  private func tabButton(_ target: ResultsTab, title: LocalizedStringKey, count: Int? = nil) -> some View {
     Button {
       tab = target
     } label: {
-      Text(title)
+      HStack(spacing: 4) {
+        Text(title)
+        // The number of pictures in the gallery, small.
+        if let count, count > 0 { Text(verbatim: "\(count)").font(.caption2).foregroundStyle(.secondary) }
+      }
     }
     .buttonStyle(DSTabButtonStyle(isSelected: tab == target))
     .focusEffectDisabled()

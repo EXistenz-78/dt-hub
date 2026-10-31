@@ -112,4 +112,72 @@ struct GalleryModelTests {
     model.clampSelection()
     #expect(model.selection.ids.isEmpty, "nothing visible: nothing selected")
   }
+
+  @Test func unstarringWithTheFilterOnDropsTheSelection() async throws {
+    let env = makeEnv()
+    defer { try? FileManager.default.removeItem(at: env.root) }
+    let folder = try extra(env, "x", prompts: ["uno", "due"])
+    let model = env.model()
+    await model.addFolder(folder)
+    let path = try #require(model.entries.first).path
+    model.toggleFavorite(path)
+    model.onlyFavorites = true
+    model.selection = ResultSelection(only: path)
+    model.toggleFavorite(path)
+    #expect(model.visible.isEmpty && model.selection.ids.isEmpty, "a picture that is not shown is not selected")
+  }
+
+  @Test func aLateScanDoesNotOverwriteANewerOne() async throws {
+    let env = makeEnv()
+    defer { try? FileManager.default.removeItem(at: env.root) }
+    let stale = GalleryEntry(path: "/stale.png", date: .now, project: "P", searchText: "stale")
+    let fresh = GalleryEntry(path: "/fresh.png", date: .now, project: "P", searchText: "fresh")
+    let gate = DispatchSemaphore(value: 0)
+    let calls = ScanCounter()
+    let model = GalleryModel(
+      outputFolder: env.output, folders: env.folders, favorites: env.favorites, index: env.index,
+      scan: { _, _ in
+        if calls.next() == 1 {
+          gate.wait()
+          return [stale]
+        }
+        return [fresh]
+      })
+    let first = Task { await model.refresh() }
+    while calls.value < 1 { await Task.yield() }
+    await model.refresh()
+    gate.signal()
+    await first.value
+    #expect(model.entries.map(\.path) == ["/fresh.png"])
+    #expect(!model.isIndexing)
+  }
+
+  @Test func aPictureTrashedDuringAScanDoesNotComeBack() async throws {
+    let env = makeEnv()
+    defer { try? FileManager.default.removeItem(at: env.root) }
+    let a = GalleryEntry(path: "/a.png", date: .now, project: "P", searchText: "a")
+    let b = GalleryEntry(path: "/b.png", date: .now, project: "P", searchText: "b")
+    let gate = DispatchSemaphore(value: 0)
+    let started = ScanCounter()
+    let model = GalleryModel(
+      outputFolder: env.output, folders: env.folders, favorites: env.favorites, index: env.index,
+      scan: { _, _ in
+        _ = started.next()
+        gate.wait()
+        return [a, b]
+      })
+    let scan = Task { await model.refresh() }
+    while started.value < 1 { await Task.yield() }
+    model.removeEntries(["/a.png"])
+    gate.signal()
+    await scan.value
+    #expect(model.entries.map(\.path) == ["/b.png"])
+  }
+}
+
+private final class ScanCounter: @unchecked Sendable {
+  private let lock = NSLock()
+  private var n = 0
+  func next() -> Int { lock.withLock { n += 1; return n } }
+  var value: Int { lock.withLock { n } }
 }
