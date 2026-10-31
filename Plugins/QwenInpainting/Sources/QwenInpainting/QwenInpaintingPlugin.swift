@@ -5,7 +5,7 @@ import SwiftUI
 @MainActor
 final class QwenInpaintingPlugin: DTHubPlugin {
   let manifest = DTHubManifest(
-    id: "com.exiztenz.dthub.qweninpainting", name: "Qwen 2.1 Inpainting", version: "1.0", symbol: "scribble.variable",
+    id: "com.exiztenz.dthub.qweninpainting", name: "Qwen 2.1 Inpainting", version: "1.1", symbol: "scribble.variable",
     families: ["qwen_image_2.1"])
   private let state = InpaintingState()
   private var host: DTHubHost?

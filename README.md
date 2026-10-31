@@ -12,6 +12,8 @@ This is an independent community project, not affiliated with or endorsed by Dra
 - **Image and Moodboard always in sight.** The Control tab shows the start image, the Moodboard and the Canvas side by side, never behind a menu: every Moodboard picture can be switched on or off with its eye, and you drag pictures in from the Results strip, the Finder or the clipboard.
 - **A lock on the canvas proportions.** Width and height follow the ratio you choose: *Lock ratio* keeps it while you type or step either value, and the Ratios menu and the swap button change it in one click.
 - **Everything you made, at hand.** The Results window keeps the images of the session (and brings back the last ones after a restart); each thumbnail shows **how many seconds it took**, can be dragged anywhere, and offers *Use as image*, *Add to Moodboard*, *Show in Finder*, *Resume parameters* and *Trash*. Every PNG is saved with its prompt, its whole configuration and the time it took inside the file, in the same layout as Draw Things' own images, so tools made for those read DT Hub's too.
+- **Explore.** A second tab of the Results window shows **every picture of every project** in one grid (and of any folder you add with **+**, kept between launches): search the metadata of all of them at once (prompt, model, LoRAs, any setting), star your favourites and filter by them, select several, drag, use as image, add to the Moodboard or send to the Trash as in the strip; the space bar opens a large preview.
+- **Zoom and rotation.** The Results window zooms with the wheel or a pinch (drag to move, double-click to fit) and the arrow keys step through the strip. In the Control tab's Canvas the wheel and the pinch zoom the picture, a **Rotation** slider turns it, and in Draw mode the view zooms and moves (Space + drag); the plug-ins that draw on the start image (Qwen 2.1 Inpainting, Flux3 Editing) now draw on the picture as framed.
 - **Result details.** A collapsible sidebar in the Results window shows the prompt, settings, LoRAs and timing saved in the selected image; the text can be selected and copied.
 - **Incremental mode.** A switch in the header makes each result the start image of the next RUN.
 - **Projects.** Each project is a subfolder of the output folder with its own start image, mask, Moodboard, results strip and plug-in state; reopening one restores the prompt and settings of its last image. Switch from the **Project** menu in the header.
@@ -63,7 +65,7 @@ This is an independent community project, not affiliated with or endorsed by Dra
 
 ## Install
 
-1. Download **`DT-Hub-0.8.0-macOS-arm64.zip`** from the [latest release](https://github.com/EXistenz-78/dt-hub/releases/latest).
+1. Download **`DT-Hub-0.9.0-macOS-arm64.zip`** from the [latest release](https://github.com/EXistenz-78/dt-hub/releases/latest).
 2. Unzip it and drag **DT Hub.app** into `/Applications`.
 3. Read **First launch** below before you open it.
 4. Optional: add the plug-ins (they are in the same release, see [`Plugins/`](Plugins/README.md#install)).
@@ -180,7 +182,7 @@ The interface of the app and of the plug-ins is available in **English and Itali
 
 > **Video (in development).** Support for video models (MiniMax H3, LTX-2.3) is still under development: some functions may not work as expected.
 
-An early version (0.8.0), used daily by its author. Feedback, bug reports and ideas are welcome: open an [Issue](../../issues).
+An early version (0.9.0), used daily by its author. Feedback, bug reports and ideas are welcome: open an [Issue](../../issues).
 
 ## License
 

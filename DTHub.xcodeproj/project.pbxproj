@@ -177,7 +177,7 @@
 					"@executable_path/../Frameworks",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 0.8.0;
+				MARKETING_VERSION = 0.9.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.exiztenz.DTHub;
 				PRODUCT_NAME = "DT Hub";
 				SDKROOT = macosx;
@@ -327,7 +327,7 @@
 					"@executable_path/../Frameworks",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 0.8.0;
+				MARKETING_VERSION = 0.9.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.exiztenz.DTHub;
 				PRODUCT_NAME = "DT Hub";
 				SDKROOT = macosx;
