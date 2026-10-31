@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup Esplora</title>
+<style>
+  :root{
+    --bg:#3a3f44; --bg2:#2b2f33; --panel:rgba(255,255,255,.06); --text:#f2f2f2; --dim:#9aa0a6;
+    --accent:#22c7ee; --star:#ffcc33; --pill:#3b3f44; --line:rgba(255,255,255,.1);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#16181a;font:13px -apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif;color:var(--text);
+    display:flex;justify-content:center;padding:24px}
+  .window{width:1000px;height:720px;background:linear-gradient(#59646a,#3b4045);border-radius:12px;display:flex;flex-direction:column;
+    box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden;position:relative}
+  .titlebar{height:38px;background:#1f2123;display:flex;align-items:center;gap:8px;padding:0 14px;color:var(--dim);font-weight:600}
+  .dot{width:12px;height:12px;border-radius:50%;background:#4a4d50}
+  .body{flex:1;display:flex;gap:12px;padding:14px 14px 0;min-height:0}
+  .main{flex:1;display:flex;flex-direction:column;min-width:0}
+  .area{flex:1;background:var(--panel);border-radius:12px;position:relative;min-height:0;display:flex;flex-direction:column}
+  .sidebar{width:230px;background:var(--panel);border-radius:12px;padding:12px;overflow:auto;font-size:12px}
+  .sidebar h4{margin:0 0 6px;font-size:11px;text-transform:uppercase;color:var(--dim);letter-spacing:.05em}
+  .sidebar p{margin:0 0 12px;line-height:1.4}
+  .circle{position:absolute;top:10px;right:10px;width:36px;height:36px;border-radius:50%;background:rgba(40,43,46,.9);
+    display:grid;place-items:center;cursor:pointer;border:0;color:var(--text);z-index:3}
+  /* Risultati */
+  .big{flex:1;margin:12px;border-radius:8px;background:linear-gradient(135deg,#2e4a5c,#c0552d 60%,#f2c280)}
+  .strip{display:flex;gap:8px;padding:10px 2px 6px;overflow:hidden}
+  .th{width:72px;height:72px;border-radius:8px;flex:none;position:relative}
+  .th.sel,.cell.sel{outline:2px solid var(--accent)}
+  .badge{position:absolute;top:3px;left:50%;transform:translateX(-50%);font:600 10px ui-monospace,monospace;background:rgba(0,0,0,.6);padding:1px 5px;border-radius:9px;color:#fff}
+  /* Esplora */
+  .toolbar{display:flex;align-items:center;gap:8px;padding:12px 56px 8px 12px}
+  .tbtn{height:30px;min-width:30px;padding:0 10px;border-radius:15px;background:var(--pill);border:0;color:var(--text);cursor:pointer;font:inherit;display:inline-flex;align-items:center;gap:6px;justify-content:center}
+  .tbtn.on{background:var(--star);color:#222}
+  .menu{position:relative}
+  .menu .pop{display:none;position:absolute;top:36px;left:0;width:300px;background:#26292c;border:1px solid var(--line);border-radius:10px;padding:6px;z-index:5;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+  .menu.open .pop{display:block}
+  .pop .row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px}
+  .pop .row:hover{background:rgba(255,255,255,.07)}
+  .pop .row span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pop .row b{cursor:pointer;color:#ff6b6b;font-weight:400}
+  .pop .empty{color:var(--dim);padding:8px}
+  .spacer{flex:1}
+  .search{width:260px;height:30px;border-radius:15px;border:1px solid var(--line);background:rgba(0,0,0,.25);color:var(--text);padding:0 12px;font:inherit;outline:none}
+  .search:focus{border-color:var(--accent)}
+  .grid{flex:1;overflow:auto;padding:4px 12px 12px;display:grid;grid-template-columns:repeat(auto-fill,108px);gap:8px;align-content:start}
+  .cell{width:108px;height:108px;border-radius:8px;position:relative;cursor:pointer}
+  .cell .star{position:absolute;top:5px;left:5px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.45);display:grid;place-items:center;
+    color:rgba(255,255,255,.75);font-size:13px;line-height:1;border:0;padding:0;cursor:pointer}
+  .cell .star.on{color:var(--star);background:rgba(0,0,0,.6)}
+  .cell .proj{position:absolute;bottom:4px;left:4px;right:4px;font-size:9.5px;background:rgba(0,0,0,.55);border-radius:6px;padding:1px 5px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0}
+  .cell:hover .proj{opacity:1}
+  .none{grid-column:1/-1;text-align:center;color:var(--dim);padding:60px 0}
+  .count{color:var(--dim);font-size:11px}
+  /* bottom row */
+  .actions{margin:10px 8px 0;display:flex;align-items:center;gap:8px;padding:10px 12px;margin-bottom:10px}
+  .tabs{display:flex;align-items:center;gap:6px}
+  .tab{height:32px;padding:0 14px;border-radius:16px;font-size:15px;font-weight:600;cursor:pointer;color:var(--text);background:transparent;border:0;font-family:inherit}
+  .tab.on{background:var(--accent);color:#04323d;box-shadow:0 0 0 3px rgba(34,199,238,.35)}
+  .tab small{opacity:.6;font-weight:500;margin-left:5px;font-size:11px}
+  .pill{height:34px;padding:0 16px;border-radius:17px;background:var(--pill);border:0;color:var(--text);font:600 14px inherit;font-family:inherit;cursor:pointer}
+  .pill.icon{width:38px;padding:0}
+  .pill:disabled{opacity:.4;cursor:default}
+  .hint{color:var(--dim);font-size:11px;margin-left:10px}
+  /* Quick Look */
+  .ql{display:none;position:absolute;inset:0;background:rgba(0,0,0,.55);z-index:20;align-items:center;justify-content:center}
+  .ql.open{display:flex}
+  .qlbox{width:620px;height:520px;background:#222426;border-radius:12px;box-shadow:0 20px 60px #000;display:flex;flex-direction:column;overflow:hidden}
+  .qlbox .bar{height:34px;display:flex;align-items:center;justify-content:center;color:var(--dim);font-weight:600;border-bottom:1px solid var(--line);position:relative}
+  .qlbox .bar i{position:absolute;left:12px;width:12px;height:12px;border-radius:50%;background:#ff5f57}
+  .qlbox .img{flex:1;margin:10px;border-radius:6px}
+  .legend{margin-top:14px;color:var(--dim);font-size:12px;width:1000px;line-height:1.6}
+  .wrap{display:flex;flex-direction:column;align-items:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="window" id="win" tabindex="0">
+  <div class="titlebar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span style="margin-left:14px">Risultati</span></div>
+  <div class="body">
+    <div class="main">
+      <div class="area" id="area"></div>
+      <div id="stripWrap"></div>
+    </div>
+    <div class="sidebar" id="side"></div>
+  </div>
+  <div class="actions">
+    <div class="tabs">
+      <button class="tab" id="tabR">Risultati</button>
+      <button class="tab" id="tabE">Esplora<small id="cnt"></small></button>
+    </div>
+    <span id="selInfo" class="count"></span>
+    <span class="spacer"></span>
+    <button class="pill" id="bUse">Usa come immagine</button>
+    <button class="pill" id="bMood">Aggiungi al Moodboard</button>
+    <button class="pill" id="bResume">Riprendi parametri</button>
+    <button class="pill icon" title="Mostra nel Finder">📁</button>
+    <button class="pill icon" title="Cestino">🗑</button>
+  </div>
+  <div class="ql" id="ql"><div class="qlbox"><div class="bar"><i></i><span id="qlName"></span></div><div class="img" id="qlImg"></div></div></div>
+</div>
+<div class="legend">
+  <b>Prova:</b> clic sulle tab · clic / ⌘-clic / ⇧-clic sulle celle · stella su una cella · filtro ★ · cerca (es. «flux», «luna», «candela») ·
+  <b>+</b> aggiunge una cartella finta · menu cartelle per toglierle · <b>barra spaziatrice</b> con una sola cella selezionata apre l'anteprima (di nuovo spazio o Esc la chiude).
+  In «Risultati» il seed non c'è più. Le celle di Esplora sono 108 px contro i 72 px della strip.
+</div>
+</div>
+
+<script>
+const projects=["Luna e candele","Ritratti kimono","Paesaggi nebbia","Moodboard rosso"];
+const models=["flux2 klein","qwen image 2.1","z-image turbo","sd3.5"];
+const words=["luna piena","candela","kimono","donna","finestra","montagna","fiori rossi","ritratto","notte","nebbia"];
+const palettes=[["#2e4a5c","#c0552d"],["#3b2a4a","#e29a6b"],["#1d2a3a","#8aa4b8"],["#4a2e2e","#f2c280"],["#27403a","#d9b36c"],["#1c1c28","#6f7ab8"]];
+let imgs=[];
+for(let i=0;i<64;i++){
+  const p=palettes[i%palettes.length];
+  imgs.push({id:i,proj:projects[i%4],model:models[(i*3)%4],prompt:words[i%10]+", "+words[(i*7+3)%10],
+    seed:100000+i*7919,fav:i%9===0,extra:false,
+    bg:`linear-gradient(${(i*37)%360}deg,${p[0]},${p[1]})`,name:`2026-10-${String(30-(i%20)).padStart(2,"0")}/1${String(i).padStart(5,"0")}.png`});
+}
+let tab="E",sel=new Set([3]),anchor=3,onlyFav=false,query="",extras=[];
+const $=id=>document.getElementById(id);
+
+function visible(){
+  const terms=query.toLowerCase().split(/\s+/).filter(Boolean);
+  return imgs.filter(m=>(!onlyFav||m.fav)&&terms.every(t=>(m.prompt+" "+m.model+" "+m.proj+" seed "+m.seed).toLowerCase().includes(t)));
+}
+function render(){
+  $("tabR").className="tab"+(tab==="R"?" on":"");$("tabE").className="tab"+(tab==="E"?" on":"");
+  const v=visible();
+  $("cnt").textContent=" "+imgs.length;
+  const one=sel.size===1?imgs[[...sel][0]]:null;
+  $("selInfo").textContent=sel.size>1?sel.size+" selezionate":"";
+  $("bUse").disabled=$("bResume").disabled=sel.size!==1;
+  // side
+  $("side").innerHTML=one?`<h4>Prompt</h4><p>${one.prompt}</p><h4>Modello</h4><p>${one.model}</p><h4>Progetto</h4><p>${one.proj}</p><h4>Seed</h4><p>${one.seed}</p><h4>File</h4><p style="word-break:break-all">${one.name}</p>`
+    :`<p style="color:var(--dim)">${sel.size>1?sel.size+" immagini selezionate":"Nessuna immagine selezionata"}</p>`;
+  if(tab==="R"){
+    const cur=one||imgs[0];
+    $("area").innerHTML=`<button class="circle" onclick="toggleSide()">▥</button><div class="big" style="background:${cur.bg}"></div>`;
+    $("stripWrap").innerHTML=`<div class="strip">${imgs.slice(0,11).map(m=>`<div class="th ${sel.has(m.id)?"sel":""}" style="background:${m.bg}" onclick="clickCell(event,${m.id})"><span class="badge">${40+m.id*9}sec</span></div>`).join("")}</div>`;
+  }else{
+    $("stripWrap").innerHTML="";
+    $("area").innerHTML=`<button class="circle" onclick="toggleSide()">▥</button>
+    <div class="toolbar">
+      <button class="tbtn" title="Aggiungi cartella" onclick="addFolder()">＋</button>
+      <div class="menu ${menuOpen?"open":""}" id="menu"><button class="tbtn" onclick="toggleMenu(event)">Cartelle Extra ▾</button>
+        <div class="pop">${extras.length?extras.map((f,i)=>`<div class="row"><span>${f}</span><b onclick="rmFolder(${i})">Elimina</b></div>`).join(""):'<div class="empty">Nessuna cartella aggiunta</div>'}</div></div>
+      <span class="spacer"></span>
+      <button class="tbtn ${onlyFav?"on":""}" onclick="onlyFav=!onlyFav;render()" title="Solo preferite">★</button>
+      <input class="search" id="q" placeholder="Cerca nei metadati…" value="${query.replace(/"/g,"&quot;")}">
+    </div>
+    <div class="grid">${v.length?v.map(m=>`<div class="cell ${sel.has(m.id)?"sel":""}" style="background:${m.bg}" onclick="clickCell(event,${m.id})">
+      <button class="star ${m.fav?"on":""}" onclick="event.stopPropagation();imgs[${m.id}].fav=!imgs[${m.id}].fav;render()">${m.fav?"★":"☆"}</button>
+      <span class="proj">${m.proj}</span></div>`).join(""):'<div class="none">Nessuna immagine corrisponde</div>'}</div>`;
+    const q=$("q");q.addEventListener("input",e=>{query=e.target.value;const pos=q.selectionStart;render();const n=$("q");n.focus();n.setSelectionRange(pos,pos)});
+    q.addEventListener("keydown",e=>e.stopPropagation());
+  }
+}
+let menuOpen=false;
+function toggleMenu(e){e.stopPropagation();menuOpen=!menuOpen;render()}
+function addFolder(){extras.push("~/Pictures/Cartella "+(extras.length+1));render()}
+function rmFolder(i){extras.splice(i,1);render()}
+function toggleSide(){const s=$("side");s.style.display=s.style.display==="none"?"":"none"}
+function clickCell(e,id){
+  const order=(tab==="E"?visible():imgs.slice(0,11)).map(m=>m.id);
+  if(e.metaKey||e.ctrlKey){sel.has(id)?sel.delete(id):sel.add(id);anchor=id}
+  else if(e.shiftKey){const a=order.indexOf(anchor),b=order.indexOf(id);sel=new Set(order.slice(Math.min(a,b),Math.max(a,b)+1))}
+  else{sel=new Set([id]);anchor=id}
+  render();
+}
+$("tabR").onclick=()=>{tab="R";render()};$("tabE").onclick=()=>{tab="E";render()};
+document.addEventListener("click",()=>{if(menuOpen){menuOpen=false;render()}});
+document.addEventListener("keydown",e=>{
+  if(e.key===" "&&tab==="E"){
+    e.preventDefault();
+    if($("ql").classList.contains("open")){$("ql").classList.remove("open");return}
+    if(sel.size===1){const m=imgs[[...sel][0]];$("qlName").textContent=m.name;$("qlImg").style.background=m.bg;$("ql").classList.add("open")}
+  }
+  if(e.key==="Escape")$("ql").classList.remove("open");
+});
+render();
+</script>
+</body>
+</html>
