@@ -10,7 +10,7 @@ struct ResultsView: View {
   let connection: DrawThingsConnection
   /// The pictures selected in the strip (⌘-click adds or takes away, ⇧-click extends) and the one
   /// shown large. Something is always selected while the strip is not empty.
-  @State private var picks = ResultSelection()
+  @State private var picks = ResultSelection<GeneratedImage.ID>()
   /// The keys ⌫ and ⌘A act on the strip only after a click in it: this window comes to the front
   /// at every RUN, and the prompt's editing keys must never reach the pictures.
   @State private var stripActive = false

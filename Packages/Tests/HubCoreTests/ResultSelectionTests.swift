@@ -38,7 +38,7 @@ struct ResultSelectionTests {
   }
 
   @Test func shiftWithoutAnAnchorIsAPlainClick() {
-    var selection = ResultSelection()
+    var selection = ResultSelection<UUID>()
     selection.click(c, command: false, shift: true, order: order)
     #expect(selection.ids == [c] && selection.anchor == c)
   }
@@ -77,5 +77,24 @@ struct ResultSelectionTests {
     #expect(selection.ids == [b] && selection.primary == b, "nothing left selected: the first picture")
     selection.keepOnly(order: [])
     #expect(selection.ids.isEmpty && selection.primary == nil)
+  }
+
+  @Test func stepByAFullRowMovesDownAndStopsAtTheEnd() {
+    let order = [0, 1, 2, 3, 4]
+    var selection = ResultSelection<Int>(only: 0)
+    selection.step(3, order: order)
+    #expect(selection.primary == 3)
+    selection.step(3, order: order)
+    #expect(selection.primary == 4)
+    selection = ResultSelection<Int>(only: 1)
+    selection.step(-3, order: order)
+    #expect(selection.primary == 0)
+  }
+
+  @Test func worksWithStringIds() {
+    let order = ["a.png", "b.png", "c.png"]
+    var selection = ResultSelection(only: "a.png")
+    selection.click("c.png", command: true, shift: false, order: order)
+    #expect(selection.ids == ["a.png", "c.png"])
   }
 }

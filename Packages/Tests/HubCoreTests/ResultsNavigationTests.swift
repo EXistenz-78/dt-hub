@@ -30,10 +30,10 @@ struct ResultsNavigationTests {
   }
 
   @Test func stepWithNothingSelectedPicksTheFirst() {
-    var selection = ResultSelection()
+    var selection = ResultSelection<UUID>()
     selection.step(1, order: order)
     #expect(selection.primary == a)
-    var empty = ResultSelection()
+    var empty = ResultSelection<UUID>()
     empty.step(1, order: [])
     #expect(empty.primary == nil)
   }
