@@ -56,6 +56,12 @@ struct ExploreView: View {
     .onChange(of: searchFocused) { if searchFocused { gridActive = false } }
     .onChange(of: activeState) { if activeState == .inactive { gridActive = false } }
     .background(DeleteKeyMonitor(isActive: gridActive) { onTrash(selectedEntries) })
+    // The space bar: a large preview of the picture, only with one picture selected.
+    .background(
+      QuickLookMonitor(
+        url: model.selection.ids.count == 1
+          ? selectedEntries.first.map { QuickLookMonitor.previewURL(for: $0.url) } : nil,
+        isEnabled: !searchFocused))
     .background(
       ArrowKeyMonitor(
         onStep: { model.selection.step($0, order: model.visible.map(\.path)) },
