@@ -128,3 +128,13 @@ struct DraggedResult: Identifiable, Transferable {
     ProxyRepresentation { $0.url }
   }
 }
+
+/// A picture of the Explore grid while it is dragged: its file, under the id of the grid (the file's path).
+struct DraggedGalleryFile: Identifiable, Transferable {
+  let id: String
+  let url: URL
+
+  static var transferRepresentation: some TransferRepresentation {
+    ProxyRepresentation { $0.url }
+  }
+}

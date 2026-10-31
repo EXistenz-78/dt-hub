@@ -9,6 +9,11 @@ struct ExploreView: View {
   @Bindable var model: GalleryModel
   let controller: GenerationController
   let connection: DrawThingsConnection
+  /// The chosen picture with its job, loaded for the sidebar (and read by the row of buttons for "Resume parameters").
+  @Binding var primaryImage: GeneratedImage?
+  let onUse: (GalleryEntry) -> Void
+  let onMoodboard: ([GalleryEntry]) -> Void
+  let onTrash: ([GalleryEntry]) -> Void
 
   /// The thumbnails are 50% larger than the strip's (72 pt).
   static let cellSize: CGFloat = 108
@@ -29,7 +34,7 @@ struct ExploreView: View {
       panel
       if sidebarOpen {
         Divider()
-        ResultInfoSidebar(image: nil, selectionCount: model.selection.ids.count)
+        ResultInfoSidebar(image: primaryImage, selectionCount: model.selection.ids.count)
       }
     }
     .task { await model.refresh() }
@@ -39,11 +44,18 @@ struct ExploreView: View {
       model.query = draft
       model.clampSelection()
     }
+    .task(id: model.selection.primary) {
+      guard let path = model.selection.primary, let entry = model.entries.first(where: { $0.path == path }) else {
+        return primaryImage = nil
+      }
+      primaryImage = await GalleryActions.image(for: entry)
+    }
     .onAppear { draft = model.query }
     .onChange(of: model.onlyFavorites) { model.clampSelection() }
     .onChange(of: controller.session.results.first?.id) { Task { await model.refresh() } }
     .onChange(of: searchFocused) { if searchFocused { gridActive = false } }
     .onChange(of: activeState) { if activeState == .inactive { gridActive = false } }
+    .background(DeleteKeyMonitor(isActive: gridActive) { onTrash(selectedEntries) })
     .background(
       ArrowKeyMonitor(
         onStep: { model.selection.step($0, order: model.visible.map(\.path)) },
@@ -158,10 +170,23 @@ struct ExploreView: View {
                 GalleryCell(
                   entry: entry, isSelected: model.selection.ids.contains(entry.path),
                   isFavorite: model.favorites.contains(entry.path),
-                  onClick: { click(entry) }, onStar: { model.toggleFavorite(entry.path) })
+                  onClick: { click(entry) }, onStar: { model.toggleFavorite(entry.path) }
+                )
+                .contextMenu {
+                  let targets = targets(of: entry)
+                  if targets.count == 1 { Button("results.useAsImage") { onUse(entry) } }
+                  Button("results.addToMoodboard") { onMoodboard(targets) }
+                  Button("results.trash") { onTrash(targets) }
+                }
+                .draggable(containerItemID: entry.path)
               }
             }
             .padding(Self.gridPadding)
+            // Dragging a picture of the selection takes the whole selection; any other picture goes alone.
+            .dragContainer(for: DraggedGalleryFile.self) { paths in
+              paths.map { DraggedGalleryFile(id: $0, url: URL(fileURLWithPath: $0)) }
+            }
+            .dragContainerSelection(Array(model.selection.ids))
           }
           .focusable()
           .focusEffectDisabled()
@@ -177,6 +202,16 @@ struct ExploreView: View {
         }
       }
     }
+  }
+
+  /// The pictures selected, in the order of the grid.
+  private var selectedEntries: [GalleryEntry] {
+    model.visible.filter { model.selection.ids.contains($0.path) }
+  }
+
+  /// What a menu on `entry` acts on: the whole selection when it is part of it, else just that picture.
+  private func targets(of entry: GalleryEntry) -> [GalleryEntry] {
+    model.selection.ids.contains(entry.path) && model.selection.ids.count > 1 ? selectedEntries : [entry]
   }
 
   private func click(_ entry: GalleryEntry) {

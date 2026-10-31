@@ -24,6 +24,8 @@ struct ResultsView: View {
   /// The zoom of the large picture (wheel, pinch, drag to move, double-click to fit).
   /// Which of the two views the window shows: the session's results, or the gallery of every project.
   @State private var tab: ResultsTab = .results
+  /// The chosen picture of the Explore tab, with its job (loaded by `ExploreView`).
+  @State private var exploreImage: GeneratedImage?
   @State private var zoom = ResultZoom()
   @State private var dragLast: CGSize = .zero
   @State private var pinchLast: CGFloat = 1
@@ -42,7 +44,9 @@ struct ResultsView: View {
           statusLine
           if !session.results.isEmpty { strip }
         case .explore:
-          ExploreView(model: controller.gallery, controller: controller, connection: connection)
+          ExploreView(
+            model: controller.gallery, controller: controller, connection: connection, primaryImage: $exploreImage,
+            onUse: { exploreUse($0) }, onMoodboard: { exploreMoodboard($0) }, onTrash: { exploreTrash($0) })
         }
         bottomBar
       }
@@ -425,7 +429,18 @@ struct ResultsView: View {
         tabButton(.results, title: "results.tab.results")
         tabButton(.explore, title: "results.tab.explore")
       }
-      if tab == .results {
+      if tab == .explore {
+        let picked = exploreSelected
+        if picked.count > 1 {
+          Text(String(format: String(localized: "results.selected"), picked.count))
+            .font(.caption).foregroundStyle(.secondary)
+        }
+        if let useError {
+          Text(verbatim: useError).font(.caption).foregroundStyle(DS.remove).lineLimit(2)
+        }
+        Spacer(minLength: 0)
+        if !picked.isEmpty { exploreButtons(picked) }
+      } else {
         if chosen.count > 1 {
           Text(String(format: String(localized: "results.selected"), chosen.count))
             .font(.caption).foregroundStyle(.secondary)
@@ -436,9 +451,81 @@ struct ResultsView: View {
           Text(verbatim: useError).font(.caption).foregroundStyle(DS.remove).lineLimit(2)
         }
       }
-      Spacer(minLength: 0)
-      if tab == .results, !session.results.isEmpty, let selected { resultButtons(for: selected, chosen: chosen) }
+      if tab == .results {
+        Spacer(minLength: 0)
+        if !session.results.isEmpty, let selected { resultButtons(for: selected, chosen: chosen) }
+      }
     }
+  }
+
+  // MARK: Explore
+
+  /// The pictures selected in the Explore grid, in its order.
+  private var exploreSelected: [GalleryEntry] {
+    controller.gallery.visible.filter { controller.gallery.selection.ids.contains($0.path) }
+  }
+
+  @ViewBuilder private func exploreButtons(_ picked: [GalleryEntry]) -> some View {
+    if picked.count == 1, let entry = picked.first {
+      Button("results.useAsImage") { exploreUse(entry) }
+        .buttonStyle(DSPillButtonStyle())
+    }
+    Button("results.addToMoodboard") { exploreMoodboard(picked) }
+      .buttonStyle(DSPillButtonStyle())
+    if picked.count == 1, let exploreImage {
+      Button("results.resume") { controller.resume(exploreImage, with: connection) }
+        .buttonStyle(DSPillButtonStyle())
+    }
+    Button { NSWorkspace.shared.activateFileViewerSelecting(picked.map(\.url)) } label: {
+      Image(systemName: "folder.fill")
+    }
+    .buttonStyle(DSPillButtonStyle())
+    .help(String(localized: "results.showInFinder"))
+    .accessibilityLabel(String(localized: "results.showInFinder"))
+    Button { exploreTrash(picked) } label: {
+      Image(systemName: "trash.fill")
+    }
+    .buttonStyle(DSPillButtonStyle())
+    .help(String(localized: "results.trash.help"))
+    .accessibilityLabel(String(localized: "results.trash"))
+  }
+
+  private func exploreUse(_ entry: GalleryEntry) {
+    useError = nil
+    Task {
+      do throws(ControlError) {
+        try await controller.control.setImage(fileURL: entry.url, source: .result)
+      } catch {
+        useError = ControlText.error(error)
+      }
+    }
+  }
+
+  private func exploreMoodboard(_ entries: [GalleryEntry]) {
+    useError = nil
+    Task {
+      var firstError: String?
+      for entry in entries {
+        do throws(ControlError) {
+          try await controller.control.addMoodboardImage(fileURL: entry.url, source: .result)
+        } catch {
+          firstError = firstError ?? ControlText.error(error)
+        }
+      }
+      useError = firstError
+    }
+  }
+
+  /// Moves the pictures to the Trash and picks the nearest one left.
+  private func exploreTrash(_ entries: [GalleryEntry]) {
+    guard !entries.isEmpty else { return }
+    useError = nil
+    let gallery = controller.gallery
+    let before = gallery.visible.map(\.path)
+    let failures = GalleryActions.trash(entries, controller: controller)
+    if !failures.isEmpty { useError = failures.joined(separator: "; ") }
+    gallery.selection.afterRemoval(
+      removed: Set(entries.map(\.path)), order: before, remaining: gallery.visible.map(\.path))
   }
 
   private func tabButton(_ target: ResultsTab, title: LocalizedStringKey) -> some View {
