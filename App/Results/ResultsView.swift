@@ -42,7 +42,7 @@ struct ResultsView: View {
           statusLine
           if !session.results.isEmpty { strip }
         case .explore:
-          ExploreView(controller: controller, connection: connection)
+          ExploreView(model: controller.gallery, controller: controller, connection: connection)
         }
         bottomBar
       }
@@ -63,8 +63,10 @@ struct ResultsView: View {
     .onChange(of: session.results.map(\.id)) { picks.keepOnly(order: session.results.map(\.id)) }
     // Coming back to this window (a RUN brings it to the front) the keys are not on the strip.
     .onChange(of: activeState) { if activeState == .inactive { stripActive = false } }
-    .background(DeleteKeyMonitor(isActive: stripActive) { trash(selectedResults.map(\.id)) })
-    .background(ArrowKeyMonitor { delta in picks.step(delta, order: session.results.map(\.id)) })
+    .background(DeleteKeyMonitor(isActive: stripActive && tab == .results) { trash(selectedResults.map(\.id)) })
+    .background {
+      if tab == .results { ArrowKeyMonitor { delta in picks.step(delta, order: session.results.map(\.id)) } }
+    }
     // A new picture, or a RUN, goes back to the fitted view.
     .onChange(of: selected?.id) { zoom.reset() }
     .onChange(of: session.isRunning) { zoom.reset() }
@@ -481,112 +483,6 @@ struct ResultsView: View {
 /// The two views of the Results window.
 enum ResultsTab { case results, explore }
 
-/// ⌫ and ⌘⌫ while the Results window is the key one and the strip has been clicked: calls `onDelete`
-/// and takes the key. An AppKit monitor, because the key never reached a SwiftUI key handler on the
-/// strip (⌘A, which goes through the menu, did).
-private struct DeleteKeyMonitor: NSViewRepresentable {
-  var isActive: Bool
-  var onDelete: () -> Void
-
-  func makeCoordinator() -> Coordinator { Coordinator() }
-
-  func makeNSView(context: Context) -> NSView {
-    let view = NSView()
-    context.coordinator.view = view
-    context.coordinator.install()
-    return view
-  }
-
-  func updateNSView(_ nsView: NSView, context: Context) {
-    context.coordinator.isActive = isActive
-    context.coordinator.onDelete = onDelete
-  }
-
-  static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) {
-    coordinator.remove()
-  }
-
-  @MainActor
-  final class Coordinator {
-    weak var view: NSView?
-    var isActive = false
-    var onDelete: () -> Void = {}
-    private var monitor: Any?
-
-    func install() {
-      monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-        // Local monitors run on the main thread; the event never leaves it.
-        nonisolated(unsafe) let unsafeEvent = event
-        let taken = MainActor.assumeIsolated { () -> Bool in
-          guard let self, self.isActive, unsafeEvent.keyCode == 51,
-            let window = self.view?.window, unsafeEvent.window === window, window.isKeyWindow
-          else { return false }
-          let flags = unsafeEvent.modifierFlags.intersection(.deviceIndependentFlagsMask)
-          guard flags.isEmpty || flags == .command else { return false }
-          self.onDelete()
-          return true
-        }
-        return taken ? nil : event
-      }
-    }
-
-    func remove() {
-      if let monitor { NSEvent.removeMonitor(monitor) }
-      monitor = nil
-    }
-  }
-}
-
-/// ← and → while the Results window is the key one: calls `onStep(-1)` / `onStep(1)` and takes the key. Not with a
-/// modifier, and not while a text is being edited. An AppKit monitor, like ⌫ above (SwiftUI never got the arrows here).
-private struct ArrowKeyMonitor: NSViewRepresentable {
-  var onStep: (Int) -> Void
-
-  func makeCoordinator() -> Coordinator { Coordinator() }
-
-  func makeNSView(context: Context) -> NSView {
-    let view = NSView()
-    context.coordinator.view = view
-    context.coordinator.install()
-    return view
-  }
-
-  func updateNSView(_ nsView: NSView, context: Context) { context.coordinator.onStep = onStep }
-
-  static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) { coordinator.remove() }
-
-  @MainActor
-  final class Coordinator {
-    weak var view: NSView?
-    var onStep: (Int) -> Void = { _ in }
-    private var monitor: Any?
-
-    func install() {
-      monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-        nonisolated(unsafe) let unsafeEvent = event
-        let taken = MainActor.assumeIsolated { () -> Bool in
-          guard let self, unsafeEvent.keyCode == 123 || unsafeEvent.keyCode == 124,
-            let window = self.view?.window, unsafeEvent.window === window, window.isKeyWindow,
-            !(window.firstResponder is NSText)
-          else { return false }
-          // The arrow keys always carry .numericPad and .function.
-          let flags = unsafeEvent.modifierFlags.intersection(.deviceIndependentFlagsMask)
-            .subtracting([.numericPad, .function])
-          guard flags.isEmpty else { return false }
-          self.onStep(unsafeEvent.keyCode == 123 ? -1 : 1)
-          return true
-        }
-        return taken ? nil : event
-      }
-    }
-
-    func remove() {
-      if let monitor { NSEvent.removeMonitor(monitor) }
-      monitor = nil
-    }
-  }
-}
-
 /// The scroll wheel over the large picture: calls `onZoom(anchor, factor)` with the point under the cursor (from the
 /// centre of this view, y down) and takes the event. Only when `isActive`.
 private struct ZoomEventMonitor: NSViewRepresentable {
@@ -640,15 +536,5 @@ private struct ZoomEventMonitor: NSViewRepresentable {
       if let monitor { NSEvent.removeMonitor(monitor) }
       monitor = nil
     }
-  }
-}
-
-/// A picture of the strip while it is dragged: its file (so the Control tab, the Finder and other apps take it).
-private struct DraggedResult: Identifiable, Transferable {
-  let id: GeneratedImage.ID
-  let url: URL
-
-  static var transferRepresentation: some TransferRepresentation {
-    ProxyRepresentation { $0.url }
   }
 }
