@@ -48,6 +48,8 @@ final class GenerationController {
   let session: GenerationSession
   let cards = CardExpansionStore(fileURL: CardExpansionStore.defaultFileURL)
   private(set) var outputFolder: URL
+  /// The Explore gallery of the Results window: every project's pictures, the extra folders and the stars.
+  let gallery: GalleryModel
 
   /// The language model, freed when RUN is pressed if the settings say so (spec §9).
   @ObservationIgnored let languageModel: LanguageModelManager
@@ -115,6 +117,10 @@ final class GenerationController {
       library: .live)
     self.sessionStore = sessionStore
     outputFolder = outputSettings.folder()
+    gallery = GalleryModel(
+      outputFolder: outputSettings.folder(), folders: GalleryFoldersStore(fileURL: GalleryFoldersStore.defaultFileURL),
+      favorites: FavoritesStore(fileURL: FavoritesStore.defaultFileURL),
+      index: GalleryIndex(cacheURL: GalleryIndex.defaultCacheURL))
     if let snapshot = sessionStore.load(), snapshot.project == restoringProject {
       sessionWasRestored = true
       prompt = snapshot.prompt
@@ -793,6 +799,7 @@ final class GenerationController {
   func setOutputFolder(_ url: URL) {
     outputSettings.setFolder(url)
     outputFolder = url
+    gallery.setOutputFolder(url)
   }
 }
 

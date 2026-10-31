@@ -27,6 +27,24 @@ public struct GeneratedImage: Identifiable, Sendable {
   public var isPartialVideo = false
 }
 
+extension GeneratedImage {
+  /// A picture read back from its file (the job is inside the PNG): the strip at launch and the Explore gallery use it.
+  /// `image` is a version with its longest side at most `maxPixel`. Nil when the file has no readable job or picture.
+  public static func fromFile(_ url: URL, date: Date, maxPixel: Int) -> GeneratedImage? {
+    guard let job = PNGImageStore.job(in: url), let image = PNGImageStore.image(at: url, maxPixel: maxPixel)
+    else { return nil }
+    var restored = GeneratedImage(
+      image: image, job: job, date: date, fileURL: url, saveError: nil, elapsed: PNGImageStore.elapsed(in: url),
+      isRestored: true)
+    if job.isVideo {
+      let mp4 = PNGImageStore.videoURL(forPoster: url)
+      if FileManager.default.fileExists(atPath: mp4.path) { restored.videoURL = mp4 }
+      restored.videoSeconds = job.videoSeconds
+    }
+    return restored
+  }
+}
+
 /// The picture a pass of a pipeline the plug-in guides made: written to a file of its own, kept out of the strip and
 /// of the output folder (`GenerationSession.start(…intermediate:)`).
 public struct IntermediateResult: Equatable, Sendable {
@@ -261,19 +279,7 @@ public final class GenerationSession {
   }
 
   private nonisolated static func restoredImage(_ entry: ResultsHistoryEntry) -> GeneratedImage? {
-    let url = URL(fileURLWithPath: entry.path)
-    guard let job = PNGImageStore.job(in: url),
-      let image = PNGImageStore.image(at: url, maxPixel: restoredThumbnailSize)
-    else { return nil }
-    var restored = GeneratedImage(
-      image: image, job: job, date: entry.date, fileURL: url, saveError: nil, elapsed: PNGImageStore.elapsed(in: url),
-      isRestored: true)
-    if job.isVideo {
-      let mp4 = PNGImageStore.videoURL(forPoster: url)
-      if FileManager.default.fileExists(atPath: mp4.path) { restored.videoURL = mp4 }
-      restored.videoSeconds = job.videoSeconds
-    }
-    return restored
+    GeneratedImage.fromFile(URL(fileURLWithPath: entry.path), date: entry.date, maxPixel: restoredThumbnailSize)
   }
 
   /// Writes the strip's files, newest first, keeping the older entries not read back yet (but not

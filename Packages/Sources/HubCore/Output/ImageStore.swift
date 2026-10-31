@@ -151,6 +151,15 @@ public struct PNGImageStore: ImageStore {
     return (String(data: data, encoding: .utf8) ?? "").jsonASCIIEscaped
   }
 
+  /// The PNG "Description" of a picture (the prompt, or in the app the layout of Draw Things), as it is.
+  public static func description(in url: URL) -> String? {
+    guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+      let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+      let png = properties[kCGImagePropertyPNGDictionary] as? [CFString: Any]
+    else { return nil }
+    return png[kCGImagePropertyPNGDescription] as? String
+  }
+
   /// The "UserComment" of a picture, as it is.
   public static func comment(in url: URL) -> String? {
     guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),

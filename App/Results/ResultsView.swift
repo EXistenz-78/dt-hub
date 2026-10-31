@@ -10,7 +10,7 @@ struct ResultsView: View {
   let connection: DrawThingsConnection
   /// The pictures selected in the strip (⌘-click adds or takes away, ⇧-click extends) and the one
   /// shown large. Something is always selected while the strip is not empty.
-  @State private var picks = ResultSelection()
+  @State private var picks = ResultSelection<GeneratedImage.ID>()
   /// The keys ⌫ and ⌘A act on the strip only after a click in it: this window comes to the front
   /// at every RUN, and the prompt's editing keys must never reach the pictures.
   @State private var stripActive = false
@@ -22,6 +22,10 @@ struct ResultsView: View {
   /// The information sidebar (prompt, settings, file); open the first time, then as the user left it.
   @AppStorage("results.sidebar.open") private var sidebarOpen = true
   /// The zoom of the large picture (wheel, pinch, drag to move, double-click to fit).
+  /// Which of the two views the window shows: the session's results, or the gallery of every project.
+  @State private var tab: ResultsTab = .results
+  /// The chosen picture of the Explore tab, with its job (loaded by `ExploreView`).
+  @State private var exploreImage: GeneratedImage?
   @State private var zoom = ResultZoom()
   @State private var dragLast: CGSize = .zero
   @State private var pinchLast: CGFloat = 1
@@ -34,14 +38,19 @@ struct ResultsView: View {
   var body: some View {
     HStack(spacing: DS.panelPadding) {
       VStack(spacing: DS.panelPadding) {
-        imageArea
-        statusLine
-        if !session.results.isEmpty {
-          strip
-          if let selected { actions(for: selected) }
+        switch tab {
+        case .results:
+          imageArea
+          statusLine
+          if !session.results.isEmpty { strip }
+        case .explore:
+          ExploreView(
+            model: controller.gallery, controller: controller, connection: connection, primaryImage: $exploreImage,
+            onUse: { exploreUse($0) }, onMoodboard: { exploreMoodboard($0) }, onTrash: { exploreTrash($0) })
         }
+        bottomBar
       }
-      if sidebarOpen {
+      if sidebarOpen, tab == .results {
         Divider()
         ResultInfoSidebar(image: selected, selectionCount: picks.ids.count)
       }
@@ -58,8 +67,10 @@ struct ResultsView: View {
     .onChange(of: session.results.map(\.id)) { picks.keepOnly(order: session.results.map(\.id)) }
     // Coming back to this window (a RUN brings it to the front) the keys are not on the strip.
     .onChange(of: activeState) { if activeState == .inactive { stripActive = false } }
-    .background(DeleteKeyMonitor(isActive: stripActive) { trash(selectedResults.map(\.id)) })
-    .background(ArrowKeyMonitor { delta in picks.step(delta, order: session.results.map(\.id)) })
+    .background(DeleteKeyMonitor(isActive: stripActive && tab == .results) { trash(selectedResults.map(\.id)) })
+    .background {
+      if tab == .results { ArrowKeyMonitor { delta in picks.step(delta, order: session.results.map(\.id)) } }
+    }
     // A new picture, or a RUN, goes back to the fitted view.
     .onChange(of: selected?.id) { zoom.reset() }
     .onChange(of: session.isRunning) { zoom.reset() }
@@ -410,159 +421,161 @@ struct ResultsView: View {
     }
   }
 
-  private func actions(for result: GeneratedImage) -> some View {
+  /// The row under the window: the two tabs, what the selection says, and the buttons for the chosen result.
+  private var bottomBar: some View {
     let chosen = selectedResults
     return HStack(spacing: DS.controlGap) {
-      if chosen.count > 1 {
-        Text(String(format: String(localized: "results.selected"), chosen.count))
-          .font(.caption).foregroundStyle(.secondary)
+      HStack(spacing: 6) {
+        tabButton(.results, title: "results.tab.results")
+        tabButton(.explore, title: "results.tab.explore", count: controller.gallery.entries.count)
+      }
+      if tab == .explore {
+        let picked = exploreSelected
+        if picked.count > 1 {
+          Text(String(format: String(localized: "results.selected"), picked.count))
+            .font(.caption).foregroundStyle(.secondary)
+        }
+        if let useError {
+          Text(verbatim: useError).font(.caption).foregroundStyle(DS.remove).lineLimit(2)
+        }
+        Spacer(minLength: 0)
+        if !picked.isEmpty { exploreButtons(picked) }
       } else {
-        Text(String(format: String(localized: "results.seed"), String(result.job.parameters.seed)))
-          .font(.system(.caption, design: .monospaced))
-          .foregroundStyle(.secondary)
-          .textSelection(.enabled)
-        if let error = result.saveError {
+        if chosen.count > 1 {
+          Text(String(format: String(localized: "results.selected"), chosen.count))
+            .font(.caption).foregroundStyle(.secondary)
+        } else if let error = selected?.saveError {
           Text("results.notSaved").font(.caption).foregroundStyle(DS.remove).help(error)
         }
-      }
-      if let useError {
-        Text(verbatim: useError).font(.caption).foregroundStyle(DS.remove).lineLimit(2)
-      }
-      Spacer(minLength: 0)
-      if chosen.count <= 1 {
-        Button("results.useAsImage") { useAsImage(result) }
-          .buttonStyle(DSPillButtonStyle())
-      }
-      Button("results.addToMoodboard") { addToMoodboard(chosen) }
-        .buttonStyle(DSPillButtonStyle())
-      if chosen.count <= 1 {
-        Button("results.resume") { controller.resume(result, with: connection) }
-          .buttonStyle(DSPillButtonStyle())
-      }
-      let urls = chosen.compactMap(\.exportURL)
-      if !urls.isEmpty {
-        Button { NSWorkspace.shared.activateFileViewerSelecting(urls) } label: {
-          Image(systemName: "folder.fill")
+        if let useError {
+          Text(verbatim: useError).font(.caption).foregroundStyle(DS.remove).lineLimit(2)
         }
-        .buttonStyle(DSPillButtonStyle())
-        .help(String(localized: "results.showInFinder"))
-        .accessibilityLabel(String(localized: "results.showInFinder"))
       }
-      Button { trash(chosen.map(\.id)) } label: {
-        Image(systemName: "trash.fill")
+      if tab == .results {
+        Spacer(minLength: 0)
+        if !session.results.isEmpty, let selected { resultButtons(for: selected, chosen: chosen) }
+      }
+    }
+  }
+
+  // MARK: Explore
+
+  /// The pictures selected in the Explore grid, in its order.
+  private var exploreSelected: [GalleryEntry] {
+    controller.gallery.visible.filter { controller.gallery.selection.ids.contains($0.path) }
+  }
+
+  @ViewBuilder private func exploreButtons(_ picked: [GalleryEntry]) -> some View {
+    if picked.count == 1, let entry = picked.first {
+      Button("results.useAsImage") { exploreUse(entry) }
+        .buttonStyle(DSPillButtonStyle())
+    }
+    Button("results.addToMoodboard") { exploreMoodboard(picked) }
+      .buttonStyle(DSPillButtonStyle())
+    // Only for the picture that is chosen now: while the next one loads, `exploreImage` is still the old one.
+    if picked.count == 1, let exploreImage,
+      exploreImage.fileURL?.standardizedFileURL.path == controller.gallery.selection.primary
+    {
+      Button("results.resume") { controller.resume(exploreImage, with: connection) }
+        .buttonStyle(DSPillButtonStyle())
+    }
+    Button { NSWorkspace.shared.activateFileViewerSelecting(picked.map(\.url)) } label: {
+      Image(systemName: "folder.fill")
+    }
+    .buttonStyle(DSPillButtonStyle())
+    .help(String(localized: "results.showInFinder"))
+    .accessibilityLabel(String(localized: "results.showInFinder"))
+    Button { exploreTrash(picked) } label: {
+      Image(systemName: "trash.fill")
+    }
+    .buttonStyle(DSPillButtonStyle())
+    .help(String(localized: "results.trash.help"))
+    .accessibilityLabel(String(localized: "results.trash"))
+  }
+
+  private func exploreUse(_ entry: GalleryEntry) {
+    useError = nil
+    Task {
+      do throws(ControlError) {
+        try await controller.control.setImage(fileURL: entry.url, source: .result)
+      } catch {
+        useError = ControlText.error(error)
+      }
+    }
+  }
+
+  private func exploreMoodboard(_ entries: [GalleryEntry]) {
+    useError = nil
+    Task {
+      var firstError: String?
+      for entry in entries {
+        do throws(ControlError) {
+          try await controller.control.addMoodboardImage(fileURL: entry.url, source: .result)
+        } catch {
+          firstError = firstError ?? ControlText.error(error)
+        }
+      }
+      useError = firstError
+    }
+  }
+
+  /// Moves the pictures to the Trash and picks the nearest one left.
+  private func exploreTrash(_ entries: [GalleryEntry]) {
+    guard !entries.isEmpty else { return }
+    useError = nil
+    let gallery = controller.gallery
+    let before = gallery.visible.map(\.path)
+    let failures = GalleryActions.trash(entries, controller: controller)
+    if !failures.isEmpty { useError = failures.joined(separator: "; ") }
+    gallery.selection.afterRemoval(
+      removed: Set(entries.map(\.path)), order: before, remaining: gallery.visible.map(\.path))
+  }
+
+  private func tabButton(_ target: ResultsTab, title: LocalizedStringKey, count: Int? = nil) -> some View {
+    Button {
+      tab = target
+    } label: {
+      HStack(spacing: 4) {
+        Text(title)
+        // The number of pictures in the gallery, small.
+        if let count, count > 0 { Text(verbatim: "\(count)").font(.caption2).foregroundStyle(.secondary) }
+      }
+    }
+    .buttonStyle(DSTabButtonStyle(isSelected: tab == target))
+    .focusEffectDisabled()
+  }
+
+  @ViewBuilder private func resultButtons(for result: GeneratedImage, chosen: [GeneratedImage]) -> some View {
+    if chosen.count <= 1 {
+      Button("results.useAsImage") { useAsImage(result) }
+        .buttonStyle(DSPillButtonStyle())
+    }
+    Button("results.addToMoodboard") { addToMoodboard(chosen) }
+      .buttonStyle(DSPillButtonStyle())
+    if chosen.count <= 1 {
+      Button("results.resume") { controller.resume(result, with: connection) }
+        .buttonStyle(DSPillButtonStyle())
+    }
+    let urls = chosen.compactMap(\.exportURL)
+    if !urls.isEmpty {
+      Button { NSWorkspace.shared.activateFileViewerSelecting(urls) } label: {
+        Image(systemName: "folder.fill")
       }
       .buttonStyle(DSPillButtonStyle())
-      .help(String(localized: "results.trash.help"))
-      .accessibilityLabel(String(localized: "results.trash"))
+      .help(String(localized: "results.showInFinder"))
+      .accessibilityLabel(String(localized: "results.showInFinder"))
     }
+    Button { trash(chosen.map(\.id)) } label: {
+      Image(systemName: "trash.fill")
+    }
+    .buttonStyle(DSPillButtonStyle())
+    .help(String(localized: "results.trash.help"))
+    .accessibilityLabel(String(localized: "results.trash"))
   }
 }
 
-/// ⌫ and ⌘⌫ while the Results window is the key one and the strip has been clicked: calls `onDelete`
-/// and takes the key. An AppKit monitor, because the key never reached a SwiftUI key handler on the
-/// strip (⌘A, which goes through the menu, did).
-private struct DeleteKeyMonitor: NSViewRepresentable {
-  var isActive: Bool
-  var onDelete: () -> Void
-
-  func makeCoordinator() -> Coordinator { Coordinator() }
-
-  func makeNSView(context: Context) -> NSView {
-    let view = NSView()
-    context.coordinator.view = view
-    context.coordinator.install()
-    return view
-  }
-
-  func updateNSView(_ nsView: NSView, context: Context) {
-    context.coordinator.isActive = isActive
-    context.coordinator.onDelete = onDelete
-  }
-
-  static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) {
-    coordinator.remove()
-  }
-
-  @MainActor
-  final class Coordinator {
-    weak var view: NSView?
-    var isActive = false
-    var onDelete: () -> Void = {}
-    private var monitor: Any?
-
-    func install() {
-      monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-        // Local monitors run on the main thread; the event never leaves it.
-        nonisolated(unsafe) let unsafeEvent = event
-        let taken = MainActor.assumeIsolated { () -> Bool in
-          guard let self, self.isActive, unsafeEvent.keyCode == 51,
-            let window = self.view?.window, unsafeEvent.window === window, window.isKeyWindow
-          else { return false }
-          let flags = unsafeEvent.modifierFlags.intersection(.deviceIndependentFlagsMask)
-          guard flags.isEmpty || flags == .command else { return false }
-          self.onDelete()
-          return true
-        }
-        return taken ? nil : event
-      }
-    }
-
-    func remove() {
-      if let monitor { NSEvent.removeMonitor(monitor) }
-      monitor = nil
-    }
-  }
-}
-
-/// ← and → while the Results window is the key one: calls `onStep(-1)` / `onStep(1)` and takes the key. Not with a
-/// modifier, and not while a text is being edited. An AppKit monitor, like ⌫ above (SwiftUI never got the arrows here).
-private struct ArrowKeyMonitor: NSViewRepresentable {
-  var onStep: (Int) -> Void
-
-  func makeCoordinator() -> Coordinator { Coordinator() }
-
-  func makeNSView(context: Context) -> NSView {
-    let view = NSView()
-    context.coordinator.view = view
-    context.coordinator.install()
-    return view
-  }
-
-  func updateNSView(_ nsView: NSView, context: Context) { context.coordinator.onStep = onStep }
-
-  static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) { coordinator.remove() }
-
-  @MainActor
-  final class Coordinator {
-    weak var view: NSView?
-    var onStep: (Int) -> Void = { _ in }
-    private var monitor: Any?
-
-    func install() {
-      monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-        nonisolated(unsafe) let unsafeEvent = event
-        let taken = MainActor.assumeIsolated { () -> Bool in
-          guard let self, unsafeEvent.keyCode == 123 || unsafeEvent.keyCode == 124,
-            let window = self.view?.window, unsafeEvent.window === window, window.isKeyWindow,
-            !(window.firstResponder is NSText)
-          else { return false }
-          // The arrow keys always carry .numericPad and .function.
-          let flags = unsafeEvent.modifierFlags.intersection(.deviceIndependentFlagsMask)
-            .subtracting([.numericPad, .function])
-          guard flags.isEmpty else { return false }
-          self.onStep(unsafeEvent.keyCode == 123 ? -1 : 1)
-          return true
-        }
-        return taken ? nil : event
-      }
-    }
-
-    func remove() {
-      if let monitor { NSEvent.removeMonitor(monitor) }
-      monitor = nil
-    }
-  }
-}
+/// The two views of the Results window.
+enum ResultsTab { case results, explore }
 
 /// The scroll wheel over the large picture: calls `onZoom(anchor, factor)` with the point under the cursor (from the
 /// centre of this view, y down) and takes the event. Only when `isActive`.
@@ -617,15 +630,5 @@ private struct ZoomEventMonitor: NSViewRepresentable {
       if let monitor { NSEvent.removeMonitor(monitor) }
       monitor = nil
     }
-  }
-}
-
-/// A picture of the strip while it is dragged: its file (so the Control tab, the Finder and other apps take it).
-private struct DraggedResult: Identifiable, Transferable {
-  let id: GeneratedImage.ID
-  let url: URL
-
-  static var transferRepresentation: some TransferRepresentation {
-    ProxyRepresentation { $0.url }
   }
 }
