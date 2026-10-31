@@ -7464,6 +7464,40 @@
         }
       }
     },
+    "results.tab.explore": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Explore"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esplora"
+          }
+        }
+      }
+    },
+    "results.tab.results": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Results"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Risultati"
+          }
+        }
+      }
+    },
     "results.seed": {
       "extractionState": "manual",
       "localizations": {

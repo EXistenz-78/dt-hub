@@ -22,6 +22,8 @@ struct ResultsView: View {
   /// The information sidebar (prompt, settings, file); open the first time, then as the user left it.
   @AppStorage("results.sidebar.open") private var sidebarOpen = true
   /// The zoom of the large picture (wheel, pinch, drag to move, double-click to fit).
+  /// Which of the two views the window shows: the session's results, or the gallery of every project.
+  @State private var tab: ResultsTab = .results
   @State private var zoom = ResultZoom()
   @State private var dragLast: CGSize = .zero
   @State private var pinchLast: CGFloat = 1
@@ -34,14 +36,17 @@ struct ResultsView: View {
   var body: some View {
     HStack(spacing: DS.panelPadding) {
       VStack(spacing: DS.panelPadding) {
-        imageArea
-        statusLine
-        if !session.results.isEmpty {
-          strip
-          if let selected { actions(for: selected) }
+        switch tab {
+        case .results:
+          imageArea
+          statusLine
+          if !session.results.isEmpty { strip }
+        case .explore:
+          ExploreView(controller: controller, connection: connection)
         }
+        bottomBar
       }
-      if sidebarOpen {
+      if sidebarOpen, tab == .results {
         Divider()
         ResultInfoSidebar(image: selected, selectionCount: picks.ids.count)
       }
@@ -410,53 +415,71 @@ struct ResultsView: View {
     }
   }
 
-  private func actions(for result: GeneratedImage) -> some View {
+  /// The row under the window: the two tabs, what the selection says, and the buttons for the chosen result.
+  private var bottomBar: some View {
     let chosen = selectedResults
     return HStack(spacing: DS.controlGap) {
-      if chosen.count > 1 {
-        Text(String(format: String(localized: "results.selected"), chosen.count))
-          .font(.caption).foregroundStyle(.secondary)
-      } else {
-        Text(String(format: String(localized: "results.seed"), String(result.job.parameters.seed)))
-          .font(.system(.caption, design: .monospaced))
-          .foregroundStyle(.secondary)
-          .textSelection(.enabled)
-        if let error = result.saveError {
+      HStack(spacing: 6) {
+        tabButton(.results, title: "results.tab.results")
+        tabButton(.explore, title: "results.tab.explore")
+      }
+      if tab == .results {
+        if chosen.count > 1 {
+          Text(String(format: String(localized: "results.selected"), chosen.count))
+            .font(.caption).foregroundStyle(.secondary)
+        } else if let error = selected?.saveError {
           Text("results.notSaved").font(.caption).foregroundStyle(DS.remove).help(error)
         }
-      }
-      if let useError {
-        Text(verbatim: useError).font(.caption).foregroundStyle(DS.remove).lineLimit(2)
+        if let useError {
+          Text(verbatim: useError).font(.caption).foregroundStyle(DS.remove).lineLimit(2)
+        }
       }
       Spacer(minLength: 0)
-      if chosen.count <= 1 {
-        Button("results.useAsImage") { useAsImage(result) }
-          .buttonStyle(DSPillButtonStyle())
-      }
-      Button("results.addToMoodboard") { addToMoodboard(chosen) }
-        .buttonStyle(DSPillButtonStyle())
-      if chosen.count <= 1 {
-        Button("results.resume") { controller.resume(result, with: connection) }
-          .buttonStyle(DSPillButtonStyle())
-      }
-      let urls = chosen.compactMap(\.exportURL)
-      if !urls.isEmpty {
-        Button { NSWorkspace.shared.activateFileViewerSelecting(urls) } label: {
-          Image(systemName: "folder.fill")
-        }
-        .buttonStyle(DSPillButtonStyle())
-        .help(String(localized: "results.showInFinder"))
-        .accessibilityLabel(String(localized: "results.showInFinder"))
-      }
-      Button { trash(chosen.map(\.id)) } label: {
-        Image(systemName: "trash.fill")
-      }
-      .buttonStyle(DSPillButtonStyle())
-      .help(String(localized: "results.trash.help"))
-      .accessibilityLabel(String(localized: "results.trash"))
+      if tab == .results, !session.results.isEmpty, let selected { resultButtons(for: selected, chosen: chosen) }
     }
   }
+
+  private func tabButton(_ target: ResultsTab, title: LocalizedStringKey) -> some View {
+    Button {
+      tab = target
+    } label: {
+      Text(title)
+    }
+    .buttonStyle(DSTabButtonStyle(isSelected: tab == target))
+    .focusEffectDisabled()
+  }
+
+  @ViewBuilder private func resultButtons(for result: GeneratedImage, chosen: [GeneratedImage]) -> some View {
+    if chosen.count <= 1 {
+      Button("results.useAsImage") { useAsImage(result) }
+        .buttonStyle(DSPillButtonStyle())
+    }
+    Button("results.addToMoodboard") { addToMoodboard(chosen) }
+      .buttonStyle(DSPillButtonStyle())
+    if chosen.count <= 1 {
+      Button("results.resume") { controller.resume(result, with: connection) }
+        .buttonStyle(DSPillButtonStyle())
+    }
+    let urls = chosen.compactMap(\.exportURL)
+    if !urls.isEmpty {
+      Button { NSWorkspace.shared.activateFileViewerSelecting(urls) } label: {
+        Image(systemName: "folder.fill")
+      }
+      .buttonStyle(DSPillButtonStyle())
+      .help(String(localized: "results.showInFinder"))
+      .accessibilityLabel(String(localized: "results.showInFinder"))
+    }
+    Button { trash(chosen.map(\.id)) } label: {
+      Image(systemName: "trash.fill")
+    }
+    .buttonStyle(DSPillButtonStyle())
+    .help(String(localized: "results.trash.help"))
+    .accessibilityLabel(String(localized: "results.trash"))
+  }
 }
+
+/// The two views of the Results window.
+enum ResultsTab { case results, explore }
 
 /// ⌫ and ⌘⌫ while the Results window is the key one and the strip has been clicked: calls `onDelete`
 /// and takes the key. An AppKit monitor, because the key never reached a SwiftUI key handler on the
