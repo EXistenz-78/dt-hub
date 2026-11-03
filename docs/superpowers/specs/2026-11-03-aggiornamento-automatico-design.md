@@ -53,7 +53,7 @@ Un asset in più di ogni release, generato dagli zip veri e caricato per ultimo:
 
 Il sha256 sta solo qui: il file nasce dagli zip pubblicati, quindi non c'è una seconda fonte da far concordare. `ReleaseManifest` (in `HubCore/Updates/`) lo decodifica e lo valida: `schema == 1`, `tag` non vuoto, versioni non vuote, nomi di asset senza `/` né `..`, sha256 di 64 cifre esadecimali. Un `schema` più alto, o un manifest che non passa la validazione, vale «nessuna informazione».
 
-Lo genera un nuovo `Scripts/make-release-manifest.sh <tag> <cartella-degli-zip>`: legge la versione e l'identificatore dall'`Info.plist` di ogni `.dthubplugin.zip` (scompattato in temp), la versione dell'app dallo zip dell'app, calcola sha256 e dimensione.
+Lo genera un nuovo `Scripts/make_release_manifest.py <tag> <cartella-degli-zip>` (Python, come gli altri script): legge la versione e l'identificatore dall'`Info.plist` di ogni `.dthubplugin.zip` (scompattato in temp), la versione dell'app dallo zip dell'app, calcola sha256 e dimensione.
 
 ### 2. Il controllo
 
@@ -113,11 +113,13 @@ Si installano prima i plug-in e poi l'app; una voce che fallisce non ferma le al
 
 Nuovi in `Packages/Sources/HubCore/Updates/`: `ReleaseManifest.swift`, `UpdatePlan.swift`, `UpdateChecker.swift`, `UpdateInstaller.swift`, `AppReplacer.swift`, `UpdateSettings.swift` (frequenza, interruttore, rifiuti). Test in `Packages/Tests/HubCoreTests/`.
 
-Nuovi nell'app: `App/Updates/UpdateController.swift` (`@Observable`, a stati: `idle`, `checking`, `available`, `installing`, `done`, `failed`), `UpdateBanner.swift`, `UpdateDetailsSheet.swift`, `UpdatesPreferencesView.swift`.
+Il controller (`UpdateController`, `@Observable`, a stati) sta in `HubCore/Updates/` per poterlo provare con i test. Nuovi nell'app: `UpdateBanner.swift`, `UpdateDetailsSheet.swift`, `UpdatesPreferencesView.swift`.
 
-Nuovo: `Scripts/make-release-manifest.sh`.
+Nuovo: `Scripts/make_release_manifest.py` con il suo test.
 
 Modificati: `App/DTHubApp.swift` (costruzione e controllo all'avvio), `App/Preferences/PreferencesView.swift` (la scheda), `App/MainWindow/MainWindowView.swift` (il banner), `PluginFolder.swift` (`removeQuarantine` visibile al modulo), `App/Localizable.xcstrings`, `README.md` e `Plugins/README.md`.
+
+La base degli indirizzi si può cambiare con `defaults write com.exiztenz.DTHub debug.updateBaseURL <url>` (solo per la prova con un release locale, come `debug.keepGuidedSessionFiles`); senza, vale quella di GitHub.
 
 Non toccati: `PluginRegistry`, `ServerVersion`, `PluginKit`, i plug-in.
 
@@ -141,7 +143,7 @@ Non toccati: `PluginRegistry`, `ServerVersion`, `PluginKit`, i plug-in.
 - `UpdateInstaller` con `download`, `unzip` e `sha256` iniettati e cartelle temporanee: tutto bene; sha256 diverso; bundle con id o versione sbagliati; una voce che fallisce non ferma le altre.
 - `AppReplacer` con un finto `.app` in una cartella temporanea: scambio riuscito, rollback quando il passo finale fallisce, cartella non scrivibile → ripiego su Finder, `codesign` che fallisce, bundle id diverso.
 - `UpdateController`: macchina a stati con tutto iniettato (rifiuto, errore, installazione).
-- `make-release-manifest.sh`: prova con due zip finti; il manifest prodotto passa `ReleaseManifest`.
+- `make_release_manifest.py`: prova con due zip finti; il manifest prodotto passa `ReleaseManifest`.
 - Prova vera, fuori dalla sandbox: una release di prova su GitHub (repo di prova o pre-release) con un'app e un plug-in più nuovi; si avvia una build 0.9.x, si vede il banner, si accetta e si controlla che l'app si riavvii nella versione nuova e il plug-in sia aggiornato. Se la release di prova non si può pubblicare, si prova con un server locale e `fetch` sostituito.
 
 ## Da decidere nel piano (non blocca la spec)
