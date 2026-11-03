@@ -194,6 +194,9 @@ struct DTHubApp: App {
     // The first launch (nothing saved yet) opens at a normal size, not as big as the screen.
     .defaultSize(width: 1100, height: 820)
     .commands {
+      CommandGroup(replacing: .appInfo) {
+        Button(String(localized: "about.menu")) { AboutPanel.show() }
+      }
       CommandMenu(String(localized: "tab.generation")) {
         GenerationCommands(generation: generation, connection: connection)
       }

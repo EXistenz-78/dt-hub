@@ -11101,6 +11101,40 @@
           }
         }
       }
+    },
+    "about.menu": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About DT Hub"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Informazioni su DT Hub"
+          }
+        }
+      }
+    },
+    "about.link": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Source code and releases: github.com/EXistenz-78/dt-hub"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codice e release: github.com/EXistenz-78/dt-hub"
+          }
+        }
+      }
     }
   },
   "version": "1.0"
