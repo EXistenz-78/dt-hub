@@ -10234,6 +10234,193 @@
           }
         }
       }
+    },
+    "prefs.llm.backend": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Source"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sorgente"
+          }
+        }
+      }
+    },
+    "prefs.llm.backend.folder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Folder (MLX)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cartella (MLX)"
+          }
+        }
+      }
+    },
+    "prefs.llm.backend.lmStudio": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LM Studio server"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Server LM Studio"
+          }
+        }
+      }
+    },
+    "prefs.llm.server.address": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Address"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indirizzo"
+          }
+        }
+      }
+    },
+    "prefs.llm.server.invalid": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only localhost, 127.0.0.1 or [::1], with a port (http)."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo localhost, 127.0.0.1 o [::1], con la porta (http)."
+          }
+        }
+      }
+    },
+    "prefs.llm.server.test": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Test"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prova"
+          }
+        }
+      }
+    },
+    "prefs.llm.server.connected": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connected, %d models"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connesso, %d modelli"
+          }
+        }
+      }
+    },
+    "prefs.llm.server.vision": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reads images"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Legge le immagini"
+          }
+        }
+      }
+    },
+    "prefs.llm.server.noModels": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The server offers no language model. Load one in LM Studio."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il server non offre modelli linguistici. Caricane uno in LM Studio."
+          }
+        }
+      }
+    },
+    "prefs.llm.model.vision.server": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · images"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · immagini"
+          }
+        }
+      }
+    },
+    "prefs.llm.server.note": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LM Studio loads the model at the first question, and its memory is not managed by DT Hub. DT Hub can free the image model only when it starts the Draw Things server itself."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LM Studio carica il modello alla prima domanda e la sua memoria non è gestita da DT Hub. DT Hub può liberare il modello immagine solo se è lui ad avviare il server di Draw Things."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

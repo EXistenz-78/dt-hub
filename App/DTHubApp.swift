@@ -166,6 +166,12 @@ struct DTHubApp: App {
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
           generation.saveSessionNow()
         }
+        // LM Studio's models are read when the app opens and whenever it comes back to the front (LM Studio may have
+        // been started meanwhile): the prompt buttons look for their model without waiting.
+        .task { await languageModel.refreshServerModels() }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+          Task { await languageModel.refreshServerModels() }
+        }
     }
     .windowResizability(.contentMinSize)
     // The first launch (nothing saved yet) opens at a normal size, not as big as the screen.

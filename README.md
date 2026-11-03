@@ -125,6 +125,8 @@ DT Hub looks for MLX models (Hugging Face format: a folder with `config.json` an
 
 Each installed LLM can be assigned to a model family and a use (enhance, generate, both, plug-ins only); a dedicated LLM's own `system_prompt.txt` is used when present. With a single LLM installed nothing needs to be set up.
 
+**Or use LM Studio's models.** At the top of **Preferences › LLM**, *Source* chooses where the language models come from: **Folder (MLX)**, described above, or **LM Studio server**. With the server, DT Hub asks LM Studio (running on the same Mac, with its server started; `http://localhost:1235/v1` by default) instead of loading a model itself: the models LM Studio offers appear in the same list, and each is assigned to a family and a use in the same way. Only this Mac is accepted as the address (`localhost`, `127.0.0.1` or `[::1]`), so nothing leaves the computer. LM Studio loads the model at the first question and its memory is not managed by DT Hub; the prompt upsampler of FLUX.3 needs a model folder and is not available with the server. A model that LM Studio does not mark as reading pictures can be switched to *Reads images* by hand.
+
 ### Recommended LLMs
 
 These are the models the author uses, with the setting of **Family** and **Use** that goes with each in **Preferences › LLM**. Put each one in its own folder inside the models folder (a folder per model; one level of folders, such as `mlx-community/` or `prithivMLmods/`, is fine). All of them are MLX conversions that read pictures.
