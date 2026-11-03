@@ -75,7 +75,7 @@ You also need a Draw Things gRPC server (see Requirements).
 
 ## Updates
 
-At launch DT Hub asks GitHub, once, whether the [latest release](https://github.com/EXistenz-78/dt-hub/releases/latest) is newer than what you have (at most every 12 hours; switch it off in **Preferences › Updates**, where **Check now** also lives). It reads one small file, `dthub-release.json`, from the release. No account, no API token, and nothing of yours is sent. If GitHub cannot be reached it stays quiet and tries again at the next launch.
+At launch DT Hub asks GitHub, once, whether the [latest release](https://github.com/EXistenz-78/dt-hub/releases/latest) is newer than what you have (at every launch; switch it off in **Preferences › Updates**, where **Check now** also lives). It reads one small file, `dthub-release.json`, from the release. No account, no API token, and nothing of yours is sent. If GitHub cannot be reached it stays quiet and tries again at the next launch.
 
 When something is newer, a banner under the header says so: DT Hub itself, and the plug-ins you have installed whose version is higher (a plug-in you do not have is never offered). **Details…** shows what would be downloaded, from where and how much; nothing is downloaded until you press **Download and install**. **Later** hides the banner until a newer version comes out.
 

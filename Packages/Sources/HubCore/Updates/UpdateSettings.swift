@@ -1,13 +1,11 @@
 import Foundation
 
-/// What the update check remembers between launches: whether it runs at launch, when it last ran, and which versions
-/// the user put off.
+/// What the update check remembers between launches: whether it runs at launch, when it last ran (shown in the
+/// preferences), and which versions the user put off.
 public struct UpdateSettings {
   static let checkOnLaunchKey = "updates.checkOnLaunch"
   static let lastCheckKey = "updates.lastCheck"
   static let dismissedKey = "updates.dismissed"
-  /// The launch check waits at least this long after the last one.
-  static let interval: TimeInterval = 12 * 3600
 
   private let defaults: UserDefaults
 
@@ -15,6 +13,8 @@ public struct UpdateSettings {
     self.defaults = defaults
   }
 
+  /// Whether DT Hub checks at every launch (one small request; an offer found earlier is not remembered between launches, so
+  /// a check that waited would hide it).
   public var checkOnLaunch: Bool {
     get { defaults.object(forKey: Self.checkOnLaunchKey) as? Bool ?? true }
     nonmutating set { defaults.set(newValue, forKey: Self.checkOnLaunchKey) }
@@ -29,13 +29,6 @@ public struct UpdateSettings {
   public private(set) var dismissed: [String: String] {
     get { defaults.dictionary(forKey: Self.dismissedKey) as? [String: String] ?? [:] }
     nonmutating set { defaults.set(newValue, forKey: Self.dismissedKey) }
-  }
-
-  /// Whether the check at launch should run now.
-  public func isDue(now: Date) -> Bool {
-    guard checkOnLaunch else { return false }
-    guard let last = lastCheck else { return true }
-    return now.timeIntervalSince(last) >= Self.interval
   }
 
   public mutating func markChecked(at date: Date) {
