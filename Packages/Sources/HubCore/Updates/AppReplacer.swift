@@ -1,4 +1,3 @@
-import AppKit
 import Foundation
 import HubKit
 
@@ -74,23 +73,6 @@ public struct AppReplacer: Sendable {
       let version = info["CFBundleShortVersionString"] as? String
     else { return nil }
     return (identifier, version)
-  }
-
-  /// The arguments for `/bin/sh`: wait until the process is gone, then open the app.
-  public static func relaunchArguments(appAt app: URL, pid: Int32) -> [String] {
-    let escaped = app.path.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
-      .replacingOccurrences(of: "$", with: "\\$").replacingOccurrences(of: "`", with: "\\`")
-    return ["-c", "while kill -0 \(pid) 2>/dev/null; do sleep 0.2; done; open \"\(escaped)\""]
-  }
-
-  /// Starts the waiting `sh` and quits this process; the shell opens the app that is at the same place.
-  @MainActor
-  public static func relaunchAndQuit(appAt app: URL = Bundle.main.bundleURL) {
-    let process = Process()
-    process.executableURL = URL(fileURLWithPath: "/bin/sh")
-    process.arguments = relaunchArguments(appAt: app, pid: ProcessInfo.processInfo.processIdentifier)
-    try? process.run()
-    NSApplication.shared.terminate(nil)
   }
 
   public static let live = AppReplacer(

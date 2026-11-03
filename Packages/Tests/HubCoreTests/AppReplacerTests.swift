@@ -123,11 +123,4 @@ struct AppReplacerTests {
     #expect(scene.version(of: url) == "1.0.0")
     #expect(scene.version(of: scene.running) == "0.9.0")
   }
-
-  @Test func relaunchArgumentsWaitForTheProcessThenOpen() {
-    let arguments = AppReplacer.relaunchArguments(appAt: URL(fileURLWithPath: "/Applications/DT Hub.app"), pid: 123)
-    #expect(arguments.first == "-c")
-    #expect(arguments[1].contains("kill -0 123"))
-    #expect(arguments[1].contains("open \"/Applications/DT Hub.app\""))
-  }
 }
