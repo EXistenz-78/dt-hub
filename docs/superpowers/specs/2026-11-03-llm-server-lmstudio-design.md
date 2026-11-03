@@ -26,8 +26,9 @@ Supposizione (da correggere se sbagliata): il caso d'uso principale è un Mac co
 ## Cosa si è verificato sul server (3 novembre 2026, sola lettura)
 
 - `GET /v1/models` elenca tutti i modelli, **embedding compresi** (`text-embedding-nomic-embed-text-v1.5`). Per ogni modello dà solo `id`, `object`, `owned_by`: nessuna informazione su visione o stato.
-- `GET /api/v0/models` (API nativa di LM Studio) aggiunge `type` (visti: `llm`, `embeddings`), `state` (`loaded` / `not-loaded`), `publisher`, `compatibility_type`, `quantization`. Il valore per i modelli con visione (probabilmente `vlm`) **non è stato visto**: sul Mac di prova non c'è un modello con visione.
-- Non è verificato: la forma del corpo di `POST /v1/chat/completions` con immagini, se `top_k` è accettato, come si comporta il caricamento alla prima richiesta (tempo, errori). Si verificano con il test dal vivo nel piano, prima di scrivere il resto.
+- `GET /api/v0/models` (API nativa di LM Studio) aggiunge `type` (visti: `llm`, `embeddings`), `state` (`loaded` / `not-loaded`), `publisher`, `compatibility_type`, `quantization`. Il valore per i modelli con visione è `vlm` (visto poi su Gemma 4, vedi sotto).
+- `POST /v1/chat/completions` (3 novembre 2026): con nessun modello di chat caricato risponde HTTP 400 con `{"error":{"message":"No models loaded. Please load a model in the developer page or use the 'lms load' command.","type":"invalid_request_error",…}}`, anche se `/v1/models` elenca modelli. Quindi la forma d'errore è `error.message` e **il caricamento alla prima richiesta può essere spento in LM Studio**: l'errore di LM Studio va mostrato com'è. Per lo stesso motivo `top_k` e le immagini non si sono potuti provare.
+- Verificato con il test dal vivo (3 novembre 2026, `google/gemma-4-e2b`): `type` è `vlm` per i modelli con visione; `top_k` è accettato (HTTP 200); un'immagine come parte `image_url` con data URL JPEG viene letta (risposta «Red» a un'immagine rossa); la prima richiesta carica il modello e può durare 30 s. Un modello che ragiona (Gemma 4) mette il testo in `reasoning_content` e lascia `content` vuoto se i token finiscono prima: l'app lo dice nell'errore.
 
 ## Scelte
 
