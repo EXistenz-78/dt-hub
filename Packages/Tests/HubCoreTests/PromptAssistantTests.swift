@@ -109,6 +109,25 @@ struct PromptAssistantTests {
     #expect(result == PromptPair(prompt: "a cat", negative: "blurry"))
   }
 
+  @Test func describeWithAFocusSendsThePictureTheSentenceAndTheText() async {
+    let url = URL(fileURLWithPath: "/tmp/a.png")
+    recorder.result = .success("{\"prompt\":\"a knight, oil painting\",\"negative\":\"\"}")
+    let result = await assistant.describe(
+      imageAt: url, current: PromptPair(prompt: "a knight in the rain", negative: "old"), family: "krea_2", focus: .style)
+    #expect(recorder.calls.first?.images == [url])
+    #expect(recorder.calls.first?.prompt.contains("ONLY the style") == true)
+    #expect(recorder.calls.first?.prompt.hasSuffix("User's text:\na knight in the rain") == true)
+    #expect(result?.prompt == "a knight, oil painting")
+    // The result can be undone like any other.
+    #expect(assistant.undoOffer(current: result!)?.prompt == "a knight in the rain")
+  }
+
+  @Test func describeWithAFocusNeedsAnImageToo() async {
+    let result = await assistant.describe(
+      imageAt: nil, current: PromptPair(prompt: "x", negative: ""), family: "flux2", focus: .subject)
+    #expect(result == nil && assistant.failure == .noImage && recorder.calls.isEmpty)
+  }
+
   @Test func serviceErrorsAreReported() async {
     recorder.result = .failure(.noModelSelected)
     let result = await assistant.enhance(PromptPair(prompt: "gatto", negative: ""), family: "flux2")
