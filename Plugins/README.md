@@ -51,6 +51,8 @@ Then, in DT Hub, open **Preferences › Plug-ins**, press **Add…**, pick the `
 plug-in on or off, or removing it, takes effect at the next launch). Each plug-in then appears as a tab, and can be switched on and off
 there or from the plug-in menu in the header.
 
+Once a plug-in is installed, DT Hub offers its newer versions by itself: at launch it checks the latest release and, after you confirm in **Details…**, downloads only the plug-ins that are newer than yours (see [Updates](../README.md#updates)).
+
 ![Preferences › Plug-ins](../docs/images/preferences-plugins.png)
 
 A plug-in runs code on your Mac with the same permissions as DT Hub: add only plug-ins you trust. The bundles are ad-hoc signed; if

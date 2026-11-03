@@ -69,8 +69,19 @@ This is an independent community project, not affiliated with or endorsed by Dra
 2. Unzip it and drag **DT Hub.app** into `/Applications`.
 3. Read **First launch** below before you open it.
 4. Optional: add the plug-ins (they are in the same release, see [`Plugins/`](Plugins/README.md#install)).
+5. From then on DT Hub tells you when a newer release is out (see [Updates](#updates)).
 
 You also need a Draw Things gRPC server (see Requirements).
+
+## Updates
+
+At launch DT Hub asks GitHub, once, whether the [latest release](https://github.com/EXistenz-78/dt-hub/releases/latest) is newer than what you have (at most every 12 hours; switch it off in **Preferences › Updates**, where **Check now** also lives). It reads one small file, `dthub-release.json`, from the release. No account, no API token, and nothing of yours is sent. If GitHub cannot be reached it stays quiet and tries again at the next launch.
+
+When something is newer, a banner under the header says so: DT Hub itself, and the plug-ins you have installed whose version is higher (a plug-in you do not have is never offered). **Details…** shows what would be downloaded, from where and how much; nothing is downloaded until you press **Download and install**. **Later** hides the banner until a newer version comes out.
+
+Each file is checked against the sha256 in the release before it is unpacked. A plug-in is installed the same way as with **Add…** (it takes effect at the next launch). The app replaces itself in place after `codesign` accepts the new copy, keeps the old one in the Trash, and offers **Restart now**; if its folder cannot be written, the new app is left in your Downloads folder and shown in Finder. A release made without the manifest (0.9.0 and older) is simply not offered.
+
+*Publishing a release:* build the zips as usual, then `python3 Scripts/make_release_manifest.py <tag> <folder with the zips> > dthub-release.json` and upload that file as one more asset of the release. To try the whole flow on your Mac without publishing anything, serve a folder shaped like `latest/download/dthub-release.json` and `download/<tag>/<zip>` and start the app with `-debug.updateBaseURL http://127.0.0.1:8765`; `DTHUB_LIVE_UPDATE=<folder> swift test --filter LiveUpdateTests` runs the same flow as a test (see the comment in `LiveUpdateTests.swift`).
 
 ## First launch (important)
 
