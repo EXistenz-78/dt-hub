@@ -49,8 +49,9 @@ public struct AppReplacer: Sendable {
         try move(new, destination)
         return .revealed(destination)
       }
-      try manager.createDirectory(at: work, withIntermediateDirectories: true)
-      let aside = work.appendingPathComponent("old-\(UUID().uuidString).app")
+      // The old app waits next to its place, on the same volume and outside the work folder (which is emptied at the
+      // end): if everything goes wrong it is still there to be found.
+      let aside = parent.appendingPathComponent(".\(running.deletingPathExtension().lastPathComponent)-old-\(UUID().uuidString).app")
       try move(running, aside)
       do {
         try move(new, running)

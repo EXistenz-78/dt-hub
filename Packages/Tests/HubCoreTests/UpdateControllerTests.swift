@@ -37,7 +37,7 @@ struct UpdateControllerTests {
     let defaults: UserDefaults
     let controller: UpdateController
 
-    init(delay: UInt64 = 0, slowDownload: Bool = false, lastCheck: Date? = nil) {
+    init(delay: UInt64 = 0, slowDownload: Bool = false, reportsProgress: Bool = false, lastCheck: Date? = nil) {
       self.delay = delay
       let defaults = UpdateSettingsTests.defaults()
       if let lastCheck { defaults.set(lastCheck, forKey: UpdateSettings.lastCheckKey) }
@@ -51,7 +51,9 @@ struct UpdateControllerTests {
         return answer.value
       })
       let installer = UpdateInstaller(
-        download: { _, destination, _ in
+        download: { _, destination, progress in
+          // A report that arrives after the install is over.
+          if reportsProgress { Task.detached { try? await Task.sleep(nanoseconds: 30_000_000); progress(0.5) } }
           if slowDownload { try await Task.sleep(nanoseconds: 50_000_000) }
           try Data().write(to: destination)
         },
@@ -193,5 +195,23 @@ struct UpdateControllerTests {
     await rig.controller.install(["app"])
     #expect(rig.controller.revealedApp?.lastPathComponent == "DT Hub.app")
     #expect(!rig.controller.needsRelaunch)
+  }
+
+  @Test func anAppAlreadyReplacedIsNotOfferedAgain() async {
+    let rig = Rig()
+    await rig.controller.checkNow()
+    await rig.controller.install(["app"])
+    #expect(rig.controller.needsRelaunch)
+    await rig.controller.checkNow()
+    #expect(!rig.controller.offers.contains { $0.isApp })
+    #expect(rig.controller.needsRelaunch)
+  }
+
+  @Test func aLateProgressReportDoesNotBringBackTheInstallingState() async {
+    let rig = Rig(reportsProgress: true)
+    await rig.controller.checkNow()
+    await rig.controller.install(["a"])
+    try? await Task.sleep(nanoseconds: 100_000_000)
+    #expect(rig.controller.state == .finished)
   }
 }

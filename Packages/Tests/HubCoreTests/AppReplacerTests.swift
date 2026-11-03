@@ -123,4 +123,26 @@ struct AppReplacerTests {
     #expect(scene.version(of: url) == "1.0.0")
     #expect(scene.version(of: scene.running) == "0.9.0")
   }
+
+  @Test func ifPuttingBackAlsoFailsTheOldAppStaysNextToTheOriginalPlace() async throws {
+    let scene = try Scene()
+    let calls = Box(0)
+    let failing = replacer { from, to in
+      calls.value += 1
+      // The first move (the old app aside) works; the new app into place and the put-back both fail.
+      if calls.value >= 2 { throw CocoaError(.fileWriteOutOfSpace) }
+      try FileManager.default.moveItem(at: from, to: to)
+    }
+    await #expect {
+      _ = try await replace(failing, scene)
+    } throws: { error in
+      if case UpdateError.cannotWrite = error { return true }
+      return false
+    }
+    // The old app is somewhere the clean-up of the work folder does not reach.
+    try? FileManager.default.removeItem(at: scene.work)
+    let kept = try FileManager.default.contentsOfDirectory(atPath: scene.apps.path)
+      .map { scene.apps.appendingPathComponent($0) }.filter { scene.version(of: $0) == "0.9.0" }
+    #expect(kept.count == 1)
+  }
 }

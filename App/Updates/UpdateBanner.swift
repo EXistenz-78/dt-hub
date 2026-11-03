@@ -15,9 +15,12 @@ struct UpdateBanner: View {
     }
   }
 
+  /// The app was replaced and waits for a restart: the banner stays, so the reminder is not lost.
+  private var waitsForRestart: Bool { controller.needsRelaunch && !isWorking }
+
   var body: some View {
     Group {
-      if !controller.visibleOffers.isEmpty || isWorking {
+      if !controller.visibleOffers.isEmpty || isWorking || controller.needsRelaunch {
         HStack(alignment: .firstTextBaseline, spacing: DS.controlGap) {
           Image(systemName: "arrow.down.circle.fill")
             .foregroundStyle(DS.accent)
@@ -26,9 +29,14 @@ struct UpdateBanner: View {
             .font(.callout)
             .fixedSize(horizontal: false, vertical: true)
           Spacer(minLength: DS.controlGap)
-          Button("updates.details") { showsDetails = true }
-            .buttonStyle(DSPillButtonStyle(prominent: true))
-          if !isWorking {
+          if waitsForRestart {
+            Button("updates.relaunchNow") { AppRelaunch.relaunch() }
+              .buttonStyle(DSPillButtonStyle(prominent: true))
+          } else {
+            Button("updates.details") { showsDetails = true }
+              .buttonStyle(DSPillButtonStyle(prominent: true))
+          }
+          if !isWorking && !waitsForRestart {
             Button("updates.later") { controller.putOff() }
               .buttonStyle(DSPillButtonStyle())
           }
@@ -49,7 +57,9 @@ struct UpdateBanner: View {
     switch controller.state {
     case .installing(let name, _): String(format: String(localized: "updates.banner.installing"), name)
     case .finished: String(localized: "updates.banner.done")
-    default: UpdateText.summary(controller.visibleOffers)
+    default:
+      controller.needsRelaunch && controller.visibleOffers.isEmpty
+        ? String(localized: "updates.relaunch.note") : UpdateText.summary(controller.visibleOffers)
     }
   }
 }

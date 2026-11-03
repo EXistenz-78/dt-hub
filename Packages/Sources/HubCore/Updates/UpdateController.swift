@@ -113,9 +113,11 @@ public final class UpdateController {
       self.manifest = manifest
       tag = manifest.tag
       remember()
+      // The app replaced in this run is the new one at the next launch: it is not offered again.
       offers = UpdatePlan.make(
         manifest: manifest, appVersion: appVersion, installedPlugins: installedPlugins(),
-        supportedContracts: PluginContract.supported)
+        supportedContracts: PluginContract.supported
+      ).filter { !($0.isApp && needsRelaunch) }
       message = silent || !offers.isEmpty ? nil : .upToDate
     case .noInformation:
       manifest = nil
@@ -177,7 +179,13 @@ public final class UpdateController {
     do {
       bundle = try await installer.fetchBundle(
         offer.item, manifest: manifest, base: base, work: workFolder,
-        progress: { [weak self] fraction in Task { @MainActor in self?.state = .installing(name, fraction) } })
+        progress: { [weak self] fraction in
+          Task { @MainActor in
+            // A late report must not bring back a state the install has left.
+            guard let self, case .installing(let current, _) = self.state, current == name else { return }
+            self.state = .installing(name, fraction)
+          }
+        })
     } catch {
       return error
     }
