@@ -23,7 +23,15 @@ public final class LanguageModelManager {
   /// Memory the model needs beyond its files (the cache of the answer, the working buffers).
   public static let memoryMargin = 1.2
 
+  /// The models LM Studio's server offers now (empty until `refreshServerModels`, and when the server is off).
+  public private(set) var serverModels: [LanguageModelDescriptor] = []
+  /// Why the list of the server's models is empty, when it is the server's fault.
+  public private(set) var serverError: LanguageModelError?
+
   @ObservationIgnored private let service: any LanguageModelService
+  @ObservationIgnored private let serverService: any ServerLanguageModelService
+  /// The source of the model in memory, so `unload` frees it in the service that holds it.
+  @ObservationIgnored private var loadedBackend: LanguageModelBackend = .folder
   @ObservationIgnored private let store: LanguageModelSettingsStore
   @ObservationIgnored private let memory: MemoryProbe
   @ObservationIgnored private let releaseImageModel: @MainActor () async -> Void
@@ -48,9 +56,11 @@ public final class LanguageModelManager {
     service: any LanguageModelService, store: LanguageModelSettingsStore = LanguageModelSettingsStore(),
     memory: MemoryProbe = .live, minute: Duration = .seconds(60),
     releaseImageModel: @escaping @MainActor () async -> Void = {},
-    isImageModelBusy: @escaping @MainActor () -> Bool = { false }
+    isImageModelBusy: @escaping @MainActor () -> Bool = { false },
+    serverService: any ServerLanguageModelService = OpenAICompatibleService()
   ) {
     self.service = service
+    self.serverService = serverService
     self.store = store
     self.memory = memory
     self.minute = minute
@@ -61,9 +71,39 @@ public final class LanguageModelManager {
 
   public var isLoaded: Bool { loaded != nil }
 
-  /// The models in the chosen folder.
+  /// The models of the chosen source: the folder, or the server's list as of the last `refreshServerModels`.
   public func availableModels() -> [LanguageModelDescriptor] {
-    LanguageModelScanner.models(in: URL(fileURLWithPath: settings.folder, isDirectory: true))
+    if settings.backend == .lmStudio { return serverModels }
+    return LanguageModelScanner.models(in: URL(fileURLWithPath: settings.folder, isDirectory: true))
+  }
+
+  /// Asks LM Studio for its models (does nothing with the folder as source). A server that is off, or an address
+  /// that is not this Mac, empties the list and sets `serverError`.
+  public func refreshServerModels() async {
+    guard settings.backend == .lmStudio else { return }
+    guard let address = LMStudioAddress.validated(settings.serverURL) else {
+      serverModels = []
+      serverError = .loadFailed("The server address must be http on this Mac, with a port (for example \(LMStudioAddress.defaultURL)).")
+      return
+    }
+    await serverService.configure(address: address, visionModels: settings.serverVisionModels)
+    do {
+      serverModels = try await serverService.models()
+      serverError = nil
+    } catch {
+      serverModels = []
+      serverError = (error as? LanguageModelError) ?? .loadFailed(error.localizedDescription)
+    }
+  }
+
+  /// The service of the source in use.
+  private var activeService: any LanguageModelService {
+    settings.backend == .lmStudio ? serverService : service
+  }
+
+  /// The service that holds the model in memory.
+  private var loadedService: any LanguageModelService {
+    loadedBackend == .lmStudio ? serverService : service
   }
 
   /// The model chosen in the settings, when it still is in the folder.
@@ -127,6 +167,8 @@ public final class LanguageModelManager {
     for task: LanguageModelTask, family: String?, needs: LanguageModelNeeds = LanguageModelNeeds()
   ) -> Result<LanguageModelDescriptor, LanguageModelError> {
     reconcileAssignments()
+    // A server that is off is the reason there is no model: say so, not "no model chosen".
+    if settings.backend == .lmStudio, serverModels.isEmpty, let serverError { return .failure(serverError) }
     return LanguageModelRouter.model(
       for: task, family: family, models: availableModels(), assignments: settings.assignments, needs: needs)
   }
@@ -141,7 +183,7 @@ public final class LanguageModelManager {
     }
     try await ensureLoaded(model)
     do {
-      let answer = try await service.respond(to: prompt, images: images, options: options, history: history)
+      let answer = try await loadedService.respond(to: prompt, images: images, options: options, history: history)
       scheduleIdleUnload()
       return answer
     } catch let error as LanguageModelError {
@@ -160,7 +202,7 @@ public final class LanguageModelManager {
     // A model that is still loading is freed as soon as it has arrived.
     if let loading {
       _ = try? await loading.value
-      await service.unload()
+      await loadedService.unload()
       if loaded == nil { state = .unloaded }
     }
     guard loaded != nil else {
@@ -169,12 +211,13 @@ public final class LanguageModelManager {
     }
     loaded = nil
     state = .unloaded
-    await service.unload()
+    await loadedService.unload()
   }
 
-  /// Called when RUN is pressed: frees the model when the settings say so.
+  /// Called when RUN is pressed: frees the model when the settings say so. Nothing to free with LM Studio's
+  /// server: its memory is not DT Hub's.
   public func prepareForRun() async {
-    guard settings.freeAtRun else { return }
+    guard settings.freeAtRun, settings.backend == .folder else { return }
     await unload()
   }
 
@@ -198,7 +241,8 @@ public final class LanguageModelManager {
       throw error
     }
     state = .loading(model.name)
-    let service = service
+    loadedBackend = settings.backend
+    let service = activeService
     let load = Task { try await service.load(model) }
     loading = load
     defer { if epoch == ticket { loading = nil } }
@@ -223,7 +267,7 @@ public final class LanguageModelManager {
 
   private func scheduleIdleUnload() {
     idleTask?.cancel()
-    guard settings.idleMinutes > 0, loaded != nil else { return }
+    guard settings.idleMinutes > 0, loaded != nil, loadedBackend == .folder else { return }
     let mark = activity
     let wait = minute * settings.idleMinutes
     idleTask = Task { [weak self] in

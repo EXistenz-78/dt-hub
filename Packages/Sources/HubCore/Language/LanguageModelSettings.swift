@@ -18,6 +18,12 @@ public struct LanguageModelSettings: Equatable, Codable, Sendable {
   public var freeImageModelForLanguageModel: Bool
   /// Minutes without use after which the language model is freed; 0 = never.
   public var idleMinutes: Int
+  /// Where the language models come from: the folder (MLX, the default) or LM Studio's server on this Mac.
+  public var backend: LanguageModelBackend
+  /// LM Studio's OpenAI-compatible address (only this Mac is accepted, see `LMStudioAddress`).
+  public var serverURL: String
+  /// Server models the user said can read pictures, because the server does not say so.
+  public var serverVisionModels: Set<String>
 
   public static var defaultFolder: String {
     FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -29,8 +35,12 @@ public struct LanguageModelSettings: Equatable, Codable, Sendable {
   public init(
     folder: String = defaultFolder, selectedModel: String = "", freeAtRun: Bool = true,
     freeImageModelForLanguageModel: Bool = true, idleMinutes: Int = 10,
-    assignments: [String: LanguageModelAssignment] = [:]
+    assignments: [String: LanguageModelAssignment] = [:], backend: LanguageModelBackend = .folder,
+    serverURL: String = LMStudioAddress.defaultURL, serverVisionModels: Set<String> = []
   ) {
+    self.backend = backend
+    self.serverURL = serverURL
+    self.serverVisionModels = serverVisionModels
     self.assignments = assignments
     self.folder = folder
     self.selectedModel = selectedModel
@@ -68,7 +78,20 @@ public struct LanguageModelSettings: Equatable, Codable, Sendable {
     freeImageModelForLanguageModel = value(.freeImageModelForLanguageModel, fallback.freeImageModelForLanguageModel)
     idleMinutes = value(.idleMinutes, fallback.idleMinutes)
     assignments = value(.assignments, [:])
+    backend = value(.backend, .folder)
+    serverURL = value(.serverURL, LMStudioAddress.defaultURL)
+    serverVisionModels = value(.serverVisionModels, [])
   }
+}
+
+/// Where the language models come from, like `ServerMode` for Draw Things: one source at a time.
+public enum LanguageModelBackend: String, Codable, CaseIterable, Identifiable, Sendable {
+  /// A folder of MLX models loaded by DT Hub itself (the original way).
+  case folder
+  /// The OpenAI-compatible server of LM Studio, running on this Mac.
+  case lmStudio
+
+  public var id: String { rawValue }
 }
 
 /// Persists `LanguageModelSettings` in UserDefaults as JSON (spec §11).

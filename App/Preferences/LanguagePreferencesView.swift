@@ -22,6 +22,11 @@ struct LanguagePreferencesView: View {
   @State private var answer = ""
   @State private var asking = false
   @State private var askError: LanguageModelError?
+  /// The address as typed (saved on Return, when it is this Mac's).
+  @State private var serverAddress = ""
+  @State private var addressInvalid = false
+  /// "Connected, N models" after the Test button.
+  @State private var serverStatus: String?
 
   private var folderURL: URL { URL(fileURLWithPath: manager.settings.folder, isDirectory: true) }
   private var hasRecommended: Bool {
@@ -30,13 +35,22 @@ struct LanguagePreferencesView: View {
 
   var body: some View {
     Form {
-      folderSection
+      backendSection
+      if manager.settings.backend == .folder {
+        folderSection
+      } else {
+        serverSection
+      }
       PromptLibrarySection()
       memorySection
       testSection
     }
     .formStyle(.grouped)
-    .onAppear(perform: refresh)
+    .onAppear {
+      serverAddress = manager.settings.serverURL
+      reload()
+    }
+    .onChange(of: manager.settings.backend) { reload() }
     .onChange(of: download.completed) {
       manager.reconcileAssignments(downloaded: RecommendedLanguageModel.folderName)
       models = manager.availableModels()
@@ -51,6 +65,109 @@ struct LanguagePreferencesView: View {
           format: String(localized: "prefs.llm.download.confirm.message"), RecommendedLanguageModel.repository,
           ByteCountFormatter.string(fromByteCount: RecommendedLanguageModel.approximateBytes, countStyle: .file),
           manager.settings.folder))
+    }
+  }
+
+  // MARK: Source
+
+  /// Folder of MLX models (the original way) or LM Studio's server: one at a time, like the Draw Things server.
+  private var backendSection: some View {
+    Section {
+      Picker("prefs.llm.backend", selection: $manager.settings.backend) {
+        Text("prefs.llm.backend.folder").tag(LanguageModelBackend.folder)
+        Text("prefs.llm.backend.lmStudio").tag(LanguageModelBackend.lmStudio)
+      }
+      .pickerStyle(.segmented)
+    }
+  }
+
+  // MARK: LM Studio server
+
+  private var serverSection: some View {
+    Section {
+      HStack(spacing: DS.controlGap) {
+        TextField("prefs.llm.server.address", text: $serverAddress)
+          .onSubmit(applyAddress)
+        Button("prefs.llm.server.test", action: testServer)
+      }
+      if addressInvalid {
+        Text("prefs.llm.server.invalid")
+          .foregroundStyle(DS.remove)
+      }
+      if let serverStatus {
+        Text(verbatim: serverStatus)
+          .font(.caption)
+          .foregroundStyle(manager.serverError == nil ? Color.secondary : DS.remove)
+      } else if let error = manager.serverError {
+        Text(verbatim: LanguageModelErrorText.message(error))
+          .font(.caption)
+          .foregroundStyle(DS.remove)
+      }
+      if models.isEmpty, manager.serverError == nil {
+        Text("prefs.llm.server.noModels")
+          .foregroundStyle(.secondary)
+      }
+      ForEach(models) { model in
+        modelRow(model)
+        if !model.supportsImages || manager.settings.serverVisionModels.contains(model.name) {
+          Toggle("prefs.llm.server.vision", isOn: visionBinding(model.name))
+            .font(.caption)
+        }
+      }
+      if !models.isEmpty {
+        Text("prefs.llm.assign.note")
+          .font(.caption).foregroundStyle(.secondary)
+      }
+    } footer: {
+      Text("prefs.llm.server.note")
+        .foregroundStyle(.secondary)
+    }
+  }
+
+  /// "Reads images" for a server model the server does not say reads pictures; kept in the settings.
+  private func visionBinding(_ name: String) -> Binding<Bool> {
+    Binding(
+      get: { manager.settings.serverVisionModels.contains(name) },
+      set: { isOn in
+        if isOn {
+          manager.settings.serverVisionModels.insert(name)
+        } else {
+          manager.settings.serverVisionModels.remove(name)
+        }
+        reload()
+      })
+  }
+
+  /// Saves the address when it is this Mac's and reads the models again; otherwise says why not.
+  private func applyAddress() {
+    guard let url = LMStudioAddress.validated(serverAddress) else {
+      addressInvalid = true
+      return
+    }
+    addressInvalid = false
+    serverAddress = url.absoluteString
+    manager.settings.serverURL = url.absoluteString
+    reload()
+  }
+
+  private func testServer() {
+    applyAddress()
+    guard !addressInvalid else { return }
+    Task {
+      await manager.refreshServerModels()
+      refresh()
+      serverStatus =
+        manager.serverError == nil
+        ? String(format: String(localized: "prefs.llm.server.connected"), manager.serverModels.count) : nil
+    }
+  }
+
+  /// Reads the folder, and the server's models when that is the source.
+  private func reload() {
+    refresh()
+    Task {
+      await manager.refreshServerModels()
+      refresh()
     }
   }
 
@@ -178,6 +295,11 @@ struct LanguagePreferencesView: View {
   }
 
   private func label(of model: LanguageModelDescriptor) -> String {
+    // A server model has no files here: no size to show.
+    if model.path.hasPrefix(ServerModelList.idPrefix) {
+      return model.supportsImages
+        ? String(format: String(localized: "prefs.llm.model.vision.server"), model.name) : model.name
+    }
     let size = ByteCountFormatter.string(fromByteCount: model.sizeBytes, countStyle: .file)
     return model.supportsImages
       ? String(format: String(localized: "prefs.llm.model.vision"), model.name, size) : "\(model.name) · \(size)"
@@ -221,16 +343,21 @@ struct LanguagePreferencesView: View {
 
   private var memorySection: some View {
     Section {
-      Toggle("prefs.llm.freeAtRun", isOn: $manager.settings.freeAtRun)
+      // With LM Studio's server the memory is the server's: only freeing the image model still applies.
+      if manager.settings.backend == .folder {
+        Toggle("prefs.llm.freeAtRun", isOn: $manager.settings.freeAtRun)
+      }
       Toggle("prefs.llm.freeImageModel", isOn: $manager.settings.freeImageModelForLanguageModel)
         .disabled(connection.managed.mode != .managed)
-      Stepper(
-        value: $manager.settings.idleMinutes, in: LanguageModelSettings.idleRange, step: 5
-      ) {
-        Text(
-          manager.settings.idleMinutes == 0
-            ? String(localized: "prefs.llm.idle.never")
-            : String(format: String(localized: "prefs.llm.idle"), manager.settings.idleMinutes))
+      if manager.settings.backend == .folder {
+        Stepper(
+          value: $manager.settings.idleMinutes, in: LanguageModelSettings.idleRange, step: 5
+        ) {
+          Text(
+            manager.settings.idleMinutes == 0
+              ? String(localized: "prefs.llm.idle.never")
+              : String(format: String(localized: "prefs.llm.idle"), manager.settings.idleMinutes))
+        }
       }
     } header: {
       Text("prefs.llm.memory")
