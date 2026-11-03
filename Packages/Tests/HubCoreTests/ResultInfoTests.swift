@@ -172,6 +172,21 @@ struct ResultInfoTests {
     #expect(rows(partial, .file).map(\.field).contains(.partial))
   }
 
+  @Test func videoSizeRowAppearsOnlyWithAnActiveCrop() {
+    var params = GenerationParameters()
+    params.video.numFrames = 49
+    let plain = GenerationJob(prompt: "a cat", model: "ltx.ckpt", parameters: params, videoFPS: 24)
+    #expect(value(info(result(plain)), .videoSize) == nil)
+    params.applyVideoFormat(VideoOutputFormat.all.first { $0.name == "720p" })
+    let cropped = GenerationJob(prompt: "a cat", model: "ltx.ckpt", parameters: params, videoFPS: 24)
+    let i = info(result(cropped))
+    #expect(value(i, .videoSize) == "1280 × 720")
+    #expect(rows(i, .model).map(\.field).contains(.videoSize))
+    params.width = 1024
+    let stale = GenerationJob(prompt: "a cat", model: "ltx.ckpt", parameters: params, videoFPS: 24)
+    #expect(value(info(result(stale)), .videoSize) == nil)
+  }
+
   @Test func imageJobHasNoVideoRows() {
     let i = info(result(job()))
     #expect(value(i, .frames) == nil)

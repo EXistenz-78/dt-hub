@@ -11,16 +11,22 @@ public struct VideoParameters: Equatable, Codable, Sendable {
   public var usesSolAttention: Bool
   public var solAttentionStart: Int
   public var solAttentionTau: Double
+  /// The exact size every frame is cropped to (centered) when the MP4 is made; nil = no crop. It counts only while
+  /// the generation size is still this size rounded up to 64 (`GenerationParameters.activeVideoOutput`).
+  public var outputWidth: Int?
+  public var outputHeight: Int?
 
   public init(
     numFrames: Int = 1, shiftForAudio: Double = 3, usesSolAttention: Bool = false,
-    solAttentionStart: Int = 2, solAttentionTau: Double = 0.5
+    solAttentionStart: Int = 2, solAttentionTau: Double = 0.5, outputWidth: Int? = nil, outputHeight: Int? = nil
   ) {
     self.numFrames = numFrames
     self.shiftForAudio = shiftForAudio
     self.usesSolAttention = usesSolAttention
     self.solAttentionStart = solAttentionStart
     self.solAttentionTau = solAttentionTau
+    self.outputWidth = outputWidth
+    self.outputHeight = outputHeight
   }
 
   public static let `default` = VideoParameters()
@@ -41,6 +47,8 @@ public struct VideoParameters: Equatable, Codable, Sendable {
     usesSolAttention = value(.usesSolAttention, fallback.usesSolAttention)
     solAttentionStart = value(.solAttentionStart, fallback.solAttentionStart)
     solAttentionTau = value(.solAttentionTau, fallback.solAttentionTau)
+    outputWidth = (try? container.decodeIfPresent(Int.self, forKey: .outputWidth)) ?? nil
+    outputHeight = (try? container.decodeIfPresent(Int.self, forKey: .outputHeight)) ?? nil
   }
 
   /// The same parameters forced into the allowed ranges; frames snapped to the family's valid counts when it is known.

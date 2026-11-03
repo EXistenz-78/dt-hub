@@ -162,6 +162,35 @@ public struct GenerationParameters: Equatable, Codable, Sendable {
   /// is two overlapping accesses to the same struct and crashes at run time.
   public mutating func swapDimensions() {
     (width, height) = (height, width)
+    (video.outputWidth, video.outputHeight) = (video.outputHeight, video.outputWidth)
+  }
+
+  /// The exact size the video is cropped to, only while the generation size is still that target rounded up to
+  /// a multiple of 64; nil otherwise. The one place that rule lives: the menu, the job and the encoder use it.
+  public var activeVideoOutput: (width: Int, height: Int)? {
+    guard let w = video.outputWidth, let h = video.outputHeight, w > 0, h > 0,
+      width == VideoOutputFormat.roundedUp(w), height == VideoOutputFormat.roundedUp(h)
+    else { return nil }
+    return (w, h)
+  }
+
+  /// The format the video menu shows: the one matching the active target, nil ("None") when there is no active crop.
+  public var activeVideoFormat: VideoOutputFormat? {
+    activeVideoOutput.flatMap { VideoOutputFormat.matching(outputWidth: $0.width, outputHeight: $0.height) }
+  }
+
+  /// Picks a video format: the generation size becomes the format's rounded-up size (landscape) and the exact
+  /// size is stored as the crop target. nil ("None") clears the target and leaves the size alone.
+  public mutating func applyVideoFormat(_ format: VideoOutputFormat?) {
+    guard let format else {
+      video.outputWidth = nil
+      video.outputHeight = nil
+      return
+    }
+    width = format.generatedWidth
+    height = format.generatedHeight
+    video.outputWidth = format.width
+    video.outputHeight = format.height
   }
 
   /// Applies an aspect ratio keeping the long side and the orientation (portrait stays portrait).

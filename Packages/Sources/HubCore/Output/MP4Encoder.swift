@@ -11,15 +11,37 @@ public enum MP4EncoderError: Error, Equatable, Sendable {
 
 /// Writes a generated clip as an MP4: HEVC video at the clip's frame rate and, when the clip has sound, an AAC stereo track.
 public enum MP4Encoder {
-  public static func write(_ video: GeneratedVideo, to url: URL) async throws {
+  /// `cropTo` is the exact size every frame is cropped to, centered (`centeredCrop`); the video then has that size.
+  public static func write(
+    _ video: GeneratedVideo, to url: URL, cropTo target: (width: Int, height: Int)? = nil
+  ) async throws {
     guard let first = video.frames.first else { throw MP4EncoderError.noFrames }
-    let job = try Job(video: video, first: first, url: url)
+    let crop = centeredCrop(frameWidth: first.width, frameHeight: first.height, target: target)
+    let job = try Job(video: video, first: first, url: url, crop: crop)
     try await job.run()
   }
 
   /// Rounds a side to the nearest even number (the encoder wants even sides), at least 2.
   static func evenSide(_ value: Int) -> Int {
     max(2, (value + 1) / 2 * 2)
+  }
+
+  /// The centered crop rectangle of a frame for a target size: the target's sides rounded down to even (HEVC), the
+  /// offset floor((frame - target) / 2) on each axis. nil when there is no target, when it is larger than the
+  /// frame on either axis (no stretching, no padding) or when it equals the frame.
+  static func centeredCrop(frameWidth: Int, frameHeight: Int, target: (width: Int, height: Int)?) -> CGRect? {
+    guard let target else { return nil }
+    let width = target.width / 2 * 2
+    let height = target.height / 2 * 2
+    guard width >= 2, height >= 2, width <= frameWidth, height <= frameHeight else { return nil }
+    guard width != frameWidth || height != frameHeight else { return nil }
+    return CGRect(x: (frameWidth - width) / 2, y: (frameHeight - height) / 2, width: width, height: height)
+  }
+
+  /// The frame cut to `rect` (top-left origin, whole pixels).
+  static func cropped(_ image: CGImage, to rect: CGRect?) -> CGImage {
+    guard let rect else { return image }
+    return image.cropping(to: rect) ?? image
   }
 
   /// One writing: the writer and its inputs live here and are only touched from `queue`, one task at a time.
@@ -42,11 +64,14 @@ public enum MP4Encoder {
     var continuation: CheckedContinuation<Void, Error>?
     var failure: Error?
 
-    init(video: GeneratedVideo, first: CGImage, url: URL) throws {
+    let crop: CGRect?
+
+    init(video: GeneratedVideo, first: CGImage, url: URL, crop: CGRect?) throws {
       self.video = video
       self.url = url
-      width = MP4Encoder.evenSide(first.width)
-      height = MP4Encoder.evenSide(first.height)
+      self.crop = crop
+      width = crop.map { Int($0.width) } ?? MP4Encoder.evenSide(first.width)
+      height = crop.map { Int($0.height) } ?? MP4Encoder.evenSide(first.height)
       try? FileManager.default.removeItem(at: url)
       do {
         writer = try AVAssetWriter(outputURL: url, fileType: .mp4)
@@ -196,7 +221,7 @@ public enum MP4Encoder {
         if failure != nil { return abortAll() }
         if writer.status == .failed { return fail(writer.error?.localizedDescription ?? "writer failed") }
         if nextFrame >= video.frames.count { return finishVideo() }
-        guard let pool = adaptor.pixelBufferPool, let buffer = pixelBuffer(video.frames[nextFrame], pool: pool) else {
+        guard let pool = adaptor.pixelBufferPool, let buffer = pixelBuffer(MP4Encoder.cropped(video.frames[nextFrame], to: crop), pool: pool) else {
           return fail("cannot make a pixel buffer for frame \(nextFrame)")
         }
         let time = CMTimeMultiply(frameDuration, multiplier: Int32(nextFrame))

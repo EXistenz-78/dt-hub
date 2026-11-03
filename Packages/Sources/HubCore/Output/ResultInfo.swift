@@ -11,7 +11,7 @@ public struct ResultInfo: Equatable, Sendable {
     case imageStrength, moodboard, mask
     case advanced(key: String), extra(key: String)
     case time, date, fileName, folder, notSaved
-    case frames, duration, partial
+    case frames, duration, videoSize, partial
   }
 
   public enum Kind: Equatable, Sendable { case prompt, model, loras, input, advanced, extra, file }
@@ -61,6 +61,9 @@ public struct ResultInfo: Equatable, Sendable {
       if let seconds = image.videoSeconds ?? job.videoSeconds {
         model.append(Row(field: .duration, value: number(seconds)))
       }
+    }
+    if job.isVideo, let crop = p.activeVideoOutput {
+      model.append(Row(field: .videoSize, value: "\(crop.width) × \(crop.height)"))
     }
     if p.cfgZeroStar { model.append(Row(field: .cfgZero, value: integer(p.cfgZeroInitSteps))) }
 

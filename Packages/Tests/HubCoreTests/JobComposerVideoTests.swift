@@ -33,6 +33,28 @@ struct JobComposerVideoTests {
     #expect(result.allSatisfy { $0.parameters.video == .default && $0.videoFPS == nil })
   }
 
+  @Test func aConsistentOutputTargetSurvivesForAVideoFamily() {
+    var parameters = GenerationParameters()
+    parameters.applyVideoFormat(VideoOutputFormat.all.first { $0.name == "720p" })
+    let result = jobs(ltx, parameters)
+    #expect(result.allSatisfy { $0.parameters.video.outputWidth == 1280 && $0.parameters.video.outputHeight == 720 })
+  }
+
+  @Test func anInconsistentOutputTargetIsCleared() {
+    var parameters = GenerationParameters()
+    parameters.applyVideoFormat(VideoOutputFormat.all.first { $0.name == "720p" })
+    parameters.width = 1024
+    let result = jobs(ltx, parameters)
+    #expect(result.allSatisfy { $0.parameters.video.outputWidth == nil && $0.parameters.video.outputHeight == nil })
+  }
+
+  @Test func anImageFamilyHasNoOutputTarget() {
+    var parameters = GenerationParameters()
+    parameters.applyVideoFormat(VideoOutputFormat.all.first { $0.name == "720p" })
+    let result = jobs(flux, parameters)
+    #expect(result.allSatisfy { $0.parameters.video.outputWidth == nil && $0.parameters.video.outputHeight == nil })
+  }
+
   @Test func batchSizeIsOneForVideo() {
     var parameters = GenerationParameters()
     parameters.batchSize = 4

@@ -20,6 +20,11 @@ public enum JobComposer {
     if let videoInfo {
       sent.video = parameters.video.clamped(for: videoInfo)
       sent.batchSize = 1
+      // A target that no longer matches the size never crops.
+      if parameters.activeVideoOutput == nil {
+        sent.video.outputWidth = nil
+        sent.video.outputHeight = nil
+      }
       if !videoInfo.usesAudioShift { sent.video.shiftForAudio = VideoParameters.default.shiftForAudio }
       if !videoInfo.usesAccelerators {
         sent.video.usesSolAttention = false

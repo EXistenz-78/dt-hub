@@ -47,7 +47,7 @@ extension ImageStore {
     guard let first = video.frames.first else { throw ImageStoreError.cannotWrite(MP4EncoderError.noFrames.localizedDescription) }
     let poster = try save(first, job: job, index: 0, date: date, elapsed: elapsed)
     do {
-      try await MP4Encoder.write(video, to: Self.videoURL(forPoster: poster))
+      try await MP4Encoder.write(video, to: Self.videoURL(forPoster: poster), cropTo: job.parameters.activeVideoOutput)
     } catch {
       try? FileManager.default.removeItem(at: poster)
       try? FileManager.default.removeItem(at: Self.videoURL(forPoster: poster))
