@@ -11135,6 +11135,91 @@
           }
         }
       }
+    },
+    "prompt.drop.subject": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subject"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Soggetto"
+          }
+        }
+      }
+    },
+    "prompt.drop.style": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Style"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stile"
+          }
+        }
+      }
+    },
+    "prompt.drop.subject.help": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drop a picture here (from the gallery or from Finder): the language model takes its subject, setting and action and writes a new prompt; the style comes from the text of the prompt field. The picture is not loaded anywhere else."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trascina qui un'immagine (dalla galleria o da Finder): l'LLM ne prende soggetto, ambientazione e azione e scrive un nuovo prompt; lo stile viene dal testo del campo prompt. L'immagine non viene caricata altrove."
+          }
+        }
+      }
+    },
+    "prompt.drop.style.help": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drop a picture here (from the gallery or from Finder): the language model takes its style and writes a new prompt; the subject, setting and action come from the text of the prompt field. The picture is not loaded anywhere else."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trascina qui un'immagine (dalla galleria o da Finder): l'LLM ne prende lo stile e scrive un nuovo prompt; soggetto, ambientazione e azione vengono dal testo del campo prompt. L'immagine non viene caricata altrove."
+          }
+        }
+      }
+    },
+    "prompt.drop.notAnImage": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That is not a picture."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo non è un'immagine."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

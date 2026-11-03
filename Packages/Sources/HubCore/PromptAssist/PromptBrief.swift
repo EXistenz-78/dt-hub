@@ -39,6 +39,14 @@ public struct EnhanceImages: Equatable, Sendable {
 }
 
 /// The messages the Enhance/Generate Prompt tools send to the language model (pure functions).
+/// What a picture dropped on «Soggetto» or «Stile» is used for; the other half comes from the text of the prompt field.
+public enum DescribeFocus: Equatable, Sendable {
+  /// The picture gives the subject, the setting and the action; the text gives the style.
+  case subject
+  /// The picture gives the style; the text gives the subject, the setting and the action.
+  case style
+}
+
 public enum PromptBrief {
   /// The system prompt for a family and a task: Rules, Family and the user's own, from the library.
   public static func system(family: String?, task: PromptTask = .enhance, library: PromptLibrary = .builtIn) -> String {
@@ -65,6 +73,42 @@ public enum PromptBrief {
       prompt:
         "Describe this image as a prompt for this model, following the model notes. Describe only what is visible; do not invent a story.",
       images: [url], options: options(system: system(family: family, task: .describe, library: library)))
+  }
+
+  /// The sentence that sets what to take from the picture, then the text of the prompt field if there is one.
+  static func focusText(_ focus: DescribeFocus, userText: String) -> String {
+    let sentence: String
+    switch focus {
+    case .subject:
+      sentence =
+        "Use the picture for ONLY the subject, the setting and the action; ignore its style (light, colours, medium, mood, rendering). If there is a user's text, take the style from the user's text. Write one single new prompt that merges the two."
+    case .style:
+      sentence =
+        "Use the picture for ONLY the style (light, colours, medium, mood, rendering); ignore what it shows. If there is a user's text, take the subject, the setting and the action from the user's text. Write one single new prompt that merges the two."
+    }
+    let text = userText.trimmingCharacters(in: .whitespacesAndNewlines)
+    return text.isEmpty ? sentence : sentence + "\n\nUser's text:\n" + text
+  }
+
+  /// Generate Prompt from a picture dropped on «Soggetto» / «Stile»: the usual request, then the sentence for the focus.
+  public static func describe(
+    imageAt url: URL, current: PromptPair, family: String?, focus: DescribeFocus, library: PromptLibrary = .builtIn
+  ) -> PromptRequest {
+    let usual = describe(imageAt: url, family: family, library: library)
+    return PromptRequest(
+      prompt: usual.prompt + "\n\n" + focusText(focus, userText: current.prompt), images: usual.images,
+      options: usual.options)
+  }
+
+  /// The same for an LLM with its own system prompt.
+  public static func describe(
+    imageAt url: URL, ownSystem: String, generation: LanguageModelProfile.Generation?, current: PromptPair,
+    focus: DescribeFocus, library: PromptLibrary = .builtIn
+  ) -> PromptRequest {
+    let usual = describe(imageAt: url, ownSystem: ownSystem, generation: generation, library: library)
+    return PromptRequest(
+      prompt: usual.prompt + "\n\n" + focusText(focus, userText: current.prompt), images: usual.images,
+      options: usual.options)
   }
 
   /// Enhance with an LLM that has its own system prompt: the user's text goes as it is (the model was made for
@@ -165,11 +209,16 @@ public enum PromptBrief {
   }
 
   /// Generate with the PUP: always `i2i`; the text in the field is the request, or a default one when it is empty.
-  public static func describe(imageAt url: URL, current: PromptPair, pup: LanguageModelProfile.Pup) -> PromptRequest {
+  /// With a `focus` (a picture dropped on «Soggetto» / «Stile») the request is the default one plus the sentence for the
+  /// focus and the text of the field.
+  public static func describe(
+    imageAt url: URL, current: PromptPair, pup: LanguageModelProfile.Pup, focus: DescribeFocus? = nil
+  ) -> PromptRequest {
     let text = current.prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+    let request =
+      focus.map { pupDescribeRequest + " " + focusText($0, userText: text) } ?? (text.isEmpty ? pupDescribeRequest : text)
     return PromptRequest(
-      prompt: pupScaffold(text.isEmpty ? pupDescribeRequest : text), images: [url],
-      options: pupOptions(system: pup.i2i, presencePenalty: 0))
+      prompt: pupScaffold(request), images: [url], options: pupOptions(system: pup.i2i, presencePenalty: 0))
   }
 
   private static func ownOptions(_ system: String, _ generation: LanguageModelProfile.Generation?) -> LanguageModelOptions {

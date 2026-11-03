@@ -73,17 +73,30 @@ public final class PromptAssistant {
     }
   }
 
-  public func describe(imageAt url: URL?, current: PromptPair, family: String?) async -> PromptPair? {
+  /// Generate Prompt. With a `focus` (a picture dropped on «Soggetto» / «Stile») the text of the prompt field goes too, and
+  /// one sentence says what to take from the picture and what from the text.
+  public func describe(
+    imageAt url: URL?, current: PromptPair, family: String?, focus: DescribeFocus? = nil
+  ) async -> PromptPair? {
     guard working == nil else { return nil }
     guard let url else {
       failure = .noImage
       return nil
     }
     return await run(.describe, current: current, family: family, withImages: true) { choice, _ in
-      if let pup = choice.profile.pup { return PromptBrief.describe(imageAt: url, current: current, pup: pup) }
-      return choice.profile.systemPrompt(for: .describe).map {
-        PromptBrief.describe(imageAt: url, ownSystem: $0, generation: choice.profile.generation, library: library)
-      } ?? PromptBrief.describe(imageAt: url, family: family, library: library)
+      if let pup = choice.profile.pup {
+        return PromptBrief.describe(imageAt: url, current: current, pup: pup, focus: focus)
+      }
+      if let own = choice.profile.systemPrompt(for: .describe) {
+        if let focus {
+          return PromptBrief.describe(
+            imageAt: url, ownSystem: own, generation: choice.profile.generation, current: current, focus: focus,
+            library: library)
+        }
+        return PromptBrief.describe(imageAt: url, ownSystem: own, generation: choice.profile.generation, library: library)
+      }
+      if let focus { return PromptBrief.describe(imageAt: url, current: current, family: family, focus: focus, library: library) }
+      return PromptBrief.describe(imageAt: url, family: family, library: library)
     }
   }
 

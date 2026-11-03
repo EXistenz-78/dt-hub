@@ -8,6 +8,8 @@ struct PromptCard: View {
   @Bindable var controller: GenerationController
   let connection: DrawThingsConnection
   @Environment(ContributionStore.self) private var contributions: ContributionStore?
+  /// The last drop on «Soggetto» / «Stile» held no picture.
+  @State private var notAnImage = false
 
   var body: some View {
     DSCollapsibleCard(
@@ -31,6 +33,12 @@ struct PromptCard: View {
           }
         }
         enhanceRow
+        if notAnImage {
+          Text("prompt.drop.notAnImage")
+            .font(.caption)
+            .foregroundStyle(DS.remove)
+            .fixedSize(horizontal: false, vertical: true)
+        }
         PromptAssistError(assistant: controller.assistant, hiding: .noImage)
         if controller.assistant.note == .imagesNotSent {
           Text("prompt.assist.note.imagesNotSent")
@@ -42,7 +50,8 @@ struct PromptCard: View {
     }
   }
 
-  /// Enhance Prompt (the language model rewrites the prompt), its spinner, and Undo while the fields still hold the result.
+  /// Enhance Prompt (the language model rewrites the prompt), its spinner, the two places to drop a picture («Soggetto» and
+  /// «Stile») and Undo while the fields still hold the result.
   private var enhanceRow: some View {
     HStack(spacing: DS.controlGap) {
       Button {
@@ -54,7 +63,7 @@ struct PromptCard: View {
       .help(String(localized: "prompt.enhance.help"))
       .disabled(controller.assistant.working != nil)
       if controller.assistant.working == .enhance { ProgressView().controlSize(.small) }
-      Spacer(minLength: 0)
+      PromptImageDropZones(controller: controller, connection: connection, notAnImage: $notAnImage)
       PromptAssistUndo(controller: controller)
     }
   }
