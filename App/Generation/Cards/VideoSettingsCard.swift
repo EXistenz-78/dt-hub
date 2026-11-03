@@ -22,6 +22,7 @@ struct VideoSettingsCard: View {
               .foregroundStyle(DS.accent)
           }
           framesRow(info)
+          formatRows
           if rows.showsAudioShift {
             CardRow(label: String(localized: "card.video.audioShift")) {
               DecimalField(
@@ -59,6 +60,39 @@ struct VideoSettingsCard: View {
           .monospacedDigit()
         FramesField(label: String(localized: "card.video.frames"), value: frames, info: info)
       }
+    }
+  }
+
+  /// The format menu and, with a format active, what it does. A format whose generated size is above the size
+  /// limit is disabled (HiRes is never turned on by itself).
+  @ViewBuilder private var formatRows: some View {
+    let parameters = controller.parameters
+    let active = parameters.activeVideoFormat
+    CardRow(label: String(localized: "card.video.format")) {
+      Picker(
+        selection: Binding(get: { active }, set: { controller.applyVideoFormat($0) })
+      ) {
+        Text("card.video.format.none").tag(VideoOutputFormat?.none)
+        ForEach(VideoOutputFormat.all) { format in
+          Text(verbatim: format.name).tag(VideoOutputFormat?.some(format))
+            .disabled(!format.isAvailable(sizeLimit: parameters.sizeLimit))
+        }
+      } label: {
+        EmptyView()
+      }
+      .labelsHidden()
+      .fixedSize()
+      .accessibilityLabel(String(localized: "card.video.format"))
+    }
+    if let crop = parameters.activeVideoOutput {
+      Text(
+        String(
+          format: String(localized: "card.video.format.caption"), parameters.width, parameters.height, crop.width,
+          crop.height)
+      )
+      .font(.caption)
+      .foregroundStyle(.secondary)
+      .frame(maxWidth: .infinity, alignment: .leading)
     }
   }
 

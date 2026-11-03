@@ -800,6 +800,13 @@ final class GenerationController {
     if lockRatio { lockedRatio = currentRatio }
   }
 
+  /// The Format menu of the Video card: the size becomes the format's rounded-up size and the exact one is kept as the
+  /// crop target; nil ("None") clears the target. A ratio lock follows the new size.
+  func applyVideoFormat(_ format: VideoOutputFormat?) {
+    parameters.applyVideoFormat(format)
+    if lockRatio { lockedRatio = currentRatio }
+  }
+
   func swapDimensions() {
     parameters.swapDimensions()
     if lockRatio { lockedRatio = currentRatio }

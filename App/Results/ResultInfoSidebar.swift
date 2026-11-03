@@ -85,6 +85,7 @@ struct ResultInfoSidebar: View {
     case .notSaved: Text("results.info.field.notSaved")
     case .frames: Text("results.info.field.frames")
     case .duration: Text("results.info.field.duration")
+    case .videoSize: Text("results.info.field.videoSize")
     case .partial: Text("results.info.field.partial")
     }
   }
