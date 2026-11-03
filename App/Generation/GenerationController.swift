@@ -329,6 +329,19 @@ final class GenerationController {
     }
   }
 
+  /// «Soggetto» / «Stile» of the Prompt card: the picture dropped there (from the gallery or from Finder) goes to the language
+  /// model with the usual Generate Prompt request, the text of the prompt field and the sentence for the focus. The picture is
+  /// not loaded anywhere else.
+  func promptFromImage(at url: URL, focus: DescribeFocus, in connection: DrawThingsConnection) async {
+    let current = PromptPair(prompt: prompt, negative: negativePrompt)
+    if let result = await assistant.describe(
+      imageAt: url, current: current, family: family(in: connection), focus: focus)
+    {
+      prompt = result.prompt
+      negativePrompt = result.negative
+    }
+  }
+
   /// Writes the session half a second after the last change, so typing does not write
   /// the file at every keystroke.
   private func scheduleSessionSave() {
