@@ -1,3 +1,5 @@
+import AVFoundation
+import CoreGraphics
 import ImageIO
 import Foundation
 import HubKit
@@ -105,6 +107,39 @@ struct PNGImageStoreTests {
     #expect(FileManager.default.fileExists(atPath: poster.path))
     #expect(FileManager.default.fileExists(atPath: twin.path))
     #expect(PNGImageStore.job(in: poster) == job)
+  }
+
+  func videoJob(_ configure: (inout GenerationParameters) -> Void) -> GenerationJob {
+    var p = GenerationParameters()
+    p.applyVideoFormat(VideoOutputFormat.all.first { $0.name == "480p" })  // generated 640×512, exact 640×480
+    configure(&p)
+    return GenerationJob(prompt: "a cat", model: "ltx.ckpt", parameters: p, videoFPS: 24)
+  }
+
+  func videoSize(_ url: URL) async throws -> CGSize {
+    let track = try #require(try await AVURLAsset(url: url).loadTracks(withMediaType: .video).first)
+    return try await track.load(.naturalSize)
+  }
+
+  @Test func saveVideoCropsToAnActiveTargetAndKeepsTheFullPoster() async throws {
+    let store = PNGImageStore(folder: tempFolder())
+    let frames = (0..<3).map { _ in testImage(width: 640, height: 512) }
+    let poster = try await store.saveVideo(
+      GeneratedVideo(frames: frames, audio: nil, framesPerSecond: 24), job: videoJob { _ in }, date: date,
+      elapsed: nil)
+    #expect(try await videoSize(PNGImageStore.videoURL(forPoster: poster)) == CGSize(width: 640, height: 480))
+    let source = try #require(CGImageSourceCreateWithURL(poster as CFURL, nil))
+    let image = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
+    #expect(image.width == 640 && image.height == 512)
+  }
+
+  @Test func saveVideoIgnoresAStaleTarget() async throws {
+    let store = PNGImageStore(folder: tempFolder())
+    let frames = (0..<3).map { _ in testImage(width: 640, height: 512) }
+    let stale = videoJob { $0.width = 512 }  // the size no longer matches the target
+    let poster = try await store.saveVideo(
+      GeneratedVideo(frames: frames, audio: nil, framesPerSecond: 24), job: stale, date: date, elapsed: nil)
+    #expect(try await videoSize(PNGImageStore.videoURL(forPoster: poster)) == CGSize(width: 640, height: 512))
   }
 
   @Test func trashRemovesBothFiles() async throws {

@@ -27,12 +27,16 @@ public enum MP4Encoder {
   }
 
   /// The centered crop rectangle of a frame for a target size: the target's sides rounded down to even (HEVC), the
-  /// offset floor((frame - target) / 2) on each axis. nil when there is no target, when it is larger than the
-  /// frame on either axis (no stretching, no padding) or when it equals the frame.
+  /// offset floor((frame - target) / 2) on each axis. nil when there is no target, when the frame is not the
+  /// target rounded up to 64 (the size it was generated at: an upscaled frame must not lose its borders), when the
+  /// target is larger than the frame (no stretching, no padding) or when it equals the frame.
   static func centeredCrop(frameWidth: Int, frameHeight: Int, target: (width: Int, height: Int)?) -> CGRect? {
     guard let target else { return nil }
     let width = target.width / 2 * 2
     let height = target.height / 2 * 2
+    guard frameWidth == VideoOutputFormat.roundedUp(target.width),
+      frameHeight == VideoOutputFormat.roundedUp(target.height)
+    else { return nil }
     guard width >= 2, height >= 2, width <= frameWidth, height <= frameHeight else { return nil }
     guard width != frameWidth || height != frameHeight else { return nil }
     return CGRect(x: (frameWidth - width) / 2, y: (frameHeight - height) / 2, width: width, height: height)

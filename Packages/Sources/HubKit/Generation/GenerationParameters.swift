@@ -181,12 +181,14 @@ public struct GenerationParameters: Equatable, Codable, Sendable {
 
   /// Picks a video format: the generation size becomes the format's rounded-up size (landscape) and the exact
   /// size is stored as the crop target. nil ("None") clears the target and leaves the size alone.
+  /// A format above the size limit is ignored.
   public mutating func applyVideoFormat(_ format: VideoOutputFormat?) {
     guard let format else {
       video.outputWidth = nil
       video.outputHeight = nil
       return
     }
+    guard format.isAvailable(sizeLimit: sizeLimit) else { return }
     width = format.generatedWidth
     height = format.generatedHeight
     video.outputWidth = format.width

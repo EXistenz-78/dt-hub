@@ -55,6 +55,15 @@ struct VideoOutputFormatTests {
     #expect(p.activeVideoOutput == nil && p.activeVideoFormat == nil)
   }
 
+  @Test func aFormatAboveTheSizeLimitIsIgnored() {
+    var p = GenerationParameters()
+    p.applyVideoFormat(format("1440p"))
+    #expect(p.width == GenerationParameters().width && p.video.outputWidth == nil)
+    p.setHighRes(true)
+    p.applyVideoFormat(format("1440p"))
+    #expect(p.width == 2560 && p.height == 1472 && p.activeVideoFormat?.name == "1440p")
+  }
+
   @Test func aManualSizeChangeMakesTheTargetInconsistent() {
     var p = GenerationParameters()
     p.applyVideoFormat(format("1080p"))
