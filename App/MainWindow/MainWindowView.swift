@@ -12,6 +12,7 @@ struct MainWindowView: View {
   let projects: ProjectManager
   let queueStore: QueueStore
   let queueRunner: QueueRunner
+  let updates: UpdateController
   @AppStorage(QueueSidebar.visibleKey) private var queueVisible = true
 
   /// What the plug-ins are told about: the model and its family, the start image, the Moodboard and the size.
@@ -35,6 +36,7 @@ struct MainWindowView: View {
       }
       .fixedSize(horizontal: false, vertical: true)
       ManagedServerBanner(connection: connection)
+      UpdateBanner(controller: updates)
       HStack(alignment: .top, spacing: DS.panelPadding) {
         if queueVisible {
           QueueSidebar(store: queueStore, runner: queueRunner, generation: generation, connection: connection)

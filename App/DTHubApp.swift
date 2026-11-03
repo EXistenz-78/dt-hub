@@ -22,6 +22,7 @@ struct DTHubApp: App {
   @State private var download: LanguageModelDownloadController
   @State private var plugins: PluginRegistry
   @State private var projects: ProjectManager
+  @State private var updates: UpdateController
   @State private var queueStore: QueueStore
   @State private var queueRunner: QueueRunner
   @State private var canvasWindow = CanvasWindowState()
@@ -68,6 +69,20 @@ struct DTHubApp: App {
       folder: PluginFolder(root: PluginFolder.defaultRoot),
       settings: PluginSettingsStore(fileURL: PluginSettingsStore.defaultFileURL), loader: BundlePluginLoader(),
       tempFolder: FileManager.default.temporaryDirectory.appendingPathComponent("DTHub-plugins", isDirectory: true))
+    // The update check at launch: one request to GitHub, and nothing downloads without the user's confirmation.
+    _updates = State(
+      initialValue: UpdateController(
+        checker: .live, installer: .live, replacer: .live, settings: UpdateSettings(),
+        appVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0",
+        appURL: Bundle.main.bundleURL, appIdentifier: Bundle.main.bundleIdentifier ?? "",
+        installedPlugins: {
+          Dictionary(
+            plugins.entries.filter { !$0.id.hasPrefix("broken:") && !$0.version.isEmpty }.map { ($0.id, $0.version) },
+            uniquingKeysWith: { first, _ in first })
+        },
+        installPlugin: { try plugins.install(try plugins.offer(for: $0)) },
+        workFolder: FileManager.default.temporaryDirectory.appendingPathComponent("DTHub-update", isDirectory: true),
+        downloads: FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0]))
     // Contributions land on the Generation tab; a plug-in's question goes to the language model.
     generation.attach(plugins.contributions, connection: connection)
     // `defaults write com.exiztenz.DTHub debug.keepGuidedSessionFiles -bool YES` keeps the pictures of the passes of a pipeline a
@@ -161,7 +176,7 @@ struct DTHubApp: App {
     WindowGroup(String(localized: "app.title")) {
       MainWindowView(
         workspace: workspace, connection: connection, generation: generation, plugins: plugins, projects: projects,
-        queueStore: queueStore, queueRunner: queueRunner)
+        queueStore: queueStore, queueRunner: queueRunner, updates: updates)
         .environment(canvasWindow)
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
           generation.saveSessionNow()
@@ -169,6 +184,8 @@ struct DTHubApp: App {
         // LM Studio's models are read when the app opens and whenever it comes back to the front (LM Studio may have
         // been started meanwhile): the prompt buttons look for their model without waiting.
         .task { await languageModel.refreshServerModels() }
+        // The update check: at most every 12 hours, in silence when GitHub cannot be reached.
+        .task { await updates.checkOnLaunch() }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
           Task { await languageModel.refreshServerModels() }
         }
@@ -177,6 +194,9 @@ struct DTHubApp: App {
     // The first launch (nothing saved yet) opens at a normal size, not as big as the screen.
     .defaultSize(width: 1100, height: 820)
     .commands {
+      CommandGroup(replacing: .appInfo) {
+        Button(String(localized: "about.menu")) { AboutPanel.show() }
+      }
       CommandMenu(String(localized: "tab.generation")) {
         GenerationCommands(generation: generation, connection: connection)
       }
@@ -204,7 +224,7 @@ struct DTHubApp: App {
     Settings {
       PreferencesView(
         connection: connection, generation: generation, languageModel: languageModel, download: download,
-        plugins: plugins, projects: projects)
+        plugins: plugins, projects: projects, updates: updates)
     }
     .windowResizability(.contentSize)
   }

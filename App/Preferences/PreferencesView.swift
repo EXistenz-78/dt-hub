@@ -2,7 +2,7 @@ import AppKit
 import HubCore
 import SwiftUI
 
-/// Preferences window (⌘,): Draw Things, LLM, Output (spec §7).
+/// Preferences window (⌘,): Draw Things, LLM, Output, Plug-ins, Updates (spec §7).
 struct PreferencesView: View {
   let connection: DrawThingsConnection
   let generation: GenerationController
@@ -10,6 +10,7 @@ struct PreferencesView: View {
   let download: LanguageModelDownloadController
   let plugins: PluginRegistry
   let projects: ProjectManager
+  let updates: UpdateController
 
   var body: some View {
     TabView {
@@ -24,6 +25,9 @@ struct PreferencesView: View {
       }
       Tab("prefs.tab.plugins", systemImage: "puzzlepiece.extension") {
         PluginsPreferencesView(plugins: plugins)
+      }
+      Tab("prefs.tab.updates", systemImage: "arrow.down.circle") {
+        UpdatesPreferencesView(controller: updates)
       }
     }
     // Width fixed at 560 pt; the height can be changed.
