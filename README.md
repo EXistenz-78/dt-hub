@@ -65,7 +65,7 @@ This is an independent community project, not affiliated with or endorsed by Dra
 
 ## Install
 
-1. Download **`DT-Hub-1.0.0-macOS-arm64.zip`** from the [latest release](https://github.com/EXistenz-78/dt-hub/releases/latest).
+1. Download **`DT-Hub-1.0.1-macOS-arm64.zip`** from the [latest release](https://github.com/EXistenz-78/dt-hub/releases/latest).
 2. Unzip it and drag **DT Hub.app** into `/Applications`.
 3. Read **First launch** below before you open it.
 4. Optional: add the plug-ins (they are in the same release, see [`Plugins/`](Plugins/README.md#install)).
@@ -75,7 +75,7 @@ You also need a Draw Things gRPC server (see Requirements).
 
 ## Updates
 
-At launch DT Hub asks GitHub, once, whether the [latest release](https://github.com/EXistenz-78/dt-hub/releases/latest) is newer than what you have (at most every 12 hours; switch it off in **Preferences › Updates**, where **Check now** also lives). It reads one small file, `dthub-release.json`, from the release. No account, no API token, and nothing of yours is sent. If GitHub cannot be reached it stays quiet and tries again at the next launch.
+At launch DT Hub asks GitHub, once, whether the [latest release](https://github.com/EXistenz-78/dt-hub/releases/latest) is newer than what you have (at every launch; switch it off in **Preferences › Updates**, where **Check now** also lives). It reads one small file, `dthub-release.json`, from the release. No account, no API token, and nothing of yours is sent. If GitHub cannot be reached it stays quiet and tries again at the next launch.
 
 When something is newer, a banner under the header says so: DT Hub itself, and the plug-ins you have installed whose version is higher (a plug-in you do not have is never offered). **Details…** shows what would be downloaded, from where and how much; nothing is downloaded until you press **Download and install**. **Later** hides the banner until a newer version comes out.
 
@@ -195,7 +195,7 @@ The interface of the app and of the plug-ins is available in **English and Itali
 
 > **Video (in development).** Support for video models (MiniMax H3, LTX-2.3) is still under development: some functions may not work as expected.
 
-Version 1.0.0, used daily by its author. Feedback, bug reports and ideas are welcome: open an [Issue](../../issues).
+Version 1.0.1, used daily by its author. Feedback, bug reports and ideas are welcome: open an [Issue](../../issues).
 
 ## License
 

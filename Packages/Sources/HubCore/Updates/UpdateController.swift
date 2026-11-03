@@ -91,9 +91,9 @@ public final class UpdateController {
 
   // MARK: Checking
 
-  /// The check at launch: only when it is switched on and the last one is old enough; a failure says nothing.
+  /// The check at launch: at every launch while it is switched on; a failure says nothing.
   public func checkOnLaunch() async {
-    guard settings.isDue(now: now()) else { return }
+    guard settings.checkOnLaunch else { return }
     await check(silent: true)
   }
 

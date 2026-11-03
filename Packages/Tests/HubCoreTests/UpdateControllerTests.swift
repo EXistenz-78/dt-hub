@@ -79,19 +79,17 @@ struct UpdateControllerTests {
     }
   }
 
-  @Test func theLaunchCheckSkipsTheNetworkWhenOffOrNotDue() async {
+  @Test func theLaunchCheckAsksAtEveryLaunchUnlessSwitchedOff() async {
     let off = Rig()
     off.controller.checkOnLaunchEnabled = false
     await off.controller.checkOnLaunch()
     #expect(off.fetches.value == 0)
 
-    let recent = Rig(lastCheck: UpdateSettingsTests.start.addingTimeInterval(-3600))
+    // Even a check a minute ago does not hold back the next launch.
+    let recent = Rig(lastCheck: UpdateSettingsTests.start.addingTimeInterval(-60))
     await recent.controller.checkOnLaunch()
-    #expect(recent.fetches.value == 0)
-
-    let due = Rig(lastCheck: UpdateSettingsTests.start.addingTimeInterval(-13 * 3600))
-    await due.controller.checkOnLaunch()
-    #expect(due.fetches.value == 1)
+    #expect(recent.fetches.value == 1)
+    #expect(recent.controller.offers.map(\.id) == ["app", "a", "b"])
   }
 
   @Test func theLaunchCheckFailsInSilenceButCheckNowSaysSo() async {

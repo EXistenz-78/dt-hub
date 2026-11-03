@@ -18,21 +18,18 @@ struct UpdateSettingsTests {
     #expect(UpdateSettings(defaults: Self.defaults()).checkOnLaunch)
   }
 
-  @Test func neverCheckedIsDue() {
-    #expect(UpdateSettings(defaults: Self.defaults()).isDue(now: Self.start))
-  }
-
-  @Test func dueOnlyAfterTwelveHours() {
+  @Test func aCheckAMinuteAgoDoesNotHoldBackTheLaunchCheck() {
+    // What the launch check reads is the switch alone, not the time of the last check.
     var settings = UpdateSettings(defaults: Self.defaults())
     settings.markChecked(at: Self.start)
-    #expect(!settings.isDue(now: Self.start.addingTimeInterval(11 * 3600 + 59 * 60)))
-    #expect(settings.isDue(now: Self.start.addingTimeInterval(12 * 3600)))
+    #expect(settings.checkOnLaunch)
+    #expect(settings.lastCheck == Self.start)
   }
 
-  @Test func switchedOffIsNeverDue() {
+  @Test func theLaunchCheckCanBeSwitchedOff() {
     var settings = UpdateSettings(defaults: Self.defaults())
     settings.checkOnLaunch = false
-    #expect(!settings.isDue(now: Self.start))
+    #expect(!settings.checkOnLaunch)
   }
 
   @Test func settingsSurviveANewInstance() {

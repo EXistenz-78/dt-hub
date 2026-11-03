@@ -69,7 +69,7 @@ Lo genera un nuovo `Scripts/make_release_manifest.py <tag> <cartella-degli-zip>`
 
 ### 3. Quando si controlla
 
-All'avvio, se l'interruttore «Controlla all'avvio» è acceso (acceso all'inizio) e dall'ultimo controllo sono passate **12 ore** (`UserDefaults`: `updates.lastCheck`, `updates.checkOnLaunch`). Se è spento non si fa nessuna richiesta di rete. «Controlla ora» in Preferenze forza il controllo. Il controllo parte in un `Task` dopo l'avvio e non blocca nulla.
+A **ogni avvio**, se l'interruttore «Controlla all'avvio» è acceso (acceso all'inizio; `UserDefaults`: `updates.checkOnLaunch`; `updates.lastCheck` serve solo a mostrare l'ora in Preferenze). *Il limite delle 12 ore previsto all'inizio è stato tolto il 3 novembre: l'offerta trovata da un controllo non si ricorda tra gli avvii, quindi un controllo saltato nascondeva l'aggiornamento.* Se è spento non si fa nessuna richiesta di rete. «Controlla ora» in Preferenze forza il controllo. Il controllo parte in un `Task` dopo l'avvio e non blocca nulla.
 
 ### 4. Offline, errori, limite
 
@@ -139,7 +139,7 @@ Non toccati: `PluginRegistry`, `ServerVersion`, `PluginKit`, i plug-in.
 
 - `ReleaseManifest`: un esempio valido; `schema` 2; nomi di asset con `/` o `..`; sha256 non esadecimale; campi mancanti.
 - `UpdatePlan`: app più nuova / uguale / più vecchia; versioni `1.10` > `1.9`; un plug-in non installato non si propone; uno con contratto non supportato non si propone; rifiuto alla stessa versione (nascosta) e offerta di una versione più alta del rifiuto (riappare).
-- `UpdateChecker`: `fetch` che dà nil, dati non validi, dati validi; la frequenza di 12 ore e l'interruttore (nessuna richiesta quando è spento, nessuna prima delle 12 ore, una dopo).
+- `UpdateChecker`: `fetch` che dà nil, dati non validi, dati validi; l'interruttore (nessuna richiesta quando è spento, una a ogni avvio quando è acceso, anche subito dopo un controllo).
 - `UpdateInstaller` con `download`, `unzip` e `sha256` iniettati e cartelle temporanee: tutto bene; sha256 diverso; bundle con id o versione sbagliati; una voce che fallisce non ferma le altre.
 - `AppReplacer` con un finto `.app` in una cartella temporanea: scambio riuscito, rollback quando il passo finale fallisce, cartella non scrivibile → ripiego su Finder, `codesign` che fallisce, bundle id diverso.
 - `UpdateController`: macchina a stati con tutto iniettato (rifiuto, errore, installazione).
