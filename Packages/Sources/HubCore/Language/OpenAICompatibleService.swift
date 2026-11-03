@@ -78,9 +78,11 @@ public actor OpenAICompatibleService: ServerLanguageModelService {
     let status: Int
     do {
       (data, status) = try await send(request)
-    } catch is CancellationError {
-      throw CancellationError()
     } catch {
+      // Stop pressed, or RUN taking the memory: the request was cancelled, the server is fine.
+      if error is CancellationError || (error as? URLError)?.code == .cancelled || Task.isCancelled {
+        throw CancellationError()
+      }
       let place = "\(base.host ?? "localhost"):\(base.port ?? 0)"
       throw LanguageModelError.loadFailed("LM Studio does not answer on \(place). Is it running, with its server started?")
     }

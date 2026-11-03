@@ -170,6 +170,12 @@ struct OpenAICompatibleServiceTests {
     }
   }
 
+  @Test func aCancelledRequestIsNotReportedAsAServerThatIsOff() async throws {
+    let service = await service { _ in throw URLError(.cancelled) }
+    try await service.load(ServerModelList.descriptor(id: "a", vision: false))
+    await #expect(throws: CancellationError.self) { try await service.respond(to: "ping", images: []) }
+  }
+
   @Test func respondWithoutALoadedModelFails() async {
     let service = await service { _ in (Data(), 200) }
     await #expect(throws: LanguageModelError.self) { try await service.respond(to: "ping", images: []) }
