@@ -37,6 +37,18 @@ This is an independent community project, not affiliated with or endorsed by Dra
 
 <p align="center"><img src="docs/images/generation.png" alt="The Generation tab" width="55%"></p>
 
+<p align="center">
+  <img src="docs/images/lora-manager.png" alt="Manage LoRAs" width="32%">
+  <img src="docs/images/generation-video.png" alt="DT+ and video settings" width="32%">
+  <img src="docs/images/generation-json.png" alt="The JSON window" width="32%">
+</p>
+
+<p align="center">
+  <img src="docs/images/projects.png" alt="Projects" width="32%">
+  <img src="docs/images/queue.png" alt="The Queue" width="32%">
+  <img src="docs/images/plugin-menu.png" alt="The plug-in menu" width="32%">
+</p>
+
 **Presets.** Save a configuration as a preset, import and manage them, and let a plug-in register its own: Sphere Light's two presets, for example, are chained into one Run. You can also build your own pipelines: **Create Pipeline…** in the Preset menu lines up your presets in the order you tick them; each pass can use its preset's model, scale the size of the previous pass and have its own strength, and the result of a pass can be the start image of the next.
 
 <p align="center"><img src="docs/images/presets.png" alt="The Presets menu" width="55%"></p>
@@ -45,16 +57,27 @@ This is an independent community project, not affiliated with or endorsed by Dra
 
 ![The Canvas in its own window](docs/images/canvas-window.png)
 
+![The Control tab with the Canvas in Draw mode](docs/images/control-draw.png)
+
 **Results.** Live preview while generating, then the image; the strip shows the seconds each picture took.
 
 ![The Results window](docs/images/results.png)
 
+![The Explore tab of the Results window](docs/images/results-explore.png)
+
 **Preferences.** The Draw Things server, the local LLM and its memory behaviour, the output folder and the plug-ins.
 
-<p>
-  <img src="docs/images/preferences-draw-things.png" alt="Preferences: Draw Things" width="32%">
-  <img src="docs/images/preferences-llm.png" alt="Preferences: LLM" width="32%">
-  <img src="docs/images/preferences-plugins.png" alt="Preferences: Plug-ins" width="32%">
+<p align="center">
+  <img src="docs/images/preferences-draw-things.png" alt="Preferences: Draw Things" width="24%">
+  <img src="docs/images/preferences-server.png" alt="Preferences: the managed server" width="24%">
+  <img src="docs/images/preferences-llm.png" alt="Preferences: LLM (MLX)" width="24%">
+  <img src="docs/images/preferences-lm-studio.png" alt="Preferences: LLM (LM Studio)" width="24%">
+</p>
+
+<p align="center">
+  <img src="docs/images/preferences-output.png" alt="Preferences: Output" width="24%">
+  <img src="docs/images/preferences-plugins.png" alt="Preferences: Plug-ins" width="24%">
+  <img src="docs/images/preferences-updates.png" alt="Preferences: Updates" width="24%">
 </p>
 
 ## Requirements

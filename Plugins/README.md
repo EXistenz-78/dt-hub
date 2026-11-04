@@ -22,10 +22,31 @@ so the tab bar only ever shows what can be used with the model you picked.
 | **[Flux3 Editing](Flux3Editing/README.md)** | **FLUX.3 [klein] 5.6B**; needs DT Hub 0.4.0 or later (0.9.0 for the picture as framed in Canvas: zoom and rotation) | Builds the editing prompt of FLUX.3 with reference pictures: draw a box on an object of a Moodboard picture and its pair on the start image, or draw boxes on the start image to add, keep, move or remove something. The start image is shown as the output canvas, placed as in the Control tab; the pairs have their own colours, the LLM can write the texts without touching the placeholders. |
 | **[Prompt Master MOSS](PromptMasterMOSS/README.md)** | **MOSS Image** (Base and SFT) | Builds the JSON layout prompt of MOSS Image: a summary (description, `meta`, `canvas`, palette) and a list of items with a type (object, character, text, panel, subject), a caption and a box, in pixels from the centre of the picture. Draw the boxes on a canvas, pick terms from the database, and let the LLM write the texts in English; the negative terms go to the negative field. The boxes are stored as fractions of the canvas and converted with the Generation size when you press Send. |
 
-<p>
-  <img src="../docs/images/prompt-master.png" alt="Prompt Master" width="32%">
-  <img src="../docs/images/prompt-master-i4.png" alt="Prompt Master I4" width="32%">
-  <img src="../docs/images/sphere-light.png" alt="Sphere Light Reference" width="32%">
+<p align="center">
+  <img src="../docs/images/prompt-master.png" alt="Prompt Master" width="24%">
+  <img src="../docs/images/prompt-master-i4.png" alt="Prompt Master I4" width="24%">
+  <img src="../docs/images/prompt-master-f3.png" alt="Prompt Master F3" width="24%">
+  <img src="../docs/images/prompt-master-moss.png" alt="Prompt Master MOSS" width="24%">
+</p>
+
+<p align="center">
+  <img src="../docs/images/sphere-light.png" alt="Sphere Light Reference" width="24%">
+  <img src="../docs/images/character-sheet.png" alt="Character Sheet" width="24%">
+  <img src="../docs/images/batch-plus.png" alt="Batch plus" width="24%">
+  <img src="../docs/images/ai-assistant.png" alt="AI Assistant" width="24%">
+</p>
+
+<p align="center">
+  <img src="../docs/images/qwen-inpainting.png" alt="Qwen 2.1 Inpainting" width="24%">
+  <img src="../docs/images/lora-advisor.png" alt="LoRA Advisor" width="24%">
+  <img src="../docs/images/depth-pose.png" alt="Depth & Pose" width="24%">
+  <img src="../docs/images/tiled-upscale.png" alt="Tiled Upscale" width="24%">
+</p>
+
+<p align="center">
+  <img src="../docs/images/panorama-360.png" alt="Panorama 360" width="24%">
+  <img src="../docs/images/pano-360-f3.png" alt="Pano 360 F3" width="24%">
+  <img src="../docs/images/flux3-editing.png" alt="Flux3 Editing" width="24%">
 </p>
 
 ## Install

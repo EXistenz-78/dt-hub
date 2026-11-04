@@ -2,6 +2,8 @@
 
 A plug-in for DT Hub that enlarges a picture **2× or 4×** and gives it new detail tile by tile, with an edit model: the picture is enlarged once (bilinear), cut into overlapping tiles, and each tile is regenerated with a preset and a LoRA. Every result is put back into the picture before the next tile is cut, so the part a tile shares with its neighbour is already enlarged, and a mask, a fade of the join and a correction of the brightness keep the join invisible.
 
+![Tiled Upscale](../../docs/images/tiled-upscale.png)
+
 **Works with:** edit and in-context models, with a preset for **FLUX.2 [klein] 9B**, **FLUX.3 [klein]**, **Qwen Image 2.1 Turbo** and **Qwen Image 2.1** (see *Models*); any other model shows a notice and the *Prepare* button stays off. **Needs DT Hub 0.3.6 or later** (0.3.2 works, but the last tile is then missing from the preview and from the picture) (the pipeline a plug-in guides, see `PluginKit/README.md`). No network.
 
 ## How it works

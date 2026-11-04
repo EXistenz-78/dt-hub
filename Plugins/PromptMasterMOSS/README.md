@@ -4,6 +4,8 @@
 
 A DT Hub plug-in that builds the **JSON layout prompt of MOSS Image**: a `summary` of the whole picture and a flat list of `items`, each with a label, a caption and a box. The result goes to the Prompt field of the Generation tab, and the negative terms to the negative field.
 
+![Prompt Master MOSS](../../docs/images/prompt-master-moss.png)
+
 ```json
 {"summary":{"meta":["photograph"],"canvas":"single","caption":"A Japanese girl in a red kimono in a bamboo forest."},
  "items":[{"label":"object","caption":"A paper umbrella of bamboo and rice paper.","bbox":[-290,-362,10,288]},

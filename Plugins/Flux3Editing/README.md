@@ -7,6 +7,11 @@
 
 A DT Hub plug-in that builds the **editing prompt of FLUX.3 with reference pictures**: a short text that cites the pictures (`<ref_image_0>`, `<ref_image_1>`…) and the elements (`<id>`), and a JSON array that says, for each element, **where to take it from** and **where to put it**. You draw the boxes on the real pictures; the result goes to the Prompt field of the Generation tab.
 
+<p align="center">
+  <img src="../../docs/images/flux3-editing.png" alt="Flux3 Editing" width="49%">
+  <img src="../../docs/images/flux3-editing-example.jpg" alt="A picture made with Flux3 Editing" width="49%">
+</p>
+
 ```
 Modify <ref_image_0> by adding the table lamp <lamp_1> from <ref_image_1> on the sideboard. Keep everything else unchanged.
 

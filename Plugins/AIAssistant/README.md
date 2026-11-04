@@ -2,6 +2,8 @@
 
 A plug-in for DT Hub to **chat with a local LLM** about what you are preparing: improve a prompt, discuss the settings, get the start image and the Moodboard pictures described, prepare variants. **Works with: all model families.**
 
+![AI Assistant](../../docs/images/ai-assistant.png)
+
 With a command you give, the LLM can also **change the Generation tab for you**: the prompt and the negative prompt, the parameters, the weight of the LoRAs on the card, the strength of the start image, or a **pipeline** (variants, series of tests on a parameter, combinations, chains of passes, at most 20). **You always press Run yourself.**
 
 ## The command

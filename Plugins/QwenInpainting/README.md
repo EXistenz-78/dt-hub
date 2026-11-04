@@ -2,6 +2,11 @@
 
 A plug-in for DT Hub for **Qwen Image 2.1**, inspired by the Sketch node of ComfyUI-Pixaroma (no code of that project is used). **Works with: Qwen Image 2.1 only.**
 
+<p align="center">
+  <img src="../../docs/images/qwen-inpainting.png" alt="Qwen 2.1 Inpainting" width="49%">
+  <img src="../../docs/images/qwen-inpainting-example.jpg" alt="The result of the edit shown above" width="49%">
+</p>
+
 You draw **colored marks** on the start image (brush, rectangle, oval, arrow) and, for each pair of **color and tool**, write what to change there. *Send* puts the drawing in the **Brush layer** of the Canvas card in the Control tab and writes the prompt. At RUN the app puts the drawing over the image; Qwen reads the instructions and removes the marks. There is no mask.
 
 ## Drawing

@@ -7,6 +7,8 @@
 
 A DT Hub plug-in that builds the **structured prompt of FLUX.3**: a description of the scene, a composition sentence that names the elements with `<id>` placeholders, and a JSON array that says where each element goes (`bbox`, `[top, left, bottom, right]` on a 0–1000 grid) and what it is (`desc`). The result goes to the Prompt field of the Generation tab.
 
+![Prompt Master F3](../../docs/images/prompt-master-f3.png)
+
 ```
 A cinematic editorial photograph of a woman in a rainy Tokyo street at night.
 

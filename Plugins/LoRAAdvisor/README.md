@@ -2,6 +2,8 @@
 
 A plug-in for DT Hub with two things in one tab: a **visual list of your LoRAs**, each with a thumbnail and notes, and the **advice of the local LLM** on which ones suit what you want to generate. **Works with: all model families.** Needs DT Hub 0.2.2 or later.
 
+![LoRA Advisor](../../docs/images/lora-advisor.png)
+
 The list matters more than the advice: it works without a language model.
 
 ## Your LoRAs (left)

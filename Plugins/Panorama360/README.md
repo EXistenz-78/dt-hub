@@ -2,6 +2,11 @@
 
 A plug-in for DT Hub that makes **360° panoramas** (equirectangular, 2:1) with the *360 ERP outpaint* LoRA of FLUX.2 [klein]. You place pictures («stickers») on a canvas that shows the whole sphere unrolled, write a few words about the place, and press **Send to Generation**: the plug-in sends the canvas, with the stickers drawn on green, as the start image, and the model fills the green with the rest of the panorama.
 
+<p align="center">
+  <img src="../../docs/images/panorama-360.png" alt="Panorama 360: the canvas" width="49%">
+  <img src="../../docs/images/panorama-360-sphere.png" alt="Panorama 360: the sphere view" width="49%">
+</p>
+
 **Works with:** FLUX.2 [klein] 9B and 4B, **Base** models only. Needs DT Hub 0.5.0 or later (it uses additions to the plug-in contract: a preset can carry a model and advanced values, a plug-in can ask for a saved preset to be applied, the context carries the latest result, and a plug-in can send a result to the Results at any time).
 
 ## How it works

@@ -2,6 +2,8 @@
 
 A plug-in for DT Hub that makes a **depth map** and/or a **DWPose-style skeleton** (body, face and hands) from one picture, in a moment, and puts them in the Moodboard (or on your Desktop), so an edit or in-context model can take them as a reference. **Works with: edit and in-context models, whatever their family** (FLUX.2 [klein] and dev, Qwen Image 2.1, Qwen Image Edit, FLUX.1 Kontext, HiDream E1…). With any other model the plug-in is switched off and its tab is hidden; that needs a DT Hub version that knows the plug-in manifest's `requiresEditModel` key, an older one shows the tab with every model.
 
+![Depth & Pose](../../docs/images/depth-pose.png)
+
 The maps come from small dedicated models, in about a second, instead of a generation with a LoRA.
 
 ## Using it

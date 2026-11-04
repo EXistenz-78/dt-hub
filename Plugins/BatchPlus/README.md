@@ -2,6 +2,13 @@
 
 A plug-in for DT Hub that prepares a **series of consecutive RUNs** and sends it to the app as a pipeline: you press **Run** and get one image per pass. **Works with: all model families.**
 
+<p align="center">
+  <img src="../../docs/images/batch-plus.png" alt="Batch plus: list of prompts" width="24%">
+  <img src="../../docs/images/batch-plus-parameters.png" alt="Batch plus: parameters" width="24%">
+  <img src="../../docs/images/batch-plus-wildcards.png" alt="Batch plus: wildcard prompts" width="24%">
+  <img src="../../docs/images/batch-plus-samplers.png" alt="Batch plus: sampler list" width="24%">
+</p>
+
 Two modes, one at a time:
 
 - **Parameters.** The parameters of the Generation tab are shown read-only, each number that can vary with an **Increment** box. The number of passes is 2–50; pass *k* uses *value + (k − 1) × increment*, and several increments vary **together**. Pass 1 uses the current values. Steps 10 (+10) and guidance 3 (+2) over 3 passes give (10, 3), (20, 5), (30, 7).
