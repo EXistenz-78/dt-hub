@@ -5,7 +5,7 @@ import SwiftUI
 @MainActor
 final class QwenInpaintingPlugin: DTHubPlugin {
   let manifest = DTHubManifest(
-    id: "com.exiztenz.dthub.qweninpainting", name: "Qwen 2.1 Inpainting", version: "1.1", symbol: "scribble.variable",
+    id: "com.exiztenz.dthub.qweninpainting", name: "Qwen 2.1 Inpainting", version: "1.2", symbol: "scribble.variable",
     families: ["qwen_image_2.1"])
   private let state = InpaintingState()
   private var host: DTHubHost?
@@ -46,7 +46,7 @@ final class QwenInpaintingPlugin: DTHubPlugin {
       await state.send(
         using: { text, images, system, model in
           await host.askLanguageModelAnswer(
-            text, images: images, system: system, model: model, options: DTHubLLMOptions(maxTokens: 2048, thinking: false, timeout: 600))
+            text, images: images, system: system, model: model, options: PromptEnhancer.options)
         },
         contribute: { await host.contribute($0) })
     }

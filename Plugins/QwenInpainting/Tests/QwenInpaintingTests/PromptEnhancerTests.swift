@@ -52,4 +52,23 @@ struct PromptEnhancerTests {
     #expect(PromptEnhancer.cleaned("plain") == "plain")
     #expect(PromptEnhancer.cleaned("\"\"") == nil)
   }
+
+  // Qwen's PE system prompt asks for a JSON object and for reasoning first: only the rewritten prompt may reach the tab.
+  @Test func theJSONAnswerGivesOnlyTheRewrittenPrompt() {
+    let json = #"{"rewritten_prompt": "Remove the hat inside the red circle.", "wh_ratio": "", "ratio_follow": "<image1>"}"#
+    #expect(PromptEnhancer.cleaned(json) == "Remove the hat inside the red circle.")
+    #expect(PromptEnhancer.cleaned("```json\n\(json)\n```") == "Remove the hat inside the red circle.")
+  }
+
+  @Test func theReasoningNeverReachesThePrompt() {
+    let json = #"{"rewritten_prompt": "Remove the hat."}"#
+    #expect(PromptEnhancer.cleaned("<think>Let me carefully analyze the image…</think>\n\n\(json)") == "Remove the hat.")
+    #expect(PromptEnhancer.cleaned("<think>Let me carefully analyze the image… and then") == nil)
+    #expect(PromptEnhancer.cleaned("<think>x</think>") == nil)
+  }
+
+  @Test func theEnhancerGetsRoomToThinkAndTheDecodingOfPromptMaster() {
+    #expect(PromptEnhancer.options.thinking == true)
+    #expect((PromptEnhancer.options.maxTokens ?? 0) >= 16256)
+  }
 }
