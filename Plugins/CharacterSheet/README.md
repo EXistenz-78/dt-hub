@@ -6,14 +6,17 @@
 A DT Hub plug-in that prepares a **character design sheet** from a single picture of a character, drawn by Qwen Image 2.1 from
 the picture you give it. Three kinds of sheet, picked with the radio buttons at the top of the tab:
 
-<p align="center">
-  <img src="../../docs/images/character-sheet.png" alt="Character Sheet" width="49%">
-  <img src="../../docs/images/character-sheet-example.jpg" alt="An expression sheet made with Character Sheet" width="49%">
-</p>
+![Character Sheet](../../docs/images/character-sheet.png)
 
 - **Base sheet:** hero view, front/side/back turnaround, action poses, silhouettes, expressions and detail close-ups on one sheet;
 - **Expressions sheet:** twelve expressions of the character's head on a 4×3 grid;
 - **Poses sheet:** ten dynamic full-body poses on a 5×2 grid.
+
+<p align="center">
+  <img src="../../docs/images/character-sheet-base.jpg" alt="A base sheet" width="32%">
+  <img src="../../docs/images/character-sheet-expressions.jpg" alt="An expressions sheet" width="32%">
+  <img src="../../docs/images/character-sheet-poses.jpg" alt="A poses sheet" width="32%">
+</p>
 
 ## Credits
 
