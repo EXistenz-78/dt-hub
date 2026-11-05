@@ -10,15 +10,32 @@ public struct RecommendedValues: Equatable, Sendable {
   public var shift: Double?
   /// nil when the list does not say.
   public var resolutionDependentShift: Bool?
+  /// The LoRAs the model starts with (file, weight, mode, trigger). nil leaves the tab's LoRAs as they are; a list,
+  /// even an empty one, replaces them. Only the user's own saved defaults have it.
+  public var loras: [LoRASelection]?
 
   public init(
-    steps: Int, guidanceScale: Double, sampler: Sampler, shift: Double? = nil, resolutionDependentShift: Bool? = nil
+    steps: Int, guidanceScale: Double, sampler: Sampler, shift: Double? = nil, resolutionDependentShift: Bool? = nil,
+    loras: [LoRASelection]? = nil
   ) {
     self.steps = steps
     self.guidanceScale = guidanceScale
     self.sampler = sampler
     self.shift = shift
     self.resolutionDependentShift = resolutionDependentShift
+    self.loras = loras
+  }
+
+  /// What the user saves as a model's default: the tab's sampling values and its LoRAs.
+  public init(capturing parameters: GenerationParameters) {
+    self.init(
+      steps: parameters.steps, guidanceScale: parameters.guidanceScale, sampler: parameters.sampler,
+      shift: parameters.shift, resolutionDependentShift: parameters.resolutionDependentShift, loras: parameters.loras)
+  }
+
+  /// The LoRAs of the list that are not in `installed`, in the list's order.
+  public func missingLoRAs(installed: Set<String>) -> [String] {
+    (loras ?? []).map(\.file).filter { !installed.contains($0) }
   }
 }
 
@@ -51,11 +68,21 @@ public struct RecommendedSettings: Equatable, Sendable {
         else { continue }
         result[key] = RecommendedValues(
           steps: steps, guidanceScale: guidance, sampler: sampler, shift: (entry["shift"] as? NSNumber)?.doubleValue,
-          resolutionDependentShift: entry["resolutionDependentShift"] as? Bool)
+          resolutionDependentShift: entry["resolutionDependentShift"] as? Bool, loras: Self.readLoRAs(entry["loras"]))
       }
       return result
     }
     self.init(models: read(root["models"]), families: read(root["families"]))
+  }
+
+  /// A `loras` array, leniently: an element without a file, or that is not an object, is left out. nil when the entry has none.
+  private static func readLoRAs(_ raw: Any?) -> [LoRASelection]? {
+    guard let elements = raw as? [Any] else { return nil }
+    return elements.compactMap { element in
+      guard JSONSerialization.isValidJSONObject(element), let data = try? JSONSerialization.data(withJSONObject: element)
+      else { return nil }
+      return try? JSONDecoder().decode(LoRASelection.self, from: data)
+    }
   }
 
   /// The list of official configurations Draw Things publishes (`configs.json`, the one its app downloads): for each
@@ -89,6 +116,57 @@ public struct RecommendedSettings: Equatable, Sendable {
       models: models.merging(live.models) { _, new in new }, families: families.merging(live.families) { old, _ in old })
   }
 
+  /// This table with the entries of `overrides` (the user's own defaults) on top: its models win over the ones here,
+  /// whatever the online list said. Families are not touched.
+  public func overriding(with overrides: RecommendedSettings) -> RecommendedSettings {
+    RecommendedSettings(models: models.merging(overrides.models) { _, new in new }, families: families)
+  }
+
+  /// This table with `values` as the model's entry (by its key, so for every quantization of the model).
+  public func setting(_ values: RecommendedValues, forFile file: String) -> RecommendedSettings {
+    var copy = self
+    copy.models[Self.key(forFile: file)] = values
+    return copy
+  }
+
+  /// This table without the model's own entry (its family's fallback stays).
+  public func removingModel(forFile file: String) -> RecommendedSettings {
+    var copy = self
+    copy.models[Self.key(forFile: file)] = nil
+    return copy
+  }
+
+  /// True when the table has an entry of its own for the model, not only its family's.
+  public func hasModel(forFile file: String) -> Bool {
+    models[Self.key(forFile: file)] != nil
+  }
+
+  /// The table as the file keeps it (`{"models":…,"families":…}`), readable again by `init(data:)`.
+  public func encoded() -> Data {
+    struct Entry: Encodable {
+      var steps: Int
+      var guidanceScale: Double
+      var sampler: Int
+      var shift: Double?
+      var resolutionDependentShift: Bool?
+      var loras: [LoRASelection]?
+    }
+    struct File: Encodable {
+      var models: [String: Entry]
+      var families: [String: Entry]
+    }
+    func entries(_ table: [String: RecommendedValues]) -> [String: Entry] {
+      table.mapValues {
+        Entry(
+          steps: $0.steps, guidanceScale: $0.guidanceScale, sampler: $0.sampler.rawValue, shift: $0.shift,
+          resolutionDependentShift: $0.resolutionDependentShift, loras: $0.loras)
+      }
+    }
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.sortedKeys, .prettyPrinted]
+    return (try? encoder.encode(File(models: entries(models), families: entries(families)))) ?? Data()
+  }
+
   /// The model's file name without its quantization and extension: `flux_2_klein_9b_f16.ckpt` and
   /// `flux_2_klein_9b_q6p.ckpt` are both `flux_2_klein_9b`.
   public static func key(forFile file: String) -> String {
@@ -108,10 +186,19 @@ public struct RecommendedSettings: Equatable, Sendable {
 
 extension GenerationParameters {
   /// The parameters with the recommended steps, guidance, sampler and shift (and the shift switch when the
-  /// table says it), limited as the cards limit them. Nothing else changes: not the size, seed, batch, LoRAs,
+  /// table says it), limited as the cards limit them. Nothing else changes: not the size, seed, batch,
   /// Advanced cards. A model whose list gives no shift leaves the shift as it is.
   public func applying(_ values: RecommendedValues) -> GenerationParameters {
+    applying(values, installedLoRAs: nil)
+  }
+
+  /// As `applying(_:)`, and when the values carry a LoRA list it replaces the tab's LoRAs, without those not in
+  /// `installedLoRAs` (nil: nothing is known about the server, none is left out).
+  public func applying(_ values: RecommendedValues, installedLoRAs: Set<String>?) -> GenerationParameters {
     var copy = self
+    if let loras = values.loras {
+      copy.loras = loras.filter { installedLoRAs?.contains($0.file) ?? true }
+    }
     copy.steps = values.steps
     copy.guidanceScale = values.guidanceScale
     copy.sampler = values.sampler

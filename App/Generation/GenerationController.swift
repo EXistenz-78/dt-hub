@@ -135,14 +135,25 @@ final class GenerationController {
     Task { await refreshRecommended() }
   }
 
-  /// The recommended values per model: the file the app ships (`RecommendedSettings.json`), with what the list Draw
-  /// Things publishes knows of newer models once `refreshRecommended()` has it.
-  @ObservationIgnored private(set) var recommended: RecommendedSettings = {
+  /// The recommended values per model, in layers: the file the app ships (`RecommendedSettings.json`), with what the
+  /// list Draw Things publishes knows of newer models once `refreshRecommended()` has it, and on top the user's own
+  /// defaults (`recommended-overrides.json`), which always win.
+  @ObservationIgnored private var baseRecommended: RecommendedSettings = {
     guard let url = Bundle.main.url(forResource: "RecommendedSettings", withExtension: "json"),
       let data = try? Data(contentsOf: url)
     else { return .empty }
     return RecommendedSettings(data: data)
   }()
+
+  @ObservationIgnored private let overridesStore = RecommendedOverridesStore(fileURL: RecommendedOverridesStore.defaultFileURL)
+  /// The defaults the user saved per model; read from disk at launch.
+  private(set) var savedDefaults: RecommendedSettings = RecommendedOverridesStore(
+    fileURL: RecommendedOverridesStore.defaultFileURL
+  ).load()
+  /// A line under the Sampling card about the last save, reset or model change (a missing LoRA); nil when none.
+  var defaultsNotice: String?
+
+  var recommended: RecommendedSettings { baseRecommended.overriding(with: savedDefaults) }
 
   /// The list of official configurations Draw Things publishes, downloaded once per launch and kept on disk.
   private static let liveConfigurations = CachedDownload(
@@ -152,17 +163,64 @@ final class GenerationController {
   /// Adds to the table the models released after this app was built (at launch; offline, the copy saved last time).
   func refreshRecommended() async {
     guard let data = await Self.liveConfigurations.data() else { return }
-    recommended = recommended.merging(RecommendedSettings(configurations: data))
+    baseRecommended = baseRecommended.merging(RecommendedSettings(configurations: data))
   }
 
   /// The model chosen in the header: selected, and the tab takes its recommended steps, guidance, sampler and
   /// shift when the model changes (a model the table does not know leaves the values as they are).
   func chooseModel(_ file: String, in connection: DrawThingsConnection) {
+    defaultsNotice = nil
     if let values = connection.selection.choose(
       file, applyingTo: parameters, from: recommended, in: connection.monitor.catalog)
     {
       parameters = values
+      reportMissingLoRAs(forFile: file, in: connection)
     }
+  }
+
+  /// The LoRAs of the model's saved default that the server does not have: they are left out, and the line says which.
+  private func reportMissingLoRAs(forFile file: String, in connection: DrawThingsConnection) {
+    let catalog = connection.monitor.catalog
+    guard catalog.fileCount > 0,
+      let values = recommended.values(forFile: file, family: catalog.model(forFile: file)?.family)
+    else { return }
+    let missing = values.missingLoRAs(installed: Set(catalog.loras.map(\.file)))
+    if !missing.isEmpty {
+      defaultsNotice = missing.map { String(format: String(localized: "defaults.loraMissing"), $0) }.joined(separator: "\n")
+    }
+  }
+
+  /// Whether the buttons "Save as default" and "Reset default" apply: a model is selected and it is not a video model
+  /// (their defaults are `VideoDefaults`).
+  func canEditDefaults(in connection: DrawThingsConnection) -> Bool {
+    connection.selection.selectedFile != nil && !VideoFamilies.isEnabled(family(in: connection))
+  }
+
+  /// True when the user saved a default for the selected model.
+  func hasSavedDefault(in connection: DrawThingsConnection) -> Bool {
+    connection.selection.selectedFile.map(savedDefaults.hasModel(forFile:)) ?? false
+  }
+
+  /// Keeps the tab's steps, guidance, sampler, shift and LoRAs as the selected model's default.
+  func saveAsDefault(in connection: DrawThingsConnection) {
+    guard canEditDefaults(in: connection), let file = connection.selection.selectedFile else { return }
+    savedDefaults = savedDefaults.setting(RecommendedValues(capturing: parameters), forFile: file)
+    overridesStore.save(savedDefaults)
+    defaultsNotice = String(localized: "defaults.saved")
+  }
+
+  /// Forgets the selected model's saved default, and the tab takes the values that remain (the app's, the list's or its
+  /// family's), if there are any.
+  func resetDefault(in connection: DrawThingsConnection) {
+    guard canEditDefaults(in: connection), let file = connection.selection.selectedFile else { return }
+    savedDefaults = savedDefaults.removingModel(forFile: file)
+    overridesStore.save(savedDefaults)
+    let catalog = connection.monitor.catalog
+    if let values = recommended.values(forFile: file, family: catalog.model(forFile: file)?.family) {
+      let installed: Set<String>? = catalog.fileCount == 0 ? nil : Set(catalog.loras.map(\.file))
+      parameters = parameters.applying(values, installedLoRAs: installed)
+    }
+    defaultsNotice = String(localized: "defaults.resetDone")
   }
 
   /// The saved presets (spec §6).
