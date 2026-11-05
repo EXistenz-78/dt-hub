@@ -73,17 +73,9 @@ struct SamplingCard: View {
     }
   }
 
-  /// "Save as default" keeps the tab's sampling values and LoRAs for the selected model; "Reset default" forgets them.
-  /// Not for video models, whose defaults are the app's own.
+  /// The line about the last save or reset of the model's default, or a LoRA of it that is missing (the buttons are in
+  /// the Generation tab's bar).
   @ViewBuilder private var defaultsRow: some View {
-    let canEdit = controller.canEditDefaults(in: connection)
-    HStack(spacing: DS.rowGap) {
-      Button(String(localized: "defaults.save")) { controller.saveAsDefault(in: connection) }
-        .disabled(!canEdit)
-      Button(String(localized: "defaults.reset")) { controller.resetDefault(in: connection) }
-        .disabled(!canEdit || !controller.hasSavedDefault(in: connection))
-      Spacer(minLength: 0)
-    }
     if let notice = controller.defaultsNotice {
       Text(verbatim: notice)
         .font(.footnote)
