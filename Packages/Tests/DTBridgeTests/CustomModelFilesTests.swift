@@ -65,6 +65,44 @@ struct CustomModelFilesTests {
     #expect(Set(CustomModelFiles.specs(for: ["kroma.ckpt"], described: [], source: source).keys) == ["kroma.ckpt"])
   }
 
+  /// The Draw Things app writes a model's entry in its custom.json only when the import is over, after the file is
+  /// already in the models folder: a lookup in that window must not become a permanent "no description".
+  @Test func aModelThatJustArrivedIsLookedUpAgainWhenTheAppWritesItsEntry() throws {
+    let models = folder.appendingPathComponent("models", isDirectory: true)
+    try FileManager.default.createDirectory(at: models, withIntermediateDirectories: true)
+    let ckpt = models.appendingPathComponent("kreamania.ckpt")
+    try Data("x".utf8).write(to: ckpt)
+    let mine = models.appendingPathComponent("custom.json")
+    let app = try write("app.json", #"[{"file":"other.ckpt","name":"Other"}]"#)
+    let source = source(app: app, folder: mine)
+    #expect(CustomModelFiles.specs(for: ["kreamania.ckpt"], described: [], source: source).isEmpty)
+    // The import ends: the app writes the entry.
+    try Data(#"[{"file":"kreamania.ckpt","name":"Kreamania"}]"#.utf8).write(to: app)
+    #expect(Set(CustomModelFiles.specs(for: ["kreamania.ckpt"], described: [], source: source).keys) == ["kreamania.ckpt"])
+  }
+
+  @Test func aSettledModelNobodyDescribesIsNotLookedUpAgain() throws {
+    let models = folder.appendingPathComponent("models", isDirectory: true)
+    try FileManager.default.createDirectory(at: models, withIntermediateDirectories: true)
+    let ckpt = models.appendingPathComponent("plain.ckpt")
+    try Data("x".utf8).write(to: ckpt)
+    try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSinceNow: -86_400)], ofItemAtPath: ckpt.path)
+    let app = try write("app.json", "[]")
+    let source = source(app: app, folder: models.appendingPathComponent("custom.json"))
+    #expect(CustomModelFiles.specs(for: ["plain.ckpt"], described: [], source: source).isEmpty)
+    try Data(#"[{"file":"plain.ckpt","name":"Plain"}]"#.utf8).write(to: app)
+    #expect(CustomModelFiles.specs(for: ["plain.ckpt"], described: [], source: source).isEmpty)
+  }
+
+  /// A cache written before the grace period may hold a "looked up, nothing" for a model that has an entry now.
+  @Test func anOldCacheDoesNotKeepAModelFromBeingLookedUpAgain() throws {
+    let app = try write("app.json", #"[{"file":"kreamania.ckpt","name":"Kreamania"}]"#)
+    let source = source(app: app)
+    try FileManager.default.createDirectory(at: folder0, withIntermediateDirectories: true)
+    try Data(#"{"checked":["kreamania.ckpt"],"models":{}}"#.utf8).write(to: source.cacheFile)
+    #expect(Set(CustomModelFiles.specs(for: ["kreamania.ckpt"], described: [], source: source).keys) == ["kreamania.ckpt"])
+  }
+
   @Test func theModelsFoldersFileComesFirst() throws {
     let mine = try write("mine.json", #"[{"file":"kroma.ckpt","name":"mine"}]"#)
     let app = try write("app.json", #"[{"file":"kroma.ckpt","name":"app"}]"#)

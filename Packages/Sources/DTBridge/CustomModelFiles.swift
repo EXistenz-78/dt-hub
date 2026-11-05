@@ -45,16 +45,44 @@ enum CustomModelFiles {
     return result
   }
 
+  /// How long a model file must have been in the models folder before "the app's file does not describe it" is
+  /// remembered. The Draw Things app writes a model's entry only when its import ends, after the file is already in the
+  /// folder (a big model takes minutes), so a lookup in that window must be repeated.
+  static let settleTime: TimeInterval = 6 * 3600
+
   private struct Cache: Codable {
+    /// 2: a file is "checked" only after it settled (older caches may hold a premature "nothing" and are not trusted).
+    var version = 2
     var checked: Set<String> = []
     var models: [String: String] = [:]
+
+    init() {}
+
+    init(from decoder: any Decoder) throws {
+      let container = try decoder.container(keyedBy: CodingKeys.self)
+      models = (try? container.decodeIfPresent([String: String].self, forKey: .models)) ?? [:]
+      let saved = (try? container.decodeIfPresent(Int.self, forKey: .version)) ?? 1
+      checked = saved >= 2 ? ((try? container.decodeIfPresent(Set<String>.self, forKey: .checked)) ?? []) : []
+    }
+  }
+
+  /// True when the model file was put in the models folder less than `settleTime` ago (its import may be going on).
+  private static func isRecent(_ file: String, in source: CustomModelSource, now: Date) -> Bool {
+    guard let folder = source.folderFile?.deletingLastPathComponent(),
+      let modified = (try? FileManager.default.attributesOfItem(atPath: folder.appendingPathComponent(file).path))?[
+        .modificationDate] as? Date
+    else { return false }
+    return now.timeIntervalSince(modified) < settleTime
   }
 
   /// The specifications of the server's `files` that nothing described (`described` are the ones that were): from the
   /// models folder's `custom.json`, from the cache, and, for a file never looked up, from the Draw Things app's, whose
   /// answer is kept. The app's file is opened only for such a file: that is when macOS asks for permission, once per
-  /// new model instead of at every launch. A file that cannot be read marks nothing as looked up.
-  static func specs(for files: [String], described: Set<String>, source: CustomModelSource) -> [String: Data] {
+  /// new model instead of at every launch. A file that cannot be read marks nothing as looked up, and neither does a model that has just arrived in the
+  /// models folder (see `settleTime`).
+  static func specs(
+    for files: [String], described: Set<String>, source: CustomModelSource, now: Date = Date()
+  ) -> [String: Data] {
     let undescribed = files.filter { !described.contains($0) }
     guard !undescribed.isEmpty else { return [:] }
     var cache = (try? Data(contentsOf: source.cacheFile)).flatMap { try? JSONDecoder().decode(Cache.self, from: $0) } ?? Cache()
@@ -67,7 +95,7 @@ enum CustomModelFiles {
           found[file] = json
           cache.models[file] = String(decoding: json, as: UTF8.self)
         }
-        cache.checked.insert(file)
+        if !isRecent(file, in: source, now: now) { cache.checked.insert(file) }
       }
       try? FileManager.default.createDirectory(at: source.cacheFile.deletingLastPathComponent(), withIntermediateDirectories: true)
       try? JSONEncoder().encode(cache).write(to: source.cacheFile, options: .atomic)
