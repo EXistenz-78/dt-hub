@@ -110,6 +110,15 @@ struct PresetBar: View {
           .lineLimit(2)
       }
       Spacer(minLength: 0)
+
+      // The defaults of the selected model (not presets): not for video models, whose defaults are the app's own.
+      let canEditDefaults = controller.canEditDefaults(in: connection)
+      Button(String(localized: "defaults.save")) { controller.saveAsDefault(in: connection) }
+        .buttonStyle(DSPillButtonStyle())
+        .disabled(!canEditDefaults)
+      Button(String(localized: "defaults.reset")) { controller.resetDefault(in: connection) }
+        .buttonStyle(DSPillButtonStyle())
+        .disabled(!canEditDefaults || !controller.hasSavedDefault(in: connection))
     }
     // The list is the folder's: files added or changed by hand show up when the window comes back.
     .onAppear {

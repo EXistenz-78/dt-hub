@@ -67,7 +67,20 @@ struct SamplingCard: View {
               .disabled(controller.parameters.resolutionDependentShift)
           }
         }
+
+        defaultsRow
       }
+    }
+  }
+
+  /// The line about the last save or reset of the model's default, or a LoRA of it that is missing (the buttons are in
+  /// the Generation tab's bar).
+  @ViewBuilder private var defaultsRow: some View {
+    if let notice = controller.defaultsNotice {
+      Text(verbatim: notice)
+        .font(.footnote)
+        .foregroundStyle(.secondary)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
   }
 }

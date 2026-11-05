@@ -40,7 +40,11 @@ public final class ModelSelection {
     let leavesVideo =
       previous.map { VideoFamilies.isEnabled(catalog.model(forFile: $0)?.family) } == true
       && !VideoFamilies.isEnabled(family)
-    var result: GenerationParameters? = table.values(forFile: file, family: family).map { parameters.applying($0) }
+    // LoRAs a saved default names that the server no longer has are left out (nil when the catalog is unknown).
+    let installed: Set<String>? = catalog.fileCount == 0 ? nil : Set(catalog.loras.map(\.file))
+    var result: GenerationParameters? = table.values(forFile: file, family: family).map {
+      parameters.applying($0, installedLoRAs: installed)
+    }
     if leavesVideo, (result ?? parameters).advanced.hiresFix {
       var reset = result ?? parameters
       reset.advanced.hiresFix = false
