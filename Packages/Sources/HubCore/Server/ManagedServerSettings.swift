@@ -51,19 +51,29 @@ public struct ManagedServerSettings: Equatable, Codable, Sendable {
   /// GiB the server keeps of the model's weights between one image and the next (its `-w` option); 0 = none, and
   /// every image reads the model from the disk again. The automatic value is half the memory of this Mac.
   public var weightsCacheGB: Int
+  /// The server's Metal FlashAttention: on by default; off passes `--no-flash-attention`.
+  public var flashAttention: Bool
+  /// `--cpu-offload`: some weights go to the CPU during inference (less memory, slower).
+  public var cpuOffload: Bool
+  /// `--fread-preferred`: the weights are read with fread instead of being memory-mapped.
+  public var freadPreferred: Bool
 
   /// 7860, next to the Draw Things app's own API server on 7859.
   public static let defaultPort = 7860
 
   public init(
     mode: ServerMode = .attach, binaryPath: String = "", modelsFolder: String = "", port: Int = defaultPort,
-    weightsCacheGB: Int = automaticWeightsCacheGB()
+    weightsCacheGB: Int = automaticWeightsCacheGB(), flashAttention: Bool = true, cpuOffload: Bool = false,
+    freadPreferred: Bool = false
   ) {
     self.mode = mode
     self.binaryPath = binaryPath
     self.modelsFolder = modelsFolder
     self.port = port
     self.weightsCacheGB = weightsCacheGB
+    self.flashAttention = flashAttention
+    self.cpuOffload = cpuOffload
+    self.freadPreferred = freadPreferred
   }
 
   /// Half the memory of the Mac, in GiB, and never under 4: enough to hold the weights of a big model next to what the
@@ -121,6 +131,9 @@ public struct ManagedServerSettings: Equatable, Codable, Sendable {
     modelsFolder = value(.modelsFolder, "")
     port = value(.port, Self.defaultPort)
     weightsCacheGB = value(.weightsCacheGB, Self.automaticWeightsCacheGB())
+    flashAttention = value(.flashAttention, true)
+    cpuOffload = value(.cpuOffload, false)
+    freadPreferred = value(.freadPreferred, false)
   }
 }
 
@@ -192,6 +205,10 @@ public enum ServerArguments {
     let memoryGB = Int(ProcessInfo.processInfo.physicalMemory / (1024 * 1024 * 1024))
     let cache = min(settings.weightsCacheGB, memoryGB)
     if cache > 0 { arguments += ["-w", String(cache)] }
+    // Off by default: with the defaults the command line is the one DT Hub always used.
+    if !settings.flashAttention { arguments.append("--no-flash-attention") }
+    if settings.cpuOffload { arguments.append("--cpu-offload") }
+    if settings.freadPreferred { arguments.append("--fread-preferred") }
     return arguments
   }
 }

@@ -11815,6 +11815,108 @@
           }
         }
       }
+    },
+    "prefs.server.flash": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Metal Flash Attention"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Metal Flash Attention"
+          }
+        }
+      }
+    },
+    "prefs.server.flash.note": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Faster attention on Apple silicon. Turn it off only if the server gives problems. Applies from the next start of the server."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Attenzione più veloce su Apple silicon. Spegnila solo se il server dà problemi. Vale dal prossimo avvio del server."
+          }
+        }
+      }
+    },
+    "prefs.server.offload": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Offload weights to the CPU"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sposta parte dei pesi sulla CPU"
+          }
+        }
+      }
+    },
+    "prefs.server.offload.note": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moves some weights to the CPU during generation: uses less memory but is slower. Applies from the next start of the server."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sposta parte dei pesi sulla CPU durante la generazione: usa meno memoria ma è più lento. Vale dal prossimo avvio del server."
+          }
+        }
+      }
+    },
+    "prefs.server.fread": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Read weights with fread"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leggi i pesi con fread"
+          }
+        }
+      }
+    },
+    "prefs.server.fread.note": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reads the weights with fread instead of memory-mapping them. It may help with external or network disks. Applies from the next start of the server."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Legge i pesi con fread invece di mapparli in memoria. Può aiutare con dischi esterni o di rete. Vale dal prossimo avvio del server."
+          }
+        }
+      }
     }
   },
   "version": "1.0"
