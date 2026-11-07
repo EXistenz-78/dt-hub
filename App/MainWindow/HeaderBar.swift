@@ -59,17 +59,27 @@ struct HeaderBar: View {
     let hint = connection.canSwitchServer
       ? String(format: String(localized: "header.server.switch"), target)
       : String(format: String(localized: "header.server.cannotSwitch"), target)
+    // Which server is in use: "CLI" (the one DT Hub starts) or "DT" (Draw Things already running).
+    let active = connection.managed.mode == .managed ? "CLI" : "DT"
     return Button {
       Task { await connection.switchServer() }
     } label: {
+      // The dot alone is centered with the other buttons; the label hangs below it without moving it.
       DSStatusDot(status: connection.indicator)
+        .overlay(alignment: .top) {
+          Text(verbatim: active)
+            .font(.system(size: 9, weight: .semibold))
+            .foregroundStyle(.secondary)
+            .fixedSize()
+            .offset(y: 12)
+        }
         .padding(6)
         .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
     .disabled(busy || !connection.canSwitchServer)
-    .help(statusText + "\n" + hint)
-    .accessibilityLabel(statusText)
+    .help(statusText + " (" + active + ")\n" + hint)
+    .accessibilityLabel(statusText + " (" + active + ")")
     .accessibilityHint(hint)
   }
 
