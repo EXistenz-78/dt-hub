@@ -131,6 +131,9 @@ struct DrawThingsPreferencesView: View {
             managedDraft.weightsCacheGB = value
           }
         }
+      optionToggle("prefs.server.flash", note: "prefs.server.flash.note", isOn: $managedDraft.flashAttention)
+      optionToggle("prefs.server.offload", note: "prefs.server.offload.note", isOn: $managedDraft.cpuOffload)
+      optionToggle("prefs.server.fread", note: "prefs.server.fread.note", isOn: $managedDraft.freadPreferred)
     } footer: {
       VStack(alignment: .leading, spacing: 4) {
         if let problem = managedDraft.validationError() {
@@ -170,6 +173,14 @@ struct DrawThingsPreferencesView: View {
           }
         }
       }
+    }
+  }
+
+  /// A server option: the switch and, under it, what it does. All of them apply from the next start of the server.
+  private func optionToggle(_ title: LocalizedStringKey, note: LocalizedStringKey, isOn: Binding<Bool>) -> some View {
+    VStack(alignment: .leading, spacing: 2) {
+      Toggle(title, isOn: isOn)
+      Text(note).font(.caption).foregroundStyle(.secondary)
     }
   }
 

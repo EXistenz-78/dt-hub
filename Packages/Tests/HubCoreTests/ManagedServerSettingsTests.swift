@@ -164,3 +164,49 @@ struct WeightsCacheTests {
   }
 }
 
+
+struct ServerPerformanceOptionsTests {
+  let base = ManagedServerSettings(mode: .managed, binaryPath: "/bin/cli", modelsFolder: "/Volumes/Models", port: 7861, weightsCacheGB: 0)
+
+  @Test func theDefaultsKeepTheCommandLineAsItWas() {
+    #expect(base.flashAttention)
+    #expect(!base.cpuOffload)
+    #expect(!base.freadPreferred)
+    let arguments = ServerArguments.make(base)
+    #expect(!arguments.contains("--no-flash-attention"))
+    #expect(!arguments.contains("--cpu-offload"))
+    #expect(!arguments.contains("--fread-preferred"))
+  }
+
+  @Test func eachFlagIsOnTheCommandLineOnlyWhenItIsAsked() {
+    var settings = base
+    settings.flashAttention = false
+    #expect(ServerArguments.make(settings).contains("--no-flash-attention"))
+    #expect(!ServerArguments.make(settings).contains("--cpu-offload"))
+    settings = base
+    settings.cpuOffload = true
+    #expect(ServerArguments.make(settings).contains("--cpu-offload"))
+    settings = base
+    settings.freadPreferred = true
+    #expect(ServerArguments.make(settings).contains("--fread-preferred"))
+  }
+
+  @Test func anOldSavedSettingGetsTheDefaults() throws {
+    let old = Data(#"{"mode":"managed","binaryPath":"/bin/cli","modelsFolder":"/m","port":7860,"weightsCacheGB":8}"#.utf8)
+    let settings = try JSONDecoder().decode(ManagedServerSettings.self, from: old)
+    #expect(settings.flashAttention)
+    #expect(!settings.cpuOffload)
+    #expect(!settings.freadPreferred)
+  }
+
+  @Test func theChosenOptionsAreSavedAndRead() throws {
+    var settings = base
+    settings.flashAttention = false
+    settings.cpuOffload = true
+    settings.freadPreferred = true
+    let back = try JSONDecoder().decode(ManagedServerSettings.self, from: JSONEncoder().encode(settings))
+    #expect(!back.flashAttention)
+    #expect(back.cpuOffload)
+    #expect(back.freadPreferred)
+  }
+}
