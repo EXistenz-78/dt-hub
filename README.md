@@ -36,9 +36,13 @@ This is an independent community project, not affiliated with or endorsed by Dra
 
 ## A look around
 
-**Generation.** The prompt (with the negative prompt, shown only for the families that use it) and collapsible cards for dimensions, sampling, seed and batch, LoRAs and an advanced section. Every value can be typed or stepped, the open or closed state of each card is remembered, and a JSON editor shows and edits the whole configuration.
+**Generation.** The prompt (with the negative prompt, shown only for the families that use it) and collapsible cards for dimensions, sampling, seed and batch, LoRAs and an advanced section; with an edit model an **Input** card under the prompt shows the Canvas and Moodboard pictures of the Control tab. Every value can be typed or stepped, the open or closed state of each card is remembered, and a JSON editor shows and edits the whole configuration.
 
-<p align="center"><img src="docs/images/generation.png" alt="The Generation tab" width="55%"></p>
+<p align="center"><img src="docs/images/generation.png" alt="The Generation tab, with the Input card of an edit model" width="55%"></p>
+
+**Guided setup.** The first time DT Hub opens, a short guided setup takes you through the server (the Draw Things app, the `gRPCServerCLI`, or both), the output folder and an optional language model. **Help › Guided Setup…** opens it again.
+
+<p align="center"><img src="docs/images/guided-setup.png" alt="The guided setup: the server step" width="55%"></p>
 
 <p align="center">
   <img src="docs/images/lora-manager.png" alt="Manage LoRAs" width="32%">
