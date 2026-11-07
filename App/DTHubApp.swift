@@ -26,6 +26,7 @@ struct DTHubApp: App {
   @State private var queueStore: QueueStore
   @State private var queueRunner: QueueRunner
   @State private var canvasWindow = CanvasWindowState()
+  @State private var onboarding = OnboardingState()
 
   init() {
     // Before any window exists: SwiftUI's own memory of the main window gets the frame this app kept.
@@ -178,6 +179,20 @@ struct DTHubApp: App {
         workspace: workspace, connection: connection, generation: generation, plugins: plugins, projects: projects,
         queueStore: queueStore, queueRunner: queueRunner, updates: updates)
         .environment(canvasWindow)
+        // The first-launch setup: only once a project is open, so it never competes with the project sheet.
+        .sheet(
+          isPresented: Binding(
+            get: { onboarding.isPresented && projects.didStart && projects.current != nil },
+            set: { if !$0 { onboarding.finish() } })
+        ) {
+          OnboardingSheet(
+            state: onboarding, connection: connection, generation: generation, languageModel: languageModel,
+            download: download, projects: projects)
+        }
+        .task {
+          while !projects.didStart { try? await Task.sleep(for: .milliseconds(100)) }
+          onboarding.presentIfFirstLaunch()
+        }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
           generation.saveSessionNow()
         }
@@ -196,6 +211,9 @@ struct DTHubApp: App {
     .commands {
       CommandGroup(replacing: .appInfo) {
         Button(String(localized: "about.menu")) { AboutPanel.show() }
+      }
+      CommandGroup(replacing: .help) {
+        Button(String(localized: "onboarding.menu")) { onboarding.reopen() }
       }
       CommandMenu(String(localized: "tab.generation")) {
         GenerationCommands(generation: generation, connection: connection)
