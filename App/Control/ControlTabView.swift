@@ -35,22 +35,23 @@ struct ControlTabView: View {
   private var content: some View {
     ScrollView {
       VStack(spacing: DS.groupGap) {
-        DSCardRow {
-          VStack(spacing: DS.groupGap) {
-            ImageCard(generation: generation, connection: connection) { message = $0 }
-            MoodboardCard(generation: generation, connection: connection) { message = $0 }
-          }
-          if canvasWindow.isOpen {
-            CanvasDetachedNote()
-          } else {
-            CanvasStage(
-              generation: generation, report: { message = $0 },
-              detach: {
-                canvasWindow.isOpen = true
-                openWindow(id: CanvasWindow.id)
-              })
-          }
+        // Canvas, then the Moodboard, each as wide as the window. While the Canvas is in its own window, the
+        // controls of the start image stay here, under the note.
+        if canvasWindow.isOpen {
+          CanvasDetachedNote()
+          StartImageControls(generation: generation, connection: connection, report: { message = $0 })
+            .padding(DS.panelPadding)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .dsPanel()
+        } else {
+          CanvasStage(
+            generation: generation, connection: connection, report: { message = $0 },
+            detach: {
+              canvasWindow.isOpen = true
+              openWindow(id: CanvasWindow.id)
+            })
         }
+        MoodboardCard(generation: generation, connection: connection) { message = $0 }
       }
       .padding(.bottom, DS.groupGap)
     }

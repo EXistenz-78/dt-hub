@@ -234,7 +234,7 @@ struct DTHubApp: App {
     .windowResizability(.contentMinSize)
 
     Window(String(localized: "canvas.window.title"), id: CanvasWindow.id) {
-      CanvasWindowView(generation: generation)
+      CanvasWindowView(generation: generation, connection: connection)
         .environment(canvasWindow)
     }
     .windowResizability(.contentMinSize)

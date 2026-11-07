@@ -10,6 +10,7 @@ import SwiftUI
 /// Each stroke is one step of the tab's history (⌘Z).
 struct CanvasStage: View {
   let generation: GenerationController
+  let connection: DrawThingsConnection
   /// Reports what went wrong while drawing.
   let report: (ControlMessage) -> Void
   /// Opens the card in its own window; nil in that window itself, which has no such button.
@@ -22,6 +23,8 @@ struct CanvasStage: View {
   }
 
   @State private var picture: CGImage?
+  /// A file is being dragged over the card: it will become the start image.
+  @State private var isDropTargeted = false
   @State private var mode = Mode.canvas
   @State private var tool = DrawingTool.maskAdd
   @State private var dragStart: Framing?
@@ -40,6 +43,8 @@ struct CanvasStage: View {
 
   /// The height of the tab's window: the pictures grow with it.
   @Environment(\.controlViewportHeight) private var viewportHeight
+  @Environment(PluginRegistry.self) private var plugins: PluginRegistry?
+  @Environment(ContributionStore.self) private var contributions: ContributionStore?
 
   private var control: ControlStore { generation.control }
   private var canvasWidth: Int { generation.parameters.width }
@@ -88,7 +93,9 @@ struct CanvasStage: View {
             zoomRow(for: image)
             rotationRow
             if control.hasMargins(canvasWidth: canvasWidth, canvasHeight: canvasHeight) { fillRow }
-            caption(for: image)
+            StartImageControls(generation: generation, connection: connection, report: report) {
+              caption(for: image)
+            }
           } else {
             drawArea(for: image)
             if tool != .brush || control.inputs.mask != nil { maskSettings }
@@ -97,6 +104,7 @@ struct CanvasStage: View {
           empty
         }
       }
+      .modifier(ImageDrop(isTargeted: $isDropTargeted, control: control, report: report))
     }
   }
 
@@ -123,6 +131,7 @@ struct CanvasStage: View {
     }
     .padding(10)
     .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .modifier(ImageDrop(isTargeted: $isDropTargeted, control: control, report: report))
   }
 
   private func cropRect(of image: ReferenceImage) -> CGRect {
@@ -153,12 +162,21 @@ struct CanvasStage: View {
     .buttonStyle(.plain)
   }
 
+  /// No start image: the drop zone, with the button to choose a file and what Run does without one.
   private var empty: some View {
     ZStack {
       RoundedRectangle(cornerRadius: DS.boxRadius, style: .continuous)
         .strokeBorder(Color.secondary.opacity(0.5), style: StrokeStyle(lineWidth: 1, dash: [5, 4]))
-      Text("control.stage.empty").font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center)
-        .padding()
+      VStack(spacing: DS.controlGap) {
+        Image(systemName: "photo.badge.plus").font(.system(size: 26)).foregroundStyle(.secondary)
+        Text("control.image.drop").font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center)
+        Button("control.image.choose") {
+          Task { if let message = await ControlImport.choose(into: control) { report(.error(message)) } }
+        }
+        .buttonStyle(DSPillButtonStyle(prominent: true))
+        Text("control.stage.empty").font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
+      }
+      .padding()
     }
     .aspectRatio(Double(canvasWidth) / Double(max(canvasHeight, 1)), contentMode: .fit)
     .frame(maxHeight: 300)
@@ -170,7 +188,7 @@ struct CanvasStage: View {
   /// rectangle that takes the card's width (up to what the window's height allows for this ratio) and
   /// puts the content over it.
   private func sized<Content: View>(ratio: Double, @ViewBuilder content: () -> Content) -> some View {
-    let tallest = max(340, viewportHeight - 330)
+    let tallest = max(340, viewportHeight - Self.chromeHeight)
     return Color.clear
       .aspectRatio(ratio, contentMode: .fit)
       .frame(maxWidth: tallest * ratio)
@@ -182,10 +200,15 @@ struct CanvasStage: View {
   /// puts outside the canvas shows there, darkened.
   private static let boardMargin = 0.12
 
+  /// What the card holds besides the stage (mode picker, zoom, rotation, strength, buttons, caption): the stage
+  /// is as tall as the window minus this.
+  private static let chromeHeight = 460.0
+
   private func stage(for image: ReferenceImage) -> some View {
     sized(ratio: Double(canvasWidth) / Double(max(canvasHeight, 1))) {
       stageContent(for: image)
     }
+    .contributed(contributions?.startImage?.id == image.id)
   }
 
   private func stageContent(for image: ReferenceImage) -> some View {
@@ -224,6 +247,24 @@ struct CanvasStage: View {
       .frame(width: size.width, height: size.height)
       .clipShape(RoundedRectangle(cornerRadius: DS.boxRadius, style: .continuous))
       .contentShape(Rectangle())
+      // The picture's badges sit on the corners of the stage: ✕ to remove it, its number for the prompt.
+      .overlay(alignment: .topTrailing) {
+        Button {
+          control.removeImage()
+        } label: {
+          Image(systemName: "xmark.circle.fill").font(.system(size: 20)).symbolRenderingMode(.palette)
+            .foregroundStyle(.white, Color.black.opacity(0.55))
+        }
+        .buttonStyle(.plain)
+        .padding(8)
+        .accessibilityLabel(String(localized: "control.image.remove"))
+        .help(String(localized: "control.image.remove"))
+      }
+      .overlay(alignment: .bottomTrailing) {
+        if let number = control.startImageNumber, FamilyTraits.of(generation.family(in: connection)).usesMoodboard {
+          ImageNumberBadge(number: number).padding(8)
+        }
+      }
       .gesture(
         DragGesture()
           .onChanged { value in
@@ -403,7 +444,9 @@ struct CanvasStage: View {
     control.setZoom(value)
   }
 
-  @ViewBuilder private func caption(for image: ReferenceImage) -> some View {
+  /// What the canvas says about the picture, in one line: file, size, margins, how much of the picture is used and
+  /// how to move it, separated by " / ". It stands beside the buttons under the sliders.
+  private func caption(for image: ReferenceImage) -> some View {
     let framing = control.inputs.framing
     let margins = FramingMath.margins(
       imageWidth: image.pixelWidth, imageHeight: image.pixelHeight, canvasWidth: canvasWidth,
@@ -416,33 +459,44 @@ struct CanvasStage: View {
       canvasHeight: canvasHeight, framing: framing)
     let canMove =
       abs(Double(image.pixelWidth) - crop.width) > 0.5 || abs(Double(image.pixelHeight) - crop.height) > 0.5
-    VStack(alignment: .leading, spacing: 2) {
-      Text(
-        String(
-          format: String(localized: "control.stage.size"), canvasWidth, canvasHeight)
-      )
-      .font(.caption).foregroundStyle(.secondary)
-      if !margins.isEmpty {
-        Text(String(format: String(localized: "control.stage.margins"), marginList(margins, corners: margins.cornersUncovered)))
-          .font(.caption).foregroundStyle(.secondary)
-      }
-      if framing.zoom > 0 {
-        let share = FramingMath.usedShare(
-          imageWidth: image.pixelWidth, imageHeight: image.pixelHeight, canvasWidth: canvasWidth,
-          canvasHeight: canvasHeight, framing: framing)
-        Text(String(format: String(localized: "control.stage.used"), Int((share * 100).rounded())))
-          .font(.caption).foregroundStyle(.secondary)
-      } else if let axis = loss.axis {
-        Text(
+    var parts: [(text: String, warning: Bool)] = [
+      (
+        "\(image.name) · "
+          + String(
+            format: String(localized: "control.image.info"), image.pixelWidth, image.pixelHeight,
+            ControlText.source(image.source, plugins: plugins)), false
+      ),
+      (String(format: String(localized: "control.stage.size"), canvasWidth, canvasHeight), false),
+    ]
+    if !margins.isEmpty {
+      parts.append(
+        (String(format: String(localized: "control.stage.margins"), marginList(margins, corners: margins.cornersUncovered)), false))
+    }
+    if framing.zoom > 0 {
+      let share = FramingMath.usedShare(
+        imageWidth: image.pixelWidth, imageHeight: image.pixelHeight, canvasWidth: canvasWidth,
+        canvasHeight: canvasHeight, framing: framing)
+      parts.append((String(format: String(localized: "control.stage.used"), Int((share * 100).rounded())), false))
+    } else if let axis = loss.axis {
+      parts.append(
+        (
           String(
             format: String(localized: axis == .vertical ? "control.stage.loss.vertical" : "control.stage.loss.horizontal"),
-            Int((loss.fraction * 100).rounded()))
-        )
-        .font(.caption).foregroundStyle(loss.fraction > 1.0 / 3.0 ? DS.remove : .secondary)
-      }
-      if canMove { Text("control.stage.drag").font(.caption).foregroundStyle(.secondary) }
+            Int((loss.fraction * 100).rounded())), loss.fraction > 1.0 / 3.0
+        ))
     }
-    .frame(maxWidth: .infinity, alignment: .leading)
+    if canMove { parts.append((String(localized: "control.stage.drag"), false)) }
+    var line = AttributedString()
+    for (index, part) in parts.enumerated() {
+      if index > 0 { line += AttributedString(" / ") }
+      var piece = AttributedString(part.text)
+      if part.warning { piece.foregroundColor = DS.remove }
+      line += piece
+    }
+    return Text(line)
+      .font(.caption).foregroundStyle(.secondary)
+      .fixedSize(horizontal: false, vertical: true)
+      .frame(maxWidth: .infinity, alignment: .leading)
   }
 
   /// "left 12%, right 12%": the sides that have a margin, as a share of the canvas.
@@ -804,5 +858,22 @@ private struct SpaceKeyMonitor: NSViewRepresentable {
       monitor = nil
       binding?.wrappedValue = false
     }
+  }
+}
+
+/// A file dropped on the card becomes the start image, replacing the one that is there; the card shows a border
+/// while a file is over it.
+private struct ImageDrop: ViewModifier {
+  @Binding var isTargeted: Bool
+  let control: ControlStore
+  let report: (ControlMessage) -> Void
+
+  func body(content: Content) -> some View {
+    content
+      .overlay(RoundedRectangle(cornerRadius: DS.boxRadius).strokeBorder(DS.accent, lineWidth: isTargeted ? 2 : 0))
+      .dropDestination(for: URL.self) { urls, _ in
+        Task { if let message = await ControlImport.take(urls: urls, into: control) { report(.error(message)) } }
+        return true
+      } isTargeted: { isTargeted = $0 }
   }
 }
