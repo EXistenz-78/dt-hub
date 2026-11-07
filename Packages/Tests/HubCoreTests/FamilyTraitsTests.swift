@@ -32,7 +32,34 @@ struct FamilyTraitsTests {
   @Test func upscalersTakeNoNegativePrompt() {
     #expect(!FamilyTraits.of("seedvr2_7b").usesNegativePrompt)
     #expect(FamilyTraits.of("sdxl_base_v0.9").usesNegativePrompt)
-    #expect(FamilyTraits.of("flux2_9b").usesNegativePrompt)
+  }
+
+  /// The Family prompt's header (`negative: true|false`) is the one place that says whether a family reads a
+  /// negative prompt: the field and what RUN sends follow it, so a new Family prompt needs nothing else.
+  @Test func theNegativePromptFollowsTheFamilyPrompts() {
+    let families = PromptLibrary.builtIn.families()
+    #expect(!families.isEmpty)
+    for family in families {
+      #expect(FamilyTraits.of(family.id).usesNegativePrompt == family.negative, "\(family.id)")
+    }
+  }
+
+  @Test(arguments: ["krea_2", "qwen_image", "sdxl_base_v0.9", "v1", "moss_image", "ernie_image", "cosmos2.5_2b"])
+  func familiesWhosePromptAsksForItShowTheNegativePrompt(family: String) {
+    #expect(FamilyTraits.of(family).usesNegativePrompt)
+  }
+
+  @Test(arguments: [
+    "flux1", "flux2", "flux2_4b", "flux2_9b", "flux3_5b", "z_image", "hidream_i1", "qwen_image_2.1", "ltx2.3",
+    "minimax_h3", "seedvr2_3b", "svd_i2v",
+  ])
+  func familiesThatDoNotReadItHideIt(family: String) {
+    #expect(!FamilyTraits.of(family).usesNegativePrompt)
+  }
+
+  @Test(arguments: ["sd3", "wan_v2.1_14b", "a_future_family"])
+  func aFamilyWithNoPromptYetKeepsTheField(family: String) {
+    #expect(FamilyTraits.of(family).usesNegativePrompt)
   }
 
   @Test func anUnknownFamilyShowsEverything() {

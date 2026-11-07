@@ -89,7 +89,8 @@ struct MainWindowView: View {
     if workspace.selectedTabID == WorkspaceTab.controlID {
       ControlTabView(generation: generation, connection: connection)
     } else if workspace.selectedTabID == WorkspaceTab.generationID {
-      GenerationTabView(controller: generation, connection: connection)
+      GenerationTabView(
+        controller: generation, connection: connection, openControl: { workspace.select(WorkspaceTab.controlID) })
     } else if let controller = plugins.viewController(forTab: workspace.selectedTabID) as? NSViewController {
       // One view per tab: without the id SwiftUI keeps the first plug-in's controller when another plug-in tab is chosen.
       PluginTabView(controller: controller).id(workspace.selectedTabID)
