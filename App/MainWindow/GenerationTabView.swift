@@ -7,6 +7,8 @@ import SwiftUI
 struct GenerationTabView: View {
   let controller: GenerationController
   let connection: DrawThingsConnection
+  /// Opens the Control tab (the Input card sends there).
+  let openControl: () -> Void
 
   var body: some View {
     ScrollView {
@@ -14,6 +16,10 @@ struct GenerationTabView: View {
         PresetBar(controller: controller, connection: connection)
           .padding(.horizontal, DS.panelPadding)
         PromptCard(controller: controller, connection: connection)
+        // Edit models work from the Control tab's pictures: they are shown here too.
+        if controller.isEditModel(in: connection) {
+          InputCard(controller: controller, openControl: openControl)
+        }
         DSCardRow {
           DimensionsCard(controller: controller)
           SeedBatchCard(controller: controller)
