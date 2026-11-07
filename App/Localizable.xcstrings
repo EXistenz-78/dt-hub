@@ -2194,40 +2194,6 @@
         }
       }
     },
-    "control.image.replace": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Replace…"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sostituisci…"
-          }
-        }
-      }
-    },
-    "control.image.title": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Image"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Immagine"
-          }
-        }
-      }
-    },
     "control.mask.blur": {
       "extractionState": "manual",
       "localizations": {

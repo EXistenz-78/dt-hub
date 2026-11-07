@@ -18,11 +18,12 @@ final class CanvasWindowState {
 /// The content of the canvas window: the drawing of the Canvas card alone, over the Control tab's store.
 struct CanvasWindowView: View {
   let generation: GenerationController
+  let connection: DrawThingsConnection
   @Environment(CanvasWindowState.self) private var state
   @State private var message: String?
 
   var body: some View {
-    CanvasStage(generation: generation, report: report, isInOwnWindow: true)
+    CanvasStage(generation: generation, connection: connection, report: report, isInOwnWindow: true)
       .overlay(alignment: .top) {
         if let message {
           HStack(spacing: DS.controlGap) {
