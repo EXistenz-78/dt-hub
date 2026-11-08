@@ -144,4 +144,40 @@ struct ControlToolsTests {
     #expect(h.registry.visibleTools().contains { $0.name == "enhance_prompt" })
     #expect(text(await h.registry.call("enhance_prompt", arguments: [:])) == "enhanced")
   }
+
+  @Test func queueAddWhileAgentQueueRunsIsRefused() async {
+    let h = harness(images: 3)
+    _ = await h.registry.call("queue_start", arguments: [:])
+    let r = await h.registry.call("queue_add", arguments: [:])
+    #expect(r.isError && text(r).contains("job-1"))
+    #expect(h.host.queue.isEmpty)
+  }
+
+  @Test func queueAddWhileUserQueueRunsIsRefused() async {
+    let h = harness()
+    h.host.queueRunning = true
+    #expect(await h.registry.call("queue_add", arguments: [:]).isError)
+  }
+
+  @Test func queueAddDuringAPlainRunIsAllowed() async {
+    let h = harness()
+    _ = await h.registry.call("run", arguments: [:])
+    #expect(await h.registry.call("queue_add", arguments: [:]).isError == false)
+  }
+
+  @Test func confirmationAnsweredAfterDisconnectDoesNotStart() async {
+    let h = harness(threshold: 20, images: 30)
+    h.prompter.onAsk = { h.jobs.clientDisconnected() }
+    let r = await h.registry.call("run", arguments: [:])
+    #expect(r.isError)
+    #expect(h.host.calls.isEmpty && h.ledger.usedImages == 0 && h.jobs.activeJobID == nil)
+  }
+
+  @Test func runAsksNothingWhenTheAppIsAlreadyGenerating() async {
+    let h = harness(threshold: 20, images: 30)
+    h.host.stateValue.isGenerating = true
+    let r = await h.registry.call("run", arguments: [:])
+    #expect(r.isError && text(r).contains("already running"))
+    #expect(h.prompter.asked.isEmpty && h.jobs.activeJobID == nil)
+  }
 }

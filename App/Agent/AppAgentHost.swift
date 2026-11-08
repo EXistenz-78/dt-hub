@@ -270,8 +270,15 @@ final class AppAgentHost: AgentHost {
   }
 
   func planQueue() -> AgentRunPlan {
-    let images = queueStore.entries.filter { $0.status == .pending }.reduce(0) {
-      $0 + max(1, $1.preset.parameters.batchCount * $1.preset.parameters.batchSize)
+    let images = queueStore.entries.filter { $0.status == .pending }.reduce(0) { total, entry in
+      let passes: Int
+      switch entry.pipeline {
+      case nil: passes = 1
+      case .user(let name)?: passes = (try? generation.userPipelines.load(named: name))?.pluginPipeline(named: name).passCount ?? 1
+      case .plugin(_, _, let steps)?: passes = steps.count
+      case .guided(_, _, let count, _)?: passes = count
+      }
+      return total + max(1, passes) * max(1, entry.preset.parameters.batchCount * entry.preset.parameters.batchSize)
     }
     return AgentRunPlan(images: images, estimatedCU: nil, summary: "\(images) queued image(s)")
   }
@@ -311,8 +318,16 @@ final class AppAgentHost: AgentHost {
     watch(total: total, since: baseline)
   }
 
-  func stop() { generation.stop() }
-  func stopQueue() { queueRunner.stop() }
+  func stop() {
+    // The tool reports the stop itself: a late event of the old watcher must not touch the next job.
+    watcher?.cancel()
+    generation.stop()
+  }
+
+  func stopQueue() {
+    watcher?.cancel()
+    queueRunner.stop()
+  }
 
   func definePipeline(steps: [AgentPipelineStep]) throws(AgentError) -> String {
     var pipelineSteps: [PipelineStep] = []
@@ -331,6 +346,8 @@ final class AppAgentHost: AgentHost {
   }
 
   func queueAdd() async throws(AgentError) -> UUID {
+    // A running queue takes new entries at once: they would run without the budget being charged.
+    if queueRunner.isRunning { throw .busy(jobID: nil) }
     let (entry, problem) = await generation.captureQueueEntry(in: connection, store: queueStore)
     guard let entry else { throw .unavailable(problem ?? "The tab cannot be queued.") }
     queueStore.add(entry)

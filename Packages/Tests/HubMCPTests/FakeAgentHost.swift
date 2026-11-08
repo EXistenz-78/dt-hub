@@ -28,11 +28,13 @@ final class FakeAgentHost: AgentHost {
   var knownLoRAs: Set<String> = []
   var replacedCount = 0
   var unappliedKeys: Set<String> = []
+  var queueRunning = false
+  var presetList = ["Portrait"]
 
   func state() -> AgentState { stateValue }
   func models() -> [AgentModel] { modelList }
   func loras() -> [AgentLoRA] { loraList }
-  func presetNames() -> [String] { ["Portrait"] }
+  func presetNames() -> [String] { presetList }
   func pipelineNames() -> [String] { ["Upscale chain"] }
   func promptGuide(family: String) -> String? { guides[family] }
   func results() -> [AgentResult] { resultList }
@@ -85,6 +87,7 @@ final class FakeAgentHost: AgentHost {
     return "Agent pipeline"
   }
   func queueAdd() async throws(AgentError) -> UUID {
+    if queueRunning { throw .busy(jobID: nil) }
     let id = UUID()
     queue.append(AgentQueueEntry(id: id, summary: "entry", status: "pending"))
     return id
@@ -99,8 +102,10 @@ final class FakeAgentHost: AgentHost {
 final class StubPrompter: ConsentPrompter {
   var answer = true
   private(set) var asked: [String] = []
+  var onAsk: (() -> Void)?
   func ask(_ summary: String, timeoutSeconds: Int) async -> Bool {
     asked.append(summary)
+    onAsk?()
     return answer
   }
 }

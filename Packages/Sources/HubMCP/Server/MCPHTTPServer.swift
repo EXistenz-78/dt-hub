@@ -34,9 +34,16 @@ actor MCPHTTPCore {
   private struct Session {
     let server: Server
     let transport: StatefulHTTPServerTransport
+    var lastAccess: Date
   }
 
-  init(backend: MCPBackend) { self.backend = backend }
+  private let idleSeconds: Int
+  private var pruner: Task<Void, Never>?
+
+  init(backend: MCPBackend, sessionIdleSeconds: Int = 300) {
+    self.backend = backend
+    idleSeconds = sessionIdleSeconds
+  }
 
   var isRunning: Bool { channel != nil }
 
@@ -56,6 +63,7 @@ actor MCPHTTPCore {
     do {
       channel = try await bootstrap.bind(host: "127.0.0.1", port: Int(port)).get()
       self.group = group
+      startPruning()
     } catch {
       try? await group.shutdownGracefully()
       if let io = error as? IOError, io.errnoCode == EADDRINUSE { throw .portInUse(port) }
@@ -63,7 +71,32 @@ actor MCPHTTPCore {
     }
   }
 
+  /// Most clients just close the socket: a session nobody has used for a while is dropped (a live client starts a new one).
+  private func startPruning() {
+    pruner?.cancel()
+    let tick = max(0.5, Double(idleSeconds) / 4)
+    pruner = Task { [weak self] in
+      while !Task.isCancelled {
+        try? await Task.sleep(for: .seconds(tick))
+        await self?.pruneIdleSessions()
+      }
+    }
+  }
+
+  private func pruneIdleSessions() async {
+    let limit = TimeInterval(idleSeconds)
+    let stale = sessions.filter { Date().timeIntervalSince($0.value.lastAccess) > limit }
+    guard !stale.isEmpty else { return }
+    for (id, session) in stale {
+      sessions[id] = nil
+      await session.transport.disconnect()
+    }
+    backend.clientCountChanged(sessions.count)
+  }
+
   func stop() async {
+    pruner?.cancel()
+    pruner = nil
     for (_, session) in sessions { await session.transport.disconnect() }
     sessions.removeAll()
     backend.clientCountChanged(0)
@@ -95,7 +128,9 @@ actor MCPHTTPCore {
     }
 
     let sid = request.header(HTTPHeaderName.sessionID)
-    if let sid, let session = sessions[sid] {
+    if let sid, var session = sessions[sid] {
+      session.lastAccess = Date()
+      sessions[sid] = session
       let response = await session.transport.handleRequest(request)
       if request.method.uppercased() == "DELETE", response.statusCode == 200 {
         sessions[sid] = nil
@@ -131,7 +166,7 @@ actor MCPHTTPCore {
     await server.withMethodHandler(CallTool.self) { params in await backend.call(params.name, params.arguments ?? [:]) }
     do {
       try await server.start(transport: transport)
-      sessions[id] = Session(server: server, transport: transport)
+      sessions[id] = Session(server: server, transport: transport, lastAccess: Date())
       backend.clientCountChanged(sessions.count)
       let response = await transport.handleRequest(request)
       if case .error = response {
@@ -244,7 +279,9 @@ public final class MCPHTTPServer {
   public private(set) var connectedClients = 0
   public var onClientCountChanged: ((Int) -> Void)?
 
-  public init(registry: ToolRegistry, tokens: TokenStore, instructions: String = AgentInstructions.short) {
+  public init(
+    registry: ToolRegistry, tokens: TokenStore, instructions: String = AgentInstructions.short, sessionIdleSeconds: Int = 300
+  ) {
     self.registry = registry
     let registry = registry
     var backend = MCPBackend(
@@ -264,7 +301,7 @@ public final class MCPHTTPServer {
       clientCountChanged: { _ in })
     let box = ClientCountBox()
     backend.clientCountChanged = { count in box.fire(count) }
-    core = MCPHTTPCore(backend: backend)
+    core = MCPHTTPCore(backend: backend, sessionIdleSeconds: sessionIdleSeconds)
     box.owner = { [weak self] count in
       Task { @MainActor in self?.clientsChanged(count) }
     }

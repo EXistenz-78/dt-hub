@@ -12111,13 +12111,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Compute units per session (DT+, 0 = no limit)"
+            "value": "Compute units per session (DT+; not enforced in this version)"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Unità di calcolo per sessione (DT+, 0 = nessun limite)"
+            "value": "Unità di calcolo per sessione (DT+; non ancora applicato in questa versione)"
           }
         }
       }

@@ -141,6 +141,17 @@ struct EditToolsTests {
     #expect(h.host.calls == ["savePreset Mine"])
   }
 
+  @Test func savePresetRefusesNamesTheStoreWouldTreatAsTheSame() async {
+    let h = harness()
+    h.host.presetList = ["Portrait", "Café"]
+    for name in [" Portrait", "portrait", "PORTRAIT ", "Cafe", "café"] {
+      let r = await h.registry.call("save_preset", arguments: ["name": .string(name)])
+      #expect(r.isError, "\(name)")
+    }
+    #expect(h.host.calls.isEmpty)
+    #expect(await h.registry.call("save_preset", arguments: ["name": .string("Mine")]).isError == false)
+  }
+
   @Test func loadPresetReportsTheReasonItFailed() async {
     let h = harness()
     #expect(await h.registry.call("load_preset", arguments: ["name": .string("Portrait")]).isError == false)

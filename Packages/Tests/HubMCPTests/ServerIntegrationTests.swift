@@ -147,4 +147,24 @@ struct ServerIntegrationTests {
     await c.disconnect()
     await server.stop()
   }
+
+  @Test func idleSessionsAreDroppedAndTheClientCountFalls() async throws {
+    let h = Harness()
+    let server = MCPHTTPServer(registry: h.registry, tokens: tokens, sessionIdleSeconds: 1)
+    let port = freePort()
+    try await server.start(port: port)
+    let (c, transport) = client(port: port, token: tokens.token())
+    _ = try await c.connect(transport: transport)
+    try await Task.sleep(for: .milliseconds(300))
+    #expect(server.connectedClients == 1)
+    var gone = false
+    for _ in 0..<40 where !gone {
+      try await Task.sleep(for: .milliseconds(250))
+      gone = server.connectedClients == 0
+    }
+    #expect(gone)
+    #expect(h.jobs.acceptsNewJobs == false)
+    await c.disconnect()
+    await server.stop()
+  }
 }
