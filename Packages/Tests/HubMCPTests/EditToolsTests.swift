@@ -36,6 +36,14 @@ struct EditToolsTests {
     #expect(text(r).contains("steps"))
   }
 
+  @Test func setFieldsReportsFieldsAPluginHolds() async {
+    let h = harness()
+    h.host.unappliedKeys = ["steps"]
+    let r = await h.registry.call("set_fields", arguments: ["fields": .object(["prompt": .string("x"), "steps": .int(9)])])
+    #expect(!r.isError)
+    #expect(text(r).contains("Applied: prompt.") && text(r).contains("Not applied: steps"))
+  }
+
   @Test func setFieldsRejectsUnknownKeyListingValidOnes() async {
     let h = harness()
     let r = await h.registry.call("set_fields", arguments: ["fields": .object(["colour": .string("red")])])

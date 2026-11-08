@@ -149,6 +149,8 @@ public struct AgentState: Equatable, Sendable, Codable {
   public var hasStartImage = false
   public var strength: Double?
   public var isGenerating = false
+  /// A pipeline selected in the app: a plain run would run it.
+  public var selectedPipeline: String?
   public init() {}
 }
 
@@ -227,7 +229,7 @@ public protocol AgentHost: AnyObject {
   func stop()
   func stopQueue()
   func definePipeline(steps: [AgentPipelineStep]) throws(AgentError) -> String
-  func queueAdd() throws(AgentError) -> UUID
+  func queueAdd() async throws(AgentError) -> UUID
   func queueRemove(id: UUID) throws(AgentError)
   func enhancePrompt() async throws(AgentError) -> String
   func promptFromImage() async throws(AgentError) -> String

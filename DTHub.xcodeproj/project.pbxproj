@@ -12,6 +12,7 @@
 		D7B41D6E5C2A4F0B9E3A1C01 /* DTBridge in Frameworks */ = {isa = PBXBuildFile; productRef = D7B41D6E5C2A4F0B9E3A1C02 /* DTBridge */; };
 		E8C52E7F6D3B5A1CAF4B2D11 /* LLMBridge in Frameworks */ = {isa = PBXBuildFile; productRef = E8C52E7F6D3B5A1CAF4B2D12 /* LLMBridge */; };
 		F9D63F808E4C6B2DB05C3E21 /* PluginHost in Frameworks */ = {isa = PBXBuildFile; productRef = F9D63F808E4C6B2DB05C3E22 /* PluginHost */; };
+		A1B2C3D4E5F60718293A4B01 /* HubMCP in Frameworks */ = {isa = PBXBuildFile; productRef = A1B2C3D4E5F60718293A4B02 /* HubMCP */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -37,6 +38,7 @@
 				D7B41D6E5C2A4F0B9E3A1C01 /* DTBridge in Frameworks */,
 				E8C52E7F6D3B5A1CAF4B2D11 /* LLMBridge in Frameworks */,
 				F9D63F808E4C6B2DB05C3E21 /* PluginHost in Frameworks */,
+				A1B2C3D4E5F60718293A4B01 /* HubMCP in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -93,6 +95,7 @@
 				D7B41D6E5C2A4F0B9E3A1C02 /* DTBridge */,
 				E8C52E7F6D3B5A1CAF4B2D12 /* LLMBridge */,
 				F9D63F808E4C6B2DB05C3E22 /* PluginHost */,
+				A1B2C3D4E5F60718293A4B02 /* HubMCP */,
 			);
 			productName = DTHub;
 			productReference = 26BE388AD6E6D7E846B549DF /* DT Hub.app */;
@@ -388,6 +391,10 @@
 		F9D63F808E4C6B2DB05C3E22 /* PluginHost */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = PluginHost;
+		};
+		A1B2C3D4E5F60718293A4B02 /* HubMCP */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = HubMCP;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

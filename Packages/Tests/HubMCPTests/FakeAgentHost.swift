@@ -27,6 +27,7 @@ final class FakeAgentHost: AgentHost {
   var setModelError: AgentError?
   var knownLoRAs: Set<String> = []
   var replacedCount = 0
+  var unappliedKeys: Set<String> = []
 
   func state() -> AgentState { stateValue }
   func models() -> [AgentModel] { modelList }
@@ -41,7 +42,7 @@ final class FakeAgentHost: AgentHost {
 
   func setFields(_ fields: [String: AgentValue]) throws(AgentError) -> [String] {
     appliedFields.append(fields)
-    return fields.keys.sorted()
+    return fields.keys.filter { !unappliedKeys.contains($0) }.sorted()
   }
   func addLoRA(file: String, weight: Double) throws(AgentError) {
     guard knownLoRAs.contains(file) else { throw .invalid("Unknown LoRA '\(file)'.") }
@@ -83,7 +84,7 @@ final class FakeAgentHost: AgentHost {
     calls.append("definePipeline \(steps.count)")
     return "Agent pipeline"
   }
-  func queueAdd() throws(AgentError) -> UUID {
+  func queueAdd() async throws(AgentError) -> UUID {
     let id = UUID()
     queue.append(AgentQueueEntry(id: id, summary: "entry", status: "pending"))
     return id
