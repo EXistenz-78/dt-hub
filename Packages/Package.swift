@@ -13,6 +13,7 @@ let package = Package(
     .library(name: "DTBridge", targets: ["DTBridge"]),
     .library(name: "LLMBridge", targets: ["LLMBridge"]),
     .library(name: "PluginHost", targets: ["PluginHost"]),
+    .library(name: "HubMCP", targets: ["HubMCP"]),
   ],
   dependencies: [
     // Single maintainer, frequent releases: accept patch updates only (spec §5, §16).
@@ -24,6 +25,9 @@ let package = Package(
     .package(url: "https://github.com/ml-explore/mlx-swift", .upToNextMinor(from: "0.32.3")),
     .package(url: "https://github.com/huggingface/swift-huggingface", from: "0.9.0"),
     .package(url: "https://github.com/huggingface/swift-transformers", from: "1.3.0"),
+    // The MCP server (spec 2026-11-08): the official Swift SDK and the sockets it listens on.
+    .package(url: "https://github.com/modelcontextprotocol/swift-sdk.git", .upToNextMinor(from: "0.12.1")),
+    .package(url: "https://github.com/apple/swift-nio.git", from: "2.65.0"),
     // The design system (cards, buttons, colours) is shared with the plug-ins: it lives in the plug-in kit package.
     .package(name: "PluginKit", path: "../PluginKit"),
   ],
@@ -48,10 +52,21 @@ let package = Package(
       ]),
     // Loads downloaded plug-in bundles (AppKit, Bundle, selectors); knows HubCore, never DT or MLX.
     .target(name: "PluginHost", dependencies: ["HubKit", "HubCore"]),
+    // The MCP server for agents: knows HubKit/HubCore and the MCP SDK, never SwiftUI or the app (spec 2026-11-08 §3).
+    .target(
+      name: "HubMCP",
+      dependencies: [
+        "HubKit", "HubCore",
+        .product(name: "MCP", package: "swift-sdk"),
+        .product(name: "NIOCore", package: "swift-nio"),
+        .product(name: "NIOPosix", package: "swift-nio"),
+        .product(name: "NIOHTTP1", package: "swift-nio"),
+      ]),
     // Live tests: need a model on disk or the network, and the Metal library, so they run with
     // `xcodebuild test` (`swift test` skips them: spec §13, "LLMBridge: test a mano").
     .testTarget(name: "LLMBridgeTests", dependencies: ["LLMBridge", "HubKit"]),
     .testTarget(name: "HubKitTests", dependencies: ["HubKit"]),
+    .testTarget(name: "HubMCPTests", dependencies: ["HubMCP", "HubCore", "HubKit"]),
     .testTarget(name: "HubCoreTests", dependencies: ["HubCore", "HubKit"]),
     .testTarget(name: "DTBridgeTests", dependencies: ["DTBridge", "HubKit", "HubCore"]),
     .testTarget(name: "PluginHostTests", dependencies: ["PluginHost", "HubCore", "HubKit"]),
