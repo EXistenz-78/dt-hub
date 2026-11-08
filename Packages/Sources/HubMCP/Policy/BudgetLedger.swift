@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 public enum BudgetUnit: Equatable, Sendable {
   case images
@@ -13,12 +14,13 @@ public enum BudgetResult: Equatable, Sendable {
 /// What the agent has used in this session against the budget the user set (spec §6). Everything runs on the
 /// main actor, so two requests in a row see each other's reservation.
 @MainActor
+@Observable
 public final class BudgetLedger {
   public private(set) var usedImages = 0
   public private(set) var usedCU = 0
   /// True once the user authorised the session in the panel: requests above the threshold stop asking.
   public private(set) var isConfirmed = false
-  private let settings: @MainActor () -> RemoteControlSettings
+  @ObservationIgnored private let settings: @MainActor () -> RemoteControlSettings
 
   public init(settings: @escaping @MainActor () -> RemoteControlSettings) {
     self.settings = settings

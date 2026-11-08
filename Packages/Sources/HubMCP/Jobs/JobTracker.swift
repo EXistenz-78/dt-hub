@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 public enum JobKind: String, Sendable, Equatable, Codable { case run, queue, pipeline }
 public enum JobState: String, Sendable, Equatable, Codable { case running, finished, failed, stopped }
@@ -17,12 +18,13 @@ public struct JobStatus: Equatable, Sendable, Codable {
 
 /// The jobs an agent started (spec §7). Draw Things makes one thing at a time, so there is at most one running job.
 @MainActor
+@Observable
 public final class JobTracker {
   public private(set) var activeJobID: String?
   public private(set) var acceptsNewJobs = true
-  private var jobs: [String: JobStatus] = [:]
-  private var waiters: [UUID: (jobID: String, continuation: CheckedContinuation<JobStatus?, Never>)] = [:]
-  private var counter = 0
+  @ObservationIgnored private var jobs: [String: JobStatus] = [:]
+  @ObservationIgnored private var waiters: [UUID: (jobID: String, continuation: CheckedContinuation<JobStatus?, Never>)] = [:]
+  @ObservationIgnored private var counter = 0
 
   public init() {}
 

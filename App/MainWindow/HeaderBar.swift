@@ -36,6 +36,7 @@ struct HeaderBar: View {
       modelMenu
       dtPlusPill
       Spacer(minLength: DS.groupGap)
+      RemoteControlIndicator()
       serverDotButton
       SettingsLink {
         Image(systemName: "gearshape")

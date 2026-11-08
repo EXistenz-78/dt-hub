@@ -25,6 +25,7 @@ struct DTHubApp: App {
   @State private var updates: UpdateController
   @State private var queueStore: QueueStore
   @State private var queueRunner: QueueRunner
+  @State private var remote: RemoteControlModel
   @State private var canvasWindow = CanvasWindowState()
   @State private var onboarding = OnboardingState()
 
@@ -165,6 +166,10 @@ struct DTHubApp: App {
       })
     plugins.currentProject = { projects.current.map { ($0, adoptLegacy: false) } }
     _projects = State(initialValue: projects)
+    _remote = State(
+      initialValue: RemoteControlModel(
+        generation: generation, connection: connection, queueStore: queueStore, queueRunner: queueRunner,
+        languageModel: languageModel, plugins: plugins))
     plugins.start(skipping: NSEvent.modifierFlags.contains(.option))
     _plugins = State(initialValue: plugins)
     // A download cut short by quitting leaves a hidden folder with part of a model: remove it.
@@ -179,6 +184,8 @@ struct DTHubApp: App {
         workspace: workspace, connection: connection, generation: generation, plugins: plugins, projects: projects,
         queueStore: queueStore, queueRunner: queueRunner, updates: updates)
         .environment(canvasWindow)
+        .environment(remote)
+        .modifier(RemoteConsentModifier(coordinator: remote.consent))
         // The first-launch setup: only once a project is open, so it never competes with the project sheet.
         .sheet(
           isPresented: Binding(
@@ -243,6 +250,7 @@ struct DTHubApp: App {
       PreferencesView(
         connection: connection, generation: generation, languageModel: languageModel, download: download,
         plugins: plugins, projects: projects, updates: updates)
+        .environment(remote)
     }
     .windowResizability(.contentSize)
   }
