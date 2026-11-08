@@ -122,6 +122,20 @@ public struct AgentQueueEntry: Equatable, Sendable, Codable {
   }
 }
 
+public struct AgentPlugin: Equatable, Sendable, Codable {
+  public var id: String
+  public var name: String
+  public var isActive: Bool
+  /// Why the plug-in does not work with the current model, when it does not.
+  public var unavailableReason: String?
+  public init(id: String, name: String, isActive: Bool, unavailableReason: String? = nil) {
+    self.id = id
+    self.name = name
+    self.isActive = isActive
+    self.unavailableReason = unavailableReason
+  }
+}
+
 /// The Generation tab as an agent sees it.
 public struct AgentState: Equatable, Sendable, Codable {
   public var modelFile: String?
@@ -185,8 +199,10 @@ public protocol AgentHost: AnyObject {
   /// True when the current model's family has a specialist language model (not an "all others" one).
   var hasSpecialistLLM: Bool { get }
   func results() -> [AgentResult]
+  /// PNG data of the result scaled so its longer side is at most `maxSide`.
   func resultImage(id: String, maxSide: Int) -> Data?
   func queueEntries() -> [AgentQueueEntry]
+  func plugins() -> [AgentPlugin]
 
   // Editing the tab
   func setFields(_ fields: [String: AgentValue]) throws(AgentError) -> [String]

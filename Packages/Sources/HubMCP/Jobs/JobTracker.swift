@@ -1,9 +1,9 @@
 import Foundation
 
-public enum JobKind: String, Sendable, Equatable { case run, queue, pipeline }
-public enum JobState: String, Sendable, Equatable { case running, finished, failed, stopped }
+public enum JobKind: String, Sendable, Equatable, Codable { case run, queue, pipeline }
+public enum JobState: String, Sendable, Equatable, Codable { case running, finished, failed, stopped }
 
-public struct JobStatus: Equatable, Sendable {
+public struct JobStatus: Equatable, Sendable, Codable {
   public var id: String
   public var kind: JobKind
   public var state: JobState
