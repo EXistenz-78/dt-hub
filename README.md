@@ -203,6 +203,19 @@ An LLM that comes with a system prompt of its own (Qwen's prompt enhancers) rece
 
 A plug-in is a bundle (`.dthubplugin`) with a dynamic library, loaded into the app and shown as a tab. You add one in **Preferences › Plug-ins**. A plug-in only works with the model families it was made for: on any other family it is switched off and its tab is hidden. Plug-ins work on your Mac; the two exceptions are LoRA Advisor, which contacts Civitai and Hugging Face when you press its buttons to find or import a LoRA's page, and Depth & Pose, which downloads its two models from GitHub once each, when you press their buttons (each says what it sends in its README). The plug-ins in this repository, which families each one works with, and how to build and install them are described in [`Plugins/README.md`](Plugins/README.md). To write your own, start from [`PluginKit/README.md`](PluginKit/README.md): the app and a plug-in talk only through Objective-C selectors and JSON messages, and the kit includes the design system so a plug-in tab looks like the rest of the app.
 
+## Remote control (MCP, beta)
+
+DT Hub can act as an [MCP](https://modelcontextprotocol.io) server on your Mac, so an AI client (Claude, LM Studio…) can read the Generation tab and drive it: choose the model, set prompts, parameters, LoRAs, Moodboard and start image, run generations, pipelines and the queue, and look at the results.
+
+- **Off by default.** Turn it on in *Settings › Remote control*. It listens on `127.0.0.1` only, behind a token kept in the Keychain; web pages cannot call it.
+- **Modes:** read only, modify the tab, full control. Tools outside the mode are not even listed.
+- **A budget, not a question per action.** You set how many images the agent may make in a session (and, with DT+, compute units); inside it nothing asks. A single request above the threshold asks once until you authorise the session. At the limit the agent gets an error at once.
+- **Stop button** in the header while an agent is connected; the panel lists the recent calls.
+- *Copy client configuration* gives the JSON for the client; *Copy instructions for the agent* gives a `SKILL.md`.
+- Plug-ins are not exposed yet; they will be one at a time.
+
+Treat what an agent reads (pictures, names, prompts) as untrusted: keep the budget low and watch the first sessions.
+
 ## Languages
 
 The interface of the app and of the plug-ins is available in **English and Italian** and follows the language of macOS. The design documents in [`docs/superpowers/`](docs/superpowers/) (specs and plans) are written in Italian.
