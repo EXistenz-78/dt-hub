@@ -79,6 +79,7 @@ struct RemoteControlPreferencesView: View {
           Button(String(localized: "remote.token.regenerate")) { remote.regenerateToken() }
         }
         Button(String(localized: "remote.config.copy")) { remote.copyToPasteboard(remote.clientConfiguration) }
+        Button(String(localized: "remote.instructions.copy")) { remote.copyToPasteboard(AgentInstructions.skillMarkdown()) }
       }
       Section(String(localized: "remote.log")) {
         if remote.callLog.entries.isEmpty {

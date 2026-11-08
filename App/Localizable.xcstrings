@@ -12512,6 +12512,23 @@
           }
         }
       }
+    },
+    "remote.instructions.copy": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy instructions for the agent (SKILL.md)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copia le istruzioni per l'agente (SKILL.md)"
+          }
+        }
+      }
     }
   },
   "version": "1.0"
