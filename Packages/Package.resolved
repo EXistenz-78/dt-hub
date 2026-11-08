@@ -1,5 +1,5 @@
 {
-  "originHash" : "adf1b46d839fd616f022e938c87f73d2e07fa1c388e3a9948d266654f7bce448",
+  "originHash" : "d8119df1d784f429b47851921728af8eb83c26802e91203a9a9d99a652b0d2b9",
   "pins" : [
     {
       "identity" : "drawthings-swift",
@@ -242,6 +242,15 @@
       "state" : {
         "revision" : "55d7a1cc5666b85c13464aea1c4b4a90feccb4c8",
         "version" : "1.38.1"
+      }
+    },
+    {
+      "identity" : "swift-sdk",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/modelcontextprotocol/swift-sdk.git",
+      "state" : {
+        "revision" : "a0ae212ebf6eab5f754c3129608bc5557637e605",
+        "version" : "0.12.1"
       }
     },
     {
