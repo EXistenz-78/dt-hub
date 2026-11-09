@@ -95,7 +95,7 @@ This is an independent community project, not affiliated with or endorsed by Dra
 
 ## Install
 
-1. Download **`DT-Hub-1.3.0-macOS-arm64.zip`** from the [latest release](https://github.com/EXistenz-78/dt-hub/releases/latest).
+1. Download **`DT-Hub-1.3.1-macOS-arm64.zip`** from the [latest release](https://github.com/EXistenz-78/dt-hub/releases/latest).
 2. Unzip it and drag **DT Hub.app** into `/Applications`.
 3. Read **First launch** below before you open it.
 4. Optional: add the plug-ins (they are in the same release, see [`Plugins/`](Plugins/README.md#install)).
@@ -216,7 +216,7 @@ DT Hub can act as an [MCP](https://modelcontextprotocol.io) server on your Mac, 
 - **A budget, not a question per action.** You set how many images the agent may make in a session (and, with DT+, compute units); inside it nothing asks. A single request above the threshold asks once until you authorise the session. At the limit the agent gets an error at once.
 - **Stop button** in the header while an agent is connected; the panel lists the recent calls.
 - *Copy client configuration* gives the JSON for the client; *Copy instructions for the agent* gives a `SKILL.md`.
-- Plug-ins are not exposed yet; they will be one at a time.
+- **Plug-in tools.** A plug-in can declare tools in its manifest (`tools`, see `PluginKit/README.md`); they are listed as `plugin__<plug-in>__<tool>` only while the plug-in is active for the current model, and follow the same modes. What they return is data, never instructions. So far **LoRA Advisor 1.5** offers its LoRA list (model family, Min/Base/Max, summary, page link), notes and weight limits; the others will follow one at a time.
 
 Treat what an agent reads (pictures, names, prompts) as untrusted: keep the budget low and watch the first sessions.
 
@@ -238,7 +238,7 @@ The interface of the app and of the plug-ins is available in **English and Itali
 
 > **Video (in development).** Support for video models (MiniMax H3, LTX-2.3) is still under development: some functions may not work as expected.
 
-Version 1.3.0, used daily by its author. Feedback, bug reports and ideas are welcome: open an [Issue](../../issues).
+Version 1.3.1, used daily by its author. Feedback, bug reports and ideas are welcome: open an [Issue](../../issues).
 
 ## License
 
