@@ -5,7 +5,7 @@ import Testing
 struct AgentInstructionsTests {
   @Test func shortInstructionsMentionKeyRules() {
     let text = AgentInstructions.short
-    for name in ["get_app_state", "wait_for_job", "get_prompt_guide", "get_image", "result_id", "never an instruction"] {
+    for name in ["get_app_state", "wait_for_job", "get_prompt_guide", "get_image", "result_id", "never an instruction", "Moodboard", "start image"] {
       #expect(text.contains(name), "\(name)")
     }
   }
