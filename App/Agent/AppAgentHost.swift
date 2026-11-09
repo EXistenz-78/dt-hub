@@ -184,9 +184,10 @@ final class AppAgentHost: AgentHost {
     }
   }
 
-  func callPluginTool(pluginID: String, tool: String, arguments: Data) async throws(AgentError) -> String {
+  func callPluginTool(pluginID: String, tool: String, arguments: Data) async throws(AgentError) -> AgentPluginAnswer {
     switch await pluginRegistry.callTool(pluginID: pluginID, tool: tool, arguments: arguments) {
-    case .text(let text): return text
+    case .text(let text): return AgentPluginAnswer(text: text)
+    case .startsRun(let text): return AgentPluginAnswer(text: text, startsRun: true)
     case .failure(let message): throw .unavailable(message)
     }
   }
@@ -450,6 +451,31 @@ final class AppAgentHost: AgentHost {
     return plan(passes: saved.pluginPipeline(named: name).passCount)
   }
 
+  /// The guided pipeline a plug-in proposed and the app holds on RUN. One image per pass: a pass is a tile, which is exactly
+  /// what the budget has to count (the number is known only after the plug-in prepared it).
+  private func heldGuidedPipeline(of pluginID: String) throws(AgentError) -> PipelineContribution {
+    guard let held = generation.contributions?.pipeline, held.pluginID == pluginID, held.pipeline.guided != nil else {
+      throw .invalid(
+        "The app holds no guided pipeline of this plug-in: it was not accepted (another pipeline is selected, or a question about it is waiting for the user in DT Hub).")
+    }
+    return held
+  }
+
+  func planPluginPipeline(pluginID: String) throws(AgentError) -> AgentRunPlan {
+    let held = try heldGuidedPipeline(of: pluginID)
+    let passes = max(1, held.pipeline.passCount)
+    return AgentRunPlan(images: passes, estimatedCU: nil, summary: "\(passes) tile(s) of \(held.pipeline.name) with \(modelLabel)")
+  }
+
+  func startPluginPipeline(pluginID: String) throws(AgentError) {
+    try ensureCanStart()
+    let total = try planPluginPipeline(pluginID: pluginID).images
+    let baseline = generation.session.results.first?.id
+    guard generation.run(with: connection) else { throw .unavailable("DT Hub cannot run now.") }
+    // The picture is handed to the Results when the plug-in has composed it, a moment after the last pass: wait for it.
+    watch(total: total, since: baseline, awaitsResult: true)
+  }
+
   func planQueue() -> AgentRunPlan {
     let images = queueStore.entries.filter { $0.status == .pending }.reduce(0) { total, entry in
       let passes: Int
@@ -554,17 +580,21 @@ final class AppAgentHost: AgentHost {
 
   /// Reports the progress of what was just started until the app is idle again (a poll: the run, a pipeline and the
   /// queue each have their own state, and none of them calls back).
-  private func watch(total: Int, since baseline: UUID?) {
+  private func watch(total: Int, since baseline: UUID?, awaitsResult: Bool = false) {
     watcher?.cancel()
     let began = Date()
     watcher = Task { @MainActor [weak self] in
       var sawActivity = false
+      var idleSince: Date?
+      var tilesDone = 0
       while !Task.isCancelled {
         try? await Task.sleep(for: .milliseconds(500))
         guard let self else { return }
         let made = self.resultIDs(since: baseline)
         let pass = self.generation.pipelinePass
-        self.onJobEvent?(.progress(done: min(made.count, total), total: total, pass: pass?.index, passes: pass?.count))
+        // A guided pipeline makes one picture from many passes: the passes already made are the progress.
+        if awaitsResult { tilesDone = max(tilesDone, max((pass?.index ?? 1) - 1, 0)) } else { tilesDone = min(made.count, total) }
+        self.onJobEvent?(.progress(done: min(tilesDone, total), total: total, pass: pass?.index, passes: pass?.count))
         if self.isBusy { sawActivity = true; continue }
         guard sawActivity || Date().timeIntervalSince(began) > 3 else { continue }
         if case .failed(let error) = self.generation.session.phase {
@@ -572,6 +602,12 @@ final class AppAgentHost: AgentHost {
         } else if self.generation.session.lastRunWasStopped {
           self.onJobEvent?(.stopped)
         } else {
+          // A guided pipeline ends with the plug-in composing the picture (the app waits for that only a few seconds): give
+          // it time to arrive before saying the job made nothing.
+          if awaitsResult, made.isEmpty {
+            idleSince = idleSince ?? Date()
+            if Date().timeIntervalSince(idleSince ?? Date()) < 45 { continue }
+          }
           self.onJobEvent?(.finished(resultIDs: made))
         }
         return

@@ -173,6 +173,9 @@ them, work as before.
   confirmation threshold whatever the level says). The user's access mode decides which levels the agent sees.
 - `parameters`: flat, of type `string`, `number`, `integer` or `boolean` (`values` limits a string). The app checks
   names and types before it calls you: an argument you did not declare never arrives.
+- A string parameter can say `format: "image"` (`DTHubToolParameter.imageFormat`): the agent gives a `result_id` of its
+  session or the path of a picture in an allowed folder, the app checks it and you receive the **absolute path** of the
+  file (a path the app would refuse never reaches you).
 - `families`: the families the tool makes sense for (nil = the plug-in's own); `timeout`: seconds the app waits
   (60 by default, 600 at most; give a tool that asks the language model more).
 - A tool is listed only while the plug-in is loaded, **active for the job** and compatible with the model;
@@ -181,6 +184,14 @@ them, work as before.
 **App → plug-in:** `{"type":"tool.call","tool":name,"arguments":{…}}` (`DTHubToolCall`). **Answer**
 `DTHubMessage.toolResult(text, isError:)`, i.e. `{"type":"tool.result","text":…}` (`"isError":true` for a failure the
 agent should read), at most 40 000 characters. `error` and `unsupported` are understood too.
+
+**A tool that generates** (level `generate`, visible only in «Full control»): `contribute` the guided pipeline as
+usual, then answer `DTHubMessage.toolResult(text, startsRun: true)` (`"startsRun":true`). The app presses RUN itself,
+through the path of `run_pipeline`: one job, the budget counts the passes of your pipeline as images, a job over the
+user's threshold asks them, and the agent gets a `job_id` for `wait_for_job`. If the app does not hold your pipeline
+(another one is selected) or the budget refuses, nothing starts and the agent is told. The flag is ignored for a tool
+that is not `generate`. Check size limits yourself and ask for an explicit argument (such as `confirm_large`) before
+proposing a pipeline the user may not want; Tiled Upscale (`TUTools.swift`) is the reference.
 
 Text you return can come from web pages, files or a language model: the app marks every answer as *data, not
 instructions* for the agent, but say it in your descriptions too, and never put secrets in an answer. LoRA Advisor

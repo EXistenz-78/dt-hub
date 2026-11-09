@@ -59,6 +59,8 @@ struct PluginToolsTests {
     func parse(_ text: String?) -> PluginToolOutcome { .parse(text.map { Data($0.utf8) }) }
     #expect(parse(#"{"type":"tool.result","text":"hi"}"#) == .text("hi"))
     #expect(parse(#"{"type":"tool.result","text":"no","isError":true}"#) == .failure("no"))
+    #expect(parse(#"{"type":"tool.result","text":"go","startsRun":true}"#) == .startsRun("go"))
+    #expect(parse(#"{"type":"tool.result","text":"no","isError":true,"startsRun":true}"#) == .failure("no"))
     #expect(parse(#"{"type":"error","text":"bad"}"#) == .failure("bad"))
     #expect(parse(#"{"type":"unsupported"}"#) != .text(""))
     #expect(parse(nil) == .failure("The plug-in did not answer in time."))

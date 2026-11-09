@@ -133,7 +133,7 @@ enum ControlTools {
       ) { ctx, _ in
         if let pipeline = ctx.host.state().selectedPipeline {
           throw ToolFailure(
-            "The pipeline '\(pipeline)' is selected in the app and a plain run would execute it. Use run_pipeline to run it, or clear_pipeline to generate with the tab.")
+            "The pipeline '\(pipeline)' is selected in the app and a plain run would execute it. Use run_pipeline to run a saved pipeline, the tool of the plug-in that prepared it (e.g. plugin__tiledupscale__upscale with no arguments), or clear_pipeline to generate with the tab.")
         }
         return try await startJob(ctx, kind: .run, plan: ctx.host.planRun()) { () throws(AgentError) in try ctx.host.startRun() }
       },

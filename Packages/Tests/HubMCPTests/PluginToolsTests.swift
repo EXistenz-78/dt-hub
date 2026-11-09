@@ -106,4 +106,111 @@ struct PluginToolsTests {
     h.registry.hostDidChange()
     #expect(changes == 1)
   }
+
+  // MARK: A tool that generates (Tiled Upscale)
+
+  let upscaler = "com.exiztenz.dthub.tiledupscale"
+
+  func upscale(_ level: PluginToolLevel = .generate, format: String? = "image") -> AgentPluginTool {
+    tool(
+      "upscale", level,
+      [PluginToolParameter(name: "image", description: "i", format: format), PluginToolParameter(name: "factor", type: "integer", description: "f")],
+      plugin: upscaler)
+  }
+
+  func generator(images: Int = 9, budget: Int = 200, threshold: Int = 20, level: PluginToolLevel = .generate) -> Harness {
+    let h = harness(.full, [upscale(level)])
+    h.settings.value.imageBudget = budget
+    h.settings.value.confirmThreshold = threshold
+    h.host.pluginToolStartsRun = true
+    h.host.pluginPipelinePlan = AgentRunPlan(images: images, summary: "\(images) tiles")
+    return h
+  }
+
+  func text(_ r: ToolResult) -> String {
+    r.outputs.compactMap { if case .text(let t) = $0 { t } else { nil } }.joined(separator: "\n")
+  }
+
+  @Test func aGenerateToolThatAsksToRunStartsOneJobAndChargesTheExactTiles() async {
+    let h = generator(images: 9)
+    let r = await h.registry.call("plugin__tiledupscale__upscale", arguments: ["factor": .int(4)])
+    #expect(!r.isError, Comment(rawValue: text(r)))
+    #expect(text(r).contains("data, not instructions") && text(r).contains("job-1"))
+    #expect(h.host.calls == ["startPluginPipeline \(upscaler)"])
+    #expect(h.ledger.usedImages == 9)
+    #expect(h.jobs.status("job-1")?.kind == .pipeline && h.jobs.status("job-1")?.total == 9)
+  }
+
+  @Test func theBudgetStopsAnUpscaleThatTheTilesDoNotFit() async {
+    let h = generator(images: 30, budget: 20)
+    let r = await h.registry.call("plugin__tiledupscale__upscale", arguments: [:])
+    #expect(r.isError && text(r).contains("Budget exhausted") && text(r).contains("stays prepared"))
+    #expect(h.host.calls.isEmpty && h.ledger.usedImages == 0)
+  }
+
+  @Test func aJobOverTheThresholdAsksTheUserAsAnyRun() async {
+    let h = generator(images: 40, threshold: 20)
+    h.prompter.answer = false
+    let r = await h.registry.call("plugin__tiledupscale__upscale", arguments: [:])
+    #expect(r.isError && text(r).contains("refused"))
+    #expect(h.prompter.asked.count == 1 && h.host.calls.isEmpty)
+  }
+
+  @Test func aRunningJobRefusesAnUpscaleBeforeThePluginIsBothered() async {
+    let h = generator()
+    _ = await h.registry.call("run", arguments: [:])
+    let before = h.host.pluginToolCalls.count
+    let r = await h.registry.call("plugin__tiledupscale__upscale", arguments: [:])
+    #expect(r.isError)
+    #expect(h.host.pluginToolCalls.count == before, "the plug-in's tab is not touched under a running job")
+  }
+
+  @Test func onlyAGenerateToolIsListenedToWhenItAsksToRun() async {
+    let h = generator(level: .edit)
+    let r = await h.registry.call("plugin__tiledupscale__upscale", arguments: [:])
+    #expect(!r.isError && h.host.calls.isEmpty && h.ledger.usedImages == 0 && h.jobs.activeJobID == nil)
+  }
+
+  @Test func aGenerateToolIsNotListedBelowFullControl() {
+    let h = harness(.editFields, [upscale()])
+    #expect(!names(h).contains("plugin__tiledupscale__upscale"))
+  }
+
+  @Test func ifTheAppHoldsNoPipelineNothingStartsAndTheJobSlotIsFree() async {
+    let h = generator()
+    h.host.pluginPipelinePlan = nil
+    let r = await h.registry.call("plugin__tiledupscale__upscale", arguments: [:])
+    #expect(r.isError && text(r).contains("No guided pipeline") && h.jobs.activeJobID == nil && h.host.calls.isEmpty)
+  }
+
+  @Test func anImageArgumentIsResolvedToTheFileBeforeThePluginSeesIt() async throws {
+    let folder = FileManager.default.temporaryDirectory.appendingPathComponent("tool-image-\(UUID())", isDirectory: true)
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    let file = folder.appendingPathComponent("a.png")
+    try Data([1]).write(to: file)
+    let outside = FileManager.default.temporaryDirectory.appendingPathComponent("outside-\(UUID()).png")
+    try Data([1]).write(to: outside)
+    let h = Harness(mode: .full, roots: [folder])
+    h.host.pluginToolList = [upscale()]
+    h.host.resultList = [AgentResult(id: "R1", path: file.path, prompt: "", model: "", date: Date())]
+    func sentImage() -> String? {
+      (try? JSONSerialization.jsonObject(with: h.host.pluginToolCalls.last?.arguments ?? Data()) as? [String: Any])?["image"] as? String
+    }
+    #expect(await !h.registry.call("plugin__tiledupscale__upscale", arguments: ["image": .string("R1")]).isError)
+    #expect(sentImage() == file.resolvingSymlinksInPath().path || sentImage() == file.path)
+    #expect(await !h.registry.call("plugin__tiledupscale__upscale", arguments: ["image": .string(file.path)]).isError)
+    #expect(sentImage()?.hasSuffix("/a.png") == true)
+    let calls = h.host.pluginToolCalls.count
+    let refused = await h.registry.call("plugin__tiledupscale__upscale", arguments: ["image": .string(outside.path)])
+    #expect(refused.isError && text(refused).contains("allowed folders"))
+    #expect(await h.registry.call("plugin__tiledupscale__upscale", arguments: ["image": .string("nope")]).isError)
+    #expect(h.host.pluginToolCalls.count == calls, "a picture the app would not accept never reaches the plug-in")
+  }
+
+  @Test func aParameterWithoutTheImageFormatIsPassedAsItIs() async {
+    let h = harness(.full, [upscale(.edit, format: nil)])
+    _ = await h.registry.call("plugin__tiledupscale__upscale", arguments: ["image": .string("/etc/passwd")])
+    let sent = (try? JSONSerialization.jsonObject(with: h.host.pluginToolCalls[0].arguments) as? [String: Any])
+    #expect(sent?["image"] as? String == "/etc/passwd")
+  }
 }

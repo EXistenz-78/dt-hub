@@ -18,13 +18,22 @@ public struct PluginToolParameter: Codable, Equatable, Sendable {
   public var required: Bool
   /// The only values a string may take.
   public var values: [String]?
+  /// "image": the string names a picture (a `result_id` of the agent's session or an allowed path); the app checks it and
+  /// hands the plug-in the absolute path of the file. Nil for plain text.
+  public var format: String?
 
-  public init(name: String, type: String = "string", description: String, required: Bool = false, values: [String]? = nil) {
+  public static let imageFormat = "image"
+
+  public init(
+    name: String, type: String = "string", description: String, required: Bool = false, values: [String]? = nil,
+    format: String? = nil
+  ) {
     self.name = name
     self.type = type
     self.description = description
     self.required = required
     self.values = values
+    self.format = format
   }
 
   public init(from decoder: any Decoder) throws {
@@ -34,12 +43,13 @@ public struct PluginToolParameter: Codable, Equatable, Sendable {
     description = (try? container.decodeIfPresent(String.self, forKey: .description)) ?? ""
     required = (try? container.decodeIfPresent(Bool.self, forKey: .required)) ?? false
     values = (try? container.decodeIfPresent([String].self, forKey: .values)) ?? nil
+    format = (try? container.decodeIfPresent(String.self, forKey: .format)) ?? nil
     guard Self.types.contains(type), PluginToolDeclaration.isValidName(name) else {
       throw DecodingError.dataCorruptedError(forKey: .name, in: container, debugDescription: "bad parameter")
     }
   }
 
-  private enum CodingKeys: String, CodingKey { case name, type, description, required, values }
+  private enum CodingKeys: String, CodingKey { case name, type, description, required, values, format }
 }
 
 /// A tool a plug-in offers to agents (an optional `tools` list in the manifest; an addition to contract 1). The app calls it
@@ -133,6 +143,8 @@ public struct PluginToolCall: Codable, Equatable, Sendable {
 /// should see), or the usual `error` / `unsupported`.
 public enum PluginToolOutcome: Equatable, Sendable {
   case text(String)
+  /// The text, and the plug-in asks the app to run the guided pipeline it has just proposed (`"startsRun": true`).
+  case startsRun(String)
   case failure(String)
 
   /// The longest answer taken, in characters.
@@ -145,7 +157,8 @@ public enum PluginToolOutcome: Equatable, Sendable {
     switch type {
     case PluginMessageType.toolResult:
       let text = String((object["text"] as? String ?? "").prefix(maxLength))
-      return (object["isError"] as? Bool) == true ? .failure(text) : .text(text)
+      if (object["isError"] as? Bool) == true { return .failure(text) }
+      return (object["startsRun"] as? Bool) == true ? .startsRun(text) : .text(text)
     case PluginMessageType.error:
       return .failure(object["text"] as? String ?? "The plug-in could not do it.")
     case PluginMessageType.unsupported:

@@ -49,13 +49,23 @@ public struct DTHubToolParameter: Codable, Sendable {
   public var required: Bool
   /// The only values a string may take.
   public var values: [String]?
+  /// What a string stands for, when the app should take care of it: `"image"` = a `result_id` of the agent's session or the
+  /// path of a picture in a folder the user allowed. The app checks it and gives the plug-in the absolute path of the file
+  /// (an agent never gets a path through that the app would refuse). Leave it nil for plain text.
+  public var format: String?
 
-  public init(name: String, type: String = "string", description: String, required: Bool = false, values: [String]? = nil) {
+  public static let imageFormat = "image"
+
+  public init(
+    name: String, type: String = "string", description: String, required: Bool = false, values: [String]? = nil,
+    format: String? = nil
+  ) {
     self.name = name
     self.type = type
     self.description = description
     self.required = required
     self.values = values
+    self.format = format
   }
 }
 
@@ -106,6 +116,11 @@ public struct DTHubToolCall {
   }
 
   public func bool(_ key: String) -> Bool? { arguments[key] as? Bool }
+
+  public func integer(_ key: String) -> Int? {
+    guard let value = number(key), value == value.rounded(), abs(value) < 1e9 else { return nil }
+    return Int(value)
+  }
 }
 
 public enum DTHubContract {
@@ -128,9 +143,13 @@ public enum DTHubMessage {
   }
 
   /// `{"type":"tool.result","text":text}`: the answer to `tool.call`. With `isError` the agent is told the tool failed.
-  public static func toolResult(_ text: String, isError: Bool = false) -> Data {
+  /// `startsRun` (only for a tool declared `generate`): the app then runs the guided pipeline you have just proposed with
+  /// `contribute`, through its own Run path (the user's budget and confirmation threshold apply), and tells the agent the
+  /// job to follow.
+  public static func toolResult(_ text: String, isError: Bool = false, startsRun: Bool = false) -> Data {
     var message: [String: Any] = ["type": "tool.result", "text": text]
     if isError { message["isError"] = true }
+    if startsRun && !isError { message["startsRun"] = true }
     return (try? JSONSerialization.data(withJSONObject: message)) ?? bare("error")
   }
 

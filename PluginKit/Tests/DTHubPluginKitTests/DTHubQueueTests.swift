@@ -81,4 +81,24 @@ struct DTHubToolTests {
     let tool = (object["tools"] as? [[String: Any]])?.first
     #expect(tool?["name"] as? String == "t" && tool?["level"] as? String == "edit" && tool?["timeout"] as? Double == 90)
   }
+
+  @Test func aToolResultCanAskTheAppToRunButNotWhenItFailed() throws {
+    let go = try #require(try JSONSerialization.jsonObject(with: DTHubMessage.toolResult("go", startsRun: true)) as? [String: Any])
+    #expect(go["startsRun"] as? Bool == true)
+    let plain = try #require(try JSONSerialization.jsonObject(with: DTHubMessage.toolResult("fine")) as? [String: Any])
+    #expect(plain["startsRun"] == nil)
+    let failed = try #require(
+      try JSONSerialization.jsonObject(with: DTHubMessage.toolResult("no", isError: true, startsRun: true)) as? [String: Any])
+    #expect(failed["startsRun"] == nil)
+  }
+
+  @Test func aParameterCanBeAnImageAndWholeNumbersAreRead() throws {
+    let tool = DTHubTool(
+      name: "t", description: "d", parameters: [DTHubToolParameter(name: "image", description: "i", format: DTHubToolParameter.imageFormat)])
+    let object = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(tool)) as? [String: Any])
+    #expect(((object["parameters"] as? [[String: Any]])?.first)?["format"] as? String == "image")
+    let body = try JSONSerialization.data(withJSONObject: ["type": "tool.call", "tool": "t", "arguments": ["n": 4, "x": 1.5, "b": true]])
+    let call = try #require(DTHubToolCall(body))
+    #expect(call.integer("n") == 4 && call.integer("x") == nil && call.integer("b") == nil && call.integer("missing") == nil)
+  }
 }

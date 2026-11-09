@@ -7,8 +7,8 @@ final class TiledUpscalePlugin: DTHubPlugin {
   /// Edit and in-context models only: the tile is the picture the model changes. For now the plug-in has a preset for
   /// The families `TUPresetTable` knows.
   let manifest = DTHubManifest(
-    id: "com.exiztenz.dthub.tiledupscale", name: "Tiled Upscale", version: "1.4", symbol: "square.grid.3x3",
-    families: nil, requiresEditModel: true)
+    id: "com.exiztenz.dthub.tiledupscale", name: "Tiled Upscale", version: "1.5", symbol: "square.grid.3x3",
+    families: nil, requiresEditModel: true, tools: TUTools.declarations)
   private let state: TUState = {
     let state = TUState(store: TUStore(folder: nil))
     state.presetFolder = TUPresetFile.appFolder
@@ -56,6 +56,12 @@ final class TiledUpscalePlugin: DTHubPlugin {
         folder: request.folder, state: request.state, model: request.model, family: request.family,
         contribute: { await host.contribute($0) }, registerPreset: { await host.registerPresets([$0]) })
       return problem.map(DTHubMessage.failure) ?? DTHubMessage.ok()
+    case "tool.call":
+      guard let call = DTHubToolCall(message), let host else { return DTHubMessage.bare("unsupported") }
+      return await TUTools.handle(
+        call, state: state,
+        connection: TUTools.Connection(
+          contribute: { await host.contribute($0) }, registerPreset: { await host.registerPresets([$0]) }))
     case "session.next":
       return await state.sessionNext(message)
     case "session.end":

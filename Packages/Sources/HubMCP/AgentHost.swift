@@ -253,10 +253,27 @@ public enum AgentJobEvent: Equatable, Sendable {
   case stopped
 }
 
+/// What a plug-in answered to a tool call: its text, and whether it asks the app to run the guided pipeline it has just
+/// proposed (only a tool declared `generate` is listened to).
+public struct AgentPluginAnswer: Equatable, Sendable {
+  public var text: String
+  public var startsRun: Bool
+  public init(text: String, startsRun: Bool = false) {
+    self.text = text
+    self.startsRun = startsRun
+  }
+}
+
 extension AgentHost {
   public func pluginTools() -> [AgentPluginTool] { [] }
-  public func callPluginTool(pluginID: String, tool: String, arguments: Data) async throws(AgentError) -> String {
+  public func callPluginTool(pluginID: String, tool: String, arguments: Data) async throws(AgentError) -> AgentPluginAnswer {
     throw .unavailable("Plug-in tools are not available.")
+  }
+  public func planPluginPipeline(pluginID: String) throws(AgentError) -> AgentRunPlan {
+    throw .unavailable("Plug-in pipelines are not available.")
+  }
+  public func startPluginPipeline(pluginID: String) throws(AgentError) {
+    throw .unavailable("Plug-in pipelines are not available.")
   }
 }
 
@@ -286,8 +303,13 @@ public protocol AgentHost: AnyObject {
   func projects() -> [AgentProject]
   /// The tools of the plug-ins that can be called now (loaded, active, fit the model); empty for a plug-in without any.
   func pluginTools() -> [AgentPluginTool]
-  /// Calls a tool of a plug-in (`tool.call`) with the arguments as a JSON object; returns its text or throws why not.
-  func callPluginTool(pluginID: String, tool: String, arguments: Data) async throws(AgentError) -> String
+  /// Calls a tool of a plug-in (`tool.call`) with the arguments as a JSON object; returns its answer or throws why not.
+  func callPluginTool(pluginID: String, tool: String, arguments: Data) async throws(AgentError) -> AgentPluginAnswer
+  /// What the guided pipeline that this plug-in has proposed (and the app holds on RUN) will cost: one image per pass. Throws
+  /// when the app does not hold such a pipeline.
+  func planPluginPipeline(pluginID: String) throws(AgentError) -> AgentRunPlan
+  /// Presses RUN on that pipeline. The same refusals as `startPipeline`.
+  func startPluginPipeline(pluginID: String) throws(AgentError)
 
   // Editing the tab
   func setFields(_ fields: [String: AgentValue]) throws(AgentError) -> [String]

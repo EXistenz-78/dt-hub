@@ -52,9 +52,19 @@ final class FakeAgentHost: AgentHost {
   var pluginToolCalls: [(plugin: String, tool: String, arguments: Data)] = []
   var pluginToolAnswer = "answer"
   func pluginTools() -> [AgentPluginTool] { pluginToolList }
-  func callPluginTool(pluginID: String, tool: String, arguments: Data) async throws(AgentError) -> String {
+  var pluginToolStartsRun = false
+  var pluginPipelinePlan: AgentRunPlan?
+  func callPluginTool(pluginID: String, tool: String, arguments: Data) async throws(AgentError) -> AgentPluginAnswer {
     pluginToolCalls.append((pluginID, tool, arguments))
-    return pluginToolAnswer
+    return AgentPluginAnswer(text: pluginToolAnswer, startsRun: pluginToolStartsRun)
+  }
+  func planPluginPipeline(pluginID: String) throws(AgentError) -> AgentRunPlan {
+    guard let pluginPipelinePlan else { throw .invalid("No guided pipeline of this plug-in is ready.") }
+    return pluginPipelinePlan
+  }
+  func startPluginPipeline(pluginID: String) throws(AgentError) {
+    if let startError { throw startError }
+    calls.append("startPluginPipeline \(pluginID)")
   }
 
   func setFields(_ fields: [String: AgentValue]) throws(AgentError) -> [String] {
