@@ -29,6 +29,8 @@ final class FakeAgentHost: AgentHost {
   var replacedCount = 0
   var unappliedKeys: Set<String> = []
   var queueRunning = false
+  var moodboardToClear = 0
+  var hasStart = true
   var presetList = ["Portrait"]
 
   func state() -> AgentState { stateValue }
@@ -57,6 +59,14 @@ final class FakeAgentHost: AgentHost {
     return replacedCount
   }
   func setStartImage(_ image: AgentImage) async throws(AgentError) { startImages.append(image) }
+  func clearMoodboard() throws(AgentError) -> Int {
+    calls.append("clearMoodboard")
+    return moodboardToClear
+  }
+  func clearStartImage() throws(AgentError) {
+    guard hasStart else { throw .invalid("There is no start image.") }
+    calls.append("clearStartImage")
+  }
   func setStrength(_ value: Double) throws(AgentError) { calls.append("setStrength \(value)") }
   func loadPreset(named: String) -> String? { calls.append("loadPreset \(named)"); return nil }
   func savePreset(named: String) throws(AgentError) { calls.append("savePreset \(named)") }

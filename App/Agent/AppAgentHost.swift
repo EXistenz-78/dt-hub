@@ -223,6 +223,17 @@ final class AppAgentHost: AgentHost {
     try contribute(PluginContribution(startImage: try reference(for: image)))
   }
 
+  func clearMoodboard() throws(AgentError) -> Int {
+    let count = generation.control.inputs.moodboard.count
+    generation.control.clearMoodboard()
+    return count
+  }
+
+  func clearStartImage() throws(AgentError) {
+    guard generation.control.inputs.image != nil else { throw .invalid("There is no start image.") }
+    generation.control.removeImage()
+  }
+
   func setStrength(_ value: Double) throws(AgentError) {
     guard generation.control.inputs.image != nil else { throw .invalid("There is no start image; set one first.") }
     generation.setStrength(value)

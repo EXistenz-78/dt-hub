@@ -157,6 +157,29 @@ struct EditToolsTests {
     #expect(await h.registry.call("load_preset", arguments: ["name": .string("Portrait")]).isError == false)
   }
 
+  @Test func clearMoodboardReportsHowManyPicturesWentAway() async {
+    let h = harness()
+    h.host.moodboardToClear = 3
+    let r = await h.registry.call("clear_moodboard", arguments: [:])
+    #expect(!r.isError && text(r).contains("3"))
+    #expect(h.host.calls == ["clearMoodboard"])
+  }
+
+  @Test func clearStartImageWorksAndRefusesWhenThereIsNone() async {
+    let h = harness()
+    #expect(await h.registry.call("clear_start_image", arguments: [:]).isError == false)
+    h.host.hasStart = false
+    let r = await h.registry.call("clear_start_image", arguments: [:])
+    #expect(r.isError && text(r).contains("no start image"))
+  }
+
+  @Test func clearToolsAreEditToolsHiddenInReadOnly() {
+    let readOnly = Set(harness(mode: .readOnly).registry.visibleTools().map(\.name))
+    #expect(!readOnly.contains("clear_moodboard") && !readOnly.contains("clear_start_image"))
+    let edit = Set(harness(mode: .editFields).registry.visibleTools().map(\.name))
+    #expect(edit.contains("clear_moodboard") && edit.contains("clear_start_image"))
+  }
+
   @Test func editToolsAreHiddenInReadOnlyMode() {
     let h = harness(mode: .readOnly)
     let names = Set(h.registry.visibleTools().map(\.name))

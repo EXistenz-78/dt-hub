@@ -214,6 +214,9 @@ public protocol AgentHost: AnyObject {
   /// Returns how many pictures were replaced.
   func setMoodboard(_ items: [AgentImage], replace: Bool) async throws(AgentError) -> Int
   func setStartImage(_ image: AgentImage) async throws(AgentError)
+  /// Returns how many pictures were taken off.
+  func clearMoodboard() throws(AgentError) -> Int
+  func clearStartImage() throws(AgentError)
   func setStrength(_ value: Double) throws(AgentError)
   func loadPreset(named: String) -> String?
   func savePreset(named: String) throws(AgentError)

@@ -33,7 +33,7 @@ public enum AgentInstructions {
     ## Tools by what they do
 
     - Read: get_app_state, list_models, list_loras, list_presets, list_pipelines, get_prompt_guide, list_results, get_results, get_image, get_queue, get_job, wait_for_job, list_plugins.
-    - Edit the tab (needs the "Modify the tab" mode): set_fields, add_lora, set_lora_weight, remove_lora, set_moodboard, set_start_image, set_strength, load_preset, save_preset.
+    - Edit the tab (needs the "Modify the tab" mode): set_fields, add_lora, set_lora_weight, remove_lora, set_moodboard, clear_moodboard, set_start_image, clear_start_image, set_strength, load_preset, save_preset.
     - Control (needs "Full control"): set_model, run, stop, run_pipeline, define_pipeline, queue_add, queue_start, queue_stop, queue_remove, and enhance_prompt / prompt_from_image when the model has a specialist language model.
     """
   }
