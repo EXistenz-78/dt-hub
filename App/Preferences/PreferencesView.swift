@@ -2,7 +2,7 @@ import AppKit
 import HubCore
 import SwiftUI
 
-/// Preferences window (⌘,): Draw Things, LLM, Output, Plug-ins, Updates (spec §7).
+/// Preferences window (⌘,): Draw Things, LLM, Output, Plug-ins, Remote control, Updates (spec §7).
 struct PreferencesView: View {
   let connection: DrawThingsConnection
   let generation: GenerationController
@@ -25,6 +25,9 @@ struct PreferencesView: View {
       }
       Tab("prefs.tab.plugins", systemImage: "puzzlepiece.extension") {
         PluginsPreferencesView(plugins: plugins)
+      }
+      Tab("prefs.tab.remote", systemImage: "network") {
+        RemoteControlPreferencesView()
       }
       Tab("prefs.tab.updates", systemImage: "arrow.down.circle") {
         UpdatesPreferencesView(controller: updates)

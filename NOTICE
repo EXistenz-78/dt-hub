@@ -1,0 +1,9 @@
+DT Hub includes ideas and code adapted from the following open-source projects.
+
+DT_MCP_Client — https://github.com/euphoriacyberware-ai/DT_MCP_Client
+MIT License. Copyright (c) the DT_MCP_Client authors.
+Used as the starting point of the loopback MCP HTTP server in Packages/Sources/HubMCP
+(Bearer-token check, Host check, one MCP server per session).
+
+swift-sdk (Model Context Protocol Swift SDK) — https://github.com/modelcontextprotocol/swift-sdk
+Used as a dependency; see its own license.
