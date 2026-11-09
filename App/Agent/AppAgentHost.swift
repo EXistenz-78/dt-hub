@@ -78,7 +78,7 @@ final class AppAgentHost: AgentHost {
       "shift": .double(p.shift), "resolutionDependentShift": .bool(p.resolutionDependentShift),
       "cfgZeroStar": .bool(p.cfgZeroStar), "cfgZeroInitSteps": .int(p.cfgZeroInitSteps), "seed": .int(Int(p.seed)),
       "randomSeed": .bool(p.randomSeed), "sampler": .string(p.sampler.displayName), "batchSize": .int(p.batchSize),
-      "batchCount": .int(p.batchCount),
+      "batchCount": .int(p.batchCount), "highRes": .bool(p.highRes),
     ]
     state.loras = p.loras.map { AgentLoRAUse(file: $0.file, weight: $0.weight) }
     state.moodboardCount = generation.control.moodboardURLs.count
@@ -276,21 +276,33 @@ final class AppAgentHost: AgentHost {
 
   func setAdvanced(_ values: [String: AgentValue]) throws(AgentError) -> [String] {
     var current = advancedValues()
+    var requested: [String: Double] = [:]
     for (key, new) in values.sorted(by: { $0.key < $1.key }) {
       guard let old = current[key] else {
         throw .invalid("Unknown advanced field '\(key)'. Valid fields: \(current.keys.sorted().joined(separator: ", ")).")
       }
       switch (old, new) {
-      case (.bool, .bool), (.string, .string), (.double, .double), (.double, .int): current[key] = new
-      case (.int, .int): current[key] = new
-      case (.int, .double(let v)) where v == v.rounded(): current[key] = .int(Int(v))
-      case (.int, .double): throw .invalid("Field '\(key)' takes a whole number.")
+      case (.bool, .bool), (.string, .string): current[key] = new
+      case (.int, .int), (.int, .double), (.double, .int), (.double, .double):
+        // A number that is whole is read back as an integer whichever it was: the type is checked after the round trip.
+        var number = 0.0
+        if case .int(let v) = new { number = Double(v) } else if case .double(let v) = new { number = v }
+        requested[key] = number
+        current[key] = number == number.rounded() && abs(number) < 1e15 ? .int(Int(number)) : .double(number)
       default: throw .invalid("Field '\(key)' has the wrong type.")
       }
     }
     guard let data = try? JSONEncoder().encode(current),
       let merged = try? JSONDecoder().decode(AdvancedParameters.self, from: data)
     else { throw .invalid("The values could not be applied.") }
+    // A fractional number written into a whole-number field would have fallen back to the default: say so.
+    if let back = try? JSONEncoder().encode(merged), let after = try? JSONDecoder().decode([String: AgentValue].self, from: back) {
+      for (key, number) in requested {
+        var got = 0.0
+        if case .int(let v)? = after[key] { got = Double(v) } else if case .double(let v)? = after[key] { got = v }
+        if abs(got - number) > 1e-9 { throw .invalid("Field '\(key)' takes a whole number.") }
+      }
+    }
     generation.parameters.advanced = merged.clamped()
     return values.keys.sorted()
   }
