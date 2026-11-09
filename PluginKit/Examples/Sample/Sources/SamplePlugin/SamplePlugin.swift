@@ -43,7 +43,14 @@ final class SampleState: ObservableObject {
 
 @MainActor
 final class SamplePlugin: DTHubPlugin {
-  let manifest = DTHubManifest(id: Variant.id, name: Variant.name, version: "1.3", symbol: Variant.symbol)
+  let manifest = DTHubManifest(
+    id: Variant.id, name: Variant.name, version: "1.3", symbol: Variant.symbol,
+    tools: [
+      // A tool for agents (MCP): see "Tools for agents" in the kit's README.
+      DTHubTool(
+        name: "echo", description: "Says which model the app reported and repeats the text it is given.", level: .read,
+        parameters: [DTHubToolParameter(name: "text", description: "Any text.", required: true)])
+    ])
   private let state = SampleState()
   private var host: DTHubHost?
 
@@ -77,6 +84,9 @@ final class SamplePlugin: DTHubPlugin {
     case "deactivate":
       state.active = false
       return nil
+    case "tool.call":
+      guard let call = DTHubToolCall(message), call.tool == "echo" else { return DTHubMessage.bare("unsupported") }
+      return DTHubMessage.toolResult("model=\(state.model) text=\(call.string("text") ?? "")")
     case "press":
       // For tests and scripts: the same as pressing a button of the tab. The answer comes when the app has answered.
       let button = (try? JSONSerialization.jsonObject(with: message) as? [String: Any])?["button"] as? String

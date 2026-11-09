@@ -136,4 +136,30 @@ struct BundlePluginLoaderTests {
     #expect(host.received.contains { PluginMessageType.of($0.message) == PluginMessageType.llm })
     #expect(await plugin.send(Data(#"{"type":"press","button":"nothing"}"#.utf8)).flatMap(PluginMessageType.of) == PluginMessageType.unsupported)
   }
+
+  /// A tool declared in a real bundle's manifest reaches the registry, and a call goes through the real channel and back.
+  @Test func aToolOfTheSampleIsCalledThroughTheRealChannel() async throws {
+    let source = try #require(SampleBundle.make())
+    let root = SampleBundle.work.appendingPathComponent("tools-\(UUID().uuidString)", isDirectory: true)
+    let settings = PluginSettingsStore(fileURL: root.appendingPathComponent("plugins.json"))
+    func registry() -> PluginRegistry {
+      PluginRegistry(
+        folder: PluginFolder(root: root.appendingPathComponent("Plug-ins")), settings: settings,
+        loader: BundlePluginLoader(), tempFolder: root)
+    }
+    let first = registry()
+    first.start()
+    try first.install(first.offer(for: source))
+    let live = registry()
+    live.start()
+    live.updateContext(model: "m.ckpt", family: "flux2_9b", parameters: GenerationParameters())
+    let available = live.availableTools
+    #expect(available.map(\.declaration.name) == ["echo"] && available.first?.declaration.level == .read)
+    #expect(available.first?.declaration.parameters.first?.required == true)
+    #expect(await eventually { live.latestNotice != nil })
+    let answer = await live.callTool(pluginID: "com.example.dthub.sample", tool: "echo", arguments: Data(#"{"text":"hi"}"#.utf8))
+    #expect(answer == .text("model=m.ckpt text=hi"))
+    live.setActive("com.example.dthub.sample", false)
+    #expect(live.availableTools.isEmpty)
+  }
 }
