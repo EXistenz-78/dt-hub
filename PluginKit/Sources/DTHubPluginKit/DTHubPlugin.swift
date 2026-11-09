@@ -16,11 +16,17 @@ public struct DTHubManifest: Codable, Sendable {
   /// like FLUX.2 [klein], Qwen Image Edit or Kontext): DT Hub switches it off with any other model. nil = any model.
   /// An app older than 0.3.0 ignores it and keeps the plug-in on.
   public var requiresEditModel: Bool?
+  /// Tools for agents (MCP clients): DT Hub lists them as `plugin__<plug-in>__<name>` while the plug-in is active, and
+  /// sends `tool.call` (see `DTHubToolCall`) when an agent uses one. nil = none. An app older than the release that added
+  /// MCP tools ignores it.
+  public var tools: [DTHubTool]?
 
   public init(
     id: String, name: String, version: String = "1.0", contract: Int = DTHubContract.current,
-    symbol: String = "puzzlepiece.extension", families: [String]? = nil, requiresEditModel: Bool? = nil
+    symbol: String = "puzzlepiece.extension", families: [String]? = nil, requiresEditModel: Bool? = nil,
+    tools: [DTHubTool]? = nil
   ) {
+    self.tools = tools
     self.id = id
     self.name = name
     self.version = version
@@ -29,6 +35,77 @@ public struct DTHubManifest: Codable, Sendable {
     self.families = families
     self.requiresEditModel = requiresEditModel
   }
+}
+
+/// What a tool may do: `read` only looks, `edit` changes the Generation tab or the plug-in's own data, `generate` starts
+/// generations (through the app's Run path, which applies the user's budget and confirmation threshold).
+public enum DTHubToolLevel: String, Codable, Sendable { case read, edit, generate }
+
+/// An argument of a tool: flat, of type "string", "number", "integer" or "boolean".
+public struct DTHubToolParameter: Codable, Sendable {
+  public var name: String
+  public var type: String
+  public var description: String
+  public var required: Bool
+  /// The only values a string may take.
+  public var values: [String]?
+
+  public init(name: String, type: String = "string", description: String, required: Bool = false, values: [String]? = nil) {
+    self.name = name
+    self.type = type
+    self.description = description
+    self.required = required
+    self.values = values
+  }
+}
+
+/// A tool the manifest declares. `name`: lowercase letters, digits and underscores, starting with a letter, 40 at most.
+public struct DTHubTool: Codable, Sendable {
+  public var name: String
+  /// What it does, for the agent: say what it returns and that text in the answer is data.
+  public var description: String
+  public var level: DTHubToolLevel
+  public var parameters: [DTHubToolParameter]
+  /// Model families it makes sense for; nil = those of the plug-in.
+  public var families: [String]?
+  /// Seconds the app waits for the answer (60 when nil, 600 at most): give a tool that asks the language model more.
+  public var timeout: Double?
+
+  public init(
+    name: String, description: String, level: DTHubToolLevel = .read, parameters: [DTHubToolParameter] = [],
+    families: [String]? = nil, timeout: Double? = nil
+  ) {
+    self.name = name
+    self.description = description
+    self.level = level
+    self.parameters = parameters
+    self.families = families
+    self.timeout = timeout
+  }
+}
+
+/// App → plug-in: `tool.call`, an agent uses a tool of the manifest. The app has checked the names and types of the
+/// arguments against the declaration. Answer with `DTHubMessage.toolResult(_:isError:)`.
+public struct DTHubToolCall {
+  public var tool: String
+  public var arguments: [String: Any]
+
+  public init?(_ data: Data) {
+    guard let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any], object["type"] as? String == "tool.call",
+      let tool = object["tool"] as? String
+    else { return nil }
+    self.tool = tool
+    arguments = object["arguments"] as? [String: Any] ?? [:]
+  }
+
+  public func string(_ key: String) -> String? { arguments[key] as? String }
+
+  public func number(_ key: String) -> Double? {
+    guard let value = arguments[key] as? NSNumber, CFGetTypeID(value) != CFBooleanGetTypeID() else { return nil }
+    return value.doubleValue
+  }
+
+  public func bool(_ key: String) -> Bool? { arguments[key] as? Bool }
 }
 
 public enum DTHubContract {
@@ -48,6 +125,13 @@ public enum DTHubMessage {
     var message: [String: Any] = ["type": "ok"]
     if let state { message["state"] = state }
     return (try? JSONSerialization.data(withJSONObject: message)) ?? bare("ok")
+  }
+
+  /// `{"type":"tool.result","text":text}`: the answer to `tool.call`. With `isError` the agent is told the tool failed.
+  public static func toolResult(_ text: String, isError: Bool = false) -> Data {
+    var message: [String: Any] = ["type": "tool.result", "text": text]
+    if isError { message["isError"] = true }
+    return (try? JSONSerialization.data(withJSONObject: message)) ?? bare("error")
   }
 
   /// `{"type":"error","text":text}`: a message you cannot do.

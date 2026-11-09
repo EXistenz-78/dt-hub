@@ -5,8 +5,8 @@ import SwiftUI
 @MainActor
 final class LoRAAdvisorPlugin: DTHubPlugin {
   let manifest = DTHubManifest(
-    id: "com.exiztenz.dthub.loraadvisor", name: "LoRA Advisor", version: "1.4", symbol: "square.stack.3d.down.right",
-    families: nil)
+    id: "com.exiztenz.dthub.loraadvisor", name: "LoRA Advisor", version: "1.5", symbol: "square.stack.3d.down.right",
+    families: nil, tools: LATools.declarations)
   private var host: DTHubHost?
   private let state: LAState
 
@@ -46,6 +46,9 @@ final class LoRAAdvisorPlugin: DTHubPlugin {
     case "deactivate":
       state.active = false
       return nil
+    case "tool.call":
+      guard let call = DTHubToolCall(message) else { return DTHubMessage.failure("Not a tool call.") }
+      return await LATools.handle(call, state: state)
     case "project":
       // The notes and thumbnails are about the LoRAs, not about a project: one state for all, by choice.
       return nil

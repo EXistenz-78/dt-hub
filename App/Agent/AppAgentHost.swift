@@ -165,7 +165,29 @@ final class AppAgentHost: AgentHost {
       else if let manifest = entry.manifest, !manifest.supports(family: family, isEditModel: edit) {
         reason = "Not compatible with the current model."
       }
-      return AgentPlugin(id: entry.id, name: entry.name, isActive: entry.isActive, unavailableReason: reason)
+      let declared = entry.manifest?.tools ?? []
+      let aliases = PluginToolNaming.aliases(for: pluginRegistry.availableTools.map(\.pluginID))
+      let tools = declared.map { tool in
+        let why = pluginRegistry.unavailableReason(of: tool, in: entry)
+        return AgentPluginToolInfo(
+          name: tool.name, level: tool.level.rawValue, description: tool.description,
+          mcpName: why == nil ? PluginToolNaming.name(alias: aliases[entry.id] ?? "", tool: tool.name) : nil,
+          unavailableReason: why)
+      }
+      return AgentPlugin(id: entry.id, name: entry.name, isActive: entry.isActive, unavailableReason: reason, tools: tools)
+    }
+  }
+
+  func pluginTools() -> [AgentPluginTool] {
+    pluginRegistry.availableTools.map {
+      AgentPluginTool(pluginID: $0.pluginID, pluginName: $0.pluginName, declaration: $0.declaration)
+    }
+  }
+
+  func callPluginTool(pluginID: String, tool: String, arguments: Data) async throws(AgentError) -> String {
+    switch await pluginRegistry.callTool(pluginID: pluginID, tool: tool, arguments: arguments) {
+    case .text(let text): return text
+    case .failure(let message): throw .unavailable(message)
     }
   }
 

@@ -57,3 +57,28 @@ struct DTHubQueueTests {
     #expect(message["text"] as? String == "niente da fare")
   }
 }
+
+struct DTHubToolTests {
+  @Test func aToolCallIsReadWithItsArguments() throws {
+    let data = Data(#"{"type":"tool.call","tool":"advise","arguments":{"goal":"film","n":2,"flag":true}}"#.utf8)
+    let call = try #require(DTHubToolCall(data))
+    #expect(call.tool == "advise" && call.string("goal") == "film" && call.number("n") == 2 && call.bool("flag") == true)
+    #expect(call.number("flag") == nil && call.string("n") == nil)
+    #expect(DTHubToolCall(Data(#"{"type":"context"}"#.utf8)) == nil)
+    #expect(DTHubToolCall(Data(#"{"type":"tool.call","tool":"x"}"#.utf8))?.arguments.isEmpty == true)
+  }
+
+  @Test func theResultIsAToolResultWithTheErrorFlagOnlyWhenSet() throws {
+    let ok = try #require(try JSONSerialization.jsonObject(with: DTHubMessage.toolResult("fine")) as? [String: Any])
+    #expect(ok["type"] as? String == "tool.result" && ok["text"] as? String == "fine" && ok["isError"] == nil)
+    let bad = try #require(try JSONSerialization.jsonObject(with: DTHubMessage.toolResult("no", isError: true)) as? [String: Any])
+    #expect(bad["isError"] as? Bool == true)
+  }
+
+  @Test func theManifestCarriesTheTools() throws {
+    let manifest = DTHubManifest(id: "a", name: "A", tools: [DTHubTool(name: "t", description: "d", level: .edit, timeout: 90)])
+    let object = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(manifest)) as? [String: Any])
+    let tool = (object["tools"] as? [[String: Any]])?.first
+    #expect(tool?["name"] as? String == "t" && tool?["level"] as? String == "edit" && tool?["timeout"] as? Double == 90)
+  }
+}
