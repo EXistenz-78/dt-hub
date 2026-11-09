@@ -136,6 +136,25 @@ public struct AgentPlugin: Equatable, Sendable, Codable {
   }
 }
 
+/// Which image server DT Hub talks to: "managed" is the one DT Hub starts itself (the CLI server), "attach" is the
+/// server of the Draw Things app.
+public struct AgentServerStatus: Equatable, Sendable, Codable {
+  public var mode: String
+  public var connected: Bool
+  public var detail: String
+  public var otherMode: String
+  public var canSwitch: Bool
+  public var cannotSwitchReason: String?
+  public init(mode: String, connected: Bool, detail: String, otherMode: String, canSwitch: Bool, cannotSwitchReason: String?) {
+    self.mode = mode
+    self.connected = connected
+    self.detail = detail
+    self.otherMode = otherMode
+    self.canSwitch = canSwitch
+    self.cannotSwitchReason = cannotSwitchReason
+  }
+}
+
 /// The Generation tab as an agent sees it.
 public struct AgentState: Equatable, Sendable, Codable {
   public var modelFile: String?
@@ -205,6 +224,7 @@ public protocol AgentHost: AnyObject {
   func resultImage(id: String, maxSide: Int) -> Data?
   func queueEntries() -> [AgentQueueEntry]
   func plugins() -> [AgentPlugin]
+  func serverStatus() -> AgentServerStatus
 
   // Editing the tab
   func setFields(_ fields: [String: AgentValue]) throws(AgentError) -> [String]
@@ -225,6 +245,8 @@ public protocol AgentHost: AnyObject {
 
   // Controlling
   func setModel(file: String) throws(AgentError)
+  /// Switches between the two image servers and waits (up to a minute) until the new one answers.
+  func switchServer() async throws(AgentError) -> AgentServerStatus
   func planRun() -> AgentRunPlan
   func planPipeline(named: String) throws(AgentError) -> AgentRunPlan
   func planQueue() -> AgentRunPlan

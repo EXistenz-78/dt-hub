@@ -147,6 +147,15 @@ final class AppAgentHost: AgentHost {
     }
   }
 
+  func serverStatus() -> AgentServerStatus {
+    let managedNow = connection.otherServerMode == .attach
+    return AgentServerStatus(
+      mode: managedNow ? "managed" : "attach", connected: connection.monitor.status == .connected,
+      detail: "\(connection.indicator)", otherMode: managedNow ? "attach" : "managed", canSwitch: connection.canSwitchServer,
+      cannotSwitchReason: connection.canSwitchServer
+        ? nil : "The settings of the other server are not valid: they are set in DT Hub › Settings › Draw Things.")
+  }
+
   // MARK: Editing
 
   private func contribute(_ contribution: PluginContribution) throws(AgentError) {
@@ -284,6 +293,20 @@ final class AppAgentHost: AgentHost {
   func setModel(file: String) throws(AgentError) {
     if isBusy { throw .busy(jobID: nil) }
     generation.chooseModel(file, in: connection)
+  }
+
+  func switchServer() async throws(AgentError) -> AgentServerStatus {
+    if isBusy { throw .busy(jobID: nil) }
+    guard connection.canSwitchServer else { throw .unavailable(serverStatus().cannotSwitchReason ?? "Cannot switch server.") }
+    await connection.switchServer()
+    // The new server may take a while to start and load: wait until it answers (or a minute passes).
+    for _ in 0..<60 {
+      if connection.monitor.status == .connected { break }
+      await connection.monitor.refresh()
+      if connection.monitor.status == .connected { break }
+      try? await Task.sleep(for: .seconds(1))
+    }
+    return serverStatus()
   }
 
   private var imagesPerPass: Int { max(1, generation.parameters.batchCount * generation.parameters.batchSize) }

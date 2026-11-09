@@ -29,6 +29,7 @@ final class FakeAgentHost: AgentHost {
   var replacedCount = 0
   var unappliedKeys: Set<String> = []
   var queueRunning = false
+  var server = AgentServerStatus(mode: "managed", connected: true, detail: "connected", otherMode: "attach", canSwitch: true, cannotSwitchReason: nil)
   var moodboardToClear = 0
   var hasStart = true
   var presetList = ["Portrait"]
@@ -66,6 +67,13 @@ final class FakeAgentHost: AgentHost {
   func clearStartImage() throws(AgentError) {
     guard hasStart else { throw .invalid("There is no start image.") }
     calls.append("clearStartImage")
+  }
+  func serverStatus() -> AgentServerStatus { server }
+  func switchServer() async throws(AgentError) -> AgentServerStatus {
+    guard server.canSwitch else { throw .unavailable(server.cannotSwitchReason ?? "cannot switch") }
+    calls.append("switchServer")
+    server = AgentServerStatus(mode: server.otherMode, connected: true, detail: "connected", otherMode: server.mode, canSwitch: true, cannotSwitchReason: nil)
+    return server
   }
   func clearPipeline() throws(AgentError) { calls.append("clearPipeline") }
   func setStrength(_ value: Double) throws(AgentError) { calls.append("setStrength \(value)") }

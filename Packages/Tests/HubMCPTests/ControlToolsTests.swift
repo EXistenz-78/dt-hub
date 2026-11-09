@@ -213,4 +213,40 @@ struct ControlToolsTests {
     let h = harness()
     #expect(text(await h.registry.call("set_model", arguments: ["file": .string("flux2.ckpt")])) == "Model set to flux2.ckpt.")
   }
+
+  @Test func serverStatusIsAReadToolAvailableInReadOnlyMode() async {
+    let h = Harness(mode: .readOnly)
+    let r = await h.registry.call("get_server_status", arguments: [:])
+    #expect(!r.isError && text(r).contains("\"mode\" : \"managed\"") && text(r).contains("\"canSwitch\" : true"))
+  }
+
+  @Test func switchServerIsAControlToolHiddenBelowFullMode() {
+    #expect(!Set(Harness(mode: .editFields).registry.visibleTools().map(\.name)).contains("switch_server"))
+    #expect(Set(harness().registry.visibleTools().map(\.name)).contains("switch_server"))
+  }
+
+  @Test func switchServerForwardsToTheHostAndReturnsTheNewStatus() async {
+    let h = harness()
+    var fired = 0
+    h.context.onHostChanged = { fired += 1 }
+    let r = await h.registry.call("switch_server", arguments: [:])
+    #expect(!r.isError && text(r).contains("\"mode\" : \"attach\""))
+    #expect(h.host.calls == ["switchServer"] && fired == 1)
+  }
+
+  @Test func switchServerIsRefusedWhileAJobRuns() async {
+    let h = harness()
+    _ = await h.registry.call("run", arguments: [:])
+    let r = await h.registry.call("switch_server", arguments: [:])
+    #expect(r.isError && text(r).contains("job-1") && text(r).contains("stop"))
+    #expect(!h.host.calls.contains("switchServer"))
+  }
+
+  @Test func switchServerSaysWhyItCannotSwitch() async {
+    let h = harness()
+    h.host.server.canSwitch = false
+    h.host.server.cannotSwitchReason = "The other server's settings are not valid."
+    let r = await h.registry.call("switch_server", arguments: [:])
+    #expect(r.isError && text(r).contains("settings are not valid"))
+  }
 }
