@@ -187,29 +187,32 @@ final class LAState: ObservableObject {
     context?.parameters?.loras?.contains { $0.file != file } ?? false
   }
 
-  /// "Add all": every suggestion, with the weight shown on its card.
-  func addAll() async {
-    guard let contribute else { return }
-    let loras = suggestions.compactMap { suggestion in
+  /// "Add all": every suggestion (or only those in `only`), with the weight shown on its card. True when the app took them.
+  @discardableResult
+  func addAll(only files: Set<String>? = nil) async -> Bool {
+    guard let contribute else { return false }
+    let loras = suggestions.filter { files?.contains($0.file) ?? true }.compactMap { suggestion in
       catalog.first { $0.file == suggestion.file }.flatMap { lora in
         (LAAdvice.contribution(lora, weight: suggestion.weight)["loras"] as? [[String: Any]])?.first
       }
     }
-    guard !loras.isEmpty else { return }
-    report(await contribute(["loras": loras]))
+    guard !loras.isEmpty else { return false }
+    return report(await contribute(["loras": loras]))
   }
 
-  private func report(_ answer: [String: Any]?) {
+  @discardableResult
+  private func report(_ answer: [String: Any]?) -> Bool {
     guard let answer else {
       status = text(.notAnswered)
-      return
+      return false
     }
     if answer["type"] as? String == "error" {
       status = answer["text"] as? String ?? text(.notAnswered)
-      return
+      return false
     }
     let conflicts = answer["conflicts"] as? Int ?? 0
     status = conflicts > 0 ? L.text(.sentWithConflicts, conflicts, italian: italian) : text(.sent)
+    return true
   }
 
   // MARK: The notes
@@ -387,15 +390,17 @@ final class LAState: ObservableObject {
   }
 
   /// The LoRAs the language model chooses among: those of the current model's family.
-  func candidates() -> [LAAdvice.Candidate] {
+  func candidates(for goal: String? = nil) -> [LAAdvice.Candidate] {
     LAAdvice.candidates(
       catalog: catalog, family: context?.family, notes: Dictionary(uniqueKeysWithValues: catalog.map { ($0.file, notes(for: $0.file)) }),
-      request: request)
+      request: goal ?? request)
   }
 
-  func advise() async {
+  /// Advises on `goal` (an agent's), or on the field of the tab when there is none. The field is left as it is.
+  func advise(for goal: String? = nil) async {
     guard !isBusy, let askModel else { return }
-    let candidates = candidates()
+    let wanted = goal ?? request
+    let candidates = candidates(for: wanted)
     guard !candidates.isEmpty else { return }
     flushNotes()
     isAdvising = true
@@ -403,7 +408,7 @@ final class LAState: ObservableObject {
     adviceMessage = nil
     let answer = await askModel(
       LAAdvice.system(italian: italian),
-      LAAdvice.prompt(request: request, guide: context?.promptGuide?.label, candidates: candidates))
+      LAAdvice.prompt(request: wanted, guide: context?.promptGuide?.label, candidates: candidates))
     isAdvising = false
     switch answer {
     case .text(let text): setAdvice(text, candidates: candidates)

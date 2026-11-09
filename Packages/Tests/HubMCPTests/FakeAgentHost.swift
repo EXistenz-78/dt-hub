@@ -48,6 +48,15 @@ final class FakeAgentHost: AgentHost {
   func queueEntries() -> [AgentQueueEntry] { queue }
   func plugins() -> [AgentPlugin] { pluginList }
 
+  var pluginToolList: [AgentPluginTool] = []
+  var pluginToolCalls: [(plugin: String, tool: String, arguments: Data)] = []
+  var pluginToolAnswer = "answer"
+  func pluginTools() -> [AgentPluginTool] { pluginToolList }
+  func callPluginTool(pluginID: String, tool: String, arguments: Data) async throws(AgentError) -> String {
+    pluginToolCalls.append((pluginID, tool, arguments))
+    return pluginToolAnswer
+  }
+
   func setFields(_ fields: [String: AgentValue]) throws(AgentError) -> [String] {
     appliedFields.append(fields)
     return fields.keys.filter { !unappliedKeys.contains($0) }.sorted()

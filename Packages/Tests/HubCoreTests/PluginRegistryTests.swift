@@ -30,6 +30,7 @@ final class FakeLoader: PluginLoading {
   var failures: [String: PluginError] = [:]
   var families: [String: [String]] = [:]
   var requiresEditModel: [String: Bool] = [:]
+  var tools: [String: [PluginToolDeclaration]] = [:]
   private(set) var loadedIDs: [String] = []
   private(set) var plugins: [String: FakeLoadedPlugin] = [:]
   private(set) var host: (any PluginHosting)?
@@ -41,7 +42,7 @@ final class FakeLoader: PluginLoading {
     let plugin = FakeLoadedPlugin(
       manifest: PluginManifest(
         id: info.identifier, name: info.name, version: info.version, symbol: "star", families: families[info.identifier],
-        requiresEditModel: requiresEditModel[info.identifier]))
+        requiresEditModel: requiresEditModel[info.identifier], tools: tools[info.identifier]))
     plugins[info.identifier] = plugin
     return plugin
   }
