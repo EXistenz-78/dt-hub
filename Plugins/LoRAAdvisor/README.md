@@ -34,8 +34,8 @@ The instructions sent to the LLM are in `master-prompt.md` in `…/Data/LoRAAdvi
 
 With DT Hub's remote control on (Settings › Remote control) and the plug-in **on for the job**, an agent sees these tools, named `plugin__loraadvisor__<tool>`. Needs a DT Hub with MCP plug-in tools (after 1.3.0).
 
-- `list_loras` (read): the LoRAs of the current family (or `scope: all`) with trigger word, weights, limits, the first of the notes, and whether each is on the Generation tab; `query` and `limit` narrow it.
-- `get_lora` (read): one LoRA in full: all its notes, its page link, its limits.
+- `list_loras` (read): the LoRAs of the current family (or `scope: all`), each with its model family, trigger word, Min/Base/Max weight, summary (the notes; `summaryIsRaw` if still the raw page text), the link of its page (read-only) and whether it is on the Generation tab; `query` and `limit` narrow it. The agent can open the link to read the page and its recommended settings.
+- `get_lora` (read): one LoRA in full: the whole summary, link and limits.
 - `advise` (read): the same as **Advise**, for a `goal` the agent gives (by default the Generation tab's prompt). It does not change the tab or the field of the plug-in.
 - `apply_advice` (edit): puts the LoRAs of the last advice on the Generation tab (all, or the `files` given), as **Add all** does: weights, trigger words, teal fields.
 - `set_notes` (edit): writes the notes of a LoRA as the user's own (never overwritten by a later step).

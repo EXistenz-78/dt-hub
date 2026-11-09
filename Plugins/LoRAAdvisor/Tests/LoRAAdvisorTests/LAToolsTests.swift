@@ -67,9 +67,21 @@ struct LAToolsTests {
     let long = String(repeating: "word ", count: 200)
     store.setNotesByUser(long, for: "a.ckpt")
     let rows = object(await call("list_loras").text)["loras"] as? [[String: Any]]
-    #expect((rows?.first?["notes"] as? String)?.count ?? 0 < 260)
+    #expect((rows?.first?["summary"] as? String)?.count ?? 0 < 820)
     let detail = object(await call("get_lora", ["file": "a.ckpt"]).text)
-    #expect(detail["notes"] as? String == long)
+    #expect(detail["summary"] as? String == long)
+  }
+
+  @Test func theListGivesFamilyWeightsSummaryAndLink() async {
+    start()
+    store.update("a.ckpt") { $0.link = "https://civitai.com/models/1"; $0.notes = "Detail slider. Weight 0.6-1."; $0.rawNotes = true }
+    let rows = object(await call("list_loras").text)["loras"] as? [[String: Any]]
+    let a = rows?.first { $0["file"] as? String == "a.ckpt" }
+    #expect(a?["family"] as? String == "b" && a?["weight"] as? Double == 0.8 && a?["trigger"] as? String == "aa")
+    #expect(a?["minWeight"] is NSNull && a?["maxWeight"] is NSNull)
+    #expect(a?["summary"] as? String == "Detail slider. Weight 0.6-1." && a?["summaryIsRaw"] as? Bool == true)
+    #expect(a?["link"] as? String == "https://civitai.com/models/1")
+    #expect(rows?.first { $0["file"] as? String == "p.ckpt" }?["link"] is NSNull)
   }
 
   @Test func anUnknownLoRAIsAnErrorWithAHint() async {

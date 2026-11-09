@@ -11,17 +11,17 @@ enum LATools {
     DTHubTool(
       name: "list_loras",
       description:
-        "Lists the user's LoRAs with their trigger word, default weight, the user's weight limits, the first part of their notes, and whether each is already on the Generation tab. By default only those of the current model's family (the only ones that can be used with it).",
+        "Lists the user's LoRAs. For each: the model family it belongs to, trigger word, weight (min, base = the weight it starts with, max; null = no limit), a summary (the user's notes: what the LoRA is for, trigger words, suggested weights; 'summaryIsRaw' true means raw text copied from its page, not yet summarised), the link of its page (read-only: open it to learn more, e.g. recommended settings) and whether it is already on the Generation tab. By default only those of the current model's family (the only ones usable with it); scope 'all' lists every family.",
       level: .read,
       parameters: [
         DTHubToolParameter(
           name: "scope", description: "current_family (default) or all families.", values: ["current_family", "all"]),
         DTHubToolParameter(name: "query", description: "Keep only LoRAs whose name, trigger word or notes contain this text."),
-        DTHubToolParameter(name: "limit", type: "integer", description: "At most this many LoRAs (default 40, at most 200)."),
+        DTHubToolParameter(name: "limit", type: "integer", description: "At most this many LoRAs (default 100, at most 300)."),
       ]),
     DTHubTool(
       name: "get_lora",
-      description: "One LoRA in full: all its notes, the link of its page, weights and limits.",
+      description: "One LoRA in full: its whole summary, the link of its page, weights and limits.",
       level: .read,
       parameters: [DTHubToolParameter(name: "file", description: "The LoRA's file, as list_loras gives it.", required: true)]),
     DTHubTool(
@@ -92,13 +92,13 @@ enum LATools {
     try ready(state)
     let all = call.string("scope") == "all"
     let query = fold(call.string("query") ?? "")
-    let limit = min(max(Int(call.number("limit") ?? 40), 1), 200)
+    let limit = min(max(Int(call.number("limit") ?? 100), 1), 300)
     let family = state.context?.family
     let matching = state.catalog.filter { lora in
       (all || lora.family == nil || lora.family == family)
         && (query.isEmpty || [lora.name, lora.trigger, state.notes(for: lora.file)].contains { fold($0).contains(query) })
     }
-    let rows = matching.prefix(limit).map { row($0, state, notes: 240) }
+    let rows = matching.prefix(limit).map { row($0, state, notes: 800) }
     return try json([
       "currentFamily": null(family), "scope": all ? "all" : "current_family", "total": matching.count, "shown": rows.count,
       "loras": rows,
@@ -109,7 +109,6 @@ enum LATools {
   private static func detail(_ call: DTHubToolCall, _ state: LAState) throws -> String {
     let lora = try find(call, state)
     var object = row(lora, state, notes: maxNotes)
-    object["link"] = null(state.entry(for: lora.file).link)
     object["hasThumbnail"] = state.thumbnailURL(for: lora.file) != nil
     return try json(object)
   }
@@ -218,7 +217,8 @@ enum LATools {
     return [
       "file": lora.file, "name": lora.name, "family": null(lora.family), "trigger": lora.trigger, "weight": lora.weight,
       "minWeight": null(lora.minWeight), "maxWeight": null(lora.maxWeight),
-      "notes": limit >= maxNotes ? notes : oneLine(notes, limit: limit), "hasPage": state.entry(for: lora.file).link != nil,
+      "summary": limit >= maxNotes ? notes : oneLine(notes, limit: limit), "summaryIsRaw": state.entry(for: lora.file).rawNotes,
+      "link": null(state.entry(for: lora.file).link),
       "onTab": state.isOnTab(lora.file), "canAdd": state.canAdd(lora),
     ]
   }
