@@ -286,6 +286,7 @@ struct ResultsView: View {
       .dragContainerSelection(Array(picks.ids))
     }
     .frame(height: 80)
+    .background(WheelScrollsSideways())
     .focusable()
     .focusEffectDisabled()
     .onCommand(#selector(NSResponder.selectAll(_:))) { picks.selectAll(order: session.results.map(\.id)) }

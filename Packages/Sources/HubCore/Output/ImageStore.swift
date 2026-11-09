@@ -126,8 +126,56 @@ public struct PNGImageStore: ImageStore {
 
   /// The job saved inside a PNG written by this store, or nil.
   public static func job(in url: URL) -> GenerationJob? {
-    guard let object = ownObject(in: url), let data = try? JSONSerialization.data(withJSONObject: object) else { return nil }
-    return try? JSONDecoder().decode(GenerationJob.self, from: data)
+    if let object = ownObject(in: url), let data = try? JSONSerialization.data(withJSONObject: object),
+      let job = try? JSONDecoder().decode(GenerationJob.self, from: data)
+    {
+      return job
+    }
+    return drawThingsJob(in: url)
+  }
+
+  /// The job of a picture Draw Things wrote itself (no `dthub` part): read from the keys of its "UserComment" (`c`,
+  /// `uc`, `seed`, `steps`, `sampler`, `scale`, `shift`, `size`, `model`, `strength`, `lora`, `v2`).
+  /// Nil when the comment is not in that layout.
+  static func drawThingsJob(in url: URL) -> GenerationJob? {
+    guard let json = comment(in: url),
+      let object = try? JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any],
+      let prompt = object["c"] as? String
+    else { return nil }
+    let v2 = object["v2"] as? [String: Any] ?? [:]
+    func number(_ key: String) -> Double? {
+      ((object[key] ?? v2[key]) as? NSNumber)?.doubleValue
+    }
+    var parameters = GenerationParameters()
+    if let size = (object["size"] as? String)?.split(whereSeparator: { $0 == "x" || $0 == "×" }).compactMap({ Int($0) }),
+      size.count == 2
+    {
+      (parameters.width, parameters.height) = (size[0], size[1])
+    } else if let width = number("width"), let height = number("height") {
+      (parameters.width, parameters.height) = (Int(width), Int(height))
+    }
+    if let steps = number("steps") { parameters.steps = Int(steps) }
+    if let scale = number("scale") ?? number("guidanceScale") { parameters.guidanceScale = scale }
+    if let shift = number("shift") { parameters.shift = shift }
+    if let seed = number("seed") {
+      parameters.seed = UInt32(truncatingIfNeeded: Int64(seed))
+      parameters.randomSeed = false
+    }
+    if let name = object["sampler"] as? String, let sampler = Sampler.allCases.first(where: { $0.displayName == name }) {
+      parameters.sampler = sampler
+    } else if let raw = (v2["sampler"] as? NSNumber)?.intValue, let sampler = Sampler(rawValue: raw) {
+      parameters.sampler = sampler
+    }
+    let loras = (object["lora"] as? [[String: Any]]) ?? (object["loras"] as? [[String: Any]])
+      ?? (v2["loras"] as? [[String: Any]]) ?? []
+    parameters.loras = loras.compactMap { entry in
+      guard let file = entry["file"] as? String, !file.isEmpty else { return nil }
+      return LoRASelection(file: file, weight: (entry["weight"] as? NSNumber)?.doubleValue ?? 1)
+    }
+    return GenerationJob(
+      prompt: prompt, negativePrompt: object["uc"] as? String ?? "",
+      model: object["model"] as? String ?? v2["model"] as? String ?? "",
+      parameters: parameters, imageStrength: number("strength"))
   }
 
   /// The seconds the image took, saved inside a PNG written by this store; nil for a file from before

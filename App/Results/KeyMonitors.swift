@@ -138,3 +138,61 @@ struct DraggedGalleryFile: Identifiable, Transferable {
     ProxyRepresentation { $0.url }
   }
 }
+
+/// The mouse wheel over the strip scrolls it sideways: a wheel only turns up and down, so its movement is
+/// taken by the horizontal scroll view under the pointer. A trackpad (two-finger swipe) already scrolls it.
+struct WheelScrollsSideways: NSViewRepresentable {
+  func makeCoordinator() -> Coordinator { Coordinator() }
+
+  func makeNSView(context: Context) -> NSView {
+    let view = NSView()
+    context.coordinator.view = view
+    context.coordinator.install()
+    return view
+  }
+
+  func updateNSView(_ nsView: NSView, context: Context) {}
+
+  static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) {
+    coordinator.remove()
+  }
+
+  @MainActor
+  final class Coordinator {
+    weak var view: NSView?
+    private var monitor: Any?
+
+    func install() {
+      monitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
+        nonisolated(unsafe) let unsafeEvent = event
+        let taken = MainActor.assumeIsolated { () -> Bool in
+          guard let self, let view = self.view, let window = view.window, unsafeEvent.window === window,
+            !unsafeEvent.hasPreciseScrollingDeltas, unsafeEvent.scrollingDeltaY != 0,
+            unsafeEvent.scrollingDeltaX == 0
+          else { return false }
+          let point = view.convert(unsafeEvent.locationInWindow, from: nil)
+          guard view.bounds.contains(point) else { return false }
+          var found = window.contentView?.hitTest(window.contentView?.superview.map {
+            $0.convert(unsafeEvent.locationInWindow, from: nil)
+          } ?? unsafeEvent.locationInWindow)
+          while let current = found, !(current is NSScrollView) { found = current.superview }
+          guard let scroll = found as? NSScrollView, let document = scroll.documentView else { return false }
+          let clip = scroll.contentView
+          let maxX = max(0, document.frame.width - clip.bounds.width)
+          guard maxX > 0 else { return false }
+          // Wheel up (positive delta) goes back to the start of the strip.
+          let step = unsafeEvent.scrollingDeltaY * 12
+          clip.scroll(to: NSPoint(x: min(max(clip.bounds.origin.x - step, 0), maxX), y: clip.bounds.origin.y))
+          scroll.reflectScrolledClipView(clip)
+          return true
+        }
+        return taken ? nil : event
+      }
+    }
+
+    func remove() {
+      if let monitor { NSEvent.removeMonitor(monitor) }
+      monitor = nil
+    }
+  }
+}

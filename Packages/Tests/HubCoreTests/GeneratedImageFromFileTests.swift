@@ -34,4 +34,26 @@ struct GeneratedImageFromFileTests {
     #expect(CGImageDestinationFinalize(destination))
     #expect(GeneratedImage.fromFile(url, date: .now, maxPixel: 64) == nil)
   }
+
+  @Test func readsAPictureWrittenByDrawThingsItself() throws {
+    let root = folder()
+    defer { try? FileManager.default.removeItem(at: root) }
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    let url = root.appendingPathComponent("dt.png")
+    let comment = """
+      {"c":"a fox","uc":"blurry","seed":42,"steps":20,"sampler":"DDIM Trailing","scale":4.5,"shift":3,\
+      "size":"1024x768","model":"flux.ckpt","strength":0.7,"lora":[{"file":"x_lora_f16.ckpt","weight":0.8}],\
+      "v2":{"width":1024,"height":768}}
+      """
+    let destination = try #require(CGImageDestinationCreateWithURL(url as CFURL, UTType.png.identifier as CFString, 1, nil))
+    CGImageDestinationAddImage(
+      destination, testImage(),
+      [kCGImagePropertyExifDictionary: [kCGImagePropertyExifUserComment: comment]] as CFDictionary)
+    #expect(CGImageDestinationFinalize(destination))
+    let job = try #require(PNGImageStore.job(in: url))
+    #expect(job.prompt == "a fox" && job.negativePrompt == "blurry" && job.model == "flux.ckpt")
+    #expect(job.parameters.seed == 42 && job.parameters.steps == 20 && job.parameters.sampler == .ddimTrailing)
+    #expect(job.parameters.width == 1024 && job.parameters.height == 768 && job.parameters.guidanceScale == 4.5)
+    #expect(job.parameters.loras.first?.file == "x_lora_f16.ckpt" && job.imageStrength == 0.7)
+  }
 }
