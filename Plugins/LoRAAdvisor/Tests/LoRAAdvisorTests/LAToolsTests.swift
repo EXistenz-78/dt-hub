@@ -36,10 +36,10 @@ struct LAToolsTests {
       #expect(tool.name.range(of: "^[a-z][a-z0-9_]{0,39}$", options: .regularExpression) != nil)
       #expect(tool.description.count > 20)
     }
-    #expect(LATools.declarations.map(\.name) == ["list_loras", "get_lora", "advise", "apply_advice", "set_notes", "set_weight_limits"])
+    #expect(LATools.declarations.map(\.name) == ["list_loras", "get_lora", "set_notes", "set_weight_limits"])
     let json = try JSONEncoder().encode(LATools.declarations)
     #expect(try JSONSerialization.jsonObject(with: json) is [[String: Any]])
-    #expect(LATools.declarations.filter { $0.level != .read }.map(\.name) == ["apply_advice", "set_notes", "set_weight_limits"])
+    #expect(LATools.declarations.filter { $0.level != .read }.map(\.name) == ["set_notes", "set_weight_limits"])
   }
 
   @Test func listingStartsWithTheCurrentFamilyAndCanShowAll() async {
@@ -98,66 +98,7 @@ struct LAToolsTests {
   @Test func anUnknownToolIsUnsupported() async {
     start()
     #expect(await call("explode").type == "unsupported")
-  }
-
-  // MARK: advise and apply
-
-  @Test func adviceFollowsTheGoalAndLeavesTheTabsFieldAlone() async {
-    start()
-    var asked: [String] = []
-    state.askModel = { _, prompt in
-      asked.append(prompt)
-      return .text(#"[{"n":2,"weight":0.7,"why":"more light"}]"#)
-    }
-    let answer = await call("advise", ["goal": "bright portrait"])
-    #expect(!answer.isError)
-    #expect(asked.first?.contains("bright portrait") == true)
-    #expect(state.request == "un prompt" && !state.requestEditedByUser)
-    let suggestions = object(answer.text)["suggestions"] as? [[String: Any]]
-    #expect(suggestions?.first?["file"] as? String == "p.ckpt" && suggestions?.first?["weight"] as? Double == 0.7)
-  }
-
-  @Test func adviceWithoutALanguageModelOrCandidatesExplainsWhy() async {
-    start(models: "[]")
-    #expect(await call("advise", ["goal": "x"]).text.contains("language model"))
-    let none = LAToolsTests()
-    none.state.active = true
-    none.state.apply(context: none.helper.context(catalog: #"[{"file":"z.ckpt","name":"Zeta","family":"a"}]"#))
-    #expect(await none.call("advise", ["goal": "x"]).text.contains("family"))
-  }
-
-  @Test func adviceAsksNothingWhenTheModelFails() async {
-    start()
-    state.askModel = { _, _ in .failure("Out of memory.") }
-    let answer = await call("advise", ["goal": "x"])
-    #expect(answer.isError && answer.text.contains("Out of memory"))
-  }
-
-  @Test func applyingAdvicePutsTheSuggestedLoRAsOnTheTab() async {
-    start()
-    state.askModel = { _, _ in .text(#"[{"n":1,"weight":0.5},{"n":2,"weight":1.1}]"#) }
-    var sent: [[String: Any]] = []
-    state.contribute = { body in
-      sent.append(body)
-      return ["type": "ok"]
-    }
-    #expect(await call("apply_advice").isError)  // no advice yet
-    _ = await call("advise", ["goal": "x"])
-    let answer = await call("apply_advice", ["files": "p.ckpt"])
-    #expect(!answer.isError)
-    let loras = sent.first?["loras"] as? [[String: Any]]
-    #expect(loras?.count == 1 && loras?.first?["file"] as? String == "p.ckpt" && loras?.first?["weight"] as? Double == 1.1)
-    #expect(await call("apply_advice", ["files": "ghost.ckpt"]).isError)
-    #expect(sent.count == 1)
-  }
-
-  @Test func aRefusalFromTheAppReachesTheAgent() async {
-    start()
-    state.askModel = { _, _ in .text(#"[{"n":1}]"#) }
-    state.contribute = { _ in ["type": "error", "text": "Pipeline running."] }
-    _ = await call("advise", ["goal": "x"])
-    let answer = await call("apply_advice")
-    #expect(answer.isError && answer.text.contains("Pipeline running"))
+    #expect(await call("advise").type == "unsupported")
   }
 
   // MARK: notes and limits

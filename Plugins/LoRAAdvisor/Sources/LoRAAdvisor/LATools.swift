@@ -25,25 +25,6 @@ enum LATools {
       level: .read,
       parameters: [DTHubToolParameter(name: "file", description: "The LoRA's file, as list_loras gives it.", required: true)]),
     DTHubTool(
-      name: "advise",
-      description:
-        "Asks the local language model which LoRAs of the current family (at most three) suit a goal, each with a weight and a reason. Does not change the Generation tab: call apply_advice for that. Slow (the language model may have to load).",
-      level: .read,
-      parameters: [
-        DTHubToolParameter(
-          name: "goal", description: "What to generate or the look wanted. Default: the prompt of the Generation tab.")
-      ],
-      timeout: 300),
-    DTHubTool(
-      name: "apply_advice",
-      description:
-        "Puts the LoRAs of the last advice on the Generation tab with their suggested weights and trigger words (the fields turn teal in the app). Run advise first.",
-      level: .edit,
-      parameters: [
-        DTHubToolParameter(
-          name: "files", description: "Comma-separated files from the advice to apply. Default: all of them.")
-      ]),
-    DTHubTool(
       name: "set_notes",
       description: "Writes the notes of a LoRA (replaces them; an empty text clears them). Notes feed the advice.",
       level: .edit,
@@ -70,8 +51,6 @@ enum LATools {
       switch call.tool {
       case "list_loras": return DTHubMessage.toolResult(try list(call, state))
       case "get_lora": return DTHubMessage.toolResult(try detail(call, state))
-      case "advise": return DTHubMessage.toolResult(try await advise(call, state))
-      case "apply_advice": return DTHubMessage.toolResult(try await apply(call, state))
       case "set_notes": return DTHubMessage.toolResult(try setNotes(call, state))
       case "set_weight_limits": return DTHubMessage.toolResult(try await setLimits(call, state))
       default: return DTHubMessage.bare("unsupported")
@@ -111,54 +90,6 @@ enum LATools {
     var object = row(lora, state, notes: maxNotes)
     object["hasThumbnail"] = state.thumbnailURL(for: lora.file) != nil
     return try json(object)
-  }
-
-  @MainActor
-  private static func advise(_ call: DTHubToolCall, _ state: LAState) async throws -> String {
-    try ready(state)
-    guard state.context?.family != nil else { throw Failure(text: "DT Hub has not said which model family is in use.") }
-    guard !state.isBusy else { throw Failure(text: "The plug-in is busy with another job: try again in a moment.") }
-    guard state.hasLanguageModel else {
-      throw Failure(text: "No language model is assigned to plug-ins (DT Hub › Settings › LLM).")
-    }
-    let goal = call.string("goal")?.trimmingCharacters(in: .whitespacesAndNewlines)
-    let wanted = (goal?.isEmpty == false ? goal : nil) ?? state.request
-    guard !wanted.isEmpty else { throw Failure(text: "Give a goal: the Generation tab's prompt is empty.") }
-    guard !state.candidates(for: wanted).isEmpty else {
-      throw Failure(text: "There are no LoRAs for the current model's family.")
-    }
-    await state.advise(for: wanted)
-    if state.suggestions.isEmpty { throw Failure(text: state.adviceMessage ?? "No LoRA suits this goal.") }
-    let suggestions = state.suggestions.map { suggestion -> [String: Any] in
-      let lora = state.catalog.first { $0.file == suggestion.file }
-      return [
-        "file": suggestion.file, "name": lora?.name ?? suggestion.file, "weight": suggestion.weight, "why": suggestion.why,
-        "trigger": lora?.trigger ?? "", "onTab": state.isOnTab(suggestion.file),
-      ]
-    }
-    return try json(["goal": wanted, "suggestions": suggestions, "next": "apply_advice puts them on the Generation tab."])
-  }
-
-  @MainActor
-  private static func apply(_ call: DTHubToolCall, _ state: LAState) async throws -> String {
-    guard !state.suggestions.isEmpty else { throw Failure(text: "There is no advice to apply: call advise first.") }
-    var only: Set<String>?
-    if let list = call.string("files"), !list.trimmingCharacters(in: .whitespaces).isEmpty {
-      let files = Set(list.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty })
-      let known = Set(state.suggestions.map(\.file))
-      let unknown = files.subtracting(known)
-      guard unknown.isEmpty else {
-        throw Failure(text: "Not in the advice: \(unknown.sorted().joined(separator: ", ")).")
-      }
-      only = files
-    }
-    let applied = state.suggestions.filter { only?.contains($0.file) ?? true }
-    guard await state.addAll(only: only) else {
-      throw Failure(text: state.status ?? "DT Hub did not take the LoRAs.")
-    }
-    return try json([
-      "applied": applied.map { ["file": $0.file, "weight": $0.weight] as [String: Any] }, "result": state.status ?? "",
-    ])
   }
 
   @MainActor
