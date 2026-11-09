@@ -197,6 +197,17 @@ struct ControlToolsTests {
     #expect(h.host.calls == ["clearPipeline"])
   }
 
+  @Test func selectPipelineAndRecallAreEditToolsAndForwardToTheHost() async {
+    let edit = Set(Harness(mode: .editFields).registry.visibleTools().map(\.name))
+    #expect(edit.contains("select_pipeline") && edit.contains("recall_from_result"))
+    let h = harness()
+    #expect(await h.registry.call("select_pipeline", arguments: ["name": .string("Hero")]).isError == false)
+    #expect(await h.registry.call("select_pipeline", arguments: ["name": .string("Nope")]).isError)
+    #expect(await h.registry.call("recall_from_result", arguments: ["result_id": .string("r1"), "prompt": .bool(false)]).isError == false)
+    #expect(await h.registry.call("recall_from_result", arguments: ["result_id": .string("r1"), "prompt": .bool(false), "parameters": .bool(false)]).isError)
+    #expect(h.host.calls == ["selectPipeline Hero", "recallResult r1 false true"])
+  }
+
   @Test func setModelWarnsAboutLoRAsOfAnotherFamily() async {
     let h = harness()
     h.host.currentFamily = "flux3_5b"

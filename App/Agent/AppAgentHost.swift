@@ -91,7 +91,26 @@ final class AppAgentHost: AgentHost {
     state.isGenerating = isBusy
     state.incremental = generation.incremental
     state.selectedPipeline = generation.contributions?.pipeline.map { $0.userPipelineName ?? $0.pipeline.name }
+    state.dtPlus = connection.dtPlus && connection.canUseDTPlus
+    if state.dtPlus { state.computeUnits = computeUnitsReading() }
     return state
+  }
+
+  /// What the header's CU meter shows: the heaviest pass of the next run against the limit of one run.
+  private func computeUnitsReading() -> AgentCUReading? {
+    let limits = connection.cuLimits
+    let provider = connection.computeUnits
+    let readings = generation.cuPasses(in: connection).compactMap { pass in
+      pass.inputs.flatMap { provider.estimate($0) }.map { CUReading(cu: $0, limits: limits) }
+    }
+    guard let heaviest = readings.max(by: { $0.cu < $1.cu }) else { return nil }
+    let state: String
+    switch heaviest.state {
+    case .ok: state = "ok"
+    case .near: state = "near"
+    case .over: state = "over"
+    }
+    return AgentCUReading(cu: heaviest.cu, limit: heaviest.limit, state: state)
   }
 
   func models() -> [AgentModel] {
@@ -321,6 +340,19 @@ final class AppAgentHost: AgentHost {
   func clearPipeline() throws(AgentError) {
     if isBusy { throw .busy(jobID: nil) }
     generation.contributions?.removePipeline()
+  }
+
+  func selectPipeline(named name: String) throws(AgentError) {
+    if isBusy { throw .busy(jobID: nil) }
+    if let problem = generation.selectPipeline(named: name) { throw .invalid(problem) }
+  }
+
+  func recallResult(id: String, prompt: Bool, parameters: Bool) throws(AgentError) {
+    if isBusy { throw .busy(jobID: nil) }
+    guard let result = generation.session.results.first(where: { $0.id.uuidString == id }) else {
+      throw .invalid("No result with id '\(id)' in this session; see list_results.")
+    }
+    generation.resume(result, with: connection, prompts: prompt, parameters: parameters)
   }
 
   func setStrength(_ value: Double) throws(AgentError) {

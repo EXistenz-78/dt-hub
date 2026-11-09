@@ -181,7 +181,24 @@ public struct AgentState: Equatable, Sendable, Codable {
   public var incremental = false
   /// A pipeline selected in the app: a plain run would run it.
   public var selectedPipeline: String?
+  /// DT+ is on: the runs go to the cloud, which refuses a single run above its CU limit.
+  public var dtPlus = false
+  /// The CU meter of the header (the heaviest pass of the next run); only with DT+ on and an estimate.
+  public var computeUnits: AgentCUReading?
   public init() {}
+}
+
+/// What the CU meter reads: the estimate of the next run against the limit of a single run.
+public struct AgentCUReading: Equatable, Sendable, Codable {
+  public var cu: Int
+  public var limit: Int
+  /// "ok", "near" (from 90 % of the limit) or "over".
+  public var state: String
+  public init(cu: Int, limit: Int, state: String) {
+    self.cu = cu
+    self.limit = limit
+    self.state = state
+  }
 }
 
 /// What a run (or a pipeline, or the queue) is going to cost, asked before it starts.
@@ -254,6 +271,10 @@ public protocol AgentHost: AnyObject {
   func clearStartImage() throws(AgentError)
   /// Deselects the pipeline a plain run would execute.
   func clearPipeline() throws(AgentError)
+  /// Selects a saved pipeline in the app, as the user does; `run_pipeline` then runs it.
+  func selectPipeline(named name: String) throws(AgentError)
+  /// Puts back the prompt (with the negative prompt) and/or the model and parameters of a result of this session.
+  func recallResult(id: String, prompt: Bool, parameters: Bool) throws(AgentError)
   func setStrength(_ value: Double) throws(AgentError)
   /// Changes Advanced values by name; returns the names applied. An unknown name or a value of the wrong type throws.
   func setAdvanced(_ values: [String: AgentValue]) throws(AgentError) -> [String]

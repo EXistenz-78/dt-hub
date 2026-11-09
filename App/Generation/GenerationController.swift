@@ -843,9 +843,14 @@ final class GenerationController {
   /// "Resume parameters": puts back the prompt, negative prompt, model and parameters of the
   /// batch that made the image (its seed, batch count 1, the LoRAs sent). A ratio lock
   /// follows the resumed size.
-  func resume(_ result: GeneratedImage, with connection: DrawThingsConnection) {
-    prompt = result.job.prompt
-    negativePrompt = result.job.negativePrompt
+  func resume(
+    _ result: GeneratedImage, with connection: DrawThingsConnection, prompts: Bool = true, parameters recallParameters: Bool = true
+  ) {
+    if prompts {
+      prompt = result.job.prompt
+      negativePrompt = result.job.negativePrompt
+    }
+    guard recallParameters else { return }
     parameters = result.job.parameters
     if lockRatio { lockedRatio = currentRatio }
     if let strength = result.job.imageStrength { control.setStrength(strength) }

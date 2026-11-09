@@ -93,6 +93,14 @@ final class FakeAgentHost: AgentHost {
   }
   func createProject(name: String) async throws(AgentError) { calls.append("createProject \(name)") }
   func clearPipeline() throws(AgentError) { calls.append("clearPipeline") }
+  var pipelineList: [String] = ["Hero"]
+  func selectPipeline(named name: String) throws(AgentError) {
+    guard pipelineList.contains(name) else { throw .invalid("Unknown pipeline '\(name)'.") }
+    calls.append("selectPipeline \(name)")
+  }
+  func recallResult(id: String, prompt: Bool, parameters: Bool) throws(AgentError) {
+    calls.append("recallResult \(id) \(prompt) \(parameters)")
+  }
   func setStrength(_ value: Double) throws(AgentError) { calls.append("setStrength \(value)") }
   func loadPreset(named: String) -> String? { calls.append("loadPreset \(named)"); return nil }
   func savePreset(named: String) throws(AgentError) { calls.append("savePreset \(named)") }
