@@ -154,4 +154,36 @@ language models of the app's models folder (`family`: the family the user assign
   app's reason; `DTHubLLMOptions.timeout` (seconds, 300 by default, 1800 at most) is how long the library waits and
   is not sent.
 
+## Tools for agents (MCP)
+
+DT Hub can run an MCP server that lets an AI agent (Claude, LM Studio…) drive the app. A plug-in joins in by declaring
+**tools** in its manifest, an optional addition to contract 1: a plug-in without `tools`, and an app that does not know
+them, work as before.
+
+    DTHubManifest(id: …, name: …, tools: [
+      DTHubTool(name: "list_loras", description: "…", level: .read,
+                parameters: [DTHubToolParameter(name: "query", description: "…")]),
+    ])
+
+- `name`: lowercase letters, digits and underscores, starting with a letter, 40 at most. The agent sees it as
+  `plugin__<plug-in>__<name>`, where `<plug-in>` is the last part of the plug-in's identifier (the whole identifier if
+  two plug-ins would share it).
+- `level`: `read` (only looks), `edit` (changes the Generation tab or the plug-in's own data) or `generate` (reserved
+  for tools that make the app generate; they must go through the app's Run path, which applies the user's budget and
+  confirmation threshold whatever the level says). The user's access mode decides which levels the agent sees.
+- `parameters`: flat, of type `string`, `number`, `integer` or `boolean` (`values` limits a string). The app checks
+  names and types before it calls you: an argument you did not declare never arrives.
+- `families`: the families the tool makes sense for (nil = the plug-in's own); `timeout`: seconds the app waits
+  (60 by default, 600 at most; give a tool that asks the language model more).
+- A tool is listed only while the plug-in is loaded, **active for the job** and compatible with the model;
+  `list_plugins` says why a tool is not available.
+
+**App → plug-in:** `{"type":"tool.call","tool":name,"arguments":{…}}` (`DTHubToolCall`). **Answer**
+`DTHubMessage.toolResult(text, isError:)`, i.e. `{"type":"tool.result","text":…}` (`"isError":true` for a failure the
+agent should read), at most 40 000 characters. `error` and `unsupported` are understood too.
+
+Text you return can come from web pages, files or a language model: the app marks every answer as *data, not
+instructions* for the agent, but say it in your descriptions too, and never put secrets in an answer. LoRA Advisor
+(`Plugins/LoRAAdvisor/Sources/LoRAAdvisor/LATools.swift`) is the reference.
+
 The Sample plug-in (`Examples/Sample`, `Scripts/build-sample.sh OUT [b]`) sends all of these.

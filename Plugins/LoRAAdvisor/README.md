@@ -1,6 +1,6 @@
 # LoRA Advisor
 
-A plug-in for DT Hub with two things in one tab: a **visual list of your LoRAs**, each with a thumbnail and notes, and the **advice of the local LLM** on which ones suit what you want to generate. **Works with: all model families.** Needs DT Hub 0.2.2 or later.
+A plug-in for DT Hub with two things in one tab: a **visual list of your LoRAs**, each with a thumbnail and notes, and the **advice of the local LLM** on which ones suit what you want to generate. **Works with: all model families.** Needs DT Hub 0.2.2 or later (tools for agents: see below).
 
 ![LoRA Advisor](../../docs/images/lora-advisor.png)
 
@@ -29,6 +29,19 @@ When a row is open, a card above "Advise" shows its thumbnail large (with the **
 A text field that starts as the current prompt; leave it to get advice for the prompt, or write what you are after ("80s film look"). **Advise** has the LLM pick up to **three** LoRAs among those of the **current model's family**, each with a weight you can change and one sentence of explanation. **Add** (or **Update the weight** for a LoRA already on the tab) sends it to the Generation tab; **Add all** sends them all. The model sees the name, the trigger word and the first 300 characters of the notes of each LoRA, so better notes give better advice. It needs a language model assigned to plug-ins (Settings › LLM).
 
 The instructions sent to the LLM are in `master-prompt.md` in `…/Data/LoRAAdvisor/` (written by the plug-in at launch if it is missing or older; the old one is kept as `.md.bak`; `{max}` and `{language}` are filled in). To add your own, write them in `custom/master-prompt.md` in the same folder: they go after the master prompt (a header `mode: replace` replaces it instead). Changing the master prompt itself is not recommended.
+
+## For AI agents (MCP)
+
+With DT Hub's remote control on (Settings › Remote control) and the plug-in **on for the job**, an agent sees these tools, named `plugin__loraadvisor__<tool>`. Needs a DT Hub with MCP plug-in tools (after 1.3.0).
+
+- `list_loras` (read): the LoRAs of the current family (or `scope: all`) with trigger word, weights, limits, the first of the notes, and whether each is on the Generation tab; `query` and `limit` narrow it.
+- `get_lora` (read): one LoRA in full: all its notes, its page link, its limits.
+- `advise` (read): the same as **Advise**, for a `goal` the agent gives (by default the Generation tab's prompt). It does not change the tab or the field of the plug-in.
+- `apply_advice` (edit): puts the LoRAs of the last advice on the Generation tab (all, or the `files` given), as **Add all** does: weights, trigger words, teal fields.
+- `set_notes` (edit): writes the notes of a LoRA as the user's own (never overwritten by a later step).
+- `set_weight_limits` (edit): Min, Base and Max of a LoRA.
+
+Not offered to agents: **Find pages**, **Import** and **Summarise all**, which use the network. The notes come from web pages and the advice from a language model, so DT Hub marks everything these tools return as data, not instructions.
 
 ## Network
 
