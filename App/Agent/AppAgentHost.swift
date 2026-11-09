@@ -20,12 +20,13 @@ final class AppAgentHost: AgentHost {
   private let queueRunner: QueueRunner
   private let languageModel: LanguageModelManager
   private let pluginRegistry: PluginRegistry
+  private let projectManager: ProjectManager
   var onJobEvent: ((AgentJobEvent) -> Void)?
   private var watcher: Task<Void, Never>?
 
   init(
     generation: GenerationController, connection: DrawThingsConnection, queueStore: QueueStore, queueRunner: QueueRunner,
-    languageModel: LanguageModelManager, plugins: PluginRegistry
+    languageModel: LanguageModelManager, plugins: PluginRegistry, projects: ProjectManager
   ) {
     self.generation = generation
     self.connection = connection
@@ -33,6 +34,7 @@ final class AppAgentHost: AgentHost {
     self.queueRunner = queueRunner
     self.languageModel = languageModel
     self.pluginRegistry = plugins
+    self.projectManager = projects
   }
 
   // MARK: Reading
@@ -87,6 +89,7 @@ final class AppAgentHost: AgentHost {
         hasMargins: generation.control.hasMargins(canvasWidth: p.width, canvasHeight: p.height))
     }
     state.isGenerating = isBusy
+    state.incremental = generation.incremental
     state.selectedPipeline = generation.contributions?.pipeline.map { $0.userPipelineName ?? $0.pipeline.name }
     return state
   }
@@ -154,6 +157,22 @@ final class AppAgentHost: AgentHost {
       detail: "\(connection.indicator)", otherMode: managedNow ? "attach" : "managed", canSwitch: connection.canSwitchServer,
       cannotSwitchReason: connection.canSwitchServer
         ? nil : "The settings of the other server are not valid: they are set in DT Hub › Settings › Draw Things.")
+  }
+
+  func advancedValues() -> [String: AgentValue] {
+    guard let data = try? JSONEncoder().encode(generation.parameters.advanced),
+      let values = try? JSONDecoder().decode([String: AgentValue].self, from: data)
+    else { return [:] }
+    return values
+  }
+
+  func advancedApplicable() -> [String] {
+    let model = generation.selectedModel(in: connection)
+    return AdvancedField.allCases.filter { $0.isShown(for: model, sampler: generation.parameters.sampler) }.map(\.rawValue)
+  }
+
+  func projects() -> [AgentProject] {
+    projectManager.projects.map { AgentProject(name: $0.name, isCurrent: $0.name == projectManager.current?.name) }
   }
 
   // MARK: Editing
@@ -253,6 +272,29 @@ final class AppAgentHost: AgentHost {
     try contribute(PluginContribution(startImage: try reference(for: image)))
   }
 
+  func setIncremental(_ on: Bool) { generation.incremental = on }
+
+  func setAdvanced(_ values: [String: AgentValue]) throws(AgentError) -> [String] {
+    var current = advancedValues()
+    for (key, new) in values.sorted(by: { $0.key < $1.key }) {
+      guard let old = current[key] else {
+        throw .invalid("Unknown advanced field '\(key)'. Valid fields: \(current.keys.sorted().joined(separator: ", ")).")
+      }
+      switch (old, new) {
+      case (.bool, .bool), (.string, .string), (.double, .double), (.double, .int): current[key] = new
+      case (.int, .int): current[key] = new
+      case (.int, .double(let v)) where v == v.rounded(): current[key] = .int(Int(v))
+      case (.int, .double): throw .invalid("Field '\(key)' takes a whole number.")
+      default: throw .invalid("Field '\(key)' has the wrong type.")
+      }
+    }
+    guard let data = try? JSONEncoder().encode(current),
+      let merged = try? JSONDecoder().decode(AdvancedParameters.self, from: data)
+    else { throw .invalid("The values could not be applied.") }
+    generation.parameters.advanced = merged.clamped()
+    return values.keys.sorted()
+  }
+
   func clearMoodboard() throws(AgentError) -> Int {
     let count = generation.control.inputs.moodboard.count
     generation.control.clearMoodboard()
@@ -307,6 +349,19 @@ final class AppAgentHost: AgentHost {
       try? await Task.sleep(for: .seconds(1))
     }
     return serverStatus()
+  }
+
+  func openProject(name: String) async throws(AgentError) {
+    guard let project = projectManager.projects.first(where: { $0.name == name }) else {
+      throw .invalid("No project named '\(name)'. Use a name from list_projects.")
+    }
+    await projectManager.open(project)
+    if projectManager.lastError != nil { throw .busy(jobID: nil) }
+  }
+
+  func createProject(name: String) async throws(AgentError) {
+    if await projectManager.create(named: name) { return }
+    throw .invalid("The project '\(name)' could not be created (the name may be taken or not allowed).")
   }
 
   private var imagesPerPass: Int { max(1, generation.parameters.batchCount * generation.parameters.batchSize) }

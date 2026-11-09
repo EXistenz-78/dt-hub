@@ -249,4 +249,46 @@ struct ControlToolsTests {
     let r = await h.registry.call("switch_server", arguments: [:])
     #expect(r.isError && text(r).contains("settings are not valid"))
   }
+
+  @Test func listProjectsIsAReadTool() async {
+    let r = await Harness(mode: .readOnly).registry.call("list_projects", arguments: [:])
+    #expect(!r.isError && text(r).contains("Test vari") && text(r).contains("Altro"))
+  }
+
+  @Test func projectToolsAreControlToolsHiddenBelowFullMode() {
+    let edit = Set(Harness(mode: .editFields).registry.visibleTools().map(\.name))
+    #expect(!edit.contains("open_project") && !edit.contains("create_project"))
+    let full = Set(harness().registry.visibleTools().map(\.name))
+    #expect(full.contains("open_project") && full.contains("create_project"))
+  }
+
+  @Test func openProjectForwardsAndRefusesUnknownNames() async {
+    let h = harness()
+    #expect(await h.registry.call("open_project", arguments: ["name": .string("Altro")]).isError == false)
+    let r = await h.registry.call("open_project", arguments: ["name": .string("Zzz")])
+    #expect(r.isError && text(r).contains("Zzz"))
+    #expect(h.host.calls == ["openProject Altro"])
+  }
+
+  @Test func openProjectIsRefusedWhileAJobRunsAndTellsHowToProceed() async {
+    let h = harness()
+    _ = await h.registry.call("run", arguments: [:])
+    let r = await h.registry.call("open_project", arguments: ["name": .string("Altro")])
+    #expect(r.isError && text(r).contains("job-1") && text(r).contains("stop"))
+    #expect(!h.host.calls.contains("openProject Altro"))
+  }
+
+  @Test func createProjectForwardsTheName() async {
+    let h = harness()
+    #expect(await h.registry.call("create_project", arguments: ["name": .string("Frutta")]).isError == false)
+    #expect(h.host.calls == ["createProject Frutta"])
+  }
+
+  @Test func openProjectForgetsTheQueueEntriesOfTheOldProject() async {
+    let h = harness()
+    let added = await h.registry.call("queue_add", arguments: [:])
+    let id = text(added)
+    _ = await h.registry.call("open_project", arguments: ["name": .string("Altro")])
+    #expect(await h.registry.call("queue_remove", arguments: ["id": .string(id)]).isError)
+  }
 }

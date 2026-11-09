@@ -169,7 +169,7 @@ struct DTHubApp: App {
     _remote = State(
       initialValue: RemoteControlModel(
         generation: generation, connection: connection, queueStore: queueStore, queueRunner: queueRunner,
-        languageModel: languageModel, plugins: plugins))
+        languageModel: languageModel, plugins: plugins, projects: projects))
     plugins.start(skipping: NSEvent.modifierFlags.contains(.option))
     _plugins = State(initialValue: plugins)
     // A download cut short by quitting leaves a hidden folder with part of a model: remove it.

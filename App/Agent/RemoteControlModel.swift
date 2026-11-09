@@ -45,7 +45,7 @@ final class RemoteControlModel {
 
   init(
     generation: GenerationController, connection: DrawThingsConnection, queueStore: QueueStore, queueRunner: QueueRunner,
-    languageModel: LanguageModelManager, plugins: PluginRegistry
+    languageModel: LanguageModelManager, plugins: PluginRegistry, projects: ProjectManager
   ) {
     let initial = RemoteControlSettingsStore().load()
     settings = initial
@@ -54,7 +54,7 @@ final class RemoteControlModel {
     token = tokens.token()
     host = AppAgentHost(
       generation: generation, connection: connection, queueStore: queueStore, queueRunner: queueRunner,
-      languageModel: languageModel, plugins: plugins)
+      languageModel: languageModel, plugins: plugins, projects: projects)
     let jobs = JobTracker()
     let ledger = BudgetLedger(settings: { box.value })
     self.jobs = jobs

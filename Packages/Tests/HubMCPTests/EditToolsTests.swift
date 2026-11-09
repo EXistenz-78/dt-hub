@@ -180,6 +180,45 @@ struct EditToolsTests {
     #expect(edit.contains("clear_moodboard") && edit.contains("clear_start_image"))
   }
 
+  @Test func setFieldsAcceptsHighRes() async {
+    let h = harness()
+    let r = await h.registry.call("set_fields", arguments: ["fields": .object(["highRes": .bool(true)])])
+    #expect(!r.isError && h.host.appliedFields.first?["highRes"] == .bool(true))
+  }
+
+  @Test func setIncrementalForwardsAndIsAnEditTool() async {
+    let h = harness()
+    #expect(await h.registry.call("set_incremental", arguments: ["enabled": .bool(true)]).isError == false)
+    #expect(await h.registry.call("set_incremental", arguments: [:]).isError)
+    #expect(h.host.calls == ["setIncremental true"])
+    #expect(!Set(harness(mode: .readOnly).registry.visibleTools().map(\.name)).contains("set_incremental"))
+  }
+
+  @Test func getAdvancedShowsValuesAndWhatAppliesToTheModel() async {
+    let h = harness(mode: .readOnly)
+    let r = await h.registry.call("get_advanced", arguments: [:])
+    #expect(!r.isError && text(r).contains("clipSkip") && text(r).contains("appliesToCurrentModel") && text(r).contains("tiledDecoding"))
+  }
+
+  @Test func setAdvancedForwardsTypedValuesAndReportsApplied() async {
+    let h = harness()
+    let r = await h.registry.call("set_advanced", arguments: ["values": .object(["clipSkip": .int(2), "tiledDecoding": .bool(true)])])
+    #expect(!r.isError && text(r).contains("clipSkip, tiledDecoding"))
+    #expect(h.host.calls == ["setAdvanced clipSkip,tiledDecoding"])
+  }
+
+  @Test func setAdvancedPassesTheHostsErrorOnAnUnknownField() async {
+    let h = harness()
+    let r = await h.registry.call("set_advanced", arguments: ["values": .object(["nope": .int(1)])])
+    #expect(r.isError && text(r).contains("nope"))
+    #expect(await h.registry.call("set_advanced", arguments: ["values": .object([:])]).isError)
+  }
+
+  @Test func setAdvancedIsHiddenInReadOnlyMode() {
+    #expect(!Set(harness(mode: .readOnly).registry.visibleTools().map(\.name)).contains("set_advanced"))
+    #expect(Set(harness(mode: .readOnly).registry.visibleTools().map(\.name)).contains("get_advanced"))
+  }
+
   @Test func editToolsAreHiddenInReadOnlyMode() {
     let h = harness(mode: .readOnly)
     let names = Set(h.registry.visibleTools().map(\.name))

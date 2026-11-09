@@ -29,6 +29,9 @@ final class FakeAgentHost: AgentHost {
   var replacedCount = 0
   var unappliedKeys: Set<String> = []
   var queueRunning = false
+  var advanced: [String: AgentValue] = ["clipSkip": .int(1), "tiledDecoding": .bool(false), "refinerModel": .string("")]
+  var advancedShown = ["clipSkip", "tiledDecoding"]
+  var projectList = [AgentProject(name: "Test vari", isCurrent: true), AgentProject(name: "Altro", isCurrent: false)]
   var server = AgentServerStatus(mode: "managed", connected: true, detail: "connected", otherMode: "attach", canSwitch: true, cannotSwitchReason: nil)
   var moodboardToClear = 0
   var hasStart = true
@@ -75,6 +78,20 @@ final class FakeAgentHost: AgentHost {
     server = AgentServerStatus(mode: server.otherMode, connected: true, detail: "connected", otherMode: server.mode, canSwitch: true, cannotSwitchReason: nil)
     return server
   }
+  func advancedValues() -> [String: AgentValue] { advanced }
+  func advancedApplicable() -> [String] { advancedShown }
+  func setAdvanced(_ values: [String: AgentValue]) throws(AgentError) -> [String] {
+    for key in values.keys where advanced[key] == nil { throw .invalid("Unknown advanced field '\(key)'.") }
+    calls.append("setAdvanced \(values.keys.sorted().joined(separator: ","))")
+    return values.keys.sorted()
+  }
+  func setIncremental(_ on: Bool) { calls.append("setIncremental \(on)") }
+  func projects() -> [AgentProject] { projectList }
+  func openProject(name: String) async throws(AgentError) {
+    guard projectList.contains(where: { $0.name == name }) else { throw .invalid("No project named '\(name)'.") }
+    calls.append("openProject \(name)")
+  }
+  func createProject(name: String) async throws(AgentError) { calls.append("createProject \(name)") }
   func clearPipeline() throws(AgentError) { calls.append("clearPipeline") }
   func setStrength(_ value: Double) throws(AgentError) { calls.append("setStrength \(value)") }
   func loadPreset(named: String) -> String? { calls.append("loadPreset \(named)"); return nil }

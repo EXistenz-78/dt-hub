@@ -136,6 +136,15 @@ public struct AgentPlugin: Equatable, Sendable, Codable {
   }
 }
 
+public struct AgentProject: Equatable, Sendable, Codable {
+  public var name: String
+  public var isCurrent: Bool
+  public init(name: String, isCurrent: Bool) {
+    self.name = name
+    self.isCurrent = isCurrent
+  }
+}
+
 /// Which image server DT Hub talks to: "managed" is the one DT Hub starts itself (the CLI server), "attach" is the
 /// server of the Draw Things app.
 public struct AgentServerStatus: Equatable, Sendable, Codable {
@@ -168,6 +177,8 @@ public struct AgentState: Equatable, Sendable, Codable {
   public var hasStartImage = false
   public var strength: Double?
   public var isGenerating = false
+  /// Incremental mode: the result of a run becomes the start image of the next one.
+  public var incremental = false
   /// A pipeline selected in the app: a plain run would run it.
   public var selectedPipeline: String?
   public init() {}
@@ -225,6 +236,10 @@ public protocol AgentHost: AnyObject {
   func queueEntries() -> [AgentQueueEntry]
   func plugins() -> [AgentPlugin]
   func serverStatus() -> AgentServerStatus
+  /// Every value of the Advanced cards, by name, and the names of the groups that apply to the current model.
+  func advancedValues() -> [String: AgentValue]
+  func advancedApplicable() -> [String]
+  func projects() -> [AgentProject]
 
   // Editing the tab
   func setFields(_ fields: [String: AgentValue]) throws(AgentError) -> [String]
@@ -240,6 +255,9 @@ public protocol AgentHost: AnyObject {
   /// Deselects the pipeline a plain run would execute.
   func clearPipeline() throws(AgentError)
   func setStrength(_ value: Double) throws(AgentError)
+  /// Changes Advanced values by name; returns the names applied. An unknown name or a value of the wrong type throws.
+  func setAdvanced(_ values: [String: AgentValue]) throws(AgentError) -> [String]
+  func setIncremental(_ on: Bool)
   func loadPreset(named: String) -> String?
   func savePreset(named: String) throws(AgentError)
 
@@ -247,6 +265,9 @@ public protocol AgentHost: AnyObject {
   func setModel(file: String) throws(AgentError)
   /// Switches between the two image servers and waits (up to a minute) until the new one answers.
   func switchServer() async throws(AgentError) -> AgentServerStatus
+  /// Opening or creating a project changes the results, Control and the queue: refused while something runs.
+  func openProject(name: String) async throws(AgentError)
+  func createProject(name: String) async throws(AgentError)
   func planRun() -> AgentRunPlan
   func planPipeline(named: String) throws(AgentError) -> AgentRunPlan
   func planQueue() -> AgentRunPlan
