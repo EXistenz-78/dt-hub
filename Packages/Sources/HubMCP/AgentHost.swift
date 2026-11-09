@@ -128,10 +128,30 @@ public struct AgentPlugin: Equatable, Sendable, Codable {
   public var isActive: Bool
   /// Why the plug-in does not work with the current model, when it does not.
   public var unavailableReason: String?
-  public init(id: String, name: String, isActive: Bool, unavailableReason: String? = nil) {
+  /// The tools it declares, with the MCP name each is listed under and why one cannot be called now.
+  public var tools: [AgentPluginToolInfo] = []
+  public init(id: String, name: String, isActive: Bool, unavailableReason: String? = nil, tools: [AgentPluginToolInfo] = []) {
     self.id = id
     self.name = name
     self.isActive = isActive
+    self.unavailableReason = unavailableReason
+    self.tools = tools
+  }
+}
+
+public struct AgentPluginToolInfo: Equatable, Sendable, Codable {
+  public var name: String
+  /// "read", "edit" or "generate".
+  public var level: String
+  public var description: String
+  /// The name the MCP server lists it under; nil while it cannot be called.
+  public var mcpName: String?
+  public var unavailableReason: String?
+  public init(name: String, level: String, description: String, mcpName: String? = nil, unavailableReason: String? = nil) {
+    self.name = name
+    self.level = level
+    self.description = description
+    self.mcpName = mcpName
     self.unavailableReason = unavailableReason
   }
 }
@@ -233,6 +253,13 @@ public enum AgentJobEvent: Equatable, Sendable {
   case stopped
 }
 
+extension AgentHost {
+  public func pluginTools() -> [AgentPluginTool] { [] }
+  public func callPluginTool(pluginID: String, tool: String, arguments: Data) async throws(AgentError) -> String {
+    throw .unavailable("Plug-in tools are not available.")
+  }
+}
+
 /// What the MCP server needs from the app. The app implements it on the Generation tab, the queue, the
 /// contributions and the results; tests implement it with a fake (spec 2026-11-08 §3).
 @MainActor
@@ -257,6 +284,10 @@ public protocol AgentHost: AnyObject {
   func advancedValues() -> [String: AgentValue]
   func advancedApplicable() -> [String]
   func projects() -> [AgentProject]
+  /// The tools of the plug-ins that can be called now (loaded, active, fit the model); empty for a plug-in without any.
+  func pluginTools() -> [AgentPluginTool]
+  /// Calls a tool of a plug-in (`tool.call`) with the arguments as a JSON object; returns its text or throws why not.
+  func callPluginTool(pluginID: String, tool: String, arguments: Data) async throws(AgentError) -> String
 
   // Editing the tab
   func setFields(_ fields: [String: AgentValue]) throws(AgentError) -> [String]

@@ -107,7 +107,7 @@ public final class ToolRegistry {
 
   public func visibleTools() -> [ToolSpec] {
     let mode = context.settings().mode
-    return all.filter { isVisible($0, mode: mode) }
+    return (all + pluginSpecs()).filter { isVisible($0, mode: mode) }
   }
 
   private func isVisible(_ spec: ToolSpec, mode: AccessMode) -> Bool {
@@ -138,7 +138,7 @@ public final class ToolRegistry {
 
   private func perform(_ name: String, arguments: [String: Value]) async -> ToolResult {
     let mode = context.settings().mode
-    guard let spec = all.first(where: { $0.name == name }) else { return .failure("Unknown tool '\(name)'.") }
+    guard let spec = (all + pluginSpecs()).first(where: { $0.name == name }) else { return .failure("Unknown tool '\(name)'.") }
     guard isVisible(spec, mode: mode) else {
       return .failure(
         "Tool '\(name)' is not available now (mode: \(mode.rawValue)"
