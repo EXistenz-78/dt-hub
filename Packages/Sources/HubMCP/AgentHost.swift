@@ -217,6 +217,8 @@ public protocol AgentHost: AnyObject {
   /// Returns how many pictures were taken off.
   func clearMoodboard() throws(AgentError) -> Int
   func clearStartImage() throws(AgentError)
+  /// Deselects the pipeline a plain run would execute.
+  func clearPipeline() throws(AgentError)
   func setStrength(_ value: Double) throws(AgentError)
   func loadPreset(named: String) -> String?
   func savePreset(named: String) throws(AgentError)

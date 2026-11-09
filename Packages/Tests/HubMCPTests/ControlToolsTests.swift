@@ -180,4 +180,37 @@ struct ControlToolsTests {
     #expect(r.isError && text(r).contains("already running"))
     #expect(h.prompter.asked.isEmpty && h.jobs.activeJobID == nil)
   }
+
+  @Test func runRefusesWhileAPipelineIsSelectedAndSaysHow() async {
+    let h = harness()
+    h.host.stateValue.selectedPipeline = "Agent pipeline"
+    let r = await h.registry.call("run", arguments: [:])
+    #expect(r.isError && text(r).contains("Agent pipeline") && text(r).contains("clear_pipeline"))
+    #expect(h.host.calls.isEmpty && h.jobs.activeJobID == nil && h.ledger.usedImages == 0)
+  }
+
+  @Test func clearPipelineIsAnEditToolAndForwardsToTheHost() async {
+    let edit = Set(Harness(mode: .editFields).registry.visibleTools().map(\.name))
+    #expect(edit.contains("clear_pipeline"))
+    let h = harness()
+    #expect(await h.registry.call("clear_pipeline", arguments: [:]).isError == false)
+    #expect(h.host.calls == ["clearPipeline"])
+  }
+
+  @Test func setModelWarnsAboutLoRAsOfAnotherFamily() async {
+    let h = harness()
+    h.host.currentFamily = "flux3_5b"
+    h.host.stateValue.loras = [AgentLoRAUse(file: "k.ckpt", weight: 1), AgentLoRAUse(file: "f.ckpt", weight: 1)]
+    h.host.loraList = [
+      AgentLoRA(file: "k.ckpt", name: "Krea", families: ["krea_2"]), AgentLoRA(file: "f.ckpt", name: "Flux3", families: ["flux3_5b"]),
+    ]
+    let r = await h.registry.call("set_model", arguments: ["file": .string("flux2.ckpt")])
+    #expect(!r.isError)
+    #expect(text(r).contains("k.ckpt") && text(r).contains("remove_lora") && !text(r).contains("f.ckpt"))
+  }
+
+  @Test func setModelSaysNothingAboutLoRAsThatFit() async {
+    let h = harness()
+    #expect(text(await h.registry.call("set_model", arguments: ["file": .string("flux2.ckpt")])) == "Model set to flux2.ckpt.")
+  }
 }

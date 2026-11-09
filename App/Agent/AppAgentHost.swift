@@ -39,8 +39,24 @@ final class AppAgentHost: AgentHost {
 
   var currentFamily: String? { generation.family(in: connection) }
 
+  private struct SpecialistKey: Equatable {
+    var family: String
+    var settings: LanguageModelSettings
+  }
+  /// Looking for the specialist scans the LLM folder on disk: the answer is kept until the family or the language-model
+  /// settings change (or two minutes pass, for a model installed meanwhile).
+  private var specialistCache: (key: SpecialistKey, at: Date, value: Bool)?
+
   var hasSpecialistLLM: Bool {
     guard let family = currentFamily else { return false }
+    let key = SpecialistKey(family: family, settings: languageModel.settings)
+    if let cached = specialistCache, cached.key == key, Date().timeIntervalSince(cached.at) < 120 { return cached.value }
+    let value = findSpecialistLLM(family: family)
+    specialistCache = (key, Date(), value)
+    return value
+  }
+
+  private func findSpecialistLLM(family: String) -> Bool {
     guard case .success(let model) = languageModel.model(for: .enhance, family: family) else { return false }
     if case .family(let key)? = languageModel.settings.assignments[model.name]?.family, key == family { return true }
     return LanguageModelProfile.load(folder: URL(fileURLWithPath: model.path, isDirectory: true)).pup != nil
@@ -65,6 +81,11 @@ final class AppAgentHost: AgentHost {
     state.loras = p.loras.map { AgentLoRAUse(file: $0.file, weight: $0.weight) }
     state.moodboardCount = generation.control.moodboardURLs.count
     state.hasStartImage = generation.control.inputs.image != nil
+    if state.hasStartImage {
+      state.strength = generation.control.inputs.effectiveStrength(
+        editModel: generation.isEditModel(in: connection),
+        hasMargins: generation.control.hasMargins(canvasWidth: p.width, canvasHeight: p.height))
+    }
     state.isGenerating = isBusy
     state.selectedPipeline = generation.contributions?.pipeline.map { $0.userPipelineName ?? $0.pipeline.name }
     return state
@@ -232,6 +253,11 @@ final class AppAgentHost: AgentHost {
   func clearStartImage() throws(AgentError) {
     guard generation.control.inputs.image != nil else { throw .invalid("There is no start image.") }
     generation.control.removeImage()
+  }
+
+  func clearPipeline() throws(AgentError) {
+    if isBusy { throw .busy(jobID: nil) }
+    generation.contributions?.removePipeline()
   }
 
   func setStrength(_ value: Double) throws(AgentError) {

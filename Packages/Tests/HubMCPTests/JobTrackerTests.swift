@@ -67,6 +67,10 @@ struct JobTrackerTests {
     #expect(s?.state == .running)
   }
 
+  @Test func defaultWaitIs30SecondsBecauseClientsTimeOutOnLongerOnes() {
+    #expect(JobTracker.defaultWaitSeconds == 30)
+  }
+
   @Test func waitCapsAt300Seconds() {
     let t = JobTracker()
     #expect(t.effectiveTimeout(for: 9999) == 300)

@@ -75,6 +75,9 @@ public final class JobTracker {
 
   public func status(_ id: String) -> JobStatus? { jobs[id] }
 
+  /// Clients (Claude Desktop through mcp-remote) give up on a call that waits much longer than this.
+  public static let defaultWaitSeconds = 30
+
   public func effectiveTimeout(for seconds: Int) -> Int { min(max(seconds, 0), 300) }
 
   /// The status when the job ends, or at the timeout (the running state, not an error). nil for an unknown job.

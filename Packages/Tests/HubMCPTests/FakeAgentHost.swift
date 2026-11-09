@@ -67,6 +67,7 @@ final class FakeAgentHost: AgentHost {
     guard hasStart else { throw .invalid("There is no start image.") }
     calls.append("clearStartImage")
   }
+  func clearPipeline() throws(AgentError) { calls.append("clearPipeline") }
   func setStrength(_ value: Double) throws(AgentError) { calls.append("setStrength \(value)") }
   func loadPreset(named: String) -> String? { calls.append("loadPreset \(named)"); return nil }
   func savePreset(named: String) throws(AgentError) { calls.append("savePreset \(named)") }
