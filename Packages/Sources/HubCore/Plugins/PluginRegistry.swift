@@ -353,6 +353,49 @@ public final class PluginRegistry: PluginHosting {
     }
   }
 
+  // MARK: Tools for agents
+
+  /// A tool a plug-in offers that can be called now: the plug-in is loaded, active (header menu) and compatible with the
+  /// model, and the tool itself fits the model's family.
+  public struct AvailableTool: Equatable, Sendable {
+    public let pluginID: String
+    public let pluginName: String
+    public let declaration: PluginToolDeclaration
+  }
+
+  /// Why a declared tool cannot be called now; nil when it can.
+  public func unavailableReason(of tool: PluginToolDeclaration, in entry: PluginEntry) -> String? {
+    switch entry.state {
+    case .loaded: break
+    case .failed: return "The plug-in failed to load."
+    case .loadsAtNextLaunch: return "The plug-in loads at the next launch of DT Hub."
+    default: return "The plug-in is off."
+    }
+    if !entry.isActive { return "The plug-in is not active for the job (header menu)." }
+    if !isCompatible(entry) || !tool.supports(family: family) { return "Not compatible with the current model." }
+    return nil
+  }
+
+  public var availableTools: [AvailableTool] {
+    entries.flatMap { entry in
+      (entry.manifest?.tools ?? []).compactMap { tool in
+        unavailableReason(of: tool, in: entry) == nil
+          ? AvailableTool(pluginID: entry.id, pluginName: entry.name, declaration: tool) : nil
+      }
+    }
+  }
+
+  /// Calls a tool of a plug-in for an agent (`tool.call`). `arguments` is a JSON object the caller already checked. The
+  /// tool must be declared in the plug-in's manifest and available now; the answer is what the plug-in said, or why not.
+  public func callTool(pluginID: String, tool: String, arguments: Data) async -> PluginToolOutcome {
+    guard let entry = entries.first(where: { $0.id == pluginID }), let declaration = entry.manifest?.tool(named: tool) else {
+      return .failure("The plug-in has no tool '\(tool)'.")
+    }
+    if let reason = unavailableReason(of: declaration, in: entry) { return .failure(reason) }
+    let message = PluginToolCall(tool: tool, arguments: arguments).message()
+    return .parse(await request(message, to: pluginID, timeout: declaration.effectiveTimeout))
+  }
+
   /// A new folder inside the plug-ins' temp folder for the files of one guided pipeline (`session-<UUID>`).
   public func sessionFolder() -> URL {
     let url = tempFolder.appendingPathComponent("session-\(UUID().uuidString)", isDirectory: true)

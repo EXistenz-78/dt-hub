@@ -26,10 +26,14 @@ public struct PluginManifest: Codable, Equatable, Sendable {
   /// references: Kontext, Qwen Edit, FLUX.2, Qwen Image 2.1...). The app switches it off with any other model. nil or
   /// false = any model. An addition to contract 1: an app that does not know it keeps the plug-in on.
   public var requiresEditModel: Bool?
+  /// The tools the plug-in offers to agents (MCP); nil or empty = none. An addition to contract 1: an app that does
+  /// not know it ignores it, and a plug-in without it does not change.
+  public var tools: [PluginToolDeclaration]?
 
   public init(
     id: String, name: String, version: String = "0", contract: Int = PluginContract.current,
-    symbol: String = "puzzlepiece.extension", families: [String]? = nil, requiresEditModel: Bool? = nil
+    symbol: String = "puzzlepiece.extension", families: [String]? = nil, requiresEditModel: Bool? = nil,
+    tools: [PluginToolDeclaration]? = nil
   ) {
     self.id = id
     self.name = name
@@ -38,6 +42,7 @@ public struct PluginManifest: Codable, Equatable, Sendable {
     self.symbol = symbol
     self.families = families
     self.requiresEditModel = requiresEditModel
+    self.tools = tools
   }
 
   /// Lenient: only the identifier, the name and the contract version are needed.
@@ -50,6 +55,9 @@ public struct PluginManifest: Codable, Equatable, Sendable {
     symbol = (try? container.decodeIfPresent(String.self, forKey: .symbol)) ?? "puzzlepiece.extension"
     families = try? container.decodeIfPresent([String].self, forKey: .families)
     requiresEditModel = try? container.decodeIfPresent(Bool.self, forKey: .requiresEditModel)
+    // A declaration that cannot be read is dropped; the others stay.
+    tools = ((try? container.decodeIfPresent([Lenient<PluginToolDeclaration>].self, forKey: .tools)) ?? nil)?
+      .compactMap(\.value)
   }
 
   /// Whether it works with a model family (nil = unknown family: everything applies) and, for a plug-in that asks for
