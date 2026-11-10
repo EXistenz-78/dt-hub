@@ -45,9 +45,50 @@ struct DWPoseDetector: DPFullPoseDetecting {
   var boxFinder: any DPPersonBoxFinding
 
   func figures(in image: CGImage) async throws -> [DPFigure] {
-    var boxes = try await boxFinder.boxes(in: image)
-    if boxes.isEmpty { boxes = [CGRect(x: 0, y: 0, width: image.width, height: image.height)] }
+    let boxes = try await boxFinder.boxes(in: image)
+    if boxes.isEmpty { return try figuresWithoutBoxes(in: image) }
     return try figures(in: image, boxes: boxes)
+  }
+
+  /// Vision found nobody (an illustration, an odd pose): the whole picture is the first box. A person who fills a part of a
+  /// wide picture shrinks to a few dozen pixels in the 288×384 crop and scores too low, so the points the network did find
+  /// give a tighter box and the crop is made again (twice at most).
+  func figuresWithoutBoxes(in image: CGImage) throws -> [DPFigure] {
+    var box = CGRect(x: 0, y: 0, width: image.width, height: image.height)
+    for _ in 0...Self.refinements {
+      let crop = DPCrop(box: box)
+      guard let cropped = crop.render(image) else { return [] }
+      let vectors = try network.simcc(for: cropped)
+      let peaks = DPSimCC.decode(x: vectors.x, y: vectors.y)
+      if DPWholeBody.bodyScore(of: peaks) + 1e-5 >= DPWholeBody.minBodyScore {
+        let figure = DPWholeBody.figure(peaks: peaks, crop: crop, imageWidth: image.width, imageHeight: image.height)
+        return [DPWholeBody.droppingImplausibleHands(figure, imageWidth: image.width, imageHeight: image.height)]
+      }
+      guard let next = Self.box(around: peaks, in: crop, image: image, smallerThan: box) else { return [] }
+      box = next
+    }
+    return []
+  }
+
+  /// How many times a failed crop of the whole picture is made again around the points found.
+  static let refinements = 2
+  /// A body point counts for the new box from this score (lower than the one that accepts a figure).
+  static let hintScore: Float = 0.25
+
+  /// The box of the body points the network was fairly sure of, in pixels of the picture; nil when there are too few of
+  /// them or the box is not clearly smaller than the one tried.
+  static func box(around peaks: [DPSimCCPeak], in crop: DPCrop, image: CGImage, smallerThan old: CGRect) -> CGRect? {
+    let points = peaks.prefix(17).filter { $0.score >= hintScore }.map { crop.imagePoint(binX: Double($0.x), binY: Double($0.y)) }
+    guard points.count >= 4 else { return nil }
+    let minX = points.map(\.x).min()!, maxX = points.map(\.x).max()!
+    let minY = points.map(\.y).min()!, maxY = points.map(\.y).max()!
+    // The joints sit inside the body: widen to the limbs' ends and the head.
+    let margin = max(maxX - minX, maxY - minY) * 0.15
+    let bounds = CGRect(x: 0, y: 0, width: image.width, height: image.height)
+    let box = CGRect(x: minX - margin, y: minY - margin, width: maxX - minX + 2 * margin, height: maxY - minY + 2 * margin)
+      .intersection(bounds)
+    guard !box.isNull, box.width >= 16, box.height >= 16, box.width * box.height < old.width * old.height * 0.8 else { return nil }
+    return box
   }
 
   /// The figures of the given boxes (the finder is not asked): the biggest `maxPeople` boxes, biggest first.
