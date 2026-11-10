@@ -25,4 +25,16 @@ Details:
 - A pass changes only what it lists: **never a size, never a preset**; the advanced values and the extras are those of the tab. This uses the `fields` and `loras` of a pipeline step (`PluginKit/README.md`) and needs a DT Hub that sends the tab's `parameters` in the context; otherwise the Parameters mode says so and Prompts mode still works.
 - The state (mode, increments, passes, fixed seed, prompts) is kept **per project**.
 
+## For AI agents (MCP)
+
+Since **1.2**. With DT Hub's remote control on (Settings › Remote control) and the plug-in **on for the job**, an agent sees these tools, named `plugin__batchplus__<tool>`, for every model family. Needs a DT Hub with MCP plug-in tools that can run a plug-in's pipeline (after 1.3.1; the run of a static list of passes needs the version that follows).
+
+- `get_status` (read): the mode, passes, increments, samplers, switches, the values of the Generation tab the series starts from (with its LoRAs), the preview of every pass (or the prompts the text makes), the number of RUNs, and why the series cannot go (`blocker`).
+- `set_batch` (edit, «Modify the tab» or more): defines the series on the tab **without generating** and answers the preview, so the agent can judge it first. Arguments (all optional; what you leave out stays): `mode` (`parameters` or `prompts`), `passes` (2–50), `steps_increment`, `guidance_increment`, `shift_increment`, `cfg_zero_steps_increment`, `seed_increment`, `lora_file` + `lora_increment`, `samplers` (comma-separated sampler numbers, listed by `get_status`), `fixed_seed`, `prompt_text`, `shuffle` and `reset`. `0` clears an increment. Everything is checked before anything changes.
+- `start_batch` (generate, «Full control» only): does what `set_batch` does with the same arguments (none: what it defined) and then presses RUN. It returns a `job_id` at once; the agent follows it with `wait_for_job`, stops it with `stop` and reads the pictures with `get_results` / `get_image`.
+
+**Budget and consent.** Starting goes through the same path as the app's `run_pipeline`: one job at a time, **every pass is a RUN and counts as images against the session budget** (the batch count and size of the tab multiply it), and a series over the user's confirmation threshold waits for the user's yes in DT Hub. From 20 passes (where the tab shows its warning) `start_batch` refuses unless the call carries `confirm_long: true`: the agent must ask the user first. A series never changes a size or a preset, as in the tab.
+
+The prompts and the file names in the answers come from the project and from the agent's own earlier calls: DT Hub marks them to the agent as data, not instructions.
+
 Build: `Plugins/BatchPlus/Scripts/build.sh <folder>` → `BatchPlus.dthubplugin`. Tests: `swift test` in this folder. Design: `docs/superpowers/specs/2026-10-09-plugin-batch-plus-design.md`.

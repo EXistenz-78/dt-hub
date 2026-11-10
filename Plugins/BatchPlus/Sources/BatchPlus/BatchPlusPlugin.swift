@@ -5,7 +5,8 @@ import SwiftUI
 @MainActor
 final class BatchPlusPlugin: DTHubPlugin {
   let manifest = DTHubManifest(
-    id: "com.exiztenz.dthub.batchplus", name: "Batch plus", version: "1.1", symbol: "square.stack.3d.up", families: nil)
+    id: "com.exiztenz.dthub.batchplus", name: "Batch plus", version: "1.2", symbol: "square.stack.3d.up", families: nil,
+    tools: BPTools.declarations)
   private let state = BatchPlusState()
   private var host: DTHubHost?
 
@@ -34,6 +35,9 @@ final class BatchPlusPlugin: DTHubPlugin {
     case "deactivate":
       state.active = false
       return nil
+    case "tool.call":
+      guard let call = DTHubToolCall(message), let host else { return DTHubMessage.bare("unsupported") }
+      return await BPTools.handle(call, state: state, connection: BPTools.Connection(contribute: { await host.contribute($0) }))
     default:
       return DTHubMessage.bare("unsupported")
     }

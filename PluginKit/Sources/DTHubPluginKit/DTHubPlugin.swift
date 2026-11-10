@@ -143,7 +143,7 @@ public enum DTHubMessage {
   }
 
   /// `{"type":"tool.result","text":text}`: the answer to `tool.call`. With `isError` the agent is told the tool failed.
-  /// `startsRun` (only for a tool declared `generate`): the app then runs the guided pipeline you have just proposed with
+  /// `startsRun` (only for a tool declared `generate`): the app then runs the pipeline (guided or static) you have just proposed with
   /// `contribute`, through its own Run path (the user's budget and confirmation threshold apply), and tells the agent the
   /// job to follow.
   public static func toolResult(_ text: String, isError: Bool = false, startsRun: Bool = false) -> Data {

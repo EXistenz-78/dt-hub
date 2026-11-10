@@ -185,9 +185,9 @@ them, work as before.
 `DTHubMessage.toolResult(text, isError:)`, i.e. `{"type":"tool.result","text":…}` (`"isError":true` for a failure the
 agent should read), at most 40 000 characters. `error` and `unsupported` are understood too.
 
-**A tool that generates** (level `generate`, visible only in «Full control»): `contribute` the guided pipeline as
-usual, then answer `DTHubMessage.toolResult(text, startsRun: true)` (`"startsRun":true`). The app presses RUN itself,
-through the path of `run_pipeline`: one job, the budget counts the passes of your pipeline as images, a job over the
+**A tool that generates** (level `generate`, visible only in «Full control»): `contribute` the pipeline (guided, or a
+static list of passes, as Batch plus does) as usual, then answer `DTHubMessage.toolResult(text, startsRun: true)` (`"startsRun":true`). The app presses RUN itself,
+through the path of `run_pipeline`: one job, the budget counts the passes of your pipeline as images (a guided pass is one image; a static pass is a RUN, so the tab's batch count × size multiplies it), a job over the
 user's threshold asks them, and the agent gets a `job_id` for `wait_for_job`. If the app does not hold your pipeline
 (another one is selected) or the budget refuses, nothing starts and the agent is told. The flag is ignored for a tool
 that is not `generate`. Check size limits yourself and ask for an explicit argument (such as `confirm_large`) before

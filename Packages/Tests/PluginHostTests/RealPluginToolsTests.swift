@@ -65,4 +65,37 @@ struct RealPluginToolsTests {
     let refused = try await call(plugin, "prepare_upscale", ["factor": 3])
     #expect(refused["isError"] as? Bool == true)
   }
+
+  nonisolated static let batchPlusBundlePath = ProcessInfo.processInfo.environment["DTHUB_BP_BUNDLE"]
+
+  /// `DTHUB_BP_BUNDLE=/path/BatchPlus.dthubplugin swift test --filter RealPluginToolsTests` (from `Plugins/BatchPlus/Scripts/build.sh`).
+  @Test(.enabled(if: RealPluginToolsTests.batchPlusBundlePath != nil))
+  func theRealBatchPlusBundleAnswersItsTools() async throws {
+    let bundle = URL(fileURLWithPath: try #require(Self.batchPlusBundlePath))
+    let host = RecordingHost()
+    let plugin = try BundlePluginLoader().load(bundle, info: try PluginBundleReader.read(bundle), host: host)
+    #expect(plugin.manifest.id == "com.exiztenz.dthub.batchplus")
+    let tools = try #require(plugin.manifest.tools)
+    #expect(tools.map(\.name) == ["get_status", "set_batch", "start_batch"])
+    #expect(tools.map(\.level.rawValue) == ["read", "edit", "generate"])
+    #expect(tools.allSatisfy { $0.families == nil })
+
+    let context = try JSONSerialization.data(withJSONObject: [
+      "type": "context", "model": "m.ckpt", "tempFolder": NSTemporaryDirectory(),
+      "parameters": ["width": 832, "height": 1216, "steps": 8, "guidanceScale": 1.5, "seed": 99, "shift": 3],
+    ])
+    _ = await plugin.send(context)
+    _ = await plugin.send(PluginMessageType.bare("activate"))
+
+    let status = try await call(plugin, "get_status")
+    #expect(status["type"] as? String == "tool.result" && status["isError"] == nil)
+    let set = try await call(plugin, "set_batch", ["passes": 3, "steps_increment": 4])
+    #expect(set["isError"] == nil && set["startsRun"] == nil, Comment(rawValue: "\(set)"))
+    let ran = try await call(plugin, "start_batch")
+    #expect(ran["isError"] == nil && ran["startsRun"] as? Bool == true, Comment(rawValue: "\(ran)"))
+    let sent = host.received.compactMap { PluginContribution(message: $0.message)?.pipeline }
+    #expect(try #require(sent.last).passCount == 3)
+    let refused = try await call(plugin, "set_batch", ["passes": 99])
+    #expect(refused["isError"] as? Bool == true)
+  }
 }

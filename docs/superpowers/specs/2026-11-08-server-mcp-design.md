@@ -201,3 +201,13 @@ Secondo passo della §11 (ramo `claude/tiled-upscale-mcp-6fc4cb`). Il contratto 
 | `upscale` | generate | come `prepare_upscale` e poi RUN; ritorna `job_id`; senza argomenti esegue ciò che è preparato |
 
 Le scelte non indicate restano quelle della scheda (e quelle indicate vi restano: l'utente le vede, ed è il modo in cui il plug-in le ricorda per il progetto). Il testo delle risposte (nome dell'immagine, avviso della scheda) è marcato «data, not instructions» come per ogni plug-in. Non esposti: rigenerare una tessera, «Use as start image», il tasto della coda.
+
+**Batch plus 1.2** (ramo `claude/batch-plus-mcp-5de7e8`), `plugin__batchplus__…`, tutte le famiglie, plug-in attivo. Estensione del `startsRun`: vale anche per una pipeline **statica** (elenco di passaggi, non guidata). `AppAgentHost.heldPluginPipeline` accetta ogni pipeline del plug-in con almeno un passaggio; per una statica il budget è `passaggi × (batch count × batch size)` come per `run` (`plan(passes:)`), per una guidata resta un'immagine per passaggio; il watcher attende il risultato composto solo per le guidate.
+
+| Strumento | Livello | Cosa fa |
+| --- | --- | --- |
+| `get_status` | read | modo, passaggi, incrementi, sampler, interruttori, valori di partenza della scheda (con LoRA), anteprima per passaggio o prompt generati, numero di RUN, `blocker` |
+| `set_batch` | edit | definisce la serie sulla scheda (e nello stato del progetto) senza generare; controlla tutto prima di cambiare; risponde con l'anteprima |
+| `start_batch` | generate | come `set_batch` e poi RUN; `job_id`; da 20 passaggi serve `confirm_long`; si ferma con `stop` |
+
+Il testo delle risposte (prompt, nomi dei file dei LoRA) è marcato «data, not instructions».

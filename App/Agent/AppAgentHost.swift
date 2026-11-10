@@ -451,19 +451,21 @@ final class AppAgentHost: AgentHost {
     return plan(passes: saved.pluginPipeline(named: name).passCount)
   }
 
-  /// The guided pipeline a plug-in proposed and the app holds on RUN. One image per pass: a pass is a tile, which is exactly
-  /// what the budget has to count (the number is known only after the plug-in prepared it).
-  private func heldGuidedPipeline(of pluginID: String) throws(AgentError) -> PipelineContribution {
-    guard let held = generation.contributions?.pipeline, held.pluginID == pluginID, held.pipeline.guided != nil else {
+  /// The pipeline a plug-in proposed and the app holds on RUN: a guided one (one picture made from many passes: a pass is a
+  /// tile, which is exactly what the budget has to count; the number is known only after the plug-in prepared it) or a static
+  /// list of passes (Batch plus: every pass is a RUN, so the batch of the tab multiplies, as for `run`).
+  private func heldPluginPipeline(of pluginID: String) throws(AgentError) -> PipelineContribution {
+    guard let held = generation.contributions?.pipeline, held.pluginID == pluginID, held.pipeline.passCount > 0 else {
       throw .invalid(
-        "The app holds no guided pipeline of this plug-in: it was not accepted (another pipeline is selected, or a question about it is waiting for the user in DT Hub).")
+        "The app holds no pipeline of this plug-in: it was not accepted (another pipeline is selected, or a question about it is waiting for the user in DT Hub).")
     }
     return held
   }
 
   func planPluginPipeline(pluginID: String) throws(AgentError) -> AgentRunPlan {
-    let held = try heldGuidedPipeline(of: pluginID)
+    let held = try heldPluginPipeline(of: pluginID)
     let passes = max(1, held.pipeline.passCount)
+    if held.pipeline.guided == nil { return plan(passes: passes) }
     return AgentRunPlan(images: passes, estimatedCU: nil, summary: "\(passes) tile(s) of \(held.pipeline.name) with \(modelLabel)")
   }
 
@@ -472,8 +474,10 @@ final class AppAgentHost: AgentHost {
     let total = try planPluginPipeline(pluginID: pluginID).images
     let baseline = generation.session.results.first?.id
     guard generation.run() else { throw .unavailable("DT Hub cannot run now.") }
-    // The picture is handed to the Results when the plug-in has composed it, a moment after the last pass: wait for it.
-    watch(total: total, since: baseline, awaitsResult: true)
+    // A guided pipeline's picture is handed to the Results when the plug-in has composed it, a moment after the last pass:
+    // wait for it. A static one makes a result per pass.
+    let guided = generation.contributions?.pipeline?.pipeline.guided != nil
+    watch(total: total, since: baseline, awaitsResult: guided)
   }
 
   func planQueue() -> AgentRunPlan {
