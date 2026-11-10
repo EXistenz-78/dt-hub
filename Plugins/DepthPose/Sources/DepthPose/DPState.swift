@@ -123,6 +123,9 @@ final class DPState: ObservableObject {
     replaceImage(loaded, name: file.lastPathComponent)
   }
 
+  /// A picture that is already open (the tools of an agent load the file themselves to be able to refuse it first).
+  func setImage(_ loaded: CGImage, name: String) { replaceImage(loaded, name: name) }
+
   /// Something was dropped that is not a picture (an address, text).
   func dropHadNoPicture() { status = text(.unreadableImage) }
 
@@ -211,15 +214,17 @@ final class DPState: ObservableObject {
   // MARK: Sending
 
   /// Writes the chosen maps in the picture folder and contributes them to the Moodboard.
-  func send(contribute: @MainActor ([String: Any]) async -> [String: Any]?) async {
+  /// Returns whether the app took the maps (a conflict with the Moodboard still counts: they went in).
+  @discardableResult
+  func send(contribute: @MainActor ([String: Any]) async -> [String: Any]?) async -> Bool {
     let (depth, pose) = chosenMaps
     guard depth != nil || pose != nil else {
       status = text(.noMapsToSend)
-      return
+      return false
     }
     guard let tempFolder else {
       status = text(.noFolder)
-      return
+      return false
     }
     var depthPath: String?
     var posePath: String?
@@ -235,10 +240,12 @@ final class DPState: ObservableObject {
       }
     } catch {
       status = text(.writeFailed)
-      return
+      return false
     }
     let answer = await contribute(["moodboard": DPMessages.moodboard(depthPath: depthPath, posePath: posePath)])
     status = describe(answer)
+    guard let answer, answer["type"] as? String != "error" else { return false }
+    return (answer["problems"] as? [String] ?? []).isEmpty
   }
 
   /// Saves the chosen maps on the Desktop as "Depth NNN.png" and "Pose NNN.png".

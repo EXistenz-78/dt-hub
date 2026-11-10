@@ -29,6 +29,18 @@ How it works: Apple's Vision framework finds the person boxes (when it finds nob
 
 **Without the full-pose model** the pose is the one from Vision's own body pose: body only, no face and no hands, and Vision often cannot tell where a hidden limb is. If the full-pose model on disk stops working, the plug-in falls back to Vision, says so, and the download button comes back.
 
+## For AI agents (MCP)
+
+Since **1.1**. With DT Hub's remote control on (Settings › Remote control) and the plug-in **on for the job** with an edit or in-context model (the same condition as the tab), an agent sees these tools, named `plugin__depthpose__<tool>`. Needs a DT Hub with MCP plug-in tools (1.3.1 or later; the `image` argument of `make_maps` needs the release after 1.3.1).
+
+- `get_status` (read): the picture, the ticked maps, whether the depth model and the full-pose model are downloaded (and so whether the pose is DWPose or Vision's), which maps are made, and the plug-in's last notice.
+- `make_maps` (edit, «Modify the tab» or more): makes the depth map and/or the pose skeleton from a picture and keeps them on the tab. Arguments, all optional: `image` (a `result_id` from `list_results`, or the path of a picture in a folder DT Hub allows; DT Hub checks it, the plug-in never sees a path the app would refuse; leave it out for the picture on the tab), `depth` and `pose` (default: the tab's ticks; naming one changes the ticks, which the project remembers), `send_to_moodboard` (put the maps in the Moodboard at once, named *Depth* and *Pose*, replacing the ones this plug-in sent before).
+- `send_to_moodboard` (edit): the tab's *Send* button, for maps already made.
+
+Nothing here generates: the maps are local Core ML work, so no tool is «generate», none starts a run and none counts against the session budget. An edit model then takes the maps from the Moodboard as references (`<image 1>`, `<image 2>`…); the agent writes the prompt and presses RUN with the app's own tools. Depth alone needs the depth model: if it is not downloaded the tool says so and the user has to press *Download* on the tab (the tools never download a model). With pose and depth both asked and no depth model, the pose is made and the answer says why the depth is missing. A picture with nobody in it gives no skeleton.
+
+Not offered to agents: *Save to Desktop*, the model downloads and their cancel. The names of pictures and the plug-in's notices are shown to the agent as data, not instructions.
+
 ## The models
 
 Two models, each with its **own download button that appears only when the plug-in does not find that model**; the two downloads are independent.

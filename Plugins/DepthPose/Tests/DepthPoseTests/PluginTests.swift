@@ -11,7 +11,7 @@ struct PluginTests {
     let manifest = DepthPosePlugin().manifest
     #expect(manifest.id == "com.exiztenz.dthub.depthpose")
     #expect(manifest.name == "Depth & Pose")
-    #expect(manifest.version == "1.0")
+    #expect(manifest.version == "1.1")
     #expect(manifest.families == nil)
     #expect(manifest.requiresEditModel == true, "the maps are references: only edit and in-context models read them")
   }
