@@ -5,17 +5,16 @@ import SwiftUI
 /// window is in front, the Results window included.
 struct GenerationCommands: View {
   let generation: GenerationController
-  let connection: DrawThingsConnection
   @Environment(\.openWindow) private var openWindow
 
   var body: some View {
     Button {
-      if generation.run(with: connection) { openWindow(id: ResultsWindow.id) }
+      if generation.run() { openWindow(id: ResultsWindow.id) }
     } label: {
       Text("header.run")
     }
     .keyboardShortcut(.return, modifiers: .command)
-    .disabled(!generation.canRun(with: connection))
+    .disabled(!generation.canRun())
 
     Button {
       generation.stop()

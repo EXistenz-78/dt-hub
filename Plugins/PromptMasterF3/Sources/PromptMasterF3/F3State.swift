@@ -9,7 +9,7 @@ final class F3State: ObservableObject {
   let catalog: F3Catalog
   private var store: F3Store
   /// Dove stava la sessione prima dei progetti: quello che adotta il primo progetto.
-  private let legacyStorage: any F3Storage
+  private let legacyStorage: any SessionStorage
   private let shuffler: (F3Catalog, StyleMode) -> Set<String>
   /// L'attesa prima di sincronizzare gli id (iniettabile nei test).
   private let sleep: @Sendable (Duration) async -> Void

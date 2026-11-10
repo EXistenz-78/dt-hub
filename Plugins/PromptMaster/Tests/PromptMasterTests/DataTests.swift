@@ -20,7 +20,7 @@ struct DataTests {
     #expect(database.groups.first { $0.id == "H" }?.restricted == true)
     #expect(database.categories.filter { $0.negative == true }.map(\.id) == ["negative_terms"])
     // Slim: no booru or prose forms.
-    #expect(!EmbeddedData.database.contains("en_tag") && !EmbeddedData.database.contains("en_prose"))
+    #expect(!EmbeddedVocabulary.database.contains("en_tag") && !EmbeddedVocabulary.database.contains("en_prose"))
   }
 
   @Test func theEmbeddedFamilyDataCoversTheThirteenFamilies() {

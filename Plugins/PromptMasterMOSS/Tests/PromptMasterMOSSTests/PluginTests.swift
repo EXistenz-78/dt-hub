@@ -23,7 +23,7 @@ struct PluginTests {
   @Test func senderPutsTheJSONInThePromptAndTheNegativeInItsField() async {
     final class Box: @unchecked Sendable { var fields: [String: Any] = [:] }
     let box = Box()
-    let sender = MossSender(contribute: { payload in box.fields = payload["fields"] as? [String: Any] ?? [:]; return [:] }, italian: false)
+    let sender = PromptSender(contribute: { payload in box.fields = payload["fields"] as? [String: Any] ?? [:]; return [:] }, italian: false)
     let outcome = await sender.send("JSON", negative: "worst quality, bad anatomy")
     #expect(box.fields["prompt"] as? String == "JSON")
     #expect(box.fields["negativePrompt"] as? String == "worst quality, bad anatomy")
@@ -31,11 +31,11 @@ struct PluginTests {
   }
 
   @Test func senderReportsConflictsAndErrors() async {
-    let withConflicts = await MossSender(contribute: { _ in ["conflicts": 2] }, italian: false).send("x", negative: "")
+    let withConflicts = await PromptSender(contribute: { _ in ["conflicts": 2] }, italian: false).send("x", negative: "")
     #expect(withConflicts.status == "Prompt sent. 2 conflict(s) waiting in the app.")
-    let failed = await MossSender(contribute: { _ in ["type": "error", "text": "no"] }, italian: false).send("x", negative: "")
+    let failed = await PromptSender(contribute: { _ in ["type": "error", "text": "no"] }, italian: false).send("x", negative: "")
     #expect(!failed.sent && failed.status == "no")
-    let silent = await MossSender(contribute: { _ in nil }, italian: false).send("x", negative: "")
+    let silent = await PromptSender(contribute: { _ in nil }, italian: false).send("x", negative: "")
     #expect(!silent.sent && silent.status == "The app did not answer.")
   }
 

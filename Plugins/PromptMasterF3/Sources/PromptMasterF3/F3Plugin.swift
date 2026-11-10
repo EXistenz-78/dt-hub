@@ -85,7 +85,7 @@ final class F3Plugin: DTHubPlugin {
     guard state.canSend, let host else { return }
     state.isSending = true
     state.status = ""
-    let sender = F3Sender(contribute: { await host.contribute($0) }, italian: state.italian)
+    let sender = PromptSender(contribute: { await host.contribute($0) }, italian: state.italian)
     let text = state.sendText
     Task {
       let outcome = await sender.send(text)

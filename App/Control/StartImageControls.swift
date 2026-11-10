@@ -49,7 +49,7 @@ struct StartImageControls<Trailing: View>: View {
       .buttonStyle(DSPillButtonStyle())
       .help(String(localized: "control.image.adapt.help"))
       Button {
-        Task { await generation.promptFromImage(in: connection) }
+        Task { await generation.promptFromImage() }
       } label: {
         Label("control.image.describe", systemImage: "text.viewfinder")
       }
@@ -63,7 +63,7 @@ struct StartImageControls<Trailing: View>: View {
   }
 
   private var strengthRow: some View {
-    let edit = generation.isEditModel(in: connection)
+    let edit = generation.isEditModel()
     let margins = control.hasMargins(canvasWidth: generation.parameters.width, canvasHeight: generation.parameters.height)
     let value = control.inputs.effectiveStrength(editModel: edit, hasMargins: margins)
     return VStack(alignment: .leading, spacing: 4) {

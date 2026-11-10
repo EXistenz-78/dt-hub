@@ -102,7 +102,7 @@ final class PFState: ObservableObject {
     if let path, resultImage != nil, !FileManager.default.fileExists(atPath: path) { resultImage = nil }
     if path != lastResultPath || (path != nil && resultImage == nil) {
       lastResultPath = path
-      resultImage = path.flatMap { PFResultLoader.load(URL(fileURLWithPath: $0)) }
+      resultImage = path.flatMap { PSResultLoader.load(URL(fileURLWithPath: $0)) }
     }
   }
 

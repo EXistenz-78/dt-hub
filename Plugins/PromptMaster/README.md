@@ -40,7 +40,8 @@ app sends in the context. The system prompt the model receives is the rules (`co
 The files are read at every request. A JSON file is used if it exists, can be read, has `schema` 1 and a `version` not older than
 the embedded one; a rules file if its header reads and its `version` is not older; otherwise the embedded copy is used (and the status
 line says so). The database and its embedded copy are regenerated with `Scripts/make-prompt-data.py` from Prompt Master 2.0
-(which is never modified): pass its folder with `--source` or the `PM2_SOURCE` variable. An LLM with a system prompt of its own
+(which is never modified): pass its folder with `--source` or the `PM2_SOURCE` variable. Without a source it only rewrites the
+embedded copy, which lives in `Plugins/PromptMasterShared/Vocabulary` and is compiled into the four Prompt Master plug-ins. An LLM with a system prompt of its own
 (Qwen's prompt enhancer) does not receive these files.
 
 ## Projects

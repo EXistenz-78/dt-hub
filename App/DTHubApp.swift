@@ -52,11 +52,11 @@ struct DTHubApp: App {
       fileURL: noProject.appendingPathComponent("control.json"))
     let selection = DefaultsProjectSelection()
     let generation = GenerationController(
-      languageModel: languageModel, control: control, restoringProject: selection.currentName())
+      connection: connection, languageModel: languageModel, control: control, restoringProject: selection.currentName())
     // The queue follows the open project (its folder is set in `onOpen` below).
     let queueStore = QueueStore(folder: nil)
     let queueRunner = QueueRunner(
-      store: queueStore, host: AppQueueHost(generation: generation, connection: connection, store: queueStore))
+      store: queueStore, host: AppQueueHost(generation: generation, store: queueStore))
     generation.queueIsRunning = { queueRunner.isRunning }
     _queueStore = State(initialValue: queueStore)
     _queueRunner = State(initialValue: queueRunner)
@@ -86,7 +86,7 @@ struct DTHubApp: App {
         workFolder: FileManager.default.temporaryDirectory.appendingPathComponent("DTHub-update", isDirectory: true),
         downloads: FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0]))
     // Contributions land on the Generation tab; a plug-in's question goes to the language model.
-    generation.attach(plugins.contributions, connection: connection)
+    generation.attach(plugins.contributions)
     // `defaults write com.exiztenz.DTHub debug.keepGuidedSessionFiles -bool YES` keeps the pictures of the passes of a pipeline a
     // plug-in guides (the tiles of an enlargement) to look at them; `defaults delete …` goes back to the clean-up.
     plugins.keepsSessionFolders = UserDefaults.standard.bool(forKey: "debug.keepGuidedSessionFiles")
@@ -107,7 +107,7 @@ struct DTHubApp: App {
     plugins.loraCatalog = { connection.monitor.catalog.loras }
     plugins.currentPrompts = { (generation.prompt, generation.negativePrompt) }
     plugins.promptGuide = {
-      PromptLibrary.live.family(generation.family(in: connection)).map {
+      PromptLibrary.live.family(generation.family()).map {
         PluginPromptGuide(
           label: $0.label, usesNegative: $0.negative, notes: $0.notes, familyPrompt: $0.body, words: $0.words,
           maxWords: $0.maxWords)
@@ -116,7 +116,7 @@ struct DTHubApp: App {
     plugins.startImageStrength = {
       guard control.inputs.image != nil else { return nil }
       return control.inputs.effectiveStrength(
-        editModel: generation.isEditModel(in: connection),
+        editModel: generation.isEditModel(),
         hasMargins: control.hasMargins(
           canvasWidth: generation.parameters.width, canvasHeight: generation.parameters.height))
     }
@@ -154,12 +154,12 @@ struct DTHubApp: App {
         switch reason {
         case .created(let adoptsLegacy):
           // The first project ever keeps the session of before, as it keeps Control; a later one starts from zero.
-          if !adoptsLegacy { generation.apply(nil, in: connection) }
+          if !adoptsLegacy { generation.apply(nil) }
         case .reopened:
-          generation.apply(ProjectImages.latestJob(in: project), in: connection)
+          generation.apply(ProjectImages.latestJob(in: project))
         case .launch:
           // A session read back at launch (this project's) is more recent than the last image: it stays.
-          if !generation.sessionWasRestored { generation.apply(ProjectImages.latestJob(in: project), in: connection) }
+          if !generation.sessionWasRestored { generation.apply(ProjectImages.latestJob(in: project)) }
         }
         generation.saveSessionNow()
         plugins.projectChanged(project, adoptLegacy: reason == .created(adoptsLegacy: true))
@@ -223,7 +223,7 @@ struct DTHubApp: App {
         Button(String(localized: "onboarding.menu")) { onboarding.reopen() }
       }
       CommandMenu(String(localized: "tab.generation")) {
-        GenerationCommands(generation: generation, connection: connection)
+        GenerationCommands(generation: generation)
       }
       CommandMenu(String(localized: "menu.tabs")) {
         TabCommands(workspace: workspace)
@@ -231,7 +231,7 @@ struct DTHubApp: App {
     }
 
     Window(String(localized: "results.title"), id: ResultsWindow.id) {
-      ResultsView(controller: generation, connection: connection)
+      ResultsView(controller: generation)
     }
     .windowResizability(.contentMinSize)
 

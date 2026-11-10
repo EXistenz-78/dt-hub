@@ -85,6 +85,9 @@ Each plug-in has a `Scripts/build.sh` that makes the bundle. For example, for Pr
 
     Plugins/PromptMasterI4/Scripts/build.sh "$TMPDIR/pm-i4"
 
+All of them call the one `Plugins/build-plugin.sh NAME OUT_FOLDER`, which reads the identifier and the version from the plug-in's
+`DTHubManifest(...)`: a new version is written there, once.
+
 The bundle is `$TMPDIR/pm-i4/PromptMasterI4.dthubplugin`: add it from Preferences as above. As an alternative to the Add… button, put it
 into `~/Library/Application Support/DT Hub/Plug-ins/` with the bundle identifier as its name, replacing any older version (remove it first:
 `cp -R` onto an existing folder would copy *inside* it), and restart DT Hub:
@@ -93,6 +96,20 @@ into `~/Library/Application Support/DT Hub/Plug-ins/` with the bundle identifier
     rm -rf "$D" && cp -R "$TMPDIR/pm-i4/PromptMasterI4.dthubplugin" "$D"
 
 Run a plug-in's tests from its folder: `cd Plugins/PromptMasterI4 && swift test`.
+
+## Code shared by several plug-ins
+
+Every bundle is complete on its own: nobody has to install one plug-in to use another. Code that several plug-ins need is kept
+once in the repository and compiled into each of them, through a link in the plug-in's sources:
+
+| Folder | Compiled into | What it holds |
+| --- | --- | --- |
+| `PromptMasterShared/Vocabulary` | the four Prompt Master plug-ins (`Shared`) | the vocabulary (types and the embedded `prompt-database.json`) and how a data file is loaded |
+| `PromptMasterShared/Structured` | Prompt Master F3, I4 and MOSS (`SharedStructured`) | the session store, the «Send» button, the small views of the cards |
+| `PromptMasterShared/Palette` | Prompt Master I4 and MOSS (`SharedPalette`) | the colors of a palette and their row of swatches |
+| `PanoramaShared/Sources` | Panorama 360 and Pano 360 F3 (`Shared`) | the projection, the renderers (CPU and Metal), a sticker, dropping and reading pictures |
+
+A change there reaches every plug-in that links the folder at its next build: run the tests of all of them.
 
 ## Writing your own
 

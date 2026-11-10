@@ -9,7 +9,6 @@ import UniformTypeIdentifiers
 /// text); Stile takes the style from the picture (the subject comes from the text).
 struct PromptImageDropZones: View {
   let controller: GenerationController
-  let connection: DrawThingsConnection
   /// A drop that held no picture.
   @Binding var notAnImage: Bool
 
@@ -17,11 +16,11 @@ struct PromptImageDropZones: View {
     HStack(spacing: DS.controlGap) {
       PromptImageDropZone(
         title: String(localized: "prompt.drop.subject"), help: String(localized: "prompt.drop.subject.help"),
-        systemImage: "person.crop.rectangle", focus: .subject, controller: controller, connection: connection,
+        systemImage: "person.crop.rectangle", focus: .subject, controller: controller,
         notAnImage: $notAnImage)
       PromptImageDropZone(
         title: String(localized: "prompt.drop.style"), help: String(localized: "prompt.drop.style.help"),
-        systemImage: "paintpalette", focus: .style, controller: controller, connection: connection,
+        systemImage: "paintpalette", focus: .style, controller: controller,
         notAnImage: $notAnImage)
     }
   }
@@ -33,7 +32,6 @@ private struct PromptImageDropZone: View {
   let systemImage: String
   let focus: DescribeFocus
   let controller: GenerationController
-  let connection: DrawThingsConnection
   @Binding var notAnImage: Bool
   @State private var isTargeted = false
   @State private var isRunning = false
@@ -73,7 +71,7 @@ private struct PromptImageDropZone: View {
       notAnImage = false
       Task {
         isRunning = true
-        await controller.promptFromImage(at: picture, focus: focus, in: connection)
+        await controller.promptFromImage(at: picture, focus: focus)
         isRunning = false
       }
       return true

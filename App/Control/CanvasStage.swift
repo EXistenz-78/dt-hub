@@ -261,7 +261,7 @@ struct CanvasStage: View {
         .help(String(localized: "control.image.remove"))
       }
       .overlay(alignment: .bottomTrailing) {
-        if let number = control.startImageNumber, FamilyTraits.of(generation.family(in: connection)).usesMoodboard {
+        if let number = control.startImageNumber, FamilyTraits.of(generation.family()).usesMoodboard {
           ImageNumberBadge(number: number).padding(8)
         }
       }

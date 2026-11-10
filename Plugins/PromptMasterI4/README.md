@@ -44,8 +44,9 @@ elements (objects and lettering, with their boxes and colours).
 A file is used if it exists, can be read, has `schema` 1, no repeated id and a `version` not older than the embedded one;
 otherwise the embedded copy is used (and if the file cannot be read, has an unknown layout or uses the same id twice, the status
 line says so; an older file is ignored without a word). The plug-in never writes the two JSON files; it writes `master-prompt.md` at launch if it is missing or older (keeping the old one as `.md.bak`) and reads it, and `custom/`, at every request. The embedded copies and the files
-in `Data/` are regenerated with `Scripts/make-i4-data.py` (the database is copied from `Plugins/PromptMaster/Data/`, which is not
-modified; a test checks that they are equal).
+in `Data/` are regenerated with `Scripts/make-i4-data.py`. The database is not copied here: it is the one in
+`Plugins/PromptMaster/Data/`, embedded once for the four Prompt Master plug-ins (`Plugins/PromptMasterShared`; a test checks that
+they are equal).
 
 ## Projects
 

@@ -28,8 +28,8 @@ struct PFMoodboardCard: View {
     }
     .dsPanel()
     .overlay(RoundedRectangle(cornerRadius: DS.boxRadius).stroke(DS.accent, lineWidth: dropTargeted ? 2 : 0))
-    .onDrop(of: PFDrop.types, isTargeted: $dropTargeted) { providers in
-      PFDrop.collect(providers, tempFolder: state.exchangeFolder) { state.addImages($0) }
+    .onDrop(of: PSDrop.types, isTargeted: $dropTargeted) { providers in
+      PSDrop.collect(providers, tempFolder: state.exchangeFolder) { state.addImages($0) }
       return true
     }
     .fileImporter(isPresented: $choosingFiles, allowedContentTypes: [.image], allowsMultipleSelection: true) { result in

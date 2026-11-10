@@ -1,4 +1,3 @@
-// Copied from Plugins/Panorama360 (2026-10-28): Sticker (the projection's basis is made from it).
 import Foundation
 
 /// One picture placed on the panorama. The angles are in degrees; `file` is relative to the project folder.

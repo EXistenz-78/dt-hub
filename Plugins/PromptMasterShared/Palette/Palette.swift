@@ -2,7 +2,6 @@ import Foundation
 
 /// The colors of a palette are `#RRGGBB`, in capitals.
 enum Palette {
-  static let styleLimit = 5
   static let elementLimit = 5
 
   /// `#RRGGBB` from "#abc123", "abc123" or " #ABC123 "; nil for anything else.

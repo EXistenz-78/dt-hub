@@ -46,6 +46,8 @@ final class GenerationController {
   private(set) var lockedRatio: Double?
   /// The RUN. Its pictures go to the open project's folder and its strip is the project's (`ProjectManager`).
   let session: GenerationSession
+  /// The link to Draw Things: the chosen model, the catalog and the backend every method here reads.
+  @ObservationIgnored let connection: DrawThingsConnection
   let cards = CardExpansionStore(fileURL: CardExpansionStore.defaultFileURL)
   private(set) var outputFolder: URL
   /// The Explore gallery of the Results window: every project's pictures, the extra folders and the stars.
@@ -74,8 +76,6 @@ final class GenerationController {
   @ObservationIgnored var guidedChannel: GuidedPluginChannel?
   /// What the plug-ins contributed (teal fields, conflicts, the pipeline); set by `attach`.
   @ObservationIgnored private(set) var contributions: ContributionStore?
-  /// The connection a plug-in's `contribute.preset` loads the preset through (its model goes to the header's selection).
-  @ObservationIgnored private var presetConnection: DrawThingsConnection?
   /// The presets of the held pipeline, for the CU meter (see `cuPasses`).
   @ObservationIgnored private var cuPresetCache: (pipeline: PluginPipeline, names: [String], presets: [String: Preset])?
 
@@ -98,9 +98,11 @@ final class GenerationController {
   /// Restores the last prompt and parameters (spec §11) when the session was saved in `restoringProject`, the project
   /// that opens at launch (nil: no project yet, as before projects existed).
   init(
-    languageModel: LanguageModelManager, control: ControlStore, restoringProject: String? = nil,
+    connection: DrawThingsConnection, languageModel: LanguageModelManager, control: ControlStore,
+    restoringProject: String? = nil,
     sessionStore: SessionStore = SessionStore(fileURL: SessionStore.defaultFileURL)
   ) {
+    self.connection = connection
     self.languageModel = languageModel
     self.control = control
     session = GenerationSession(store: ProjectImageStore(box: projectFolderBox), history: nil)
@@ -132,95 +134,49 @@ final class GenerationController {
     }
     pendingSave?.cancel()
     pendingSave = nil
-    Task { await refreshRecommended() }
+    Task { await defaults.refresh() }
   }
 
-  /// The recommended values per model, in layers: the file the app ships (`RecommendedSettings.json`), with what the
-  /// list Draw Things publishes knows of newer models once `refreshRecommended()` has it, and on top the user's own
-  /// defaults (`recommended-overrides.json`), which always win.
-  @ObservationIgnored private var baseRecommended: RecommendedSettings = {
-    guard let url = Bundle.main.url(forResource: "RecommendedSettings", withExtension: "json"),
-      let data = try? Data(contentsOf: url)
-    else { return .empty }
-    return RecommendedSettings(data: data)
-  }()
-
-  @ObservationIgnored private let overridesStore = RecommendedOverridesStore(fileURL: RecommendedOverridesStore.defaultFileURL)
-  /// The defaults the user saved per model; read from disk at launch.
-  private(set) var savedDefaults: RecommendedSettings = RecommendedOverridesStore(
-    fileURL: RecommendedOverridesStore.defaultFileURL
-  ).load()
+  /// The recommended values per model and the defaults the user saved (`ModelDefaults`).
+  let defaults = ModelDefaults()
   /// A line under the Sampling card about the last save, reset or model change (a missing LoRA); nil when none.
-  var defaultsNotice: String?
-
-  var recommended: RecommendedSettings { baseRecommended.overriding(with: savedDefaults) }
-
-  /// The list of official configurations Draw Things publishes, downloaded once per launch and kept on disk.
-  private static let liveConfigurations = CachedDownload(
-    address: URL(string: "https://models.drawthings.ai/configs.json")!, cacheURL: CachedDownload.supportFile("configs-list.json"),
-    isValid: { RecommendedSettings(configurations: $0) != .empty })
-
-  /// Adds to the table the models released after this app was built (at launch; offline, the copy saved last time).
-  func refreshRecommended() async {
-    guard let data = await Self.liveConfigurations.data() else { return }
-    baseRecommended = baseRecommended.merging(RecommendedSettings(configurations: data))
-  }
+  var defaultsNotice: String? { defaults.notice }
+  var recommended: RecommendedSettings { defaults.recommended }
 
   /// The model chosen in the header: selected, and the tab takes its recommended steps, guidance, sampler and
   /// shift when the model changes (a model the table does not know leaves the values as they are).
-  func chooseModel(_ file: String, in connection: DrawThingsConnection) {
-    defaultsNotice = nil
+  func chooseModel(_ file: String) {
+    defaults.notice = nil
     if let values = connection.selection.choose(
       file, applyingTo: parameters, from: recommended, in: connection.monitor.catalog)
     {
       parameters = values
-      reportMissingLoRAs(forFile: file, in: connection)
-    }
-  }
-
-  /// The LoRAs of the model's saved default that the server does not have: they are left out, and the line says which.
-  private func reportMissingLoRAs(forFile file: String, in connection: DrawThingsConnection) {
-    let catalog = connection.monitor.catalog
-    guard catalog.fileCount > 0,
-      let values = recommended.values(forFile: file, family: catalog.model(forFile: file)?.family)
-    else { return }
-    let missing = values.missingLoRAs(installed: Set(catalog.loras.map(\.file)))
-    if !missing.isEmpty {
-      defaultsNotice = missing.map { String(format: String(localized: "defaults.loraMissing"), $0) }.joined(separator: "\n")
+      defaults.reportMissingLoRAs(forFile: file, in: connection.monitor.catalog)
     }
   }
 
   /// Whether the buttons "Save as default" and "Reset default" apply: a model is selected and it is not a video model
   /// (their defaults are `VideoDefaults`).
-  func canEditDefaults(in connection: DrawThingsConnection) -> Bool {
-    connection.selection.selectedFile != nil && !VideoFamilies.isEnabled(family(in: connection))
+  func canEditDefaults() -> Bool {
+    connection.selection.selectedFile != nil && !VideoFamilies.isEnabled(family())
   }
 
   /// True when the user saved a default for the selected model.
-  func hasSavedDefault(in connection: DrawThingsConnection) -> Bool {
-    connection.selection.selectedFile.map(savedDefaults.hasModel(forFile:)) ?? false
+  func hasSavedDefault() -> Bool {
+    connection.selection.selectedFile.map(defaults.hasSaved(forFile:)) ?? false
   }
 
   /// Keeps the tab's steps, guidance, sampler, shift and LoRAs as the selected model's default.
-  func saveAsDefault(in connection: DrawThingsConnection) {
-    guard canEditDefaults(in: connection), let file = connection.selection.selectedFile else { return }
-    savedDefaults = savedDefaults.setting(RecommendedValues(capturing: parameters), forFile: file)
-    overridesStore.save(savedDefaults)
-    defaultsNotice = String(localized: "defaults.saved")
+  func saveAsDefault() {
+    guard canEditDefaults(), let file = connection.selection.selectedFile else { return }
+    defaults.save(parameters, forFile: file)
   }
 
   /// Forgets the selected model's saved default, and the tab takes the values that remain (the app's, the list's or its
   /// family's), if there are any.
-  func resetDefault(in connection: DrawThingsConnection) {
-    guard canEditDefaults(in: connection), let file = connection.selection.selectedFile else { return }
-    savedDefaults = savedDefaults.removingModel(forFile: file)
-    overridesStore.save(savedDefaults)
-    let catalog = connection.monitor.catalog
-    if let values = recommended.values(forFile: file, family: catalog.model(forFile: file)?.family) {
-      let installed: Set<String>? = catalog.fileCount == 0 ? nil : Set(catalog.loras.map(\.file))
-      parameters = parameters.applying(values, installedLoRAs: installed)
-    }
-    defaultsNotice = String(localized: "defaults.resetDone")
+  func resetDefault() {
+    guard canEditDefaults(), let file = connection.selection.selectedFile else { return }
+    parameters = defaults.reset(forFile: file, in: connection.monitor.catalog, parameters: parameters)
   }
 
   /// The saved presets (spec §6).
@@ -248,18 +204,18 @@ final class GenerationController {
   @ObservationIgnored let codec: any ConfigurationCodec = DrawThingsConfigurationCodec()
 
   /// The model and parameters on the tab, as the JSON editor sees them.
-  func configurationState(in connection: DrawThingsConnection) -> ConfigurationState {
+  func configurationState() -> ConfigurationState {
     ConfigurationState(model: connection.selection.selectedFile ?? "", parameters: parameters)
   }
 
-  func exportJSON(in connection: DrawThingsConnection) -> String {
-    codec.exportJSON(configurationState(in: connection))
+  func exportJSON() -> String {
+    codec.exportJSON(configurationState())
   }
 
   /// Applies a complete or partial Draw Things JSON to the tab: parameters, extra settings
   /// and, when the text names one, the model. Throws the reason when the text is not valid.
-  func applyJSON(_ json: String, with connection: DrawThingsConnection) throws(ConfigurationError) {
-    let result = try codec.apply(json: json, to: configurationState(in: connection))
+  func applyJSON(_ json: String) throws(ConfigurationError) {
+    let result = try codec.apply(json: json, to: configurationState())
     parameters = result.parameters.fillingTriggers(from: connection.monitor.catalog)
     if lockRatio { lockedRatio = currentRatio }
     if !result.model.isEmpty, result.model != connection.selection.selectedFile {
@@ -270,7 +226,7 @@ final class GenerationController {
   /// Saves the tab as a preset (parameters but not the size, model, prompt and negative prompt). Whoever does
   /// not want the prompt in it empties the field first. Throws `invalidName` for a name the file system does
   /// not take (empty, "/", ":").
-  func savePreset(named name: String, with connection: DrawThingsConnection) throws(PresetError) {
+  func savePreset(named name: String) throws(PresetError) {
     try presets.save(
       Preset(
         name: name, model: connection.selection.selectedFile ?? "", prompt: prompt, negativePrompt: negativePrompt,
@@ -280,18 +236,18 @@ final class GenerationController {
   }
 
   /// Replaces the file of the preset on the tab (the last one loaded or saved) with the tab as it is now. No-op without one.
-  func updateActivePreset(with connection: DrawThingsConnection) throws(PresetError) {
+  func updateActivePreset() throws(PresetError) {
     guard let name = presets.activeName else { return }
-    try savePreset(named: name, with: connection)
+    try savePreset(named: name)
   }
 
   /// Puts a preset on the tab: its parameters (the canvas size stays), its prompt and negative prompt when it
   /// has them, its model when it names one.
   /// The preset's file is read now; nil when it was loaded, the reason when it was not.
-  func loadPreset(named name: String, with connection: DrawThingsConnection) -> PresetError? {
+  func loadPreset(named name: String) -> PresetError? {
     do {
       let preset = try presets.load(named: name)
-      load(preset, with: connection)
+      load(preset)
       presets.markLoaded(preset.name)
       return nil
     } catch {
@@ -299,7 +255,7 @@ final class GenerationController {
     }
   }
 
-  private func load(_ preset: Preset, with connection: DrawThingsConnection) {
+  private func load(_ preset: Preset) {
     let load = PresetLoad.of(preset, current: fields, catalog: connection.monitor.catalog)
     parameters = load.parameters
     prompt = load.prompt
@@ -317,18 +273,18 @@ final class GenerationController {
   }
 
   /// The chosen model as the server describes it; nil while the catalog is not loaded.
-  func selectedModel(in connection: DrawThingsConnection) -> CatalogModel? {
+  func selectedModel() -> CatalogModel? {
     connection.selection.selectedModel(in: connection.monitor.catalog)
   }
 
   /// The requests the next RUN would make, for the CU meter: one, or one per pass of the held pipeline. It runs on
   /// every update of the header, so it reads no file but the presets of a newly held pipeline (kept until the
   /// pipeline or the list of presets changes; the pipeline is the held one, which the app keeps in step with the file).
-  func cuPasses(in connection: DrawThingsConnection) -> [CUPass] {
+  func cuPasses() -> [CUPass] {
     let hasMargins = control.hasMargins(canvasWidth: parameters.width, canvasHeight: parameters.height)
     let summary = CUControlSummary(
       hasImage: control.inputs.image != nil, moodboardCount: control.moodboardURLs.count,
-      strength: control.inputs.effectiveStrength(editModel: isEditModel(in: connection), hasMargins: hasMargins))
+      strength: control.inputs.effectiveStrength(editModel: isEditModel(), hasMargins: hasMargins))
     var pipeline: PluginPipeline?
     var loaded: [String: Preset] = [:]
     if let held = contributions?.pipeline {
@@ -343,7 +299,7 @@ final class GenerationController {
       }
     }
     return CUPlanner.passes(
-      fields: fields, model: selectedModel(in: connection), control: summary, pipeline: pipeline, presets: loaded,
+      fields: fields, model: selectedModel(), control: summary, pipeline: pipeline, presets: loaded,
       catalog: connection.monitor.catalog, headerModel: connection.selection.selectedFile,
       strengthOfPass: { [control] step, replacesStart, editModel, width, height in
         // As `runPipeline` sends it.
@@ -354,34 +310,34 @@ final class GenerationController {
   }
 
   /// The family of the chosen model, nil when unknown or while the catalog is not loaded.
-  func family(in connection: DrawThingsConnection) -> String? {
-    selectedModel(in: connection)?.family
+  func family() -> String? {
+    selectedModel()?.family
   }
 
   /// Which base fields the chosen model's family uses.
-  func traits(in connection: DrawThingsConnection) -> FamilyTraits {
-    FamilyTraits.of(family(in: connection))
+  func traits() -> FamilyTraits {
+    FamilyTraits.of(family())
   }
 
   /// Enhance Prompt: the language model rewrites the prompt (and the negative prompt, where the family uses one).
-  func enhancePrompt(in connection: DrawThingsConnection) async {
+  func enhancePrompt() async {
     let current = PromptPair(prompt: prompt, negative: negativePrompt)
     // The start image and the Moodboard pictures that are on (only for a family that reads the Moodboard) go along,
     // so the LLM can see what "image 1", "image 2"… are.
     let images = EnhanceImages(
       start: control.startImageURL,
-      references: traits(in: connection).usesMoodboard ? control.moodboardURLs : [])
-    if let result = await assistant.enhance(current, family: family(in: connection), images: images) {
+      references: traits().usesMoodboard ? control.moodboardURLs : [])
+    if let result = await assistant.enhance(current, family: family(), images: images) {
       prompt = result.prompt
       negativePrompt = result.negative
     }
   }
 
   /// Generate Prompt: the language model describes the start image of the Control tab as a prompt.
-  func promptFromImage(in connection: DrawThingsConnection) async {
+  func promptFromImage() async {
     let url = control.inputs.image.flatMap { control.copyURL(of: $0) }
     let current = PromptPair(prompt: prompt, negative: negativePrompt)
-    if let result = await assistant.describe(imageAt: url, current: current, family: family(in: connection)) {
+    if let result = await assistant.describe(imageAt: url, current: current, family: family()) {
       prompt = result.prompt
       negativePrompt = result.negative
     }
@@ -390,10 +346,10 @@ final class GenerationController {
   /// «Soggetto» / «Stile» of the Prompt card: the picture dropped there (from the gallery or from Finder) goes to the language
   /// model with the usual Generate Prompt request, the text of the prompt field and the sentence for the focus. The picture is
   /// not loaded anywhere else.
-  func promptFromImage(at url: URL, focus: DescribeFocus, in connection: DrawThingsConnection) async {
+  func promptFromImage(at url: URL, focus: DescribeFocus) async {
     let current = PromptPair(prompt: prompt, negative: negativePrompt)
     if let result = await assistant.describe(
-      imageAt: url, current: current, family: family(in: connection), focus: focus)
+      imageAt: url, current: current, family: family(), focus: focus)
     {
       prompt = result.prompt
       negativePrompt = result.negative
@@ -432,7 +388,7 @@ final class GenerationController {
   /// Puts a project's last image on the tab: its prompt, negative prompt and parameters and, when the catalog has it, its
   /// model (without the recommended values, which would overwrite the parameters). With nil (a new project, or one
   /// without images) the tab starts from the defaults and the model stays as it is.
-  func apply(_ job: GenerationJob?, in connection: DrawThingsConnection) {
+  func apply(_ job: GenerationJob?) {
     lockRatio = false
     guard let job else {
       prompt = ""
@@ -449,7 +405,7 @@ final class GenerationController {
   }
 
   /// True when the server, the model and the session allow a RUN.
-  func canRun(with connection: DrawThingsConnection) -> Bool {
+  func canRun() -> Bool {
     !session.isRunning && !isPreparing && projectFolder != nil && connection.monitor.backend != nil
       && connection.runBlocker == nil
   }
@@ -458,8 +414,8 @@ final class GenerationController {
   /// drawn for the first batch is shown in the Seed field. When a plug-in proposed a pipeline, the RUN is
   /// its passes, one after the other.
   @discardableResult
-  func run(with connection: DrawThingsConnection) -> Bool {
-    guard canRun(with: connection) else { return false }
+  func run() -> Bool {
+    guard canRun() else { return false }
     // A pipeline reads the presets it names now, once; if one is missing or is not a preset, nothing starts.
     var passes: PluginPipeline?
     var loadedPresets: [String: Preset] = [:]
@@ -501,19 +457,19 @@ final class GenerationController {
       await connection.ensureServerForRun()
       if let passes {
         if passes.guided != nil, let guidedOwner {
-          _ = await runGuidedPipeline(passes, pluginID: guidedOwner, presets: loadedPresets, with: connection)
+          _ = await runGuidedPipeline(passes, pluginID: guidedOwner, presets: loadedPresets)
           return
         }
-        let made = await runPipeline(passes, presets: loadedPresets, with: connection)
+        let made = await runPipeline(passes, presets: loadedPresets)
         if incremental, let made, !Task.isCancelled { await useAsStart(made) }
         return
       }
-      let inputs = await renderInputs(in: connection, parameters: parameters, model: selectedModel(in: connection))
+      let inputs = await renderInputs(parameters: parameters, model: selectedModel())
       isPreparing = false
       preparation = nil
       guard !Task.isCancelled, let inputs else { return }
       let before = session.results.first?.id
-      start(with: connection, inputs: inputs)
+      start(inputs: inputs)
       guard incremental else { return }
       await session.waitUntilFinished()
       if let made = IncrementalRun.output(
@@ -531,7 +487,7 @@ final class GenerationController {
   /// pass ends the pipeline; the pictures already made stay in the strip. Returns the picture of the last pass when
   /// every pass finished (nil when the pipeline ended early or was stopped).
   private func runPipeline(
-    _ pipeline: PluginPipeline, presets loaded: [String: Preset], with connection: DrawThingsConnection
+    _ pipeline: PluginPipeline, presets loaded: [String: Preset]
   ) async -> GeneratedImage? {
     defer {
       isPreparing = false
@@ -557,7 +513,7 @@ final class GenerationController {
       pipelinePass = (index + 1, passes.count)
       guard
         let run = await runPass(
-          pass, presets: loaded, previous: previous, previousSize: previousSize, intermediate: nil, with: connection),
+          pass, presets: loaded, previous: previous, previousSize: previousSize, intermediate: nil),
         let made = run.made
       else { return nil }
       previousSize = run.size
@@ -580,8 +536,7 @@ final class GenerationController {
   /// could not run or was stopped (the phase of the session says which). With `intermediate` the pass is one the plug-in
   /// handed over (own image, mask and size, and the picture goes to that file, not to the strip).
   private func runPass(
-    _ pass: PipelineStep, presets loaded: [String: Preset], previous: CGImage?, previousSize: Size?, intermediate: URL?,
-    with connection: DrawThingsConnection
+    _ pass: PipelineStep, presets loaded: [String: Preset], previous: CGImage?, previousSize: Size?, intermediate: URL?
   ) async -> PassRun? {
     // A pass the plug-in handed over starts from the tab without its LoRAs and with one picture per run.
     let tab = intermediate != nil ? GuidedPassInputs.baseFields(from: fields, size: pass.size) : fields
@@ -616,7 +571,7 @@ final class GenerationController {
       }
       replacesStart = true
     } else {
-      guard let base = await renderInputs(in: connection, parameters: used.parameters, model: passModel) else { return nil }
+      guard let base = await renderInputs(parameters: used.parameters, model: passModel) else { return nil }
       inputs = PipelineInputs.inputs(
         for: pass, base: base, previousOutput: previous, canvasWidth: used.parameters.width,
         canvasHeight: used.parameters.height, usesMoodboard: FamilyTraits.of(family).usesMoodboard)
@@ -663,7 +618,7 @@ final class GenerationController {
   /// (`session.next`), the app runs it, and the picture goes back to the plug-in as a file. The pictures of the passes are
   /// not results; the plug-in makes the result.
   private func runGuidedPipeline(
-    _ pipeline: PluginPipeline, pluginID: String, presets loaded: [String: Preset], with connection: DrawThingsConnection
+    _ pipeline: PluginPipeline, pluginID: String, presets loaded: [String: Preset]
   ) async -> GeneratedImage? {
     defer {
       isPreparing = false
@@ -707,7 +662,7 @@ final class GenerationController {
         let target = folder.appendingPathComponent("pass-\(index).png")
         guard
           let run = await runPass(
-            step, presets: known, previous: nil, previousSize: nil, intermediate: target, with: connection)
+            step, presets: known, previous: nil, previousSize: nil, intermediate: target)
         else {
           if case .failed(let error) = session.phase { return .failed(String(describing: error)) }
           return .stopped
@@ -748,19 +703,19 @@ final class GenerationController {
 
   /// The generation itself, once the memory is ready. The job is composed now, not at the
   /// click: a parked server has no catalog until it is back.
-  private func start(with connection: DrawThingsConnection, inputs: GenerationInputs) {
+  private func start(inputs: GenerationInputs) {
     var inputs = inputs
-    if VideoFamilies.isEnabled(family(in: connection)) { inputs.mask = nil; inputs.enableInpainting = false }
+    if VideoFamilies.isEnabled(family()) { inputs.mask = nil; inputs.enableInpainting = false }
     guard !session.isRunning, let backend = connection.monitor.backend,
       let model = connection.selection.selectedFile,
       RunAvailability.blocker(
         connection: connection.monitor.status, selectedModel: model, catalog: connection.monitor.catalog) == nil
     else { return }
     let batches = JobComposer.batches(
-      prompt: prompt, negativePrompt: negativePrompt, model: model, family: family(in: connection),
+      prompt: prompt, negativePrompt: negativePrompt, model: model, family: family(),
       parameters: parameters, catalog: connection.monitor.catalog,
       imageStrength: inputs.image == nil ? nil : control.inputs.effectiveStrength(
-        editModel: JobComposer.usesFullStrength(editModel: isEditModel(in: connection), family: family(in: connection)),
+        editModel: JobComposer.usesFullStrength(editModel: isEditModel(), family: family()),
         hasMargins: control.hasMargins(canvasWidth: parameters.width, canvasHeight: parameters.height)),
       moodboardCount: inputs.hints.count,
       maskSettings: inputs.mask == nil ? nil : control.inputs.maskSettings)
@@ -772,7 +727,7 @@ final class GenerationController {
   /// is shown as the RUN's failure, and nothing starts.
   /// `model` is the model the job runs with: the header's, or the one of a pipeline's pass.
   private func renderInputs(
-    in connection: DrawThingsConnection, parameters: GenerationParameters, model: CatalogModel?
+    parameters: GenerationParameters, model: CatalogModel?
   ) async -> GenerationInputs? {
     // The Moodboard goes only to a model that uses it (the old families would need an adapter).
     let pending = control.pendingInputs(
@@ -796,16 +751,15 @@ final class GenerationController {
   }
 
   /// The plug-ins' contributions land here; the fields leaving their value are told to the store.
-  func attach(_ store: ContributionStore, connection: DrawThingsConnection) {
+  func attach(_ store: ContributionStore) {
     contributions = store
-    presetConnection = connection
     store.target = self
     store.pipelineLocked = isPipelineRunning
   }
 
   /// True when the chosen model is an Edit model (the canvas image is the one to modify).
-  func isEditModel(in connection: DrawThingsConnection) -> Bool {
-    selectedModel(in: connection)?.capabilities.isEditModel ?? false
+  func isEditModel() -> Bool {
+    selectedModel()?.capabilities.isEditModel ?? false
   }
 
   /// "Adapt the dimensions": the canvas takes the start image's ratio, with a similar area.
@@ -844,7 +798,7 @@ final class GenerationController {
   /// batch that made the image (its seed, batch count 1, the LoRAs sent). A ratio lock
   /// follows the resumed size.
   func resume(
-    _ result: GeneratedImage, with connection: DrawThingsConnection, prompts: Bool = true, parameters recallParameters: Bool = true
+    _ result: GeneratedImage, prompts: Bool = true, parameters recallParameters: Bool = true
   ) {
     if prompts {
       prompt = result.job.prompt
@@ -886,30 +840,6 @@ final class GenerationController {
   }
 }
 
-/// The folder of the open project, shared with the image store (which saves away from the main actor).
-nonisolated final class ProjectFolderBox: @unchecked Sendable {
-  private let lock = NSLock()
-  private var value: URL?
-
-  var folder: URL? {
-    get { lock.withLock { value } }
-    set { lock.withLock { value = newValue } }
-  }
-}
-
-/// Saves into the open project's folder, as it is at the moment of saving; without a project nothing is saved.
-struct ProjectImageStore: ImageStore {
-  let box: ProjectFolderBox
-
-  func save(_ image: CGImage, job: GenerationJob, index: Int, date: Date, elapsed: TimeInterval?) throws -> URL {
-    guard let folder = box.folder else { throw ImageStoreError.cannotWrite("no project") }
-    // The layout of Draw Things, so the tools made for its pictures read DT Hub's too.
-    return try PNGImageStore(
-      folder: folder, metadata: DrawThingsMetadata.comment, description: DrawThingsMetadata.description)
-      .save(image, job: job, index: index, date: date, elapsed: elapsed)
-  }
-}
-
 // MARK: Plug-in contributions
 
 extension GenerationController: ContributionTarget {
@@ -931,8 +861,7 @@ extension GenerationController: ContributionTarget {
 
   /// A plug-in's `contribute.preset`: the saved preset loaded as the Preset menu loads it.
   func applyPreset(named name: String) -> String? {
-    guard let connection = presetConnection else { return "the app is not ready." }
-    switch loadPreset(named: name, with: connection) {
+    switch loadPreset(named: name) {
     case nil: return nil
     case .notFound?: return "there is no preset named “\(name)”."
     case .unreadable?: return "the file of the preset “\(name)” cannot be read."
@@ -985,7 +914,7 @@ extension GenerationController: ContributionTarget {
   /// strip, filed under the model of the pipeline that made it, with `description` where the prompt would be. Only while
   /// a pipeline the plug-in guides is running.
   func addResult(_ image: PluginImageRef, description: String) throws {
-    guard let model = ResultFiling.model(guided: guidedModelFile, header: presetConnection?.selection.selectedFile) else {
+    guard let model = ResultFiling.model(guided: guidedModelFile, header: connection.selection.selectedFile) else {
       throw ControlError.unreadable(image.name)
     }
     let url = URL(fileURLWithPath: image.path)
@@ -1020,13 +949,4 @@ extension GenerationController: ContributionTarget {
       throw ControlError.unreadable(image.name)
     }
   }
-}
-
-/// What the controller needs from the plug-in registry to run a pipeline the plug-in guides.
-struct GuidedPluginChannel {
-  /// A message to the plug-in and its answer (nil: none within the time).
-  var request: @MainActor (Data, String, Duration) async -> Data?
-  /// A new folder for the pictures of one session.
-  var sessionFolder: @MainActor () -> URL
-  var removeSessionFolder: @MainActor (URL) -> Void
 }

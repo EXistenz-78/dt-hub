@@ -51,7 +51,7 @@ struct ControlTabView: View {
               openWindow(id: CanvasWindow.id)
             })
         }
-        MoodboardCard(generation: generation, connection: connection) { message = $0 }
+        MoodboardCard(generation: generation) { message = $0 }
       }
       .padding(.bottom, DS.groupGap)
     }

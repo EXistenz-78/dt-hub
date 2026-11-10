@@ -36,7 +36,7 @@ extension PFState {
     guard var panorama = resultImage else { throw PFCutoutError.noResult }
     // The viewer's picture is reduced to 4096 px; a wider panorama is read again at its own size, so that the cutout is taken at its real resolution.
     if let path = lastResultPath, let real = PFCutout.pixelSize(of: URL(fileURLWithPath: path)), real.width > panorama.width,
-      let full = PFResultLoader.load(URL(fileURLWithPath: path), maxSide: nil)
+      let full = PSResultLoader.load(URL(fileURLWithPath: path), maxSide: nil)
     {
       panorama = full
     }
@@ -95,8 +95,8 @@ extension PFState {
   func putBackInPanorama(contribute: PFContribute) async {
     error = nil
     guard putBackInPanoramaReason == nil, let memory = doc.lastCutout, let patchURL = PFCutout.patch(memory: memory, lastResult: lastResultURL),
-      let backgroundPath = memory.resultPathAtExtraction, let background = PFResultLoader.load(URL(fileURLWithPath: backgroundPath), maxSide: nil),
-      let patch = PFResultLoader.load(patchURL)
+      let backgroundPath = memory.resultPathAtExtraction, let background = PSResultLoader.load(URL(fileURLWithPath: backgroundPath), maxSide: nil),
+      let patch = PSResultLoader.load(patchURL)
     else {
       error = text(.putBackOff)
       return

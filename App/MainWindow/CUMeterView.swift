@@ -18,7 +18,7 @@ struct CUMeterView: View {
   }
 
   private func snapshot() -> Snapshot {
-    let passes = generation.cuPasses(in: connection)
+    let passes = generation.cuPasses()
     let limits = connection.cuLimits
     let provider = connection.computeUnits
     let readings = passes.map { pass in

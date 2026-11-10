@@ -12,7 +12,7 @@ extension PFState {
   func dropPictures(_ urls: [URL]) {
     error = nil
     for url in urls {
-      guard PFResultLoader.load(url) != nil else {
+      guard PSResultLoader.load(url) != nil else {
         error = text(.unreadableFile, url.lastPathComponent)
         continue
       }
@@ -64,7 +64,7 @@ extension PFState {
     isSending = true
     defer { isSending = false }
     // The reading of a big panorama is not done on the main thread.
-    let image = await Task.detached(priority: .userInitiated) { PFResultLoader.load(URL(fileURLWithPath: path), maxSide: nil) }.value
+    let image = await Task.detached(priority: .userInitiated) { PSResultLoader.load(URL(fileURLWithPath: path), maxSide: nil) }.value
     guard let image else {
       error = text(.seamUnreadable)
       return

@@ -189,7 +189,8 @@ private struct ElementCard: View {
       BBoxField(box: binding(\.bbox), italian: state.italian)
       FieldLabel(text: L.text(.palette, italian: state.italian))
       PaletteRow(
-        colors: element.colors, limit: Palette.elementLimit, italian: state.italian,
+        colors: element.colors, limit: Palette.elementLimit,
+        removeHelp: L.text(.removeColor, italian: state.italian), addHelp: L.text(.addColor, italian: state.italian),
         set: { index, hex in state.document.setElementColor(element.id, at: index, to: hex) },
         remove: { index in state.document.removeElementColor(element.id, at: index) },
         add: { state.addColor(toElement: element.id) })

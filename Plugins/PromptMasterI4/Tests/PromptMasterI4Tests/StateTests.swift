@@ -165,21 +165,21 @@ struct StateTests {
 struct SenderTests {
   @Test func theCaptionGoesInThePromptAndTheNegativePromptIsEmptied() async {
     var sent: [String: Any]?
-    let sender = I4Sender(contribute: { body in sent = body; return ["type": "contribute"] }, italian: true)
+    let sender = PromptSender(contribute: { body in sent = body; return ["type": "contribute"] }, italian: true)
     let outcome = await sender.send("{ }")
     let fields = sent?["fields"] as? [String: Any]
     #expect(fields?["prompt"] as? String == "{ }" && fields?["negativePrompt"] as? String == "")
     #expect(fields?.count == 2 && sent?.count == 1)
-    #expect(outcome == I4Sender.Outcome(status: L.text(.sent, italian: true), sent: true))
+    #expect(outcome == PromptSender.Outcome(status: L.text(.sent, italian: true), sent: true))
   }
 
   @Test func conflictsErrorsAndSilenceAreTold() async {
-    let conflicted = await I4Sender(contribute: { _ in ["conflicts": 2] }, italian: false).send("x")
+    let conflicted = await PromptSender(contribute: { _ in ["conflicts": 2] }, italian: false).send("x")
     #expect(conflicted.status == "Caption sent. 2 conflict(s) waiting in the app." && conflicted.sent)
-    let refused = await I4Sender(contribute: { _ in ["type": "error", "text": "No tab"] }, italian: false).send("x")
-    #expect(refused == I4Sender.Outcome(status: "No tab", sent: false))
-    let silent = await I4Sender(contribute: { _ in nil }, italian: true).send("x")
-    #expect(silent == I4Sender.Outcome(status: L.text(.notAnswered, italian: true), sent: false))
+    let refused = await PromptSender(contribute: { _ in ["type": "error", "text": "No tab"] }, italian: false).send("x")
+    #expect(refused == PromptSender.Outcome(status: "No tab", sent: false))
+    let silent = await PromptSender(contribute: { _ in nil }, italian: true).send("x")
+    #expect(silent == PromptSender.Outcome(status: L.text(.notAnswered, italian: true), sent: false))
   }
 }
 
@@ -195,7 +195,7 @@ struct StringsTests {
 }
 
 /// The storage of the tests: a dictionary, so nothing reaches the user's preferences.
-final class MemoryStorage: I4Storage, @unchecked Sendable {
+final class MemoryStorage: SessionStorage, @unchecked Sendable {
   private var values: [String: Data] = [:]
   func data(forKey key: String) -> Data? { values[key] }
   func set(_ data: Data, forKey key: String) { values[key] = data }

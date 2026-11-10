@@ -9,7 +9,7 @@ final class I4State: ObservableObject {
   let catalog: I4Catalog
   private var store: I4Store
   /// Where the session was kept before projects: what the first project adopts.
-  private let legacyStorage: any I4Storage
+  private let legacyStorage: any SessionStorage
   private let shuffler: (I4Catalog, StyleMode) -> Set<String>
   private let colorMaker: () -> String
   let italian: Bool

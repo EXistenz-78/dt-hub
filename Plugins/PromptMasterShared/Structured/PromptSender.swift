@@ -1,9 +1,10 @@
 import Foundation
 
-/// Il pulsante «Invia» a parte dallo schermo: il JSON va nel campo Prompt e il negativo nel suo. Parla con l'app tramite una
-/// chiusura, così un test può farne le veci.
+/// The «Send» button apart from the screen: the text goes in the Prompt field and `negative` in the negative prompt (empty
+/// unless the plug-in writes one, so nothing of an earlier generation stays). It talks to the app through a closure, so a
+/// test can stand in for it.
 @MainActor
-struct MossSender {
+struct PromptSender {
   /// `host.contribute`.
   var contribute: @MainActor ([String: Any]) async -> [String: Any]?
   var italian = L.systemIsItalian
@@ -13,8 +14,8 @@ struct MossSender {
     var sent: Bool
   }
 
-  func send(_ json: String, negative: String) async -> Outcome {
-    let result = await contribute(["fields": ["prompt": json, "negativePrompt": negative]])
+  func send(_ text: String, negative: String = "") async -> Outcome {
+    let result = await contribute(["fields": ["prompt": text, "negativePrompt": negative]])
     return Outcome(status: Self.describe(result, italian: italian), sent: Self.wasAccepted(result))
   }
 

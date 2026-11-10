@@ -68,7 +68,7 @@ final class PromptMasterI4Plugin: DTHubPlugin {
     guard state.canSend, let host else { return }
     state.isSending = true
     state.status = ""
-    let sender = I4Sender(contribute: { await host.contribute($0) }, italian: state.italian)
+    let sender = PromptSender(contribute: { await host.contribute($0) }, italian: state.italian)
     let text = state.jsonText
     Task {
       let outcome = await sender.send(text)

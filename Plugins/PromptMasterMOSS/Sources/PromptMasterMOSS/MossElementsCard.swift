@@ -155,7 +155,8 @@ private struct ItemCard: View {
       PositionField(state: state, item: item)
       FieldLabel(text: L.text(.colorsLabel, italian: state.italian))
       PaletteRow(
-        colors: item.colors, limit: Palette.elementLimit, italian: state.italian,
+        colors: item.colors, limit: Palette.elementLimit,
+        removeHelp: L.text(.removeColor, italian: state.italian), addHelp: L.text(.addColor, italian: state.italian),
         set: { state.setColor($1, at: $0, in: .item(item.id)) }, remove: { state.removeColor(at: $0, from: .item(item.id)) },
         add: { state.addColor(to: .item(item.id)) })
     }

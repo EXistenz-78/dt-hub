@@ -6,7 +6,6 @@ import SwiftUI
 /// orange tint, only for families that use it (spec §6).
 struct PromptCard: View {
   @Bindable var controller: GenerationController
-  let connection: DrawThingsConnection
   @Environment(ContributionStore.self) private var contributions: ContributionStore?
   /// The last drop on «Soggetto» / «Stile» held no picture.
   @State private var notAnImage = false
@@ -21,7 +20,7 @@ struct PromptCard: View {
           text: $controller.prompt, placeholder: String(localized: "card.prompt.placeholder"),
           accessibilityLabel: String(localized: "card.prompt"), tint: DS.accent, minHeight: 140,
           isContributed: contributions?.marks[.prompt]?.isOverridden == false)
-        if controller.traits(in: connection).usesNegativePrompt {
+        if controller.traits().usesNegativePrompt {
           PromptEditor(
             text: $controller.negativePrompt, placeholder: String(localized: "card.prompt.negative.placeholder"),
             accessibilityLabel: String(localized: "card.prompt.negative"), tint: DS.remove, minHeight: 60,
@@ -55,7 +54,7 @@ struct PromptCard: View {
   private var enhanceRow: some View {
     HStack(spacing: DS.controlGap) {
       Button {
-        Task { await controller.enhancePrompt(in: connection) }
+        Task { await controller.enhancePrompt() }
       } label: {
         Label("prompt.enhance", systemImage: "wand.and.stars")
       }
@@ -63,7 +62,7 @@ struct PromptCard: View {
       .help(String(localized: "prompt.enhance.help"))
       .disabled(controller.assistant.working != nil)
       if controller.assistant.working == .enhance { ProgressView().controlSize(.small) }
-      PromptImageDropZones(controller: controller, connection: connection, notAnImage: $notAnImage)
+      PromptImageDropZones(controller: controller, notAnImage: $notAnImage)
       PromptAssistUndo(controller: controller)
     }
   }

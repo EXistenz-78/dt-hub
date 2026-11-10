@@ -8,7 +8,6 @@ import UniformTypeIdentifiers
 /// Preset menu and the JSON editor button.
 struct PresetBar: View {
   @Bindable var controller: GenerationController
-  let connection: DrawThingsConnection
   @State private var saving = false
   @State private var confirmingUpdate = false
   @State private var managing = false
@@ -24,7 +23,7 @@ struct PresetBar: View {
         }
         ForEach(controller.presets.names, id: \.self) { name in
           Button {
-            if let error = controller.loadPreset(named: name, with: connection) {
+            if let error = controller.loadPreset(named: name) {
               importMessage = Self.text(of: error)
             } else {
               importMessage = nil
@@ -112,13 +111,13 @@ struct PresetBar: View {
       Spacer(minLength: 0)
 
       // The defaults of the selected model (not presets): not for video models, whose defaults are the app's own.
-      let canEditDefaults = controller.canEditDefaults(in: connection)
-      Button(String(localized: "defaults.save")) { controller.saveAsDefault(in: connection) }
+      let canEditDefaults = controller.canEditDefaults()
+      Button(String(localized: "defaults.save")) { controller.saveAsDefault() }
         .buttonStyle(DSPillButtonStyle())
         .disabled(!canEditDefaults)
-      Button(String(localized: "defaults.reset")) { controller.resetDefault(in: connection) }
+      Button(String(localized: "defaults.reset")) { controller.resetDefault() }
         .buttonStyle(DSPillButtonStyle())
-        .disabled(!canEditDefaults || !controller.hasSavedDefault(in: connection))
+        .disabled(!canEditDefaults || !controller.hasSavedDefault())
     }
     // The list is the folder's: files added or changed by hand show up when the window comes back.
     .onAppear {
@@ -135,7 +134,7 @@ struct PresetBar: View {
     ) {
       Button(String(localized: "preset.update.button"), role: .destructive) {
         do throws(PresetError) {
-          try controller.updateActivePreset(with: connection)
+          try controller.updateActivePreset()
           importMessage = nil
         } catch {
           importMessage = Self.text(of: error)
@@ -149,13 +148,13 @@ struct PresetBar: View {
       CreatePipelineSheet(controller: controller)
     }
     .sheet(isPresented: $saving) {
-      SavePresetSheet(controller: controller, connection: connection)
+      SavePresetSheet(controller: controller)
     }
     .sheet(isPresented: $managing) {
       ManagePresetsSheet(controller: controller)
     }
     .sheet(isPresented: $editingJSON) {
-      JSONEditorSheet(controller: controller, connection: connection)
+      JSONEditorSheet(controller: controller)
     }
   }
 

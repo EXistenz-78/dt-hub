@@ -81,7 +81,7 @@ final class MossPlugin: DTHubPlugin {
     guard let host, let payload = sendPayload() else { return }
     state.isSending = true
     state.status = ""
-    let sender = MossSender(contribute: { await host.contribute($0) }, italian: state.italian)
+    let sender = PromptSender(contribute: { await host.contribute($0) }, italian: state.italian)
     Task {
       let outcome = await sender.send(payload.json, negative: payload.negative)
       state.status = outcome.status

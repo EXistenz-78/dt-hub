@@ -8,7 +8,6 @@ struct QueueSidebar: View {
   let store: QueueStore
   let runner: QueueRunner
   let generation: GenerationController
-  let connection: DrawThingsConnection
 
   /// What the last click on + or on an entry had to say.
   @State private var notice: String?
@@ -105,7 +104,7 @@ struct QueueSidebar: View {
     notice = nil
     capturing = true
     Task {
-      let result = await generation.captureQueueEntry(in: connection, store: store)
+      let result = await generation.captureQueueEntry(store: store)
       if let entry = result.entry { store.add(entry) } else { notice = result.problem }
       capturing = false
     }
@@ -114,7 +113,7 @@ struct QueueSidebar: View {
   /// A click puts the entry on the tabs without running it; not while the queue runs.
   private func load(_ entry: QueueEntry) {
     guard !runner.isRunning else { return }
-    Task { notice = await generation.restoreQueueEntry(entry, store: store, in: connection) }
+    Task { notice = await generation.restoreQueueEntry(entry, store: store) }
   }
 }
 

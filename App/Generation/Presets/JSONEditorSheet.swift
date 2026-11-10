@@ -8,7 +8,6 @@ import SwiftUI
 /// keys in the text change.
 struct JSONEditorSheet: View {
   let controller: GenerationController
-  let connection: DrawThingsConnection
   @Environment(\.dismiss) private var dismiss
   @State private var text = ""
   @State private var error: String?
@@ -41,7 +40,7 @@ struct JSONEditorSheet: View {
         }
         .buttonStyle(DSPillButtonStyle())
         Button {
-          text = controller.exportJSON(in: connection)
+          text = controller.exportJSON()
         } label: {
           Text("json.reload")
         }
@@ -66,7 +65,7 @@ struct JSONEditorSheet: View {
     .padding(20)
     .background(DSBackground())
     .tint(DS.accent)
-    .onAppear { text = controller.exportJSON(in: connection) }
+    .onAppear { text = controller.exportJSON() }
     .onChange(of: text) { check() }
   }
 
@@ -94,13 +93,13 @@ struct JSONEditorSheet: View {
 
   private func check() {
     applyError = nil
-    error = controller.codec.validate(text, for: controller.configurationState(in: connection))
+    error = controller.codec.validate(text, for: controller.configurationState())
     unknown = error == nil ? controller.codec.unknownKeys(in: text) : []
   }
 
   private func apply() {
     do {
-      try controller.applyJSON(text, with: connection)
+      try controller.applyJSON(text)
       dismiss()
     } catch {
       applyError = error.message

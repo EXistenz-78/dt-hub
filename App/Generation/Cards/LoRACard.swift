@@ -14,7 +14,7 @@ struct LoRACard: View {
   @Environment(\.openWindow) private var openWindow
 
   private var catalog: ModelCatalog { connection.monitor.catalog }
-  private var family: String? { controller.family(in: connection) }
+  private var family: String? { controller.family() }
 
   var body: some View {
     DSCollapsibleCard(

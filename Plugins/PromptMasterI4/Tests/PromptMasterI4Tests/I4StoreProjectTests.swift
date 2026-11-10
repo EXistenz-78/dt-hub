@@ -20,7 +20,7 @@ struct I4StoreProjectTests {
     return session
   }
 
-  private func state(_ storage: any I4Storage = MemoryStorage()) -> I4State {
+  private func state(_ storage: any SessionStorage = MemoryStorage()) -> I4State {
     I4State(
       data: I4Data(database: I4Data.embeddedDatabase, config: I4Data.embeddedConfig, warnings: []),
       store: I4Store(storage: storage), italian: false)

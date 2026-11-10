@@ -39,7 +39,7 @@ struct MainWindowView: View {
       UpdateBanner(controller: updates)
       HStack(alignment: .top, spacing: DS.panelPadding) {
         if queueVisible {
-          QueueSidebar(store: queueStore, runner: queueRunner, generation: generation, connection: connection)
+          QueueSidebar(store: queueStore, runner: queueRunner, generation: generation)
         }
         DSTabFrame {
           WorkspaceTabBar(

@@ -9,7 +9,7 @@ struct AdvancedSection: View {
   @Bindable var controller: GenerationController
   let connection: DrawThingsConnection
 
-  private var model: CatalogModel? { controller.selectedModel(in: connection) }
+  private var model: CatalogModel? { controller.selectedModel() }
   private var advanced: AdvancedParameters { controller.parameters.advanced }
   private var isOn: Binding<Bool> { controller.cards.binding("advanced", default: false) }
 

@@ -5,11 +5,10 @@ import SwiftUI
 /// Sol Attention and TeaCache for the video families that use accelerators (H3); both off by default.
 struct AcceleratorCard: View {
   @Bindable var controller: GenerationController
-  let connection: DrawThingsConnection
 
   var body: some View {
     let rows = VideoCardRows(
-      model: controller.selectedModel(in: connection), sampler: controller.parameters.sampler)
+      model: controller.selectedModel(), sampler: controller.parameters.sampler)
     if rows.showsAccelerators {
       DSCollapsibleCard(
         String(localized: "card.accelerators"), systemImage: "bolt",

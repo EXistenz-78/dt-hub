@@ -197,7 +197,7 @@ struct HeaderBar: View {
       ModelPickerView(
         catalog: monitor.catalog, selectedFile: selection.selectedFile, message: modelPickerMessage, state: $modelTree
       ) { model in
-        generation.chooseModel(model.file, in: connection)
+        generation.chooseModel(model.file)
       }
     }
   }
@@ -224,7 +224,7 @@ struct HeaderBar: View {
             Toggle(
               isOn: Binding(
                 get: { selection.selectedFile == model.file },
-                set: { _ in generation.chooseModel(model.file, in: connection) })
+                set: { _ in generation.chooseModel(model.file) })
             ) {
               // A model that is not downloaded runs in the cloud (DT+).
               if model.isRemote {
@@ -283,7 +283,7 @@ struct HeaderBar: View {
     } else {
       let pipeline = plugins.contributions.pipeline
       Button {
-        if generation.run(with: connection) { openWindow(id: ResultsWindow.id) }
+        if generation.run() { openWindow(id: ResultsWindow.id) }
       } label: {
         // The same lines as Stop: the passes of the pipeline and, without one, the steps of the card.
         runLabel(

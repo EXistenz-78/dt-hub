@@ -3,7 +3,7 @@ import Testing
 
 @testable import PromptMasterF3
 
-final class MemoryStorage: F3Storage, @unchecked Sendable {
+final class MemoryStorage: SessionStorage, @unchecked Sendable {
   var values: [String: Data] = [:]
   func data(forKey key: String) -> Data? { values[key] }
   func set(_ data: Data, forKey key: String) { values[key] = data }

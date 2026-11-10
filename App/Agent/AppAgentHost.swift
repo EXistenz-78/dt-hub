@@ -39,7 +39,7 @@ final class AppAgentHost: AgentHost {
 
   // MARK: Reading
 
-  var currentFamily: String? { generation.family(in: connection) }
+  var currentFamily: String? { generation.family() }
 
   private struct SpecialistKey: Equatable {
     var family: String
@@ -66,7 +66,7 @@ final class AppAgentHost: AgentHost {
 
   func state() -> AgentState {
     var state = AgentState()
-    let model = generation.selectedModel(in: connection)
+    let model = generation.selectedModel()
     state.modelFile = model?.file
     state.modelName = model?.name
     state.family = currentFamily
@@ -85,7 +85,7 @@ final class AppAgentHost: AgentHost {
     state.hasStartImage = generation.control.inputs.image != nil
     if state.hasStartImage {
       state.strength = generation.control.inputs.effectiveStrength(
-        editModel: generation.isEditModel(in: connection),
+        editModel: generation.isEditModel(),
         hasMargins: generation.control.hasMargins(canvasWidth: p.width, canvasHeight: p.height))
     }
     state.isGenerating = isBusy
@@ -100,7 +100,7 @@ final class AppAgentHost: AgentHost {
   private func computeUnitsReading() -> AgentCUReading? {
     let limits = connection.cuLimits
     let provider = connection.computeUnits
-    let readings = generation.cuPasses(in: connection).compactMap { pass in
+    let readings = generation.cuPasses().compactMap { pass in
       pass.inputs.flatMap { provider.estimate($0) }.map { CUReading(cu: $0, limits: limits) }
     }
     guard let heaviest = readings.max(by: { $0.cu < $1.cu }) else { return nil }
@@ -158,7 +158,7 @@ final class AppAgentHost: AgentHost {
 
   func plugins() -> [AgentPlugin] {
     let family = currentFamily
-    let edit = generation.isEditModel(in: connection)
+    let edit = generation.isEditModel()
     return pluginRegistry.entries.map { entry in
       var reason: String?
       if case .failed(let error) = entry.state { reason = "Failed to load: \(error)" }
@@ -209,7 +209,7 @@ final class AppAgentHost: AgentHost {
   }
 
   func advancedApplicable() -> [String] {
-    let model = generation.selectedModel(in: connection)
+    let model = generation.selectedModel()
     return AdvancedField.allCases.filter { $0.isShown(for: model, sampler: generation.parameters.sampler) }.map(\.rawValue)
   }
 
@@ -375,7 +375,7 @@ final class AppAgentHost: AgentHost {
     guard let result = generation.session.results.first(where: { $0.id.uuidString == id }) else {
       throw .invalid("No result with id '\(id)' in this session; see list_results.")
     }
-    generation.resume(result, with: connection, prompts: prompt, parameters: parameters)
+    generation.resume(result, prompts: prompt, parameters: parameters)
   }
 
   func setStrength(_ value: Double) throws(AgentError) {
@@ -390,7 +390,7 @@ final class AppAgentHost: AgentHost {
   }
 
   func savePreset(named name: String) throws(AgentError) {
-    do { try generation.savePreset(named: name, with: connection) } catch { throw .invalid("\(error)") }
+    do { try generation.savePreset(named: name) } catch { throw .invalid("\(error)") }
   }
 
   // MARK: Controlling
@@ -401,7 +401,7 @@ final class AppAgentHost: AgentHost {
 
   func setModel(file: String) throws(AgentError) {
     if isBusy { throw .busy(jobID: nil) }
-    generation.chooseModel(file, in: connection)
+    generation.chooseModel(file)
   }
 
   func switchServer() async throws(AgentError) -> AgentServerStatus {
@@ -432,7 +432,7 @@ final class AppAgentHost: AgentHost {
   }
 
   private var imagesPerPass: Int { max(1, generation.parameters.batchCount * generation.parameters.batchSize) }
-  private var modelLabel: String { generation.selectedModel(in: connection)?.name ?? "the current model" }
+  private var modelLabel: String { generation.selectedModel()?.name ?? "the current model" }
 
   private func plan(passes: Int) -> AgentRunPlan {
     let images = max(1, passes) * imagesPerPass
@@ -471,7 +471,7 @@ final class AppAgentHost: AgentHost {
     try ensureCanStart()
     let total = try planPluginPipeline(pluginID: pluginID).images
     let baseline = generation.session.results.first?.id
-    guard generation.run(with: connection) else { throw .unavailable("DT Hub cannot run now.") }
+    guard generation.run() else { throw .unavailable("DT Hub cannot run now.") }
     // The picture is handed to the Results when the plug-in has composed it, a moment after the last pass: wait for it.
     watch(total: total, since: baseline, awaitsResult: true)
   }
@@ -492,7 +492,7 @@ final class AppAgentHost: AgentHost {
 
   private func ensureCanStart() throws(AgentError) {
     if isBusy { throw .busy(jobID: nil) }
-    if !generation.canRun(with: connection) {
+    if !generation.canRun() {
       throw .unavailable(connection.runBlocker.map { "\($0)" } ?? "DT Hub cannot run now (no project open, or no Draw Things server).")
     }
   }
@@ -501,7 +501,7 @@ final class AppAgentHost: AgentHost {
     try ensureCanStart()
     let total = planRun().images
     let baseline = generation.session.results.first?.id
-    guard generation.run(with: connection) else { throw .unavailable("DT Hub cannot run now.") }
+    guard generation.run() else { throw .unavailable("DT Hub cannot run now.") }
     watch(total: total, since: baseline)
   }
 
@@ -512,7 +512,7 @@ final class AppAgentHost: AgentHost {
       if let problem = generation.selectPipeline(named: name) { throw .invalid(problem) }
     }
     let baseline = generation.session.results.first?.id
-    guard generation.run(with: connection) else { throw .unavailable("DT Hub cannot run now.") }
+    guard generation.run() else { throw .unavailable("DT Hub cannot run now.") }
     watch(total: total, since: baseline)
   }
 
@@ -555,7 +555,7 @@ final class AppAgentHost: AgentHost {
   func queueAdd() async throws(AgentError) -> UUID {
     // A running queue takes new entries at once: they would run without the budget being charged.
     if queueRunner.isRunning { throw .busy(jobID: nil) }
-    let (entry, problem) = await generation.captureQueueEntry(in: connection, store: queueStore)
+    let (entry, problem) = await generation.captureQueueEntry(store: queueStore)
     guard let entry else { throw .unavailable(problem ?? "The tab cannot be queued.") }
     queueStore.add(entry)
     return entry.id
@@ -567,12 +567,12 @@ final class AppAgentHost: AgentHost {
   }
 
   func enhancePrompt() async throws(AgentError) -> String {
-    await generation.enhancePrompt(in: connection)
+    await generation.enhancePrompt()
     return generation.prompt
   }
 
   func promptFromImage() async throws(AgentError) -> String {
-    await generation.promptFromImage(in: connection)
+    await generation.promptFromImage()
     return generation.prompt
   }
 

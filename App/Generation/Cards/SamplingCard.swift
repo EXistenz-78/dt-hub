@@ -5,14 +5,13 @@ import SwiftUI
 /// Shift, "resolution-based" and CFG-Zero* show only for flow-matching families (`FamilyTraits`).
 struct SamplingCard: View {
   @Bindable var controller: GenerationController
-  let connection: DrawThingsConnection
 
   var body: some View {
     DSCollapsibleCard(
       String(localized: "card.sampling"), systemImage: "dial.medium",
       isExpanded: controller.cards.binding("sampling")
     ) {
-      let usesShift = controller.traits(in: connection).usesShift
+      let usesShift = controller.traits().usesShift
       VStack(spacing: DS.rowGap) {
         CardRow(label: String(localized: "card.sampling.steps"), fields: [.steps]) {
           IntField(

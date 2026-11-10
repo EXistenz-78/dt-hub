@@ -9,7 +9,7 @@ final class MossState: ObservableObject {
   let catalog: MossCatalog
   private var store: MossStore
   /// Dove stava la sessione prima dei progetti: quello che adotta il primo progetto.
-  private let legacyStorage: any MossStorage
+  private let legacyStorage: any SessionStorage
   private let shuffler: (MossCatalog, StyleMode) -> Set<String>
   let italian: Bool
 

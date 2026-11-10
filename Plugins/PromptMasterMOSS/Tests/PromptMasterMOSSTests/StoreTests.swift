@@ -4,7 +4,7 @@ import Testing
 @testable import PromptMasterMOSS
 
 /// Un deposito in memoria: i test non toccano le preferenze dell'utente.
-final class MemoryStorage: MossStorage, @unchecked Sendable {
+final class MemoryStorage: SessionStorage, @unchecked Sendable {
   var values: [String: Data] = [:]
   func data(forKey key: String) -> Data? { values[key] }
   func set(_ data: Data, forKey key: String) { values[key] = data }

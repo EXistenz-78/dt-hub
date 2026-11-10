@@ -68,7 +68,7 @@ struct LoRAManagerView: View {
     .onAppear {
       guard !didOpenFirst else { return }
       didOpenFirst = true
-      open.insert(controller.family(in: connection) ?? "")
+      open.insert(controller.family() ?? "")
     }
   }
 

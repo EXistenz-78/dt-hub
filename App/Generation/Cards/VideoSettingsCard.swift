@@ -6,11 +6,10 @@ import SwiftUI
 /// for the enabled video families; hidden for any other model (video design, "Interfaccia").
 struct VideoSettingsCard: View {
   @Bindable var controller: GenerationController
-  let connection: DrawThingsConnection
 
   var body: some View {
     let rows = VideoCardRows(
-      model: controller.selectedModel(in: connection), sampler: controller.parameters.sampler)
+      model: controller.selectedModel(), sampler: controller.parameters.sampler)
     if let info = rows.info {
       DSCollapsibleCard(
         String(localized: "card.video"), systemImage: "film", isExpanded: controller.cards.binding("video")

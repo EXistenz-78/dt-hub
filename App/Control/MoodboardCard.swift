@@ -29,7 +29,6 @@ private func moodboardEntry(in control: ControlStore, droppedURLs urls: [URL]) -
 
 struct MoodboardCard: View {
   let generation: GenerationController
-  let connection: DrawThingsConnection
   let report: (ControlMessage) -> Void
   @State private var isTargeted = false
   @Environment(ContributionStore.self) private var contributions: ContributionStore?
@@ -43,7 +42,7 @@ struct MoodboardCard: View {
     for warning in warnings { if case .manyReferences(let count) = warning { return count } }
     return nil
   }
-  private var usable: Bool { FamilyTraits.of(generation.family(in: connection)).usesMoodboard }
+  private var usable: Bool { FamilyTraits.of(generation.family()).usesMoodboard }
 
   var body: some View {
     DSCollapsibleCard(

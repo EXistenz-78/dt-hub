@@ -6,7 +6,6 @@ import SwiftUI
 /// sheet says so.
 struct SavePresetSheet: View {
   let controller: GenerationController
-  let connection: DrawThingsConnection
   @Environment(\.dismiss) private var dismiss
   @State private var name = ""
 
@@ -58,7 +57,7 @@ struct SavePresetSheet: View {
   }
 
   private func save() {
-    if (try? controller.savePreset(named: name, with: connection)) != nil { dismiss() }
+    if (try? controller.savePreset(named: name)) != nil { dismiss() }
   }
 }
 

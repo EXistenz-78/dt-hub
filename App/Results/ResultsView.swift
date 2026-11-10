@@ -7,7 +7,6 @@ import SwiftUI
 /// session strip; for the chosen image: seed, Show in Finder, Resume parameters.
 struct ResultsView: View {
   let controller: GenerationController
-  let connection: DrawThingsConnection
   /// The pictures selected in the strip (⌘-click adds or takes away, ⇧-click extends) and the one
   /// shown large. Something is always selected while the strip is not empty.
   @State private var picks = ResultSelection<GeneratedImage.ID>()
@@ -45,7 +44,7 @@ struct ResultsView: View {
           if !session.results.isEmpty { strip }
         case .explore:
           ExploreView(
-            model: controller.gallery, controller: controller, connection: connection, primaryImage: $exploreImage,
+            model: controller.gallery, controller: controller, primaryImage: $exploreImage,
             onUse: { exploreUse($0) }, onMoodboard: { exploreMoodboard($0) }, onTrash: { exploreTrash($0) })
         }
         bottomBar
@@ -477,7 +476,7 @@ struct ResultsView: View {
     if picked.count == 1, let exploreImage,
       exploreImage.fileURL?.standardizedFileURL.path == controller.gallery.selection.primary
     {
-      Button("results.resume") { controller.resume(exploreImage, with: connection) }
+      Button("results.resume") { controller.resume(exploreImage) }
         .buttonStyle(DSPillButtonStyle())
     }
     Button { NSWorkspace.shared.activateFileViewerSelecting(picked.map(\.url)) } label: {
@@ -554,7 +553,7 @@ struct ResultsView: View {
     Button("results.addToMoodboard") { addToMoodboard(chosen) }
       .buttonStyle(DSPillButtonStyle())
     if chosen.count <= 1 {
-      Button("results.resume") { controller.resume(result, with: connection) }
+      Button("results.resume") { controller.resume(result) }
         .buttonStyle(DSPillButtonStyle())
     }
     let urls = chosen.compactMap(\.exportURL)

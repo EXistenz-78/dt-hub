@@ -8,7 +8,7 @@ struct AdvancedCardView: View {
   @Bindable var controller: GenerationController
   let connection: DrawThingsConnection
 
-  private var model: CatalogModel? { controller.selectedModel(in: connection) }
+  private var model: CatalogModel? { controller.selectedModel() }
   private var catalog: ModelCatalog { connection.monitor.catalog }
   private var advanced: Binding<AdvancedParameters> { $controller.parameters.advanced }
 

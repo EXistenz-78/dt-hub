@@ -107,7 +107,8 @@ struct MossSummaryCard: View {
 
   private func colors(_ target: MossState.ColorTarget) -> some View {
     PaletteRow(
-      colors: state.colors(of: target), limit: state.limit(of: target), italian: state.italian,
+      colors: state.colors(of: target), limit: state.limit(of: target),
+      removeHelp: L.text(.removeColor, italian: state.italian), addHelp: L.text(.addColor, italian: state.italian),
       set: { state.setColor($1, at: $0, in: target) }, remove: { state.removeColor(at: $0, from: target) },
       add: { state.addColor(to: target) })
   }

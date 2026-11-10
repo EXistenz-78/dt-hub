@@ -8,7 +8,6 @@ import SwiftUI
 struct ExploreView: View {
   @Bindable var model: GalleryModel
   let controller: GenerationController
-  let connection: DrawThingsConnection
   /// The chosen picture with its job, loaded for the sidebar (and read by the row of buttons for "Resume parameters").
   @Binding var primaryImage: GeneratedImage?
   let onUse: (GalleryEntry) -> Void

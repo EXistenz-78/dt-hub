@@ -11,7 +11,7 @@ struct DataTests {
     #expect(config.schema == 1)
     #expect(config.hiddenCategories == ["negative_terms"])
     #expect(config.extraNegativeTerms.map(\.id) == ["ng_worst_quality", "ng_low_quality"])
-    #expect(config.options == MossConfig.LLMSettings(temperature: 0.6, maxTokens: 4096, thinking: false, timeout: 600))
+    #expect(config.options == LLMSettings(temperature: 0.6, maxTokens: 4096, thinking: false, timeout: 600))
   }
 
   func folder() throws -> URL {

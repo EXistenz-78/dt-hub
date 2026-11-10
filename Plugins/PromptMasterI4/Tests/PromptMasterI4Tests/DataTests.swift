@@ -24,7 +24,7 @@ struct DataTests {
     let config = I4Data.embeddedConfig
     #expect(config.schema == DataSource.supportedSchema)
     #expect(catalog.missingCategories.isEmpty)
-    #expect(config.options == IdeogramConfig.LLMSettings(temperature: 0.6, maxTokens: 4096, thinking: false, timeout: 600))
+    #expect(config.options == LLMSettings(temperature: 0.6, maxTokens: 4096, thinking: false, timeout: 600))
     let system = I4Prompts.system(in: DTHubPromptFolder(folder: FileManager.default.temporaryDirectory.appendingPathComponent("i4-none-\(UUID().uuidString)")))
     for phrase in [
       "high_level_description", "aesthetics", "lighting", "photo", "art_style", "medium", "background", "element",
