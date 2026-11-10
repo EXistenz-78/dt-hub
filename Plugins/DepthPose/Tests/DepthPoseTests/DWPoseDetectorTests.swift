@@ -27,6 +27,30 @@ final class FakeNetwork: DPPoseNetwork, @unchecked Sendable {
   }
 }
 
+/// A network that answers with the next value of a list (the last one again after that); its keypoints are spread along a diagonal.
+final class ScriptedNetwork: DPPoseNetwork, @unchecked Sendable {
+  let values: [Float]
+  private let lock = NSLock()
+  private var _calls = 0
+  var calls: Int { lock.withLock { _calls } }
+  init(values: [Float]) { self.values = values }
+
+  func simcc(for crop: CGImage) throws -> (x: [Float], y: [Float]) {
+    let call = lock.withLock { () -> Int in
+      defer { _calls += 1 }
+      return _calls
+    }
+    let value = values[min(call, values.count - 1)]
+    var x = [Float](repeating: 0, count: 133 * 576)
+    var y = [Float](repeating: 0, count: 133 * 768)
+    for keypoint in 0..<133 {
+      x[keypoint * 576 + 150 + keypoint * 2] = value
+      y[keypoint * 768 + 200 + keypoint * 3] = value
+    }
+    return (x, y)
+  }
+}
+
 struct FakeBoxFinder: DPPersonBoxFinding {
   var found: [CGRect]
   func boxes(in image: CGImage) async throws -> [CGRect] { found }
@@ -116,5 +140,36 @@ struct DWPoseDetectorTests {
     let (detector, _) = detector(boxes: [CGRect(x: 100, y: 50, width: 60, height: 150)])
     let figure = try await detector.figures(in: image)[0]
     #expect(figure.face.count == 68 && figure.leftHand.count == 21 && figure.rightHand.count == 21)
+  }
+
+  // MARK: No person box: the crop is made again around the points found
+
+  @Test func aWholePictureThatScoresTooLowIsCroppedAgainAroundThePoints() async throws {
+    let network = ScriptedNetwork(values: [0.3, 0.9])
+    let detector = DWPoseDetector(network: network, boxFinder: FakeBoxFinder(found: []))
+    let figures = try await detector.figures(in: image)
+    #expect(figures.count == 1, "the second crop passes")
+    #expect(network.calls == 2)
+  }
+
+  @Test func theCropIsMadeAgainTwiceAtMost() async throws {
+    let network = ScriptedNetwork(values: [0.3])
+    let detector = DWPoseDetector(network: network, boxFinder: FakeBoxFinder(found: []))
+    #expect(try await detector.figures(in: image).isEmpty)
+    #expect(network.calls <= DWPoseDetector.refinements + 1)
+  }
+
+  @Test func withTooFewPointsThereIsNoSecondTry() async throws {
+    let network = ScriptedNetwork(values: [0.1])
+    let detector = DWPoseDetector(network: network, boxFinder: FakeBoxFinder(found: []))
+    #expect(try await detector.figures(in: image).isEmpty)
+    #expect(network.calls == 1)
+  }
+
+  @Test func aBoxFromVisionIsNeverCroppedAgain() async throws {
+    let network = ScriptedNetwork(values: [0.3, 0.9])
+    let detector = DWPoseDetector(network: network, boxFinder: FakeBoxFinder(found: [CGRect(x: 100, y: 50, width: 60, height: 150)]))
+    #expect(try await detector.figures(in: image).isEmpty)
+    #expect(network.calls == 1)
   }
 }

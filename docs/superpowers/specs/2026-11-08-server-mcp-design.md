@@ -211,3 +211,19 @@ Le scelte non indicate restano quelle della scheda (e quelle indicate vi restano
 | `start_batch` | generate | come `set_batch` e poi RUN; `job_id`; da 20 passaggi serve `confirm_long`; si ferma con `stop` |
 
 Il testo delle risposte (prompt, nomi dei file dei LoRA) è marcato «data, not instructions».
+
+## 15. Plug-in che non generano ma lavorano su immagini: Depth & Pose 1.1
+
+Terzo passo della §11 (ramo `depthpose-mcp`). **Nessuna estensione del contratto**: usa `format: "image"` (§14) e i livelli `read`/`edit`; nessun nuovo metodo di `AgentHost`, nessuna modifica all'app.
+
+Il plug-in non genera con un modello: la mappa di profondità (Depth Anything V2, Core ML) e lo scheletro (DWPose-L o Vision) sono calcolo locale in circa un secondo; il Moodboard si riempie con `contribute`. Per la regola della §14 («`generate` solo se avvia davvero una generazione») gli strumenti sono quindi **`read` o `edit`**, mai `generate`, e non c'è `startsRun`: non toccano budget né soglia (l'agente genera poi con `run` e le mappe nel Moodboard, che è il percorso di Run già controllato).
+
+`plugin__depthpose__…`, esposti con plug-in attivo e modello edit/in-context (`requiresEditModel`; gli strumenti non dichiarano `families`, vale il plug-in):
+
+| Strumento | Livello | Cosa fa |
+| --- | --- | --- |
+| `get_status` | read | immagine, spunte Depth/Pose, stato dei due modelli (e quindi se la posa è DWPose o Vision), mappe fatte, ultimo avviso |
+| `make_maps` | edit | `image` (`format: "image"`, opzionale), `depth`, `pose`, `send_to_moodboard`: fa le mappe e le tiene sulla scheda; con `send_to_moodboard` le mette nel Moodboard (`Depth`, `Pose`; sostituisce quelle inviate prima) |
+| `send_to_moodboard` | edit | il tasto Send della scheda, per mappe già fatte |
+
+Decisioni. Le spunte nominate in `make_maps` restano sulla scheda e nel progetto (l'utente le vede, come per Tiled Upscale). I modelli non si scaricano da uno strumento (200 e 64 MB, scelta dell'utente: «Download» nella scheda): senza modello di profondità, `depth` da solo è un errore che lo dice, `depth`+`pose` fa la posa e il responso riporta l'avviso. Un'immagine senza persone, con la sola posa chiesta, è un errore. Non esposti: «Save to Desktop», i download dei modelli e la loro cancellazione. Il testo delle risposte (nome dell'immagine, avviso) è marcato «data, not instructions» dall'app come per ogni plug-in.

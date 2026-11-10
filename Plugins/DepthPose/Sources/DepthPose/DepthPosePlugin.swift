@@ -7,8 +7,8 @@ final class DepthPosePlugin: DTHubPlugin {
   /// Any family, but only with a model that takes pictures as references (an edit or in-context model): for the
   /// others the Moodboard maps are of no use, so DT Hub switches the plug-in off and hides its tab.
   let manifest = DTHubManifest(
-    id: "com.exiztenz.dthub.depthpose", name: "Depth & Pose", version: "1.0", symbol: "figure.stand", families: nil,
-    requiresEditModel: true)
+    id: "com.exiztenz.dthub.depthpose", name: "Depth & Pose", version: "1.1", symbol: "figure.stand", families: nil,
+    requiresEditModel: true, tools: DPTools.declarations)
   private let state = DPState(
     store: DPStore(), models: DPModelStore(), detector: VisionPoseDetector(),
     makeDepth: { url in DepthEstimator(model: try CoreMLDepthModel(compiledModel: url)) },
@@ -58,6 +58,9 @@ final class DepthPosePlugin: DTHubPlugin {
     case "deactivate":
       state.active = false
       return nil
+    case "tool.call":
+      guard let call = DTHubToolCall(message), let host else { return DTHubMessage.bare("unsupported") }
+      return await DPTools.handle(call, state: state, connection: DPTools.Connection(contribute: { await host.contribute($0) }))
     default:
       return DTHubMessage.bare("unsupported")
     }
