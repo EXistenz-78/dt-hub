@@ -62,7 +62,8 @@ struct PMWriter {
       case nil:
         break
       }
-      answer = await ask(brief.prompt, brief.system, nil, Self.genericOptions)
+      let model = PEPlanner.genericModel(family: request.family, languageModels: request.languageModels)
+      answer = await ask(brief.prompt, brief.system, model, Self.genericOptions)
     }
 
     let text: String
@@ -121,11 +122,12 @@ struct PMWriter {
     the second describes the setting. Be concrete and visual; no title, no quotation marks, no lists.
     """
 
-  func scene() async -> Result<String, SceneFailure> {
+  func scene(family: String? = nil, models: [DTHubLanguageModel] = []) async -> Result<String, SceneFailure> {
     let language = italian ? "Italian" : "English"
     let answer = await ask(
       "Invent a subject with an action, and a setting, for an image. Write the two sentences in \(language).",
-      Self.sceneSystem, nil, DTHubLLMOptions(temperature: 1.0, maxTokens: 300, thinking: false))
+      Self.sceneSystem, PEPlanner.genericModel(family: family, languageModels: models),
+      DTHubLLMOptions(temperature: 1.0, maxTokens: 300, thinking: false))
     switch answer {
     case .failure(let reason):
       return .failure(SceneFailure(text: L.format(.sceneFailed, reason, italian: italian)))

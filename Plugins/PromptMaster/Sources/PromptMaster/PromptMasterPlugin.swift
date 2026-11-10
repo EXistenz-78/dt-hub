@@ -89,9 +89,10 @@ final class PromptMasterPlugin: DTHubPlugin {
   private func makeScene() {
     guard !state.isMakingScene, !state.isWriting, let host else { return }
     state.isMakingScene = true
+    let (family, models) = (state.family, state.languageModels)
     let writer = makeWriter(host)
     Task {
-      switch await writer.scene() {
+      switch await writer.scene(family: family, models: models) {
       case .success(let scene):
         state.description = scene
         state.status = ""

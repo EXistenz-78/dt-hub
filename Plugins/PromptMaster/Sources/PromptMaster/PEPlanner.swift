@@ -46,12 +46,21 @@ enum PEPlanner {
     guard family == Self.family else { return .generic(reason: nil) }
     // First the LLM the user assigned to this family for Enhance (Settings › LLM), whatever its folder is called,
     // provided its folder carries a system prompt.
-    let assigned = languageModels.filter { $0.family == Self.family && ["enhance", "both", "t2i"].contains($0.use ?? "") }
+    let assigned = languageModels.filter { $0.family == Self.family && Self.writingUses.contains($0.use ?? "") }
     let assignedWithSystem = assigned.compactMap { model -> (DTHubLanguageModel, String)? in
       systemPrompt(in: model.path, readFile: readFile).map { (model, $0) }
     }
     if let best = assignedWithSystem.max(by: { folderSize($0.0.path) < folderSize($1.0.path) }) {
       return .enhancer(Enhancer(model: best.0.name, system: best.1, options: options))
+    }
+    // The app sends the assignments of Settings › LLM with every model: then only an assigned model counts, and an
+    // enhancer that is installed but not assigned to this family is left alone. An older app says nothing: look by name.
+    if assignmentsKnown(languageModels) {
+      guard let model = assigned.min(by: { $0.name.localizedStandardCompare($1.name) == .orderedAscending }) else {
+        return .generic(reason: nil)
+      }
+      // A model assigned to the family that is not an enhancer is just the family's generic model.
+      return .generic(reason: normalized(model.name).contains(marker) ? .systemPromptMissing(model: model.name) : nil)
     }
     let candidates = languageModels.filter { normalized($0.name).contains(marker) }
     guard let model = candidates.max(by: { folderSize($0.path) < folderSize($1.path) }) else {
@@ -60,6 +69,21 @@ enum PEPlanner {
     let system = systemPrompt(in: model.path, readFile: readFile)
     guard let system else { return .generic(reason: .systemPromptMissing(model: model.name)) }
     return .enhancer(Enhancer(model: model.name, system: system, options: options))
+  }
+
+  /// True when the app says, for its language models, what each is assigned to (every model carries a `use`).
+  static func assignmentsKnown(_ models: [DTHubLanguageModel]) -> Bool { models.contains { $0.use != nil } }
+
+  /// The uses that cover the Enhance button on a Control tab without pictures (as `LanguageModelUse.covers` says).
+  static let writingUses: Set<String> = ["enhance", "both", "t2i"]
+
+  /// The generic model the user assigned to `family` in Settings › LLM, by name: the first by name, as the app's router
+  /// does. nil = none for this family: the app then picks the one on "all others" (or says there is none).
+  static func genericModel(family: String?, languageModels: [DTHubLanguageModel]) -> String? {
+    guard let family else { return nil }
+    return languageModels
+      .filter { $0.family == family && writingUses.contains($0.use ?? "") }
+      .min { $0.name.localizedStandardCompare($1.name) == .orderedAscending }?.name
   }
 
   private static func systemPrompt(in path: String, readFile: (URL) -> String?) -> String? {

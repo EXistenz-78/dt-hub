@@ -99,19 +99,24 @@ struct PEPlannerTests {
     #expect(chosen.model == "my-enhancer" && chosen.system == "T2I SYSTEM")
   }
 
-  @Test func anAssignedModelWithoutASystemPromptFallsBackToTheNameMatch() throws {
+  @Test func anAssignedModelWithoutASystemPromptIsTheGenericOneAndAnUnassignedPEIsNotUsed() throws {
     let mine = assigned("my-enhancer", family: "qwen_image_2.1", use: "both")
     let files = ["/models/\(t2i)/system_prompt.txt": "BY NAME"]
     let result = PEPlanner.plan(
       family: "qwen_image_2.1", languageModels: [mine, model(t2i)], folderSize: { _ in 0 },
       readFile: { files[$0.path] })
-    #expect(enhancer(result)?.model == t2i)
+    #expect(result == .generic(reason: nil))
+  }
+
+  @Test func anAssignedPEWithoutItsSystemPromptNamesItInTheReason() {
+    let pe = assigned(t2i, family: "qwen_image_2.1", use: "t2i")
+    #expect(plan(models: [pe], files: [:]) == .generic(reason: .systemPromptMissing(model: t2i)))
   }
 
   @Test func assignmentsForOtherUsesOrFamiliesDoNotCount() {
     for (family, use) in [("qwen_image_2.1", "plugins"), ("qwen_image_2.1", "describe"), ("qwen_image_2.1", "i2i"), ("flux2", "enhance"), ("*", "both")] {
       let result = plan(models: [assigned("my-enhancer", family: family, use: use)])
-      #expect(result == .generic(reason: .modelMissing))
+      #expect(result == .generic(reason: nil))
     }
   }
 
