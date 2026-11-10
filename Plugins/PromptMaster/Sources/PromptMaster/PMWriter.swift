@@ -32,6 +32,9 @@ struct PMWriter {
     /// The format a prompt enhancer suggested, when it did.
     var ratio: String?
     var sent: Bool
+    /// What was written (for an agent that asked); nil when nothing was.
+    var prompt: String? = nil
+    var negativePrompt: String? = nil
   }
 
   /// The generic model has to say a prompt, maybe with its negative: room for that.
@@ -62,7 +65,8 @@ struct PMWriter {
       case nil:
         break
       }
-      answer = await ask(brief.prompt, brief.system, nil, Self.genericOptions)
+      let model = PEPlanner.genericModel(family: request.family, languageModels: request.languageModels)
+      answer = await ask(brief.prompt, brief.system, model, Self.genericOptions)
     }
 
     let text: String
@@ -82,7 +86,10 @@ struct PMWriter {
     var lines = [Self.describe(result, italian: italian)] + notes
     if let ratio = parsed.ratio { lines.append(L.format(.ratio, ratio, italian: italian)) }
     if entry?.provisional == true, case .generic = plan { lines.append(L.text(.provisional, italian: italian)) }
-    return Outcome(status: lines.joined(separator: " "), ratio: parsed.ratio, sent: Self.wasAccepted(result))
+    let negative = fields["negativePrompt"] as? String
+    return Outcome(
+      status: lines.joined(separator: " "), ratio: parsed.ratio, sent: Self.wasAccepted(result), prompt: parsed.prompt,
+      negativePrompt: negative)
   }
 
   static func wasAccepted(_ answer: [String: Any]?) -> Bool {
@@ -121,11 +128,12 @@ struct PMWriter {
     the second describes the setting. Be concrete and visual; no title, no quotation marks, no lists.
     """
 
-  func scene() async -> Result<String, SceneFailure> {
+  func scene(family: String? = nil, models: [DTHubLanguageModel] = []) async -> Result<String, SceneFailure> {
     let language = italian ? "Italian" : "English"
     let answer = await ask(
       "Invent a subject with an action, and a setting, for an image. Write the two sentences in \(language).",
-      Self.sceneSystem, nil, DTHubLLMOptions(temperature: 1.0, maxTokens: 300, thinking: false))
+      Self.sceneSystem, PEPlanner.genericModel(family: family, languageModels: models),
+      DTHubLLMOptions(temperature: 1.0, maxTokens: 300, thinking: false))
     switch answer {
     case .failure(let reason):
       return .failure(SceneFailure(text: L.format(.sceneFailed, reason, italian: italian)))

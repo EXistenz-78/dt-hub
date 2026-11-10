@@ -236,4 +236,57 @@ struct PMWriterTests {
       #expect(count(L.text(key, italian: true)) == count(L.text(key, italian: false)), "\(key)")
     }
   }
+
+  // MARK: The language model follows Settings › LLM
+
+  private func assigned(_ name: String, family: String?, use: String?, files: Bool = false) -> DTHubLanguageModel {
+    var json = #"{"name": "\#(name)", "path": "/models/\#(name)", "supportsImages": false"#
+    if let family { json += #", "family": "\#(family)""# }
+    if let use { json += #", "use": "\#(use)""# }
+    return try! JSONDecoder().decode(DTHubLanguageModel.self, from: Data((json + "}").utf8))
+  }
+
+  @Test func qwen21WithoutThePEUsesTheLLMAssignedToTheFamilyByName() async {
+    // The bug: the generic call went out without a name, so the app looked only at "all others" and failed.
+    let recorder = Recorder()
+    let models = [assigned("general", family: "*", use: "both"), assigned("qwen-writer", family: "qwen_image_2.1", use: "enhance")]
+    let outcome = await writer(recorder).write(request("qwen_image_2.1", models: models))
+    #expect(recorder.asks.count == 1 && recorder.asks[0].model == "qwen-writer" && recorder.asks[0].options == PMWriter.genericOptions)
+    #expect(outcome.sent && !outcome.status.contains("not found"))
+  }
+
+  @Test func qwen21WithOnlyAnAllOthersModelAsksWithoutANameSoTheAppChoosesIt() async {
+    let recorder = Recorder()
+    _ = await writer(recorder).write(request("qwen_image_2.1", models: [assigned("general", family: "*", use: "both")]))
+    #expect(recorder.asks[0].model == nil)
+  }
+
+  @Test func anInstalledButUnassignedPEIsNotUsedWhenTheAppSendsAssignments() async {
+    let recorder = Recorder()
+    let pe = assigned("mlx/Qwen-Image-2.1-PE-T2I-MLX-4bit", family: nil, use: "both")
+    let files = ["system_prompt.txt": "PE SYSTEM"]
+    _ = await writer(recorder, files: files).write(request("qwen_image_2.1", models: [pe, assigned("general", family: "*", use: "both")]))
+    #expect(recorder.asks[0].model == nil && recorder.asks[0].system != "PE SYSTEM")
+  }
+
+  @Test func otherFamiliesAlsoUseTheirAssignedModel() async {
+    let recorder = Recorder()
+    _ = await writer(recorder).write(request("flux2_9b", models: [assigned("flux-writer", family: "flux2_9b", use: "both")]))
+    #expect(recorder.asks[0].model == "flux-writer")
+  }
+
+  @Test func theSceneFollowsTheAssignmentOfTheFamilyToo() async {
+    let recorder = Recorder()
+    _ = await writer(recorder).scene(family: "qwen_image_2.1", models: [assigned("qwen-writer", family: "qwen_image_2.1", use: "t2i")])
+    #expect(recorder.asks[0].model == "qwen-writer")
+  }
+
+  @Test func theGenericChoiceSkipsUsesThatDoNotCoverEnhance() {
+    let models = [
+      assigned("a-describe", family: "flux2", use: "describe"), assigned("b-plugins", family: "flux2", use: "plugins"),
+      assigned("c-i2i", family: "flux2", use: "i2i"), assigned("d-other", family: "flux1", use: "both"),
+    ]
+    #expect(PEPlanner.genericModel(family: "flux2", languageModels: models) == nil)
+    #expect(PEPlanner.genericModel(family: "flux2", languageModels: models + [assigned("e-t2i", family: "flux2", use: "t2i")]) == "e-t2i")
+  }
 }
