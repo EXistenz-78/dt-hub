@@ -173,6 +173,40 @@ final class PMState: ObservableObject {
       && (!description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !selectedTerms.isEmpty)
   }
 
+  /// Why the button would do nothing now, in words; nil when it can write.
+  var cannotWriteReason: String? {
+    if !active { return "Prompt Master is not active for the job." }
+    if family == nil || guide == nil { return "DT Hub has not sent the plug-in its context yet: try again in a moment." }
+    if isWriting || isMakingScene { return "Prompt Master is writing: try again when it is done." }
+    if !hasFamilyPrompt { return "The app has no Family prompt for this model's family." }
+    if description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && selectedTerms.isEmpty {
+      return "Nothing to write from: set a description or choose terms (set_brief)."
+    }
+    return nil
+  }
+
+  /// Which language model the button would use, from the assignments of Settings › LLM (for the status tool).
+  var languageModelPlan: [String: Any] {
+    switch PEPlanner.plan(
+      family: family, languageModels: languageModels, folderSize: PEPlanner.folderSize,
+      readFile: { try? String(contentsOf: $0, encoding: .utf8) })
+    {
+    case .enhancer(let enhancer):
+      return ["kind": "prompt_enhancer", "model": enhancer.model]
+    case .generic:
+      if let name = PEPlanner.genericModel(family: family, languageModels: languageModels) {
+        return ["kind": "assigned_to_family", "model": name]
+      }
+      return ["kind": "app_default", "note": "No LLM is assigned to this family: the app uses the one on 'all others', or says there is none."]
+    }
+  }
+
+  /// The vocabulary for the current family narrowed by `query` (every word in a name), for the search tool.
+  func searchTerms(_ query: String) -> TermTree { fullTree.filtered(by: query, database: data.database, italian: italian) }
+
+  /// The ids of every term the list has now (of the family, the user's own included).
+  var knownTermIDs: Set<String> { fullTree.pruned(Set(fullTree.groups.flatMap(\.categories).flatMap(\.terms).map(\.id))) }
+
   /// A format was suggested, the plug-in is on and nothing is being written.
   var canApplyRatio: Bool { active && !isWriting && suggestedRatio != nil }
 

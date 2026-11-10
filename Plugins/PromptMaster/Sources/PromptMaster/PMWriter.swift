@@ -32,6 +32,9 @@ struct PMWriter {
     /// The format a prompt enhancer suggested, when it did.
     var ratio: String?
     var sent: Bool
+    /// What was written (for an agent that asked); nil when nothing was.
+    var prompt: String? = nil
+    var negativePrompt: String? = nil
   }
 
   /// The generic model has to say a prompt, maybe with its negative: room for that.
@@ -83,7 +86,10 @@ struct PMWriter {
     var lines = [Self.describe(result, italian: italian)] + notes
     if let ratio = parsed.ratio { lines.append(L.format(.ratio, ratio, italian: italian)) }
     if entry?.provisional == true, case .generic = plan { lines.append(L.text(.provisional, italian: italian)) }
-    return Outcome(status: lines.joined(separator: " "), ratio: parsed.ratio, sent: Self.wasAccepted(result))
+    let negative = fields["negativePrompt"] as? String
+    return Outcome(
+      status: lines.joined(separator: " "), ratio: parsed.ratio, sent: Self.wasAccepted(result), prompt: parsed.prompt,
+      negativePrompt: negative)
   }
 
   static func wasAccepted(_ answer: [String: Any]?) -> Bool {

@@ -6,8 +6,8 @@ import SwiftUI
 final class PromptMasterPlugin: DTHubPlugin {
   /// On the other families the plug-in is switched off and its tab is hidden: those are the ones Prompt Master has a master prompt for.
   let manifest = DTHubManifest(
-    id: "com.exiztenz.dthub.promptmaster", name: "Prompt Master", version: "1.4", symbol: "wand.and.stars",
-    families: PMFamilies.all)
+    id: "com.exiztenz.dthub.promptmaster", name: "Prompt Master", version: "1.5", symbol: "wand.and.stars",
+    families: PMFamilies.all, tools: PMTools.declarations)
   private let state = PMState()
   private var host: DTHubHost?
 
@@ -42,6 +42,11 @@ final class PromptMasterPlugin: DTHubPlugin {
         state.switchProject(folder: URL(fileURLWithPath: project.folder, isDirectory: true), adoptLegacy: project.adoptLegacy)
       }
       return nil
+    case "tool.call":
+      guard let call = DTHubToolCall(message) else { return DTHubMessage.failure("Not a tool call.") }
+      let actions = PMTools.Actions(
+        write: { [weak self] in await self?.performWrite() }, applyRatio: { [weak self] in await self?.performApplyRatio() })
+      return await PMTools.handle(call, state: state, actions: actions)
     case "activate":
       state.active = true
       return nil
@@ -62,28 +67,32 @@ final class PromptMasterPlugin: DTHubPlugin {
   }
 
   private func write() {
-    guard state.canWrite, let host, let request = state.writeRequest else { return }
+    Task { _ = await performWrite() }
+  }
+
+  /// The button and the `write_prompt` tool: nil when the tab cannot write now.
+  private func performWrite() async -> PMWriter.Outcome? {
+    guard state.canWrite, let host, let request = state.writeRequest else { return nil }
     state.isWriting = true
     state.status = ""
     state.suggestedRatio = nil
-    let writer = makeWriter(host)
-    Task {
-      let outcome = await writer.write(request)
-      state.status = outcome.status
-      state.suggestedRatio = outcome.ratio
-      state.isWriting = false
-    }
+    let outcome = await makeWriter(host).write(request)
+    state.status = outcome.status
+    state.suggestedRatio = outcome.ratio
+    state.isWriting = false
+    return outcome
   }
 
   private func applyRatio() {
-    guard state.canApplyRatio, let host, let ratio = state.suggestedRatio else { return }
-    let (width, height) = (state.currentWidth, state.currentHeight)
-    let writer = makeWriter(host)
-    Task {
-      let outcome = await writer.applyRatio(ratio, currentWidth: width, currentHeight: height)
-      state.status = outcome.status
-      if outcome.sent { state.suggestedRatio = nil }
-    }
+    Task { _ = await performApplyRatio() }
+  }
+
+  private func performApplyRatio() async -> PMWriter.Outcome? {
+    guard state.canApplyRatio, let host, let ratio = state.suggestedRatio else { return nil }
+    let outcome = await makeWriter(host).applyRatio(ratio, currentWidth: state.currentWidth, currentHeight: state.currentHeight)
+    state.status = outcome.status
+    if outcome.sent { state.suggestedRatio = nil }
+    return outcome
   }
 
   private func makeScene() {

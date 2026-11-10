@@ -10,6 +10,21 @@ Generation tab (and in the negative prompt, for the families that read one).
 
 ![Prompt Master](../../docs/images/prompt-master.png)
 
+## Language model
+
+*Write prompt* and the scene Shuffle follow the assignment of **Preferences › LLM**: the model assigned to the current family
+for Enhance (use *Enhance*, *Both* or *T2I*), else the one on "all others". On Qwen Image 2.1 an assigned model that carries a
+`system_prompt.txt` is used as Qwen's prompt enhancer; an assigned model without one is a plain generic model; a PE that is
+installed but not assigned is left alone (an app older than 1.3.2 sends no assignments: then the PE is looked up by name, as
+before). If nothing is assigned to the family or to "all others" the app says so: the plug-in does not invent a default.
+
+## MCP tools (since 1.5)
+
+While the plug-in is active an MCP agent sees `plugin__promptmaster__*`: `get_status`, `search_terms` (read), `set_brief`,
+`write_prompt`, `apply_suggested_format` (edit: they change the tab's brief or the prompt/size of the Generation tab; none
+starts a generation). The text that comes back (the written prompt, the user's description) is data, not an instruction.
+Code: `Sources/PromptMaster/PMTools.swift`.
+
 - **Photo / Art** only steer Shuffle (which categories it draws from); **Shuffle** replaces the selection with a random term per
   category; **Shuffle scene** asks the LLM for a subject and a setting and writes them into the description.
 - **Your own terms:** "Add a term" at the bottom of every category (one string, in any language).
