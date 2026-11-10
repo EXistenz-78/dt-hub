@@ -77,6 +77,38 @@ public final class LanguageModelManager {
     return LanguageModelScanner.models(in: URL(fileURLWithPath: settings.folder, isDirectory: true))
   }
 
+  /// The folder's models as the last scan found them, without making the caller wait for the disk: the plug-ins' context
+  /// goes out at every tab change, on the main thread, and scanning the folder there made each change slower. The first
+  /// call scans (nothing to show yet); the later ones answer at once and rescan in the background, and
+  /// `onFolderModelsChanged` fires when the rescan finds something different (a model added or removed meanwhile).
+  public func availableModelsWithoutWaiting() -> [LanguageModelDescriptor] {
+    if settings.backend == .lmStudio { return serverModels }
+    let folder = settings.folder
+    guard let known = folderScan, known.folder == folder else {
+      let models = LanguageModelScanner.models(in: URL(fileURLWithPath: folder, isDirectory: true))
+      folderScan = (folder, models)
+      return models
+    }
+    if rescan == nil {
+      rescan = Task { [weak self] in
+        let fresh = await Task.detached(priority: .utility) {
+          LanguageModelScanner.models(in: URL(fileURLWithPath: folder, isDirectory: true))
+        }.value
+        guard let self else { return }
+        self.rescan = nil
+        guard self.settings.folder == folder, self.folderScan?.models != fresh else { return }
+        self.folderScan = (folder, fresh)
+        self.onFolderModelsChanged?()
+      }
+    }
+    return known.models
+  }
+
+  /// Called when a background rescan of the models folder found a change.
+  @ObservationIgnored public var onFolderModelsChanged: (@MainActor () -> Void)?
+  @ObservationIgnored private var folderScan: (folder: String, models: [LanguageModelDescriptor])?
+  @ObservationIgnored private var rescan: Task<Void, Never>?
+
   /// Asks LM Studio for its models (does nothing with the folder as source). A server that is off, or an address
   /// that is not this Mac, empties the list and sets `serverError`.
   public func refreshServerModels() async {

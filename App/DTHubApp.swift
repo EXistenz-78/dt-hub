@@ -135,12 +135,14 @@ struct DTHubApp: App {
     plugins.lastResultPath = { generation.session.results.first?.fileURL?.path }
     plugins.moodboardPaths = { control.moodboardURLs.map(\.path) }
     plugins.languageModels = {
-      languageModel.availableModels().map {
+      languageModel.availableModelsWithoutWaiting().map {
         let fields = languageModel.settings.assignments[$0.name]?.pluginFields
         return PluginLanguageModel(
           name: $0.name, path: $0.path, supportsImages: $0.supportsImages, family: fields?.family, use: fields?.use)
       }
     }
+    // A model added to the folder meanwhile: the plug-ins hear about it as soon as the background scan sees it.
+    languageModel.onFolderModelsChanged = { [weak plugins] in plugins?.refreshContext() }
     // The project: Control, the strip of results, the parameters and the plug-ins follow the one that is open.
     let projects = ProjectManager(
       outputFolder: { OutputSettingsStore().folder() }, selection: selection, legacy: .live,

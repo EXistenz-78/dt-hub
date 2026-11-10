@@ -46,7 +46,12 @@ struct MainWindowView: View {
             workspace: workspace, plugins: plugins,
             controlHasImages: generation.control.inputs.image != nil || !generation.control.inputs.moodboard.isEmpty)
         } content: {
-          tabContent
+          // The tab takes the space it is given, whatever is in it. Placed straight in the stacks, each stack around
+          // it asked the tab its size more than once to share the space out, and a scroll view answers by laying out
+          // everything it holds: the whole Generation tab was measured many times over at every change of a value
+          // (a profile showed 0.35 s of layout for one press of a stepper). The clear color answers at once, and
+          // the tab is laid out one time, in the space that is left.
+          Color.clear.overlay { tabContent }
         }
       }
       // Without an open project there is nowhere to work: this sheet asks for one and cannot be dismissed.
