@@ -10326,13 +10326,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "LM Studio server"
+            "value": "API server"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Server LM Studio"
+            "value": "Server API"
           }
         }
       }
