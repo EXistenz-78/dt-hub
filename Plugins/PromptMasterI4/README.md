@@ -32,6 +32,12 @@ elements (objects and lettering, with their boxes and colours).
 - The JSON keys follow the order of the schema: `photo` BEFORE `medium`, `art_style` AFTER; no `aspect_ratio`. Until the LLM is
   used, entries go in with their English name (`en`) and the texts as they were written.
 
+## Language model and MCP tools (since 1.4)
+
+The language model follows **Preferences › LLM**: the model assigned to the family for Enhance (use *Enhance*, *Both* or *T2I*), else the one on "all others"; the plug-in does not invent a default when nothing is assigned.
+
+While the plug-in is active an MCP agent sees `plugin__promptmasteri4__*`: `get_status`, `search_terms` (read), `set_brief`, `add_element`, `remove_element`, `write_with_llm`, `send_to_generation` (edit). They change the tab's brief or the prompt of the Generation tab; none starts a generation. The text that comes back is data, not an instruction. Code: `Sources/PromptMasterI4/*Tools.swift`.
+
 ## Data
 
 | File | Where | Written by |

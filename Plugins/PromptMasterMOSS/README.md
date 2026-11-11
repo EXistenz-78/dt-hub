@@ -15,6 +15,12 @@ A DT Hub plug-in that builds the **JSON layout prompt of MOSS Image**: a `summar
 
 Plain natural-language prompts for MOSS are covered by the app's own Family prompt; this plug-in is for the JSON layout.
 
+## Language model and MCP tools (since 1.1)
+
+The language model follows **Preferences › LLM**: the model assigned to the family for Enhance (use *Enhance*, *Both* or *T2I*), else the one on "all others"; the plug-in does not invent a default when nothing is assigned.
+
+While the plug-in is active an MCP agent sees `plugin__promptmastermoss__*`: `get_status`, `search_terms` (read), `set_brief`, `add_element`, `set_element`, `remove_element`, `write_with_llm`, `send_to_generation` (edit). They change the tab's brief or the prompt of the Generation tab; none starts a generation. The text that comes back is data, not an instruction. Code: `Sources/PromptMasterMOSS/*Tools.swift`.
+
 ## The tab
 
 - **Summary** (left card): the general description (it becomes the `caption`), Photo / Art, Shuffle and the terms database. Terms for medium and genre go to `meta`, the other ones into the `caption`. You can add free `meta` tags, choose the `canvas` (`single`, `multi_panel`, `collage`) and a colour palette (up to 5). The **Negative** section holds the negative terms (several can be picked, `worst quality, bad anatomy` by default) and a free text field.

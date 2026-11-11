@@ -15,11 +15,11 @@ enum F3ModelChoice {
   static let promptKey = "t2i_bbox"
 
   /// Stessa regola dell'app: il primo per nome assegnato alla famiglia, altrimenti il primo su «tutte le altre»; è PUP se la sua
-  /// cartella ha `system_prompts.json` con `t2i_bbox` (basta il file: `t2i_bbox` è solo testo). Un modello assegnato solo a «describe» non
-  /// scrive prompt, quindi non è un candidato.
+  /// cartella ha `system_prompts.json` con `t2i_bbox` (basta il file: `t2i_bbox` è solo testo). Solo gli usi che scrivono prompt (enhance, both, t2i) contano:
+  /// «describe», «plugins» e «i2i» non sono candidati.
   static func mode(family: String?, models: [DTHubLanguageModel], readFile: (String) -> Data?) -> F3WriteMode {
     func first(_ wanted: String) -> DTHubLanguageModel? {
-      models.filter { $0.family == wanted && $0.use != "describe" }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }.first
+      models.filter { $0.family == wanted && LLMChoice.writingUses.contains($0.use ?? "") }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }.first
     }
     guard let chosen = family.flatMap(first) ?? first("*") else { return .standard(model: nil) }
     guard let data = readFile(chosen.path + "/" + promptsFile),

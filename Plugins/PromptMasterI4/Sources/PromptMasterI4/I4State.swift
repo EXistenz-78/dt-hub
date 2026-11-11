@@ -82,6 +82,18 @@ final class I4State: ObservableObject {
 
   func update(generationSize: CGSize?) { self.generationSize = generationSize }
 
+  /// The language models and the family of the image model, as the app last said them (for choosing who writes).
+  private(set) var languageModels: [DTHubLanguageModel] = []
+  private(set) var contextFamily: String?
+
+  func update(models: [DTHubLanguageModel], family: String?) {
+    languageModels = models
+    contextFamily = family
+  }
+
+  /// The model assigned to the family in Settings › LLM (nil: the app chooses the one on "all others").
+  var writeModel: String? { LLMChoice.model(family: contextFamily, languageModels: languageModels) }
+
   /// Width over height of the Generation tab; a square until the app has said.
   var canvasAspect: Double {
     guard let size = generationSize, size.width > 0, size.height > 0 else { return 1 }
