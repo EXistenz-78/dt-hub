@@ -14,10 +14,22 @@ enum AppRelaunch {
       pid: ProcessInfo.processInfo.processIdentifier, appPath: Bundle.main.bundleURL.path)
     try? process.run()
     // A sheet that is open (the details of an update) makes the quit fail: AppKit beeps and the app stays, until the
-    // script above stops it after its grace time. Close every sheet first, then quit once they are gone.
+    // script above stops it after its grace time. A SwiftUI sheet is not closed by `endSheet` alone (its `isPresented`
+    // flag stays true), so the caller dismisses its own sheet first; this closes whatever is left, and the quit waits
+    // until no sheet is attached (two seconds at most).
     for window in NSApp.windows {
       if let sheet = window.attachedSheet { window.endSheet(sheet) }
     }
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { NSApp.terminate(nil) }
+    quit(whenSheetsAreGone: Date().addingTimeInterval(2))
+  }
+
+  @MainActor
+  private static func quit(whenSheetsAreGone deadline: Date) {
+    let open = NSApp.windows.contains { $0.attachedSheet != nil }
+    if !open || Date() >= deadline {
+      NSApp.terminate(nil)
+      return
+    }
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { quit(whenSheetsAreGone: deadline) }
   }
 }
