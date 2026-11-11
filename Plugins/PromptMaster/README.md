@@ -20,7 +20,7 @@ before). If nothing is assigned to the family or to "all others" the app says so
 
 ## Recipes (since 1.6)
 
-In *Chosen terms*, above *Write prompt*: type a name and press **Save recipe** to keep the current brief (chosen terms, Photo/Art, booru switch, description). Saved recipes are listed below; click one to load it back into the tab (an empty saved description keeps the one you have), **x** deletes it. A name already used (ignoring case) is replaced; an empty name leaves the button disabled. Recipes are **global** (not per project), in `recipes.json` next to `custom-terms.json`; a term id that no longer exists (a deleted own term, a category hidden by the family) is simply not shown.
+In *Chosen terms*, above *Write prompt*: type a name and press **Save recipe** to keep the current brief (chosen terms, Photo/Art, booru switch; not the description). Saved recipes are listed below; click one to load it back into the tab, **x** deletes it. A name already used (ignoring case) is replaced; an empty name leaves the button disabled. Recipes are **global** (not per project), in `recipes.json` next to `custom-terms.json`; a term id that no longer exists (a deleted own term, a category hidden by the family) is simply not shown.
 
 ## MCP tools (since 1.5)
 

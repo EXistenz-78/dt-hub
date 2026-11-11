@@ -1,12 +1,11 @@
 import Foundation
 
-/// A saved brief: the chosen terms, the Shuffle mode, the booru switch and the description, under a name.
+/// A saved brief: the chosen terms, the Shuffle mode, and the booru switch, under a name (not the description: it belongs to the picture, not to the look).
 struct Recipe: Codable, Equatable, Identifiable {
   var name: String
   var selection: [String]
   var mode: StyleMode
   var booru: Bool
-  var description: String
   var id: String { name.lowercased() }
 }
 

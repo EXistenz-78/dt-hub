@@ -176,12 +176,12 @@ final class PMState: ObservableObject {
 
   var canSaveRecipe: Bool { !RecipeStore.clean(recipeName).isEmpty }
 
-  /// Saves the brief now (terms, mode, booru, description) under `recipeName`, replacing a recipe of the same name.
+  /// Saves the brief now (terms, mode, booru) under `recipeName`, replacing a recipe of the same name.
   /// Returns false (and says why in `status`) when the name is empty or the file cannot be written.
   @discardableResult
   func saveRecipe(named name: String? = nil) -> Bool {
     let recipe = Recipe(
-      name: name ?? recipeName, selection: selection.sorted(), mode: mode, booru: booru, description: description)
+      name: name ?? recipeName, selection: selection.sorted(), mode: mode, booru: booru)
     do {
       try recipeStore.save(recipe)
       recipes = recipeStore.load()
@@ -193,8 +193,7 @@ final class PMState: ObservableObject {
     }
   }
 
-  /// Puts a recipe back in the tab: terms, mode and booru replace the current ones; an empty description keeps the
-  /// one in the tab. Returns false if there is no such recipe.
+  /// Puts a recipe back in the tab: terms, mode and booru replace the current ones; the description is left alone. Returns false if there is no such recipe.
   @discardableResult
   func loadRecipe(named name: String) -> Bool {
     let key = RecipeStore.clean(name).lowercased()
@@ -202,7 +201,6 @@ final class PMState: ObservableObject {
     selection = Set(recipe.selection)
     mode = recipe.mode
     booru = recipe.booru
-    if !recipe.description.isEmpty { description = recipe.description }
     return true
   }
 

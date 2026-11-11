@@ -162,7 +162,7 @@ struct PromptMasterView: View {
                 }
                 .buttonStyle(.plain).help(L.text(.loadRecipe, italian: state.italian))
                 Button { state.deleteRecipe(named: recipe.name) } label: { Image(systemName: "xmark").font(.caption) }
-                  .buttonStyle(.plain).foregroundStyle(.secondary).help(L.text(.deleteRecipe, italian: state.italian))
+                  .buttonStyle(.plain).foregroundStyle(DS.remove).help(L.text(.deleteRecipe, italian: state.italian))
               }
             }
           }

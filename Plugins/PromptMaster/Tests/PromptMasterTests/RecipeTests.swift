@@ -19,7 +19,7 @@ struct RecipeTests {
   }
 
   private func recipe(_ name: String, _ terms: [String] = ["fr_closeup"]) -> Recipe {
-    Recipe(name: name, selection: terms, mode: .art, booru: false, description: "a cat")
+    Recipe(name: name, selection: terms, mode: .art, booru: false)
   }
 
   @Test func aRecipeIsSavedAndComesBackInANewStore() throws {
@@ -70,13 +70,12 @@ struct RecipeTests {
     let state = state(recipes: dir)
     state.setChosen("fr_closeup", true)
     state.mode = .art
-    state.description = "a dog"
     #expect(!state.canSaveRecipe)
     state.recipeName = "Dog"
     #expect(state.canSaveRecipe && state.saveRecipe() && state.recipeName.isEmpty)
-    state.clearAll(); state.mode = .photo; state.description = "other"
+    state.clearAll(); state.mode = .photo
     #expect(state.loadRecipe(named: "dog"))
-    #expect(state.selection == ["fr_closeup"] && state.mode == .art && state.description == "a dog")
+    #expect(state.selection == ["fr_closeup"] && state.mode == .art)
     // Persisted: a new state on the same folder sees it.
     #expect(self.state(recipes: dir).recipes.map(\.name) == ["Dog"])
     #expect(state.deleteRecipe(named: "Dog") && state.recipes.isEmpty && !state.deleteRecipe(named: "Dog"))
@@ -89,12 +88,17 @@ struct RecipeTests {
     #expect(state.status == L.text(.recipeNeedsName, italian: false))
   }
 
-  @Test func anEmptyDescriptionInARecipeKeepsTheCurrentOne() throws {
+  @Test func aRecipeNeverTouchesTheDescriptionAndAnOldFileWithOneStillReads() throws {
     let dir = folder()
-    try RecipeStore(folder: dir).save(Recipe(name: "R", selection: [], mode: .photo, booru: false, description: ""))
+    try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    let old = #"{"schema":1,"recipes":[{"name":"R","selection":["fr_closeup"],"mode":"art","booru":false,"description":"old"}]}"#
+    try Data(old.utf8).write(to: dir.appendingPathComponent(RecipeStore.fileName))
     let state = state(recipes: dir)
     state.description = "keep me"
-    #expect(state.loadRecipe(named: "R") && state.description == "keep me")
+    #expect(state.loadRecipe(named: "R") && state.description == "keep me" && state.selection == ["fr_closeup"])
+    state.recipeName = "S"
+    #expect(state.saveRecipe())
+    #expect(!String(decoding: try Data(contentsOf: dir.appendingPathComponent(RecipeStore.fileName)), as: UTF8.self).contains("description"))
   }
 
   @Test func theToolsListSaveLoadAndDelete() async throws {
