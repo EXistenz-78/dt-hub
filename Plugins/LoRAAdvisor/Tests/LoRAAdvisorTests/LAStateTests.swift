@@ -36,14 +36,15 @@ struct LAStateTests {
     return Data(("{" + parts.joined(separator: ",") + "}").utf8)
   }
 
-  /// The tab's view is rebuilt when the user comes back: the scroll offset lives in the state, and a new context keeps it.
-  @Test func theScrollOffsetOfTheListSurvivesContextUpdates() {
-    #expect(state.listOffset == 0)
+  /// The tab's view is rebuilt when the user comes back: the row at the top of the list lives in the state, and a new context
+  /// keeps it.
+  @Test func theTopRowOfTheListSurvivesContextUpdates() {
+    #expect(state.listAnchor == nil)
     state.apply(context: context())
-    state.listOffset = 420
+    state.listAnchor = "a.ckpt"
     state.apply(context: context(prompt: "another prompt"))
     state.apply(context: context(catalog: "[]"))
-    #expect(state.listOffset == 420)
+    #expect(state.listAnchor == "a.ckpt")
   }
 
   @Test func theListSaysWhyItIsEmpty() {
