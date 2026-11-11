@@ -36,14 +36,17 @@ struct LAStateTests {
     return Data(("{" + parts.joined(separator: ",") + "}").utf8)
   }
 
-  /// The tab's view is rebuilt when the user comes back: the scroll offset lives in the state, and a new context keeps it.
-  @Test func theScrollOffsetOfTheListSurvivesContextUpdates() {
-    #expect(state.listOffset == 0)
+  /// The tab's view is rebuilt when the user comes back: the LoRA last selected is kept, even after its row is closed, and a new
+  /// context keeps it.
+  @Test func theLastSelectedLoRAIsKept() {
+    #expect(state.lastSelectedFile == nil)
     state.apply(context: context())
-    state.listOffset = 420
+    state.openFile = "a.ckpt"
+    state.openFile = "p.ckpt"
+    state.openFile = nil
     state.apply(context: context(prompt: "another prompt"))
     state.apply(context: context(catalog: "[]"))
-    #expect(state.listOffset == 420)
+    #expect(state.openFile == nil && state.lastSelectedFile == "p.ckpt")
   }
 
   @Test func theListSaysWhyItIsEmpty() {

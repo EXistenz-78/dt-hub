@@ -7,14 +7,6 @@ import UniformTypeIdentifiers
 /// "Your LoRAs": every LoRA of the server, by family, with its thumbnail and notes, and the two jobs that fill them in.
 struct LAListCard: View {
   @ObservedObject var state: LAState
-  /// A plain (not lazy) stack on purpose: a lazy one knows only the height of the rows it has made, so a saved offset lands in
-  /// the wrong place and the scroll bar changes size once the tab comes back.
-  /// The list scrolls here; its offset is kept in `state` so it survives the tab being left and shown again (the app
-  /// rebuilds the tab's view each time, and a scroll view starts from the top).
-  @State private var position = ScrollPosition(edge: .top)
-  /// Offsets are recorded only once the saved one has been put back, or the first layout (at the top) would overwrite it.
-  @State private var recording = false
-
   var body: some View {
     VStack(alignment: .leading, spacing: DS.rowGap) {
       HStack(spacing: DS.controlGap) {
@@ -89,9 +81,24 @@ struct LAListCard: View {
     }
   }
 
+  /// Coming back to the tab (the app rebuilds its view, and a scroll view starts from the top), the LoRA last selected is put at
+  /// the top of the list. Only that one is remembered, not where the list was: a lazy list does not know the height of the
+  /// rows it has not made, so an offset is unreliable, and a plain list draws every row and slows the whole app.
   private var list: some View {
+    ScrollViewReader { proxy in
+      scrollContent
+        .task {
+          guard let file = state.lastSelectedFile else { return }
+          // The rows lay out after the view appears.
+          try? await Task.sleep(for: .milliseconds(60))
+          proxy.scrollTo(file, anchor: .top)
+        }
+    }
+  }
+
+  private var scrollContent: some View {
     ScrollView {
-      VStack(alignment: .leading, spacing: 4) {
+      LazyVStack(alignment: .leading, spacing: 4) {
         ForEach(state.groups, id: \.family) { group in
           let isOpen = state.isOpen(group)
           Button { withAnimation(.easeInOut(duration: 0.15)) { state.toggle(group) } } label: {
@@ -114,6 +121,7 @@ struct LAListCard: View {
           if isOpen {
             ForEach(group.loras, id: \.file) { lora in
               LARow(state: state, lora: lora)
+                .id(lora.file)
             }
           }
         }
@@ -121,17 +129,6 @@ struct LAListCard: View {
       .frame(maxWidth: .infinity, alignment: .topLeading)
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
-    .scrollPosition($position)
-    .onScrollGeometryChange(for: CGFloat.self, of: { $0.contentOffset.y }) { _, offset in
-      if recording { state.listOffset = offset }
-    }
-    .task {
-      recording = false
-      if state.listOffset > 0 { position.scrollTo(y: state.listOffset) }
-      // The lazy list lays out after the view appears: record from then on.
-      try? await Task.sleep(for: .milliseconds(250))
-      recording = true
-    }
   }
 
   private func title(of group: LAState.Group) -> String {
