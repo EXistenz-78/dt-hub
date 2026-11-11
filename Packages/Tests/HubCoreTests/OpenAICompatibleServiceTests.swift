@@ -27,7 +27,7 @@ struct OpenAICompatibleServiceTests {
     #expect(body["model"] as? String == "m")
     #expect(body["stream"] as? Bool == false)
     #expect(body["temperature"] as? Double == 0.6)
-    #expect(body["max_tokens"] as? Int == 1024)
+    #expect(body["max_tokens"] as? Int == 1024 + OpenAICompatibleService.thinkingAllowance)
   }
 
   @Test func bodyMapsTheOptions() throws {
@@ -38,7 +38,7 @@ struct OpenAICompatibleServiceTests {
     #expect(body["temperature"] as? Double == 0.2)
     #expect(body["top_p"] as? Double == 0.9)
     #expect(body["presence_penalty"] as? Double == 0.5)
-    #expect(body["max_tokens"] as? Int == 50)
+    #expect(body["max_tokens"] as? Int == 50 + OpenAICompatibleService.thinkingAllowance)
     #expect(body["top_k"] as? Int == 40)
     #expect(body["thinking"] == nil)
     #expect(body["enable_thinking"] == nil)

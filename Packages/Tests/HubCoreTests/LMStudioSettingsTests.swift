@@ -1,4 +1,5 @@
 import Foundation
+import HubKit
 import Testing
 
 @testable import HubCore
@@ -17,6 +18,29 @@ struct LMStudioSettingsTests {
 
   @Test func validatedDropsATrailingSlashAndSpaces() {
     #expect(LMStudioAddress.validated("  http://localhost:1235/v1/ ")?.absoluteString == "http://localhost:1235/v1")
+  }
+
+  @Test func anAddressWithoutAPathGetsV1() {
+    #expect(LMStudioAddress.validated("http://127.0.0.1:11435")?.absoluteString == "http://127.0.0.1:11435/v1")
+    #expect(LMStudioAddress.validated("http://127.0.0.1:11435/")?.absoluteString == "http://127.0.0.1:11435/v1")
+    #expect(LMStudioAddress.validated("http://localhost:1235/v1")?.absoluteString == "http://localhost:1235/v1")
+    #expect(LMStudioAddress.validated("http://localhost:1235/other")?.absoluteString == "http://localhost:1235/other")
+  }
+
+  @Test func thinkingOffIsAskedForAndThinkingOnGetsRoomToThink() throws {
+    func body(_ options: LanguageModelOptions) throws -> [String: Any] {
+      let data = try OpenAICompatibleService.body(model: "m", prompt: "p", imageDataURLs: [], options: options, history: [])
+      return try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+    }
+    let off = try body(LanguageModelOptions(maxTokens: 800, thinking: false))
+    #expect(off["max_tokens"] as? Int == 800)
+    #expect(off["enable_thinking"] as? Bool == false && off["reasoning_effort"] as? String == "none")
+    #expect((off["chat_template_kwargs"] as? [String: Any])?["enable_thinking"] as? Bool == false)
+    let on = try body(LanguageModelOptions(maxTokens: 800, thinking: true))
+    #expect(on["max_tokens"] as? Int == 800 + OpenAICompatibleService.thinkingAllowance)
+    #expect(on["enable_thinking"] == nil)
+    let unset = try body(LanguageModelOptions())
+    #expect(unset["max_tokens"] as? Int == 1024 + OpenAICompatibleService.thinkingAllowance)
   }
 
   @Test func urlsAreBuiltFromTheBase() throws {

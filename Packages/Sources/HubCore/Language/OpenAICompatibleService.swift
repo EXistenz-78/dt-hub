@@ -94,8 +94,14 @@ public actor OpenAICompatibleService: ServerLanguageModelService {
 
   // MARK: The messages
 
-  /// The JSON body of a chat completion. `top_k` is sent only when set; `thinking` is not sent (the OpenAI API
-  /// has no such field).
+  /// Extra tokens given to a model that may think: its reasoning counts against `max_tokens`, and a server that does
+  /// not separate it would leave the answer empty.
+  static let thinkingAllowance = 8192
+
+  /// The JSON body of a chat completion. `top_k` is sent only when set. `thinking == false` asks the server not to
+  /// think (the OpenAI API has no such field, so the usual spellings are all sent; servers ignore the ones they do
+  /// not know). Otherwise the model may think, and `max_tokens` grows by `thinkingAllowance` so the thinking does
+  /// not eat the answer.
   static func body(
     model: String, prompt: String, imageDataURLs: [String], options: LanguageModelOptions, history: [LanguageModelTurn]
   ) throws -> Data {
@@ -109,10 +115,16 @@ public actor OpenAICompatibleService: ServerLanguageModelService {
       for url in imageDataURLs { parts.append(["type": "image_url", "image_url": ["url": url]]) }
       messages.append(["role": "user", "content": parts])
     }
+    let answerTokens = options.maxTokens ?? 1024
     var body: [String: Any] = [
       "model": model, "messages": messages, "stream": false,
-      "temperature": options.temperature ?? 0.6, "max_tokens": options.maxTokens ?? 1024,
+      "temperature": options.temperature ?? 0.6, "max_tokens": answerTokens + (options.thinking == false ? 0 : thinkingAllowance),
     ]
+    if options.thinking == false {
+      body["enable_thinking"] = false
+      body["reasoning_effort"] = "none"
+      body["chat_template_kwargs"] = ["enable_thinking": false]
+    }
     if let topP = options.topP { body["top_p"] = topP }
     if let topK = options.topK { body["top_k"] = topK }
     if let penalty = options.presencePenalty { body["presence_penalty"] = penalty }

@@ -6,14 +6,16 @@ public enum LMStudioAddress {
   private static let localHosts: Set<String> = ["localhost", "127.0.0.1", "::1"]
 
   /// The base URL (`http://localhost:1235/v1`) when `text` is `http` on this Mac with a port; nil otherwise.
-  /// Spaces and a trailing slash are dropped.
+  /// Spaces and a trailing slash are dropped; an address with no path (`http://127.0.0.1:11435`) gets `/v1`, which is
+  /// where the OpenAI API lives (an address with another path is left as the user wrote it).
   public static func validated(_ text: String) -> URL? {
     var trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
     while trimmed.hasSuffix("/") { trimmed.removeLast() }
-    guard let components = URLComponents(string: trimmed), components.scheme == "http",
+    guard var components = URLComponents(string: trimmed), components.scheme == "http",
       let host = components.host?.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: "[]")),
       localHosts.contains(host), components.port != nil
     else { return nil }
+    if components.path.isEmpty { components.path = "/v1" }
     return components.url
   }
 
