@@ -7,6 +7,8 @@ import UniformTypeIdentifiers
 /// "Your LoRAs": every LoRA of the server, by family, with its thumbnail and notes, and the two jobs that fill them in.
 struct LAListCard: View {
   @ObservedObject var state: LAState
+  /// A plain (not lazy) stack on purpose: a lazy one knows only the height of the rows it has made, so a saved offset lands in
+  /// the wrong place and the scroll bar changes size once the tab comes back.
   /// The list scrolls here; its offset is kept in `state` so it survives the tab being left and shown again (the app
   /// rebuilds the tab's view each time, and a scroll view starts from the top).
   @State private var position = ScrollPosition(edge: .top)
@@ -89,7 +91,7 @@ struct LAListCard: View {
 
   private var list: some View {
     ScrollView {
-      LazyVStack(alignment: .leading, spacing: 4) {
+      VStack(alignment: .leading, spacing: 4) {
         ForEach(state.groups, id: \.family) { group in
           let isOpen = state.isOpen(group)
           Button { withAnimation(.easeInOut(duration: 0.15)) { state.toggle(group) } } label: {
