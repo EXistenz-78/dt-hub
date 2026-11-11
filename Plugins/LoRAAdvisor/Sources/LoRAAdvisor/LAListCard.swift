@@ -7,17 +7,6 @@ import UniformTypeIdentifiers
 /// "Your LoRAs": every LoRA of the server, by family, with its thumbnail and notes, and the two jobs that fill them in.
 struct LAListCard: View {
   @ObservedObject var state: LAState
-  /// The row (or family header) at the top of the list. It is kept in `state` so that it survives the tab being left and shown
-  /// again (the app rebuilds the tab's view each time, and a scroll view starts from the top). An id, not an offset, and a lazy
-  /// stack: a lazy stack knows only the height of the rows it has made, so an offset lands in the wrong place, while the stack
-  /// can lay out up to a row it is told to scroll to. A plain stack would be exact but draws every row, and slows the whole app.
-  @State private var topID: String?
-
-  init(state: LAState) {
-    self.state = state
-    _topID = State(initialValue: state.listAnchor)
-  }
-
   var body: some View {
     VStack(alignment: .leading, spacing: DS.rowGap) {
       HStack(spacing: DS.controlGap) {
@@ -92,7 +81,22 @@ struct LAListCard: View {
     }
   }
 
+  /// Coming back to the tab (the app rebuilds its view, and a scroll view starts from the top), the LoRA last selected is put at
+  /// the top of the list. Only that one is remembered, not where the list was: a lazy list does not know the height of the
+  /// rows it has not made, so an offset is unreliable, and a plain list draws every row and slows the whole app.
   private var list: some View {
+    ScrollViewReader { proxy in
+      scrollContent
+        .task {
+          guard let file = state.lastSelectedFile else { return }
+          // The rows lay out after the view appears.
+          try? await Task.sleep(for: .milliseconds(60))
+          proxy.scrollTo(file, anchor: .top)
+        }
+    }
+  }
+
+  private var scrollContent: some View {
     ScrollView {
       LazyVStack(alignment: .leading, spacing: 4) {
         ForEach(state.groups, id: \.family) { group in
@@ -114,7 +118,6 @@ struct LAListCard: View {
           .disabled(state.isSearching)
           .padding(.top, DS.controlGap)
           .accessibilityLabel(title(of: group))
-          .id("group:" + LAState.familyKey(group.family))
           if isOpen {
             ForEach(group.loras, id: \.file) { lora in
               LARow(state: state, lora: lora)
@@ -123,12 +126,9 @@ struct LAListCard: View {
           }
         }
       }
-      .scrollTargetLayout()
       .frame(maxWidth: .infinity, alignment: .topLeading)
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
-    .scrollPosition(id: $topID, anchor: .top)
-    .onChange(of: topID) { _, id in state.listAnchor = id }
   }
 
   private func title(of group: LAState.Group) -> String {

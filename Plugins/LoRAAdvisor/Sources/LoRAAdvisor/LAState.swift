@@ -19,15 +19,18 @@ final class LAState: ObservableObject {
   @Published var onlyIncomplete = false
   /// The row that is open; one at a time.
   @Published var openFile: String? {
-    didSet { if oldValue != openFile { flushNotes() } }
+    didSet {
+      if oldValue != openFile { flushNotes() }
+      if let openFile { lastSelectedFile = openFile }
+    }
   }
   /// The families of the list that are open, by `familyKey`. A new tab starts with none: the current model's family
   /// is opened as soon as the context says which it is, and again whenever the model changes.
   @Published private(set) var openFamilies: Set<String> = []
   private var openedFor: String?
-  /// The id of the row or family header at the top of the list: kept here because the tab's view is rebuilt when the user comes
-  /// back to it. Not published: it changes while scrolling and nothing needs redrawing for it.
-  var listAnchor: String?
+  /// The LoRA last selected (its row opened), kept after the row is closed: when the user comes back to the tab, the list shows
+  /// it at the top. Not published: nothing needs redrawing for it.
+  private(set) var lastSelectedFile: String?
   /// What to advise on: the prompt of the Generation tab until the user writes something else.
   @Published private(set) var request = ""
   private(set) var requestEditedByUser = false
