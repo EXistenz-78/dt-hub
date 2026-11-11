@@ -25,6 +25,9 @@ final class LAState: ObservableObject {
   /// is opened as soon as the context says which it is, and again whenever the model changes.
   @Published private(set) var openFamilies: Set<String> = []
   private var openedFor: String?
+  /// How far the list is scrolled (points from the top): kept here because the tab's view is rebuilt when the user comes
+  /// back to it. Not published: it changes while scrolling and nothing needs redrawing for it.
+  var listOffset: CGFloat = 0
   /// What to advise on: the prompt of the Generation tab until the user writes something else.
   @Published private(set) var request = ""
   private(set) var requestEditedByUser = false

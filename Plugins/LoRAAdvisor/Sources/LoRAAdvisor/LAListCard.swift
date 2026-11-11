@@ -7,6 +7,11 @@ import UniformTypeIdentifiers
 /// "Your LoRAs": every LoRA of the server, by family, with its thumbnail and notes, and the two jobs that fill them in.
 struct LAListCard: View {
   @ObservedObject var state: LAState
+  /// The list scrolls here; its offset is kept in `state` so it survives the tab being left and shown again (the app
+  /// rebuilds the tab's view each time, and a scroll view starts from the top).
+  @State private var position = ScrollPosition(edge: .top)
+  /// Offsets are recorded only once the saved one has been put back, or the first layout (at the top) would overwrite it.
+  @State private var recording = false
 
   var body: some View {
     VStack(alignment: .leading, spacing: DS.rowGap) {
@@ -114,6 +119,17 @@ struct LAListCard: View {
       .frame(maxWidth: .infinity, alignment: .topLeading)
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .scrollPosition($position)
+    .onScrollGeometryChange(for: CGFloat.self, of: { $0.contentOffset.y }) { _, offset in
+      if recording { state.listOffset = offset }
+    }
+    .task {
+      recording = false
+      if state.listOffset > 0 { position.scrollTo(y: state.listOffset) }
+      // The lazy list lays out after the view appears: record from then on.
+      try? await Task.sleep(for: .milliseconds(250))
+      recording = true
+    }
   }
 
   private func title(of group: LAState.Group) -> String {
