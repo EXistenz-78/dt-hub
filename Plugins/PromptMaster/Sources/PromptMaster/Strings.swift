@@ -14,6 +14,8 @@ enum L {
     case sent, sentWithConflicts, notAnswered, noMasterPrompt, emptyAnswer, llmFailed, sceneFailed
     case enhancerModelMissing, enhancerSystemMissing, ratio, apply, formatApplied, noSize, badRatio, provisional
     case unreadableFile, unknownSchema, repeatedIDs, customNotSaved
+    // Recipes
+    case saveRecipe, recipeName, recipes, noRecipes, deleteRecipe, loadRecipe, recipeNeedsName, recipeNotSaved
   }
 
   static var systemIsItalian: Bool {
@@ -51,6 +53,9 @@ enum L {
     .unknownSchema: "%@ has a layout this plug-in does not know: using the copy built into the plug-in.",
     .repeatedIDs: "%@ uses the same id twice: using the copy built into the plug-in.",
     .customNotSaved: "Could not save your term.",
+    .saveRecipe: "Save recipe", .recipeName: "Recipe name", .recipes: "Recipes", .noRecipes: "No recipe saved yet.",
+    .deleteRecipe: "Delete this recipe", .loadRecipe: "Load this recipe",
+    .recipeNeedsName: "Give the recipe a name.", .recipeNotSaved: "Could not save the recipe.",
   ]
 
   private static let it: [Key: String] = [
@@ -74,5 +79,8 @@ enum L {
     .unknownSchema: "%@ ha un formato che questo plug-in non conosce: uso la copia incorporata.",
     .repeatedIDs: "%@ usa lo stesso id due volte: uso la copia incorporata nel plug-in.",
     .customNotSaved: "Non si è potuto salvare il tuo termine.",
+    .saveRecipe: "Salva ricetta", .recipeName: "Nome della ricetta", .recipes: "Ricette", .noRecipes: "Nessuna ricetta salvata.",
+    .deleteRecipe: "Cancella questa ricetta", .loadRecipe: "Carica questa ricetta",
+    .recipeNeedsName: "Dai un nome alla ricetta.", .recipeNotSaved: "Non si è potuto salvare la ricetta.",
   ]
 }

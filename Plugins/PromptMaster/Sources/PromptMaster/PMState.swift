@@ -8,6 +8,7 @@ final class PMState: ObservableObject {
   let data: PMData
   private var store: PMStore
   private let customStore: CustomTermsStore
+  private let recipeStore: RecipeStore
   private let shuffler: (PromptDatabase, Set<String>, StyleMode) -> [String]
   let italian: Bool
 
@@ -19,6 +20,9 @@ final class PMState: ObservableObject {
   @Published var openCategories: Set<String> { didSet { persist() } }
   @Published var query = "" { didSet { rebuildVisible() } }
   @Published private(set) var customTerms: [CustomTerm]
+  @Published private(set) var recipes: [Recipe]
+  /// The name typed for the next recipe.
+  @Published var recipeName = ""
   @Published private(set) var visibleTree: TermTree
   @Published var status = ""
   @Published var isWriting = false
@@ -41,6 +45,7 @@ final class PMState: ObservableObject {
 
   init(
     data: PMData = PMData.load(), store: PMStore = PMStore(), customStore: CustomTermsStore = CustomTermsStore(),
+    recipeStore: RecipeStore = RecipeStore(),
     italian: Bool = L.systemIsItalian,
     shuffler: @escaping (PromptDatabase, Set<String>, StyleMode) -> [String] = { database, hidden, mode in
       var generator = SystemRandomNumberGenerator()
@@ -50,6 +55,8 @@ final class PMState: ObservableObject {
     self.data = data
     self.store = store
     self.customStore = customStore
+    self.recipeStore = recipeStore
+    recipes = recipeStore.load()
     self.italian = italian
     self.shuffler = shuffler
     let session = store.load()
@@ -162,6 +169,54 @@ final class PMState: ObservableObject {
       rebuild()
     } catch {
       status = L.text(.customNotSaved, italian: italian)
+    }
+  }
+
+  // MARK: Recipes
+
+  var canSaveRecipe: Bool { !RecipeStore.clean(recipeName).isEmpty }
+
+  /// Saves the brief now (terms, mode, booru, description) under `recipeName`, replacing a recipe of the same name.
+  /// Returns false (and says why in `status`) when the name is empty or the file cannot be written.
+  @discardableResult
+  func saveRecipe(named name: String? = nil) -> Bool {
+    let recipe = Recipe(
+      name: name ?? recipeName, selection: selection.sorted(), mode: mode, booru: booru, description: description)
+    do {
+      try recipeStore.save(recipe)
+      recipes = recipeStore.load()
+      recipeName = ""
+      return true
+    } catch {
+      status = L.text(error as? RecipeStore.Failure == .empty ? .recipeNeedsName : .recipeNotSaved, italian: italian)
+      return false
+    }
+  }
+
+  /// Puts a recipe back in the tab: terms, mode and booru replace the current ones; an empty description keeps the
+  /// one in the tab. Returns false if there is no such recipe.
+  @discardableResult
+  func loadRecipe(named name: String) -> Bool {
+    let key = RecipeStore.clean(name).lowercased()
+    guard let recipe = recipes.first(where: { $0.id == key }) else { return false }
+    selection = Set(recipe.selection)
+    mode = recipe.mode
+    booru = recipe.booru
+    if !recipe.description.isEmpty { description = recipe.description }
+    return true
+  }
+
+  @discardableResult
+  func deleteRecipe(named name: String) -> Bool {
+    let key = RecipeStore.clean(name).lowercased()
+    guard recipes.contains(where: { $0.id == key }) else { return false }
+    do {
+      try recipeStore.remove(name: name)
+      recipes = recipeStore.load()
+      return true
+    } catch {
+      status = L.text(.recipeNotSaved, italian: italian)
+      return false
     }
   }
 

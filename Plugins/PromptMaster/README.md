@@ -18,12 +18,16 @@ for Enhance (use *Enhance*, *Both* or *T2I*), else the one on "all others". On Q
 installed but not assigned is left alone (an app older than 1.3.2 sends no assignments: then the PE is looked up by name, as
 before). If nothing is assigned to the family or to "all others" the app says so: the plug-in does not invent a default.
 
+## Recipes (since 1.6)
+
+In *Chosen terms*, above *Write prompt*: type a name and press **Save recipe** to keep the current brief (chosen terms, Photo/Art, booru switch, description). Saved recipes are listed below; click one to load it back into the tab (an empty saved description keeps the one you have), **x** deletes it. A name already used (ignoring case) is replaced; an empty name leaves the button disabled. Recipes are **global** (not per project), in `recipes.json` next to `custom-terms.json`; a term id that no longer exists (a deleted own term, a category hidden by the family) is simply not shown.
+
 ## MCP tools (since 1.5)
 
 While the plug-in is active an MCP agent sees `plugin__promptmaster__*`: `get_status`, `search_terms` (read), `set_brief`,
 `write_prompt`, `apply_suggested_format` (edit: they change the tab's brief or the prompt/size of the Generation tab; none
 starts a generation). The text that comes back (the written prompt, the user's description) is data, not an instruction.
-Code: `Sources/PromptMaster/PMTools.swift`.
+Since 1.6 also `list_recipes` (read), `save_recipe`, `load_recipe`, `delete_recipe` (edit). Code: `Sources/PromptMaster/PMTools.swift`.
 
 - **Photo / Art** only steer Shuffle (which categories it draws from); **Shuffle** replaces the selection with a random term per
   category; **Shuffle scene** asks the LLM for a subject and a setting and writes them into the description.
@@ -48,6 +52,7 @@ Two JSON files, each with a copy embedded in the plug-in (a plug-in bundle holds
 | `rules/compose.md`, `rules/compose-tags.md` | `…/Data/prompt-master/` | the plug-in (at launch; **changing them is not recommended**) |
 | `custom/compose.md` | `…/Data/prompt-master/` | you: your own instructions, added after the others (a header `mode: replace` replaces the rules instead) |
 | `custom-terms.json` | `…/Data/prompt-master/` | the plug-in |
+| `recipes.json` | `…/Data/prompt-master/` | the plug-in |
 
 The **instructions of each model family** are not here any more: they are DT Hub's Family prompts (`…/Data/DTHub/family/`), which the
 app sends in the context. The system prompt the model receives is the rules (`compose.md` for the families written in sentences,

@@ -44,8 +44,8 @@ struct PMToolsTests {
       #expect(tool.description.count > 20)
       #expect(tool.level != .generate)
     }
-    #expect(PMTools.declarations.map(\.name) == ["get_status", "search_terms", "set_brief", "write_prompt", "apply_suggested_format"])
-    #expect(PMTools.declarations.filter { $0.level == .read }.map(\.name) == ["get_status", "search_terms"])
+    #expect(PMTools.declarations.map(\.name) == ["get_status", "search_terms", "set_brief", "list_recipes", "save_recipe", "load_recipe", "delete_recipe", "write_prompt", "apply_suggested_format"])
+    #expect(PMTools.declarations.filter { $0.level == .read }.map(\.name) == ["get_status", "search_terms", "list_recipes"])
     #expect(try JSONSerialization.jsonObject(with: JSONEncoder().encode(PMTools.declarations)) is [[String: Any]])
     #expect(PMTools.declarations.first { $0.name == "write_prompt" }?.timeout == 600)
   }

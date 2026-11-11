@@ -93,6 +93,7 @@ struct PromptMasterView: View {
         }
         .scrollIndicators(.hidden)
         .frame(maxHeight: .infinity)
+        recipeArea
         if state.hasBooruSwitch {
           Toggle(L.text(.booru, italian: state.italian), isOn: $state.booru).toggleStyle(DSCheckboxToggleStyle())
         }
@@ -129,5 +130,45 @@ struct PromptMasterView: View {
     }
     .dsPanel()
     .frame(maxHeight: .infinity)
+  }
+
+  /// Save the brief under a name, and the saved ones: click to load, x to delete.
+  private var recipeArea: some View {
+    VStack(alignment: .leading, spacing: 6) {
+      HStack(spacing: DS.rowGap) {
+        Button { state.saveRecipe() } label: {
+          HStack(spacing: DS.pillIconGap) {
+            Image(systemName: "bookmark")
+            Text(L.text(.saveRecipe, italian: state.italian))
+          }
+        }
+        .buttonStyle(DSPillButtonStyle())
+        .disabled(!state.canSaveRecipe)
+        TextField(L.text(.recipeName, italian: state.italian), text: $state.recipeName)
+          .textFieldStyle(.plain).padding(.horizontal, 8).padding(.vertical, 5)
+          .background(RoundedRectangle(cornerRadius: DS.minorRadius, style: .continuous).fill(Color.primary.opacity(0.06)))
+          .onSubmit { if state.canSaveRecipe { state.saveRecipe() } }
+      }
+      if state.recipes.isEmpty {
+        Text(L.text(.noRecipes, italian: state.italian)).font(.caption).foregroundStyle(.secondary)
+      } else {
+        ScrollView {
+          LazyVStack(alignment: .leading, spacing: 4) {
+            ForEach(state.recipes) { recipe in
+              HStack(spacing: 8) {
+                Button { state.loadRecipe(named: recipe.name) } label: {
+                  Text(recipe.name).font(.callout).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain).help(L.text(.loadRecipe, italian: state.italian))
+                Button { state.deleteRecipe(named: recipe.name) } label: { Image(systemName: "xmark").font(.caption) }
+                  .buttonStyle(.plain).foregroundStyle(.secondary).help(L.text(.deleteRecipe, italian: state.italian))
+              }
+            }
+          }
+        }
+        .scrollIndicators(.hidden).frame(maxHeight: 90)
+      }
+    }
   }
 }
