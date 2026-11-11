@@ -67,6 +67,18 @@ final class MossState: ObservableObject {
 
   // MARK: Cosa dice l'app
 
+  /// I modelli di linguaggio e la famiglia del modello d'immagine, come l'app li ha detti per ultimi (per scegliere chi scrive).
+  private(set) var languageModels: [DTHubLanguageModel] = []
+  private(set) var contextFamily: String?
+
+  func update(models: [DTHubLanguageModel], family: String?) {
+    languageModels = models
+    contextFamily = family
+  }
+
+  /// Il modello assegnato alla famiglia in Preferenze › LLM (nil: l'app sceglie quello su «tutte le altre»).
+  var writeModel: String? { LLMChoice.model(family: contextFamily, languageModels: languageModels) }
+
   /// L'app ha detto la dimensione della Generazione. Stesso rapporto: si ricalcolano le coordinate in silenzio. Rapporto
   /// diverso: i box restano nelle stesse frazioni e compare l'avviso.
   func update(generationSize new: PixelSize?) {

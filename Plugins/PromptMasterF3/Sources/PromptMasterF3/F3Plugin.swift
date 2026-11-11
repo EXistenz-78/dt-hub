@@ -9,8 +9,8 @@ final class F3Plugin: DTHubPlugin {
   static let families = ["flux3_5b"]
 
   let manifest = DTHubManifest(
-    id: "com.exiztenz.dthub.promptmasterf3", name: "Prompt Master F3", version: "1.1", symbol: "wand.and.stars",
-    families: F3Plugin.families)
+    id: "com.exiztenz.dthub.promptmasterf3", name: "Prompt Master F3", version: "1.2", symbol: "wand.and.stars",
+    families: F3Plugin.families, tools: F3Tools.declarations)
   private let state = F3State()
   private var host: DTHubHost?
 
@@ -34,6 +34,11 @@ final class F3Plugin: DTHubPlugin {
         state.update(models: context.languageModels ?? [], family: context.family)
       }
       return nil
+    case "tool.call":
+      guard let call = DTHubToolCall(message) else { return DTHubMessage.failure("Not a tool call.") }
+      let actions = F3Tools.Actions(
+        write: { [weak self] in await self?.performWrite() }, send: { [weak self] in await self?.performSend() })
+      return await F3Tools.handle(call, state: state, actions: actions)
     case "project":
       // La sessione del tab appartiene al progetto aperto.
       if let project = try? JSONDecoder().decode(DTHubProject.self, from: message) {
@@ -51,9 +56,12 @@ final class F3Plugin: DTHubPlugin {
     }
   }
 
-  private func write() {
+  private func write() { Task { _ = await performWrite() } }
+
+  /// The button and the `write_with_llm` tool: nil when the tab cannot write now.
+  private func performWrite() async -> F3Tools.WriteReport? {
     state.commitComposition()
-    guard state.canWrite, let host else { return }
+    guard state.canWrite, let host else { return nil }
     state.isWriting = true
     state.status = L.text(.writing, italian: state.italian)
     let document = state.document
@@ -63,35 +71,35 @@ final class F3Plugin: DTHubPlugin {
         await host.askLanguageModelAnswer(prompt, system: system, model: model, options: options)
       },
       italian: state.italian)
-    Task {
-      let outcome = await improver.improve(document: document, catalog: catalog, mode: mode, standardSystem: system, standardOptions: options)
-      let before = F3Snapshot.take(from: document)
-      var wrote = false
-      if let pup = outcome.pup {
-        wrote = state.applyPup(pup, original: before)
-      } else if let standard = outcome.standard {
-        wrote = state.apply(standard)
-      }
-      if wrote { state.addNote(outcome.note) }
-      if let folder = state.projectFolder, !outcome.request.isEmpty {
-        F3WorkFolder(folder: folder).write(request: outcome.request, answer: outcome.answer, before: before)
-      }
-      state.isWriting = false
+    let outcome = await improver.improve(document: document, catalog: catalog, mode: mode, standardSystem: system, standardOptions: options)
+    let before = F3Snapshot.take(from: document)
+    var wrote = false
+    if let pup = outcome.pup {
+      wrote = state.applyPup(pup, original: before)
+    } else if let standard = outcome.standard {
+      wrote = state.apply(standard)
     }
+    if wrote { state.addNote(outcome.note) }
+    if let folder = state.projectFolder, !outcome.request.isEmpty {
+      F3WorkFolder(folder: folder).write(request: outcome.request, answer: outcome.answer, before: before)
+    }
+    state.isWriting = false
+    return F3Tools.WriteReport(wrote: wrote, status: state.status)
   }
 
-  private func send() {
+  private func send() { Task { _ = await performSend() } }
+
+  /// The «Send» button and the `send_to_generation` tool.
+  private func performSend() async -> PromptSender.Outcome? {
     state.commitComposition()
-    guard state.canSend, let host else { return }
+    guard state.canSend, let host else { return nil }
     state.isSending = true
     state.status = ""
     let sender = PromptSender(contribute: { await host.contribute($0) }, italian: state.italian)
-    let text = state.sendText
-    Task {
-      let outcome = await sender.send(text)
-      state.status = outcome.status
-      state.isSending = false
-    }
+    let outcome = await sender.send(state.sendText)
+    state.status = outcome.status
+    state.isSending = false
+    return outcome
   }
 }
 

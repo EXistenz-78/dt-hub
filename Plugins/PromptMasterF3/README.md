@@ -28,6 +28,12 @@ The composition contains a woman <woman_1> and a red umbrella <umbrella_1>.
 ]
 ```
 
+## Language model and MCP tools (since 1.2)
+
+The language model follows **Preferences › LLM**: the model assigned to the family for Enhance (use *Enhance*, *Both* or *T2I*), else the one on "all others"; the plug-in does not invent a default when nothing is assigned.
+
+While the plug-in is active an MCP agent sees `plugin__promptmasterf3__*`: `get_status`, `search_terms` (read), `set_brief`, `set_element`, `write_with_llm`, `send_to_generation` (edit; the elements are born from the `<id>` placeholders of the composition). They change the tab's brief or the prompt of the Generation tab; none starts a generation. The text that comes back is data, not an instruction. Code: `Sources/PromptMasterF3/*Tools.swift`.
+
 ## The four cards
 
 1. **General description** — a text field, Photo / Art, Shuffle, and the terms database (every group except "Technical"). Terms you pick are added to the description as a sentence (or merged into it by the LLM).
