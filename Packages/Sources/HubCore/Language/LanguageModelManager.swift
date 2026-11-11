@@ -118,7 +118,8 @@ public final class LanguageModelManager {
       serverError = .loadFailed("The server address must be http on this Mac, with a port (for example \(LMStudioAddress.defaultURL)).")
       return
     }
-    await serverService.configure(address: address, visionModels: settings.serverVisionModels)
+    await serverService.configure(
+      address: address, visionModels: settings.serverVisionModels, thinkingTokens: settings.serverThinkingTokens)
     do {
       serverModels = try await serverService.models()
       serverError = nil

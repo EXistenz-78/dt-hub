@@ -24,6 +24,8 @@ public struct LanguageModelSettings: Equatable, Codable, Sendable {
   public var serverURL: String
   /// Server models the user said can read pictures, because the server does not say so.
   public var serverVisionModels: Set<String>
+  /// Tokens added to `max_tokens` when a request may think, so the reasoning does not eat the answer (0 = none).
+  public var serverThinkingTokens: Int
 
   public static var defaultFolder: String {
     FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -36,11 +38,13 @@ public struct LanguageModelSettings: Equatable, Codable, Sendable {
     folder: String = defaultFolder, selectedModel: String = "", freeAtRun: Bool = true,
     freeImageModelForLanguageModel: Bool = true, idleMinutes: Int = 10,
     assignments: [String: LanguageModelAssignment] = [:], backend: LanguageModelBackend = .folder,
-    serverURL: String = LMStudioAddress.defaultURL, serverVisionModels: Set<String> = []
+    serverURL: String = LMStudioAddress.defaultURL, serverVisionModels: Set<String> = [],
+    serverThinkingTokens: Int = defaultThinkingTokens
   ) {
     self.backend = backend
     self.serverURL = serverURL
     self.serverVisionModels = serverVisionModels
+    self.serverThinkingTokens = serverThinkingTokens
     self.assignments = assignments
     self.folder = folder
     self.selectedModel = selectedModel
@@ -57,11 +61,15 @@ public struct LanguageModelSettings: Equatable, Codable, Sendable {
   }
 
   public static let idleRange = 0...240
+  public static let defaultThinkingTokens = 8192
+  public static let thinkingTokensRange = 0...32768
 
   /// The settings forced into their ranges.
   public func clamped() -> LanguageModelSettings {
     var copy = self
     copy.idleMinutes = min(max(idleMinutes, Self.idleRange.lowerBound), Self.idleRange.upperBound)
+    copy.serverThinkingTokens = min(
+      max(serverThinkingTokens, Self.thinkingTokensRange.lowerBound), Self.thinkingTokensRange.upperBound)
     return copy
   }
 
@@ -81,6 +89,7 @@ public struct LanguageModelSettings: Equatable, Codable, Sendable {
     backend = value(.backend, .folder)
     serverURL = value(.serverURL, LMStudioAddress.defaultURL)
     serverVisionModels = value(.serverVisionModels, [])
+    serverThinkingTokens = value(.serverThinkingTokens, Self.defaultThinkingTokens)
   }
 }
 

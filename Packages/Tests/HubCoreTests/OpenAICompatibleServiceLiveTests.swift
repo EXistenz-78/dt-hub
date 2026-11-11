@@ -17,7 +17,7 @@ struct OpenAICompatibleServiceLiveTests {
     let text = try #require(Self.address)
     let base = try #require(LMStudioAddress.validated(text))
     let service = OpenAICompatibleService()
-    await service.configure(address: base, visionModels: [])
+    await service.configure(address: base, visionModels: [], thinkingTokens: LanguageModelSettings.defaultThinkingTokens)
     let models = try await service.models()
     print("LIVE models: \(models.map(\.name))")
     let first = try #require(models.first)
@@ -48,7 +48,7 @@ struct OpenAICompatibleServiceLiveTests {
     let text = try #require(Self.address)
     let base = try #require(LMStudioAddress.validated(text))
     let service = OpenAICompatibleService()
-    await service.configure(address: base, visionModels: [])
+    await service.configure(address: base, visionModels: [], thinkingTokens: LanguageModelSettings.defaultThinkingTokens)
     let vision = try #require(try await service.models().first { $0.supportsImages }, "no vision model on the server")
     try await service.load(vision)
     let answer = try await service.respond(

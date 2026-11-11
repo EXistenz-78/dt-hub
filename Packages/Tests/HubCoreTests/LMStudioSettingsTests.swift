@@ -64,3 +64,27 @@ struct LMStudioSettingsTests {
     #expect(back == settings)
   }
 }
+
+struct ThinkingBudgetTests {
+  @Test func theBudgetDefaultsRoundTripsAndIsClamped() throws {
+    let old = try JSONDecoder().decode(LanguageModelSettings.self, from: Data(#"{"folder": "/x"}"#.utf8))
+    #expect(old.serverThinkingTokens == LanguageModelSettings.defaultThinkingTokens)
+    let settings = LanguageModelSettings(serverThinkingTokens: 4096)
+    let back = try JSONDecoder().decode(LanguageModelSettings.self, from: JSONEncoder().encode(settings))
+    #expect(back.serverThinkingTokens == 4096)
+    #expect(LanguageModelSettings(serverThinkingTokens: 999_999).clamped().serverThinkingTokens == 32768)
+    #expect(LanguageModelSettings(serverThinkingTokens: -5).clamped().serverThinkingTokens == 0)
+  }
+
+  @Test func theBodyUsesTheGivenBudget() throws {
+    func tokens(_ budget: Int, thinking: Bool?) throws -> Int? {
+      let data = try OpenAICompatibleService.body(
+        model: "m", prompt: "p", imageDataURLs: [], options: LanguageModelOptions(maxTokens: 100, thinking: thinking),
+        history: [], thinkingTokens: budget)
+      return (try JSONSerialization.jsonObject(with: data) as? [String: Any])?["max_tokens"] as? Int
+    }
+    #expect(try tokens(0, thinking: true) == 100)
+    #expect(try tokens(3000, thinking: nil) == 3100)
+    #expect(try tokens(3000, thinking: false) == 100)
+  }
+}

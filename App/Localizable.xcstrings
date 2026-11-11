@@ -10405,6 +10405,40 @@
         }
       }
     },
+    "prefs.llm.server.thinking": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thinking budget: %lld extra tokens"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Budget thinking: %lld token in più"
+          }
+        }
+      }
+    },
+    "prefs.llm.server.thinking.none": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thinking budget: none"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Budget thinking: nessuno"
+          }
+        }
+      }
+    },
     "prefs.llm.server.vision": {
       "extractionState": "manual",
       "localizations": {

@@ -114,6 +114,15 @@ struct LanguagePreferencesView: View {
             .font(.caption)
         }
       }
+      Stepper(
+        value: $manager.settings.serverThinkingTokens, in: LanguageModelSettings.thinkingTokensRange, step: 1024
+      ) {
+        Text(
+          manager.settings.serverThinkingTokens == 0
+            ? String(localized: "prefs.llm.server.thinking.none")
+            : String(format: String(localized: "prefs.llm.server.thinking"), manager.settings.serverThinkingTokens))
+      }
+      .onChange(of: manager.settings.serverThinkingTokens) { reload() }
       if !models.isEmpty {
         Text("prefs.llm.assign.note")
           .font(.caption).foregroundStyle(.secondary)

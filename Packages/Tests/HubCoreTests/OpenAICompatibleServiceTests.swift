@@ -115,7 +115,7 @@ struct OpenAICompatibleServiceTests {
       return Data(#"{"data":[\#(items)]}"#.utf8)
     }
     let service = OpenAICompatibleService(list: list, send: send)
-    await service.configure(address: base, visionModels: [])
+    await service.configure(address: base, visionModels: [], thinkingTokens: LanguageModelSettings.defaultThinkingTokens)
     return service
   }
 

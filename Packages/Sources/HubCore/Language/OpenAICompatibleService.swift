@@ -6,7 +6,7 @@ import UniformTypeIdentifiers
 /// A language model service that is also a server of models (LM Studio on this Mac).
 public protocol ServerLanguageModelService: LanguageModelService {
   /// The address and the models the user said read pictures; set before `models()` and `load`.
-  func configure(address: URL, visionModels: Set<String>) async
+  func configure(address: URL, visionModels: Set<String>, thinkingTokens: Int) async
   /// The language models the server offers now.
   func models() async throws -> [LanguageModelDescriptor]
 }
@@ -18,6 +18,7 @@ public actor OpenAICompatibleService: ServerLanguageModelService {
   private let send: @Sendable (URLRequest) async throws -> (Data, Int)
   private var base: URL?
   private var visionModels: Set<String> = []
+  private var thinkingTokens = LanguageModelSettings.defaultThinkingTokens
   private var known: [String] = []
   private var current: String?
 
@@ -38,8 +39,9 @@ public actor OpenAICompatibleService: ServerLanguageModelService {
     return (data, (response as? HTTPURLResponse)?.statusCode ?? 0)
   }
 
-  public func configure(address: URL, visionModels: Set<String>) {
+  public func configure(address: URL, visionModels: Set<String>, thinkingTokens: Int) {
     base = address
+    self.thinkingTokens = thinkingTokens
     self.visionModels = visionModels
   }
 
@@ -73,7 +75,8 @@ public actor OpenAICompatibleService: ServerLanguageModelService {
     request.timeoutInterval = Self.requestTimeout
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
     request.httpBody = try Self.body(
-      model: current, prompt: prompt, imageDataURLs: pictures, options: options, history: history)
+      model: current, prompt: prompt, imageDataURLs: pictures, options: options, history: history,
+      thinkingTokens: thinkingTokens)
     let data: Data
     let status: Int
     do {
@@ -96,14 +99,15 @@ public actor OpenAICompatibleService: ServerLanguageModelService {
 
   /// Extra tokens given to a model that may think: its reasoning counts against `max_tokens`, and a server that does
   /// not separate it would leave the answer empty.
-  static let thinkingAllowance = 8192
+  static let thinkingAllowance = LanguageModelSettings.defaultThinkingTokens
 
   /// The JSON body of a chat completion. `top_k` is sent only when set. `thinking == false` asks the server not to
   /// think (the OpenAI API has no such field, so the usual spellings are all sent; servers ignore the ones they do
-  /// not know). Otherwise the model may think, and `max_tokens` grows by `thinkingAllowance` so the thinking does
+  /// not know). Otherwise the model may think, and `max_tokens` grows by `thinkingTokens` (the setting; `thinkingAllowance` is its default) so the thinking does
   /// not eat the answer.
   static func body(
-    model: String, prompt: String, imageDataURLs: [String], options: LanguageModelOptions, history: [LanguageModelTurn]
+    model: String, prompt: String, imageDataURLs: [String], options: LanguageModelOptions, history: [LanguageModelTurn],
+    thinkingTokens: Int = thinkingAllowance
   ) throws -> Data {
     var messages: [[String: Any]] = []
     if let system = options.system, !system.isEmpty { messages.append(["role": "system", "content": system]) }
@@ -118,7 +122,7 @@ public actor OpenAICompatibleService: ServerLanguageModelService {
     let answerTokens = options.maxTokens ?? 1024
     var body: [String: Any] = [
       "model": model, "messages": messages, "stream": false,
-      "temperature": options.temperature ?? 0.6, "max_tokens": answerTokens + (options.thinking == false ? 0 : thinkingAllowance),
+      "temperature": options.temperature ?? 0.6, "max_tokens": answerTokens + (options.thinking == false ? 0 : thinkingTokens),
     ]
     if options.thinking == false {
       body["enable_thinking"] = false

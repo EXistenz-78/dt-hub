@@ -15,7 +15,11 @@ actor FakeServerService: ServerLanguageModelService {
   func offer(_ names: [String]) { listed = names.map { ServerModelList.descriptor(id: $0, vision: false) } }
   func fail(with error: LanguageModelError?) { listError = error }
 
-  func configure(address: URL, visionModels: Set<String>) { configured.append((address, visionModels)) }
+  private(set) var thinking: [Int] = []
+  func configure(address: URL, visionModels: Set<String>, thinkingTokens: Int) {
+    configured.append((address, visionModels))
+    thinking.append(thinkingTokens)
+  }
   func models() async throws -> [LanguageModelDescriptor] {
     if let listError { throw listError }
     return listed
