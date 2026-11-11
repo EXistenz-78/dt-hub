@@ -111,7 +111,11 @@ struct UpdateDetailsSheet: View {
             .buttonStyle(DSPillButtonStyle(prominent: true))
         }
         if controller.needsRelaunch {
-          Button("updates.relaunchNow") { AppRelaunch.relaunch() }
+          Button("updates.relaunchNow") {
+            // Close this sheet through SwiftUI first: an open sheet blocks the quit.
+            dismiss()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { AppRelaunch.relaunch() }
+          }
             .buttonStyle(DSPillButtonStyle(prominent: true))
         }
         Button(controller.needsRelaunch ? "updates.later" : "updates.close") {
