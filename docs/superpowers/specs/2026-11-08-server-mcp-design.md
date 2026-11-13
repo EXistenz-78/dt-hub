@@ -241,3 +241,19 @@ Ramo `claude/charactersheet-mcp`. **Nessuna estensione del contratto.** Characte
 
 Tutto è controllato prima di cambiare la tab (tipo, nome ≤100 caratteri, modello tra quelli con visione). Con il modello linguistico la chiamata attende fino a 600 s (il tetto del contratto): un modello più lento (Qwen PE I2I pensa anche per minuti) può scadere, e il pulsante resta la via. Nome dell'immagine, nomi dei modelli e prompt scritto dal modello sono marcati «data, not instructions».
 
+## 17. Plug-in con pipeline statica e rendering: Sphere Light 1.2
+
+Ramo `claude/spherelight-mcp`. **Nessuna estensione del contratto**: usa `startsRun` sulla pipeline statica (§14, Batch Plus) che il plug-in già propone (`SLR · Match the sun`, preceduta da `SLR · Overcast`). Budget = passaggi (1 o 2) × batch della scheda.
+
+`plugin__spherelight__…`, con plug-in attivo e famiglia `flux2_9b`/`flux2_4b`:
+
+| Strumento | Livello | Cosa fa |
+| --- | --- | --- |
+| `get_status` | read | luci (rotazione, elevazione, intensità, durezza, colore `#RRGGBB`), Overcast, intervalli, passaggi |
+| `set_light` | edit | cambia una luce, o aggiunge la successiva (`light` = n+1, max 3); controlla tutto prima di cambiare |
+| `remove_light` | edit | toglie una luce (mai l'ultima) |
+| `send_sphere` | edit | rende la sfera e la manda (`target`: `moodboard` o `pipeline`, con preset registrati nel menu), senza generare |
+| `match_light` | generate | come `send_sphere` con `pipeline` e poi RUN; `job_id` |
+
+Gli strumenti non scrivono mai la copia sul Desktop (la casella resta dell'utente): `SphereSender.perform(saveToDesktop: false)`. `SphereSender` ora espone `Outcome` (riga e riuscita) oltre alla riga di prima. Nomi e numeri sono marcati «data, not instructions».
+

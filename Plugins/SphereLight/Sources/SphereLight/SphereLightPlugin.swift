@@ -9,8 +9,8 @@ final class SphereLightPlugin: DTHubPlugin {
   /// is hidden.
   static let families = ["flux2_9b", "flux2_4b"]
   let manifest = DTHubManifest(
-    id: "com.exiztenz.dthub.spherelight", name: "Sphere Light", version: "1.1", symbol: "lightbulb.max",
-    families: SphereLightPlugin.families)
+    id: "com.exiztenz.dthub.spherelight", name: "Sphere Light", version: "1.2", symbol: "lightbulb.max",
+    families: SphereLightPlugin.families, tools: SLTools.declarations)
   private let state = SLRState()
   private var host: DTHubHost?
 
@@ -41,6 +41,11 @@ final class SphereLightPlugin: DTHubPlugin {
     case "deactivate":
       state.active = false
       return nil
+    case "tool.call":
+      guard let call = DTHubToolCall(message), let host else { return DTHubMessage.bare("unsupported") }
+      let sender = SphereSender(
+        contribute: { await host.contribute($0) }, registerPresets: { await host.registerPresets($0) }, italian: false)
+      return await SLTools.handle(call, state: state, sender: sender)
     default:
       return DTHubMessage.bare("unsupported")
     }

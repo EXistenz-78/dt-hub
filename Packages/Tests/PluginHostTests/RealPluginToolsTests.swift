@@ -128,4 +128,36 @@ struct RealPluginToolsTests {
     let refused = try await call(plugin, "prepare_sheet", ["kind": "bogus"])
     #expect(refused["isError"] as? Bool == true)
   }
+
+  nonisolated static let sphereLightBundlePath = ProcessInfo.processInfo.environment["DTHUB_SL_BUNDLE"]
+
+  /// `DTHUB_SL_BUNDLE=/path/SphereLight.dthubplugin swift test --filter RealPluginToolsTests` (from `Plugins/SphereLight/Scripts/build.sh`).
+  @Test(.enabled(if: RealPluginToolsTests.sphereLightBundlePath != nil))
+  func theRealSphereLightBundleAnswersItsTools() async throws {
+    let bundle = URL(fileURLWithPath: try #require(Self.sphereLightBundlePath))
+    let host = RecordingHost()
+    let plugin = try BundlePluginLoader().load(bundle, info: try PluginBundleReader.read(bundle), host: host)
+    #expect(plugin.manifest.id == "com.exiztenz.dthub.spherelight")
+    let tools = try #require(plugin.manifest.tools)
+    #expect(tools.map(\.name) == ["get_status", "set_light", "remove_light", "send_sphere", "match_light"])
+    #expect(tools.map(\.level.rawValue) == ["read", "edit", "edit", "edit", "generate"])
+
+    let folder = FileManager.default.temporaryDirectory.appendingPathComponent("sl-real-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    let context = try JSONSerialization.data(withJSONObject: [
+      "type": "context", "model": "klein.ckpt", "family": "flux2_9b", "tempFolder": folder.path,
+    ])
+    _ = await plugin.send(context)
+    _ = await plugin.send(PluginMessageType.bare("activate"))
+
+    let status = try await call(plugin, "get_status")
+    #expect(status["type"] as? String == "tool.result" && status["isError"] == nil, Comment(rawValue: "\(status)"))
+    let ran = try await call(plugin, "match_light")
+    #expect(ran["isError"] == nil && ran["startsRun"] as? Bool == true, Comment(rawValue: "\(ran)"))
+    let sent = host.received.compactMap { PluginContribution(message: $0.message)?.pipeline }
+    #expect(try #require(sent.last).passCount == 1)
+    let refused = try await call(plugin, "set_light", ["light": 9])
+    #expect(refused["isError"] as? Bool == true)
+  }
 }
+

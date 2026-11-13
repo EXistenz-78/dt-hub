@@ -16,22 +16,32 @@ struct SphereSender {
 
   static let fileName = "com.exiztenz.dthub.spherelight-sphere.png"
 
+  /// What `perform` did: the line to show, and whether the app took the picture (or pipeline).
+  struct Outcome: Equatable {
+    var line: String
+    var succeeded: Bool
+  }
+
   /// Does the whole job and returns the line to show under the buttons.
   func send(_ kind: Kind, lights: [LightParams], overcast: Bool, saveToDesktop: Bool, tempFolder: String?) async -> String {
-    guard let tempFolder else { return L.text(.noFolder, italian: italian) }
+    await perform(kind, lights: lights, overcast: overcast, saveToDesktop: saveToDesktop, tempFolder: tempFolder).line
+  }
+
+  func perform(_ kind: Kind, lights: [LightParams], overcast: Bool, saveToDesktop: Bool, tempFolder: String?) async -> Outcome {
+    guard let tempFolder else { return Outcome(line: L.text(.noFolder, italian: italian), succeeded: false) }
     let (size, samples) = (size, shadowSamples)
     let pixels = await Task.detached(priority: .userInitiated) {
       SphereRenderer.render(width: size, height: size, lights: lights, shadowSampleCount: samples)
     }.value
     guard let png = SphereRenderer.pngData(fromRGB8: pixels, width: size, height: size) else {
-      return L.text(.renderFailed, italian: italian)
+      return Outcome(line: L.text(.renderFailed, italian: italian), succeeded: false)
     }
     let path = (tempFolder as NSString).appendingPathComponent(Self.fileName)
     do {
       try FileManager.default.createDirectory(atPath: tempFolder, withIntermediateDirectories: true)
       try png.write(to: URL(fileURLWithPath: path))
     } catch {
-      return L.text(.renderFailed, italian: italian)
+      return Outcome(line: L.text(.renderFailed, italian: italian), succeeded: false)
     }
 
     var lines: [String] = []
@@ -53,7 +63,8 @@ struct SphereSender {
       answer = await contribute(["moodboard": SLRMessages.moodboard(spherePath: path)])
     }
     lines.insert(Self.describe(answer, italian: italian), at: 0)
-    return lines.joined(separator: " ")
+    let accepted = answer != nil && answer?["type"] as? String != "error"
+    return Outcome(line: lines.joined(separator: " "), succeeded: accepted)
   }
 
   static func describe(_ answer: [String: Any]?, italian: Bool) -> String {

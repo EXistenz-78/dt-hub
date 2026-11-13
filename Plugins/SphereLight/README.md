@@ -26,6 +26,17 @@ sphere now fall on the face and the scene.
 
 The tab uses the app's own components (`DTHubDesign`, from the `PluginKit` package): cards, pill buttons, teal checkboxes.
 
+## For AI agents (MCP)
+
+Since **1.2**. With DT Hub's remote control on (Settings › Remote control), the plug-in **on for the job** and a FLUX.2 [klein] model in the header, an agent sees these tools, named `plugin__spherelight__<tool>`. Needs a DT Hub that can run a plug-in's pipeline from an agent (after 1.3.2).
+
+- `get_status` (read): the lights (rotation, elevation, intensity, hardness, colour as `#RRGGBB`), the Overcast box, the ranges and how many passes the pipeline would have.
+- `set_light` (edit, «Modify the tab» or more): changes one light (arguments left out stay as they are), or adds the next one (`light` = number of lights + 1, at most three). `remove_light` takes one off (never the last).
+- `send_sphere` (edit): renders the sphere and sends it **without generating**: `target: "moodboard"` puts only the picture in the Moodboard; `target: "pipeline"` also puts the `SLR · Match the sun` pipeline (with `overcast: true`, preceded by `SLR · Overcast`) on RUN and offers the presets in the Presets menu (a name the menu has is never touched).
+- `match_light` (generate, «Full control» only): does what `send_sphere` with `target: "pipeline"` does and then presses RUN. It returns a `job_id`; the agent follows it with `wait_for_job` and reads the pictures with `get_results` / `get_image`.
+
+**Budget and consent.** `match_light` goes through the same path as the app's `run_pipeline`: one job at a time, **every pass counts as an image** (1, or 2 with Overcast; the tab's batch count and size multiply it), and a job over the user's confirmation threshold waits for the user's yes in DT Hub. Nothing an agent does writes a copy to the Desktop, whatever the box says. The lights' numbers and the pipeline's names are shown to the agent as data, not instructions.
+
 ## Projects
 
 The tab keeps its state **per project**: when you open another project in DT Hub (the **Project** menu) the tab shows what that project had, and a new project starts from scratch. The state is `state.json` in the plug-in's own folder inside the project (`<output>/<project>/.dthub/plugins/`). The first project you make adopts the state the tab had before projects existed.
