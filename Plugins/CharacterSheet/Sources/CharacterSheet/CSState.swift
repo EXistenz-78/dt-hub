@@ -53,6 +53,8 @@ final class CSState: ObservableObject {
   @Published var selectedModel: String? { didSet { saveSettings() } }
   @Published var status = ""
   @Published private(set) var busy = false
+  /// The prompt the last preparation by an agent wrote (an agent's `get_status` shows it again).
+  var lastPrompt: String?
   @Published private(set) var languageModels: [DTHubLanguageModel] = []
   private(set) var tempFolder: String?
   private(set) var family: String?

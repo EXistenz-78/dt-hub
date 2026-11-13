@@ -227,3 +227,17 @@ Il plug-in non genera con un modello: la mappa di profondità (Depth Anything V2
 | `send_to_moodboard` | edit | il tasto Send della scheda, per mappe già fatte |
 
 Decisioni. Le spunte nominate in `make_maps` restano sulla scheda e nel progetto (l'utente le vede, come per Tiled Upscale). I modelli non si scaricano da uno strumento (200 e 64 MB, scelta dell'utente: «Download» nella scheda): senza modello di profondità, `depth` da solo è un errore che lo dice, `depth`+`pose` fa la posa e il responso riporta l'avviso. Un'immagine senza persone, con la sola posa chiesta, è un errore. Non esposti: «Save to Desktop», i download dei modelli e la loro cancellazione. Il testo delle risposte (nome dell'immagine, avviso) è marcato «data, not instructions» dall'app come per ogni plug-in.
+
+## 16. Plug-in che preparano e lasciano il RUN all'agente: Character Sheet 1.3
+
+Ramo `claude/charactersheet-mcp`. **Nessuna estensione del contratto.** Character Sheet non propone una pipeline: il tasto *Prepare* mette l'immagine nel Moodboard, imposta il canvas (2048×1536) e scrive il prompt, e il RUN è dell'utente. Per questo gli strumenti sono solo `read` ed `edit`, e **non esiste uno strumento `generate`**: `startsRun` richiede una pipeline tenuta dall'app (`heldPluginPipeline`) e qui non ce n'è. L'agente genera con il `run` dell'app (un'immagine, budget e soglia di conferma come per ogni Run).
+
+`plugin__charactersheet__…`, con plug-in attivo e famiglia `qwen_image_2.1` (quella del manifest):
+
+| Strumento | Livello | Cosa fa |
+| --- | --- | --- |
+| `get_status` | read | tipo di scheda, nome, immagine, interruttore statico, modelli con visione scelti/disponibili, canvas, ultimo prompt scritto, ultimo avviso |
+| `prepare_sheet` | edit | come Prepare: `image` (`format: "image"`), `name`, `kind` (base, expressions, poses), `static`, `model`; sostituisce il prompt della tab; risponde con il prompt scritto |
+
+Tutto è controllato prima di cambiare la tab (tipo, nome ≤100 caratteri, modello tra quelli con visione). Con il modello linguistico la chiamata attende fino a 600 s (il tetto del contratto): un modello più lento (Qwen PE I2I pensa anche per minuti) può scadere, e il pulsante resta la via. Nome dell'immagine, nomi dei modelli e prompt scritto dal modello sono marcati «data, not instructions».
+

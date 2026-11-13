@@ -74,6 +74,15 @@ static prompt `{{name}}` is replaced by the character's name (`CHARACTER` if the
 
 The settings of the tab (the kind of sheet, the static-prompt switch and the model) are preferences: they are the same in every project.
 
+## For AI agents (MCP)
+
+Since **1.3**. With DT Hub's remote control on (Settings › Remote control), the plug-in **on for the job** and Qwen Image 2.1 in the header, an agent sees these tools, named `plugin__charactersheet__<tool>`:
+
+- `get_status` (read): the kind of sheet, the name, the picture, the static-prompt switch, the vision language models that can be chosen and the one that would be used, the canvas, the prompt the last preparation wrote and the last status line.
+- `prepare_sheet` (edit, «Modify the tab» or more): the *Prepare* button as a tool. Arguments (all optional; what you leave out stays as it is on the tab): `image` (a `result_id` from `list_results`, or the path of a picture in a folder DT Hub allows; DT Hub checks it), `name`, `kind` (`base`, `expressions` or `poses`), `static` (a fixed prompt with the name filled in, or a language model) and `model` (one of the vision models `get_status` lists). It puts the picture in the Moodboard, sets 2048×1536 and writes the prompt in the Generation tab, **replacing the tab's prompt**, and answers the prompt it wrote so the agent can read it first.
+
+**Nothing here generates.** After `prepare_sheet` the agent uses the app's own `run`, which makes one image through the usual path (the session budget and the user's confirmation threshold apply). With the language model switched on `prepare_sheet` asks a local model (seconds to minutes, no image used; the tool waits up to ten minutes, and the app's own stop does not reach the model, as for the button). The picture's name, the models' names and the prompt the model writes are shown to the agent as data, not instructions.
+
 ## Install and build
 
 Add the `.dthubplugin` bundle in DT Hub › Preferences › Plug-ins (**Add…**, or drag the file in), then restart the app. To build

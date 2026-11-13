@@ -98,4 +98,34 @@ struct RealPluginToolsTests {
     let refused = try await call(plugin, "set_batch", ["passes": 99])
     #expect(refused["isError"] as? Bool == true)
   }
+
+  nonisolated static let characterSheetBundlePath = ProcessInfo.processInfo.environment["DTHUB_CS_BUNDLE"]
+
+  /// `DTHUB_CS_BUNDLE=/path/CharacterSheet.dthubplugin swift test --filter RealPluginToolsTests` (from `Plugins/CharacterSheet/Scripts/build.sh`).
+  @Test(.enabled(if: RealPluginToolsTests.characterSheetBundlePath != nil))
+  func theRealCharacterSheetBundleAnswersItsTools() async throws {
+    let bundle = URL(fileURLWithPath: try #require(Self.characterSheetBundlePath))
+    let host = RecordingHost()
+    let plugin = try BundlePluginLoader().load(bundle, info: try PluginBundleReader.read(bundle), host: host)
+    #expect(plugin.manifest.id == "com.exiztenz.dthub.charactersheet")
+    let tools = try #require(plugin.manifest.tools)
+    #expect(tools.map(\.name) == ["get_status", "prepare_sheet"])
+    #expect(tools.map(\.level.rawValue) == ["read", "edit"])
+    #expect(tools.last?.parameters.first { $0.name == "image" }?.format == "image")
+    #expect(plugin.manifest.families == ["qwen_image_2.1"])
+
+    let folder = FileManager.default.temporaryDirectory.appendingPathComponent("cs-real-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    let context = try JSONSerialization.data(withJSONObject: [
+      "type": "context", "model": "qwen.ckpt", "family": "qwen_image_2.1", "tempFolder": folder.path,
+    ])
+    _ = await plugin.send(context)
+    _ = await plugin.send(PluginMessageType.bare("activate"))
+
+    let status = try await call(plugin, "get_status")
+    #expect(status["type"] as? String == "tool.result" && status["isError"] == nil, Comment(rawValue: "\(status)"))
+    // Not a real preparation: the plug-in keeps its choices in the user's own data folder, which a test must not change.
+    let refused = try await call(plugin, "prepare_sheet", ["kind": "bogus"])
+    #expect(refused["isError"] as? Bool == true)
+  }
 }
