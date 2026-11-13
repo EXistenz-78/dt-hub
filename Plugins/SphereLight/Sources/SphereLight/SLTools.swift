@@ -108,10 +108,10 @@ enum SLTools {
       "lights": lights, "maxLights": maxLights, "canAddLight": state.canAddLight, "overcast": state.overcast,
       "passes": state.overcast ? 2 : 1, "presets": [SLRMessages.matchName, SLRMessages.overcastName],
       "ranges": [
-        "rotation": ["min": rotationRange.lowerBound, "max": rotationRange.upperBound],
-        "elevation": ["min": elevationRange.lowerBound, "max": elevationRange.upperBound],
-        "intensity": ["min": intensityRange.lowerBound, "max": intensityRange.upperBound],
-        "hardness": ["min": hardnessRange.lowerBound, "max": hardnessRange.upperBound],
+        "rotation": ["min": round2(rotationRange.lowerBound), "max": round2(rotationRange.upperBound)],
+        "elevation": ["min": round2(elevationRange.lowerBound), "max": round2(elevationRange.upperBound)],
+        "intensity": ["min": round2(intensityRange.lowerBound), "max": round2(intensityRange.upperBound)],
+        "hardness": ["min": round2(hardnessRange.lowerBound), "max": round2(hardnessRange.upperBound)],
       ],
       "notice": state.status,
       "note": "This plug-in only prepares the sphere and the pipeline; match_light (or the app's run after send_sphere) generates.",
@@ -201,7 +201,8 @@ enum SLTools {
     guard state.active else { throw Failure(text: "Sphere Light is not active for the job.") }
   }
 
-  private static func round2(_ value: Double) -> Double { (value * 100).rounded() / 100 }
+  /// Two decimals, printed as such (a plain `Double` would print 0.65000000000000002).
+  private static func round2(_ value: Double) -> NSDecimalNumber { NSDecimalNumber(string: String(format: "%.2f", value)) }
 
   static func hex(_ color: Color) -> String {
     let ns = NSColor(color).usingColorSpace(.deviceRGB) ?? NSColor(color)

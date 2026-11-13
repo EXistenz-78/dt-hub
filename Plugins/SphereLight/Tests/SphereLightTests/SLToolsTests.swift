@@ -66,8 +66,9 @@ struct SLToolsTests {
     #expect(!answer.isError && !answer.startsRun)
     let json = answer.json
     let lights = json["lights"] as? [[String: Any]]
-    #expect(lights?.count == 2 && lights?[0]["rotation"] as? Double == -135 && lights?[0]["color"] as? String == "#FFFFFF")
+    #expect(lights?.count == 2 && lights?[0]["rotation"] as? Double == -135 && lights?[1]["hardness"] as? Double == 0.4 && lights?[0]["color"] as? String == "#FFFFFF")
     #expect(json["maxLights"] as? Int == 3 && json["passes"] as? Int == 1)
+    #expect(!answer.text.contains("0000000000"))
   }
 
   @Test func anInactivePlugInRefusesEverything() async {
