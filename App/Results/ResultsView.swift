@@ -393,7 +393,7 @@ struct ResultsView: View {
         if let url = result.fileURL {
           try await controller.control.setImage(fileURL: url, source: .result)
         } else {
-          try controller.control.setImage(result.image, name: String(localized: "results.unsaved.name"), source: .result)
+          try await controller.control.setImage(result.image, name: String(localized: "results.unsaved.name"), source: .result)
         }
       } catch {
         useError = ControlText.error(error)
@@ -410,7 +410,7 @@ struct ResultsView: View {
           if let url = result.fileURL {
             try await controller.control.addMoodboardImage(fileURL: url, source: .result)
           } else {
-            try controller.control.addMoodboardImage(
+            try await controller.control.addMoodboardImage(
               result.image, name: String(localized: "results.unsaved.name"), source: .result)
           }
         } catch {

@@ -13,6 +13,10 @@ public final class FramedStartImage {
   private var pendingKey: String?
   private var pending: Task<Void, Never>?
   private var counter = 0
+  /// The number of the picture at `path`: one that was started earlier and ends later is not offered in its place.
+  private var shown = 0
+  /// Goes up when the start image goes away: a picture that was being made for it is thrown away.
+  private var epoch = 0
   /// Called when a new picture is ready: the plug-ins are told again.
   public var onChange: (@MainActor () -> Void)?
 
@@ -34,30 +38,49 @@ public final class FramedStartImage {
       pending = Task { [weak self] in
         if !first { try? await Task.sleep(for: .milliseconds(300)) }
         guard !Task.isCancelled else { return }
-        self?.make(wanted, control: control, canvasWidth: canvasWidth, canvasHeight: canvasHeight, fill: fill)
+        await self?.make(wanted, control: control, canvasWidth: canvasWidth, canvasHeight: canvasHeight, fill: fill)
       }
     }
     return path
   }
 
-  private func make(_ wanted: String, control: ControlStore, canvasWidth: Int, canvasHeight: Int, fill: MarginFill) {
+  /// Frames, encodes and writes the picture away from the main actor (a third of a second for 2048 px, which the tab
+  /// would spend frozen), then offers it.
+  private func make(
+    _ wanted: String, control: ControlStore, canvasWidth: Int, canvasHeight: Int, fill: MarginFill
+  ) async {
     defer { if pendingKey == wanted { pendingKey = nil } }
-    guard let image = control.framedStartImage(canvasWidth: canvasWidth, canvasHeight: canvasHeight, fill: fill),
-      let data = ControlStore.pngData(of: image)
+    guard let render = control.framedStartImageRender(canvasWidth: canvasWidth, canvasHeight: canvasHeight, fill: fill)
     else { return }
     counter += 1
-    try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    let (number, startedIn) = (counter, epoch)
+    let folder = folder
     let url = folder.appendingPathComponent("start-framed-\(counter).png")
-    guard (try? data.write(to: url, options: .atomic)) != nil else { return }
+    let written = await Task.detached(priority: .userInitiated) {
+      guard let image = render(), let data = ControlStore.pngData(of: image) else { return false }
+      try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+      return (try? data.write(to: url, options: .atomic)) != nil
+    }.value
+    guard written else { return }
+    // The start image went away meanwhile, or a picture started after this one is already on offer.
+    guard epoch == startedIn, number > shown else {
+      try? FileManager.default.removeItem(at: url)
+      return
+    }
+    // A picture of a framing that has moved on since is offered all the same: while the framing keeps changing every
+    // half second (a stepper, the wheel) no picture would ever be the last one, and the plug-ins would see nothing move
+    // until it stops. The one of the framing as it is now follows.
     if let old = path { try? FileManager.default.removeItem(atPath: old) }
     path = url.path
     key = wanted
+    shown = number
     onChange?()
   }
 
   private func reset() {
     pending?.cancel()
     pendingKey = nil
+    epoch += 1
     if let old = path { try? FileManager.default.removeItem(atPath: old) }
     path = nil
     key = nil

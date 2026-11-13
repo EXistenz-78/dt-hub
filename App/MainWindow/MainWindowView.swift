@@ -15,18 +15,6 @@ struct MainWindowView: View {
   let updates: UpdateController
   @AppStorage(QueueSidebar.visibleKey) private var queueVisible = true
 
-  /// What the plug-ins are told about: the model and its family, the start image, the Moodboard and the size.
-  private var contextKey: PluginContextKey {
-    let model = connection.selection.selectedModel(in: connection.monitor.catalog)
-    let moodboard = generation.control.inputs.moodboard.filter(\.isOn).map { $0.id.uuidString }.joined(separator: ",")
-    return PluginContextKey(
-      model: model?.file, family: model?.family, isEditModel: model?.capabilities.isEditModel, startImageID: generation.control.inputs.image?.id.uuidString,
-      moodboardIDs: moodboard, width: generation.parameters.width, height: generation.parameters.height,
-      framingZoom: generation.control.inputs.framing.zoom, framingOffsetX: generation.control.inputs.framing.offsetX,
-      framingOffsetY: generation.control.inputs.framing.offsetY,
-      lastResultID: generation.session.results.first?.id.uuidString)
-  }
-
   var body: some View {
     VStack(spacing: DS.panelPadding) {
       // The header and, beside it, the Results button as tall as the header.
@@ -42,9 +30,7 @@ struct MainWindowView: View {
           QueueSidebar(store: queueStore, runner: queueRunner, generation: generation)
         }
         DSTabFrame {
-          WorkspaceTabBar(
-            workspace: workspace, plugins: plugins,
-            controlHasImages: generation.control.inputs.image != nil || !generation.control.inputs.moodboard.isEmpty)
+          WorkspaceTabBar(workspace: workspace, plugins: plugins, control: generation.control)
         } content: {
           // The tab takes the space it is given, whatever is in it. Placed straight in the stacks, each stack around
           // it asked the tab its size more than once to share the space out, and a scroll view answers by laying out
@@ -79,12 +65,10 @@ struct MainWindowView: View {
     ) {
       ContributionConflictSheet(plugins: plugins)
     }
-    .task(id: contextKey) {
-      plugins.updateContext(
-        model: contextKey.model, family: contextKey.family, isEditModel: contextKey.isEditModel,
-        parameters: generation.parameters)
-      workspace.setPluginTabs(plugins.activeTabs)
-    }
+    // The values the plug-ins are told about are read in a view of its own: read here, every change of a parameter, of
+    // the framing or of the results would work out this whole window again.
+    .background(
+      PluginContextFeeder(workspace: workspace, connection: connection, generation: generation, plugins: plugins))
     .onChange(of: plugins.activeTabs) { workspace.setPluginTabs(plugins.activeTabs) }
     // A model added to the models folder meanwhile: the plug-in hears about it when its tab is shown.
     .onChange(of: workspace.selectedTabID) { plugins.refreshContext() }
@@ -102,5 +86,36 @@ struct MainWindowView: View {
     } else {
       EmptyView()
     }
+  }
+}
+
+/// Tells the plug-ins where the app stands whenever what they are told about changes. It draws nothing: it is a view so
+/// that reading the parameters, the Control tab's pictures and the results invalidates only this, not the window.
+private struct PluginContextFeeder: View {
+  let workspace: WorkspaceState
+  let connection: DrawThingsConnection
+  let generation: GenerationController
+  let plugins: PluginRegistry
+
+  /// What the plug-ins are told about: the model and its family, the start image, the Moodboard and the size.
+  private var contextKey: PluginContextKey {
+    let model = connection.selection.selectedModel(in: connection.monitor.catalog)
+    let moodboard = generation.control.inputs.moodboard.filter(\.isOn).map { $0.id.uuidString }.joined(separator: ",")
+    return PluginContextKey(
+      model: model?.file, family: model?.family, isEditModel: model?.capabilities.isEditModel, startImageID: generation.control.inputs.image?.id.uuidString,
+      moodboardIDs: moodboard, width: generation.parameters.width, height: generation.parameters.height,
+      framingZoom: generation.control.inputs.framing.zoom, framingOffsetX: generation.control.inputs.framing.offsetX,
+      framingOffsetY: generation.control.inputs.framing.offsetY,
+      lastResultID: generation.session.results.first?.id.uuidString)
+  }
+
+  var body: some View {
+    let key = contextKey
+    Color.clear
+      .task(id: key) {
+        plugins.updateContext(
+          model: key.model, family: key.family, isEditModel: key.isEditModel, parameters: generation.parameters)
+        workspace.setPluginTabs(plugins.activeTabs)
+      }
   }
 }

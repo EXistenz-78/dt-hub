@@ -7,8 +7,10 @@ import SwiftUI
 struct WorkspaceTabBar: View {
   let workspace: WorkspaceState
   let plugins: PluginRegistry
+  let control: ControlStore
   /// True when the Moodboard has images or there is a start image: Control, when closed, shows a small teal dot.
-  var controlHasImages = false
+  /// Read here, not in the window: the pictures and their framing change often, and only this bar has to follow.
+  private var controlHasImages: Bool { control.inputs.image != nil || !control.inputs.moodboard.isEmpty }
   @Environment(\.openSettings) private var openSettings
   /// The tab the mouse rests on: its name shows too (one at a time).
   @State private var hoveredTabID: String?

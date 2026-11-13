@@ -56,16 +56,25 @@ public final class ControlStore {
   /// The start image as the canvas has it: cut, zoomed, turned, the margins filled, without the Brush drawing. For the
   /// plug-ins that draw on it. nil without a start image or when it cannot be read.
   public func framedStartImage(canvasWidth: Int, canvasHeight: Int, fill: MarginFill) -> CGImage? {
+    framedStartImageRender(canvasWidth: canvasWidth, canvasHeight: canvasHeight, fill: fill)?()
+  }
+
+  /// `framedStartImage` as work to do away from the main actor (decoding and framing a big picture takes a while): it
+  /// holds the picture and the framing as they are now. nil without a start image.
+  public func framedStartImageRender(canvasWidth: Int, canvasHeight: Int, fill: MarginFill) -> (@Sendable () -> CGImage?)? {
     guard let image = inputs.image else { return nil }
-    let crop = FramingMath.cropRect(
-      imageWidth: image.pixelWidth, imageHeight: image.pixelHeight, canvasWidth: canvasWidth,
-      canvasHeight: canvasHeight, framing: inputs.framing)
-    let scale = Double(canvasWidth) / crop.width
-    let longest = max(image.pixelWidth, image.pixelHeight)
-    let maxPixel = scale < 1 ? Int((Double(longest) * scale).rounded(.up)) + 1 : longest
-    guard let decoded = storage.image(named: image.fileName, maxPixel: maxPixel) else { return nil }
-    return InputComposer.frame(
-      decoded, toWidth: canvasWidth, height: canvasHeight, framing: inputs.framing, paint: nil, fill: fill)
+    let (storage, framing) = (storage, inputs.framing)
+    return {
+      let crop = FramingMath.cropRect(
+        imageWidth: image.pixelWidth, imageHeight: image.pixelHeight, canvasWidth: canvasWidth,
+        canvasHeight: canvasHeight, framing: framing)
+      let scale = Double(canvasWidth) / crop.width
+      let longest = max(image.pixelWidth, image.pixelHeight)
+      let maxPixel = scale < 1 ? Int((Double(longest) * scale).rounded(.up)) + 1 : longest
+      guard let decoded = storage.image(named: image.fileName, maxPixel: maxPixel) else { return nil }
+      return InputComposer.frame(
+        decoded, toWidth: canvasWidth, height: canvasHeight, framing: framing, paint: nil, fill: fill)
+    }
   }
 
   /// What `framedStartImage` depends on: when this changes, the framed picture is another.
@@ -185,9 +194,10 @@ public final class ControlStore {
     return image.id
   }
 
-  /// A picture that only exists in memory (a result that could not be saved): stored as PNG.
-  public func setImage(_ image: CGImage, name: String, source: ReferenceImage.Source) throws(ControlError) {
-    guard let data = Self.pngData(of: image) else { throw .cannotSave(name) }
+  /// A picture that only exists in memory (a result that could not be saved): stored as PNG, made away from the main
+  /// actor (a big picture takes a while to encode).
+  public func setImage(_ image: CGImage, name: String, source: ReferenceImage.Source) async throws(ControlError) {
+    guard let data = await Task.detached(operation: { Self.pngData(of: image) }).value else { throw .cannotSave(name) }
     try setImage(data: data, name: name, source: source)
   }
 
@@ -313,8 +323,8 @@ public final class ControlStore {
     return image.id
   }
 
-  public func addMoodboardImage(_ image: CGImage, name: String, source: ReferenceImage.Source) throws(ControlError) {
-    guard let data = Self.pngData(of: image) else { throw .cannotSave(name) }
+  public func addMoodboardImage(_ image: CGImage, name: String, source: ReferenceImage.Source) async throws(ControlError) {
+    guard let data = await Task.detached(operation: { Self.pngData(of: image) }).value else { throw .cannotSave(name) }
     try addMoodboardImage(data: data, name: name, source: source)
   }
 

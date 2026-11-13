@@ -298,7 +298,7 @@ public final class PluginRegistry: PluginHosting {
     self.family = family
     self.isEditModel = isEditModel
     latestParameters = parameters
-    for entry in entries where entry.state == .loaded && entry.isActive { sendContext(to: entry.id) }
+    sendContextToActivePlugins()
   }
 
   @ObservationIgnored private var latestParameters = GenerationParameters()
@@ -312,10 +312,24 @@ public final class PluginRegistry: PluginHosting {
   /// Tells the active plug-ins where the app stands again, for what changed without the model or its parameters
   /// changing (a model added to the models folder, a start image): the app calls it when a plug-in's tab is shown.
   public func refreshContext() {
-    for entry in entries where entry.state == .loaded && entry.isActive { sendContext(to: entry.id) }
+    sendContextToActivePlugins()
+  }
+
+  /// The context is the same for every plug-in: it is put together and encoded once (it reads the Family prompt from
+  /// the disk and carries the whole LoRA catalog), then sent to each.
+  private func sendContextToActivePlugins() {
+    let active = entries.filter { $0.state == .loaded && $0.isActive }
+    guard !active.isEmpty, let data = contextData() else { return }
+    for entry in active { send(data, to: entry.id) }
   }
 
   private func sendContext(to identifier: String) {
+    guard let data = contextData() else { return }
+    send(data, to: identifier)
+  }
+
+  /// Where the app stands now, as the `context` message.
+  private func contextData() -> Data? {
     let context = PluginContext(
       model: model, family: family, parameters: currentParameters?() ?? latestParameters, tempFolder: tempFolder.path,
       startImage: startImagePath?(), moodboard: moodboardPaths.flatMap { $0().nilIfEmpty },
@@ -324,8 +338,7 @@ public final class PluginRegistry: PluginHosting {
       loraCatalog: loraCatalog?().map(PluginCatalogLoRA.init), startImageWindow: startImageWindow?(),
       lastResult: lastResultPath?().map { PluginLastResult(path: $0, name: URL(fileURLWithPath: $0).lastPathComponent) },
       startImageFramed: startImageFramedPath?())
-    guard let data = try? JSONEncoder().encode(context) else { return }
-    send(data, to: identifier)
+    return try? JSONEncoder().encode(context)
   }
 
   /// A timeout for the messages of the queue: a year, which is no limit (a run can last hours). What ends the wait is the answer, or

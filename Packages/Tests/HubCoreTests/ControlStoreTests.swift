@@ -190,12 +190,12 @@ struct ControlStoreTests {
     #expect(store.warnings(canvasWidth: 1000, canvasHeight: 1000).isEmpty)
   }
 
-  @Test func anImageInMemoryBecomesAPNGCopy() throws {
+  @Test func anImageInMemoryBecomesAPNGCopy() async throws {
     let root = folder()
     let store = store(in: root)
     let source = try #require(CGImageSourceCreateWithData(pictureData(width: 40, height: 30) as CFData, nil))
     let image = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
-    try store.setImage(image, name: "result.png", source: .result)
+    try await store.setImage(image, name: "result.png", source: .result)
     #expect(store.inputs.image?.pixelWidth == 40)
     #expect(copies(in: root).count == 1)
   }

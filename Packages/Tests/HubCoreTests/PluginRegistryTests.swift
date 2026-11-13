@@ -210,6 +210,27 @@ struct PluginRegistryTests {
     #expect(try lastContext().lastResult == nil)
   }
 
+  @Test func theContextIsPutTogetherOnceForAllThePlugins() async throws {
+    try PluginFixture.bundle(in: root, id: "a", name: "A")
+    try PluginFixture.bundle(in: root, id: "b", name: "B")
+    let loader = FakeLoader()
+    let registry = registry(loader: loader, enabled: ["a", "b"])
+    registry.start()
+    var asked = 0
+    registry.currentParameters = {
+      asked += 1
+      return GenerationParameters(steps: 12)
+    }
+    registry.refreshContext()
+    await settle()
+    #expect(asked == 1, "one context for the two plug-ins, not one each")
+    for id in ["a", "b"] {
+      let plugin = try #require(loader.plugins[id])
+      let data = try #require(plugin.sent.last { PluginMessageType.of($0) == PluginMessageType.context })
+      #expect(try JSONDecoder().decode(PluginContext.self, from: data).parameters.steps == 12)
+    }
+  }
+
   @Test func theContextCarriesTheCurrentParametersNotTheLastOnesTheAppSent() async throws {
     try PluginFixture.bundle(in: root, id: "a", name: "A")
     let loader = FakeLoader()

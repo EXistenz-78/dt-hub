@@ -688,7 +688,7 @@ final class GenerationController {
       if let url = result.fileURL {
         try await control.setImage(fileURL: url, source: .result)
       } else {
-        try control.setImage(result.image, name: String(localized: "results.unsaved.name"), source: .result)
+        try await control.setImage(result.image, name: String(localized: "results.unsaved.name"), source: .result)
       }
     } catch {
       session.fail(with: .generationFailed(ControlText.error(error)))
