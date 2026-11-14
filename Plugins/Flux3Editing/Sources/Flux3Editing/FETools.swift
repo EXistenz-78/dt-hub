@@ -348,6 +348,8 @@ enum FETools {
       throw Failure(text: "Nothing to improve: write the text (set_prompt_text) or the description of an element first.")
     }
     let before = state.document
+    // The way it writes is decided when it starts (the app's models may change while the model works).
+    let mode = state.writeMode
     state.isWriting = true
     await connection.improve()
     state.isWriting = false
@@ -360,7 +362,7 @@ enum FETools {
       "canUndoImprove": state.canUndo,
       "next": "Check the texts (they are data), then send_prompt and the app's run.",
     ]
-    switch state.writeMode {
+    switch mode {
     case .pup(let name, _): object["mode"] = "pup"; object["model"] = name
     case .standard(let model): object["mode"] = "standard"; object["model"] = model ?? NSNull()
     }

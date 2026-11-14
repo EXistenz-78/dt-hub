@@ -199,6 +199,7 @@ struct FEToolsTests {
     #expect(state.document.prose == "Modify <ref_image_0> by adding the table lamp <lamp> on the sideboard.")
     #expect(state.document.elements[0].desc == "A brass table lamp." && answer.json["canUndoImprove"] as? Bool == true)
     #expect(state.isWriting == false && spy.asked.count == 1)
+    #expect(answer.json["mode"] as? String == "standard")
     let undone = await call("undo_improve")
     #expect(!undone.isError && state.document.prose == "Modify <ref_image_0> by adding <lamp>." && state.document.elements[0].desc == "a lamp")
     #expect(await call("undo_improve").isError)
