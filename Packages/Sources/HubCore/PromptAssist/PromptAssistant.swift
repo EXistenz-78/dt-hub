@@ -40,6 +40,8 @@ public final class PromptAssistant {
   @ObservationIgnored private let resolve: Resolve
   @ObservationIgnored private let respond: Respond
   @ObservationIgnored private let library: PromptLibrary
+  /// The display ratio of a picture, for a model that is told it.
+  @ObservationIgnored private let imageRatio: (URL) -> String?
   /// What the fields held before the last successful operation, and what that operation wrote.
   private var undo: (before: PromptPair, written: PromptPair)?
 
@@ -50,10 +52,14 @@ public final class PromptAssistant {
   /// Of the last operation; every new operation clears it.
   public private(set) var note: Note?
 
-  public init(resolve: @escaping Resolve, respond: @escaping Respond, library: PromptLibrary = .builtIn) {
+  public init(
+    resolve: @escaping Resolve, respond: @escaping Respond, library: PromptLibrary = .builtIn,
+    imageRatio: @escaping (URL) -> String? = PromptBrief.aspectRatio
+  ) {
     self.resolve = resolve
     self.respond = respond
     self.library = library
+    self.imageRatio = imageRatio
   }
 
   /// With `images` (the start image and the Moodboard pictures that are on) they go to the LLM, numbered; when no LLM
@@ -66,6 +72,9 @@ public final class PromptAssistant {
     }
     return await run(.enhance, current: current, family: family, withImages: !images.isEmpty) { choice, withImages in
       let attached = withImages ? images : EnhanceImages()
+      if let expander = choice.profile.expander {
+        return PromptBrief.enhance(current, expander: expander, images: attached, ratio: imageRatio)
+      }
       if let pup = choice.profile.pup { return PromptBrief.enhance(current, pup: pup, images: attached) }
       return choice.profile.systemPrompt(for: .enhance, withImages: withImages).map {
         PromptBrief.enhance(current, ownSystem: $0, generation: choice.profile.generation, images: attached, library: library)
@@ -84,6 +93,9 @@ public final class PromptAssistant {
       return nil
     }
     return await run(.describe, current: current, family: family, withImages: true) { choice, _ in
+      if let expander = choice.profile.expander {
+        return PromptBrief.describe(imageAt: url, current: current, expander: expander, focus: focus)
+      }
       if let pup = choice.profile.pup {
         return PromptBrief.describe(imageAt: url, current: current, pup: pup, focus: focus)
       }

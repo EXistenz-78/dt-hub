@@ -34,7 +34,38 @@ public struct LanguageModelProfile: Equatable, Sendable {
     }
   }
 
+  /// A prompt-expansion model that ships its own request (MiniMax-H3-Image-PE): `prompt/t2i/system_prompt.txt` and
+  /// `prompt/t2i/task_prompt.txt` (a template, the request goes where `{}` is) for a request without pictures,
+  /// `prompt/edit/task_prompt.txt` (fixed, no system prompt) for one with pictures, and the sampling values of
+  /// `prompt/t2i/request_params.json`. The task prompts are kept as they are in the files, to the last newline.
+  public struct Expander: Equatable, Sendable {
+    public var t2iSystem: String
+    public var t2iTask: String
+    /// Nil when the folder has no edit prompt: pictures are then left out.
+    public var editTask: String?
+    public var temperature: Double
+    public var topP: Double
+    public var topK: Int
+    /// Thinking included.
+    public var maxTokens: Int
+
+    public init(
+      t2iSystem: String, t2iTask: String, editTask: String? = nil, temperature: Double = 1.0, topP: Double = 0.95,
+      topK: Int = 20, maxTokens: Int = 4096
+    ) {
+      self.t2iSystem = t2iSystem
+      self.t2iTask = t2iTask
+      self.editTask = editTask
+      self.temperature = temperature
+      self.topP = topP
+      self.topK = topK
+      self.maxTokens = maxTokens
+    }
+  }
+
   public var generation: Generation?
+  /// Set when the folder has the expander's `prompt/t2i/` files: the model then gets its own request.
+  public var expander: Expander?
   /// Set when the folder has the PUP's `system_prompts.json`: the model then writes prompts in its own formats.
   public var pup: Pup?
   private var enhancePrompt: String?
@@ -43,10 +74,11 @@ public struct LanguageModelProfile: Equatable, Sendable {
 
   public init(
     generation: Generation? = nil, enhancePrompt: String? = nil, describePrompt: String? = nil,
-    enhanceWithImagesPrompt: String? = nil, pup: Pup? = nil
+    enhanceWithImagesPrompt: String? = nil, pup: Pup? = nil, expander: Expander? = nil
   ) {
     self.generation = generation
     self.pup = pup
+    self.expander = expander
     self.enhancePrompt = enhancePrompt
     self.describePrompt = describePrompt
     self.enhanceWithImagesPrompt = enhanceWithImagesPrompt
@@ -95,10 +127,29 @@ public struct LanguageModelProfile: Equatable, Sendable {
       }
       pup = Pup(t2i: t2i, i2i: i2i, t2iBbox: optional("t2i_bbox"), i2iBbox: optional("i2i_bbox"))
     }
+    func raw(_ name: String) -> String? {
+      guard let data = read(folder.appendingPathComponent(name)), let string = String(data: data, encoding: .utf8),
+        !string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+      else { return nil }
+      return string
+    }
+    var expander: Expander?
+    if let system = text("prompt/t2i/system_prompt.txt"), let task = raw("prompt/t2i/task_prompt.txt"), task.contains("{}") {
+      var found = Expander(t2iSystem: system, t2iTask: task, editTask: raw("prompt/edit/task_prompt.txt"))
+      if let data = read(folder.appendingPathComponent("prompt/t2i/request_params.json")),
+        let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+      {
+        if let value = (object["temperature"] as? NSNumber)?.doubleValue { found.temperature = value }
+        if let value = (object["top_p"] as? NSNumber)?.doubleValue { found.topP = value }
+        if let value = (object["top_k"] as? NSNumber)?.intValue { found.topK = value }
+        if let value = (object["max_tokens"] as? NSNumber)?.intValue, value > 0 { found.maxTokens = value }
+      }
+      expander = found
+    }
     let generic = text("system_prompt.txt")
     return LanguageModelProfile(
       generation: generation, enhancePrompt: text("system_prompt_t2i.txt") ?? generic,
       describePrompt: text("system_prompt_i2i.txt") ?? generic,
-      enhanceWithImagesPrompt: text("system_prompt_i2i.txt") ?? generic, pup: pup)
+      enhanceWithImagesPrompt: text("system_prompt_i2i.txt") ?? generic, pup: pup, expander: expander)
   }
 }
