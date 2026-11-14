@@ -61,6 +61,17 @@ If PUP mode cannot write (the app could not load the model's vision part, an id 
 
 **Send** is disabled while there is no start image, no box, a description is missing (New, From reference, Existing), an id is empty or repeated, or a box points to a picture that is no longer on in the Moodboard (the box stays, out of the text, until the picture is back or you delete it).
 
+## For AI agents (MCP)
+
+Since **1.3**. With DT Hub's remote control on (Settings › Remote control), the plug-in **on for the job** and FLUX.3 [klein] in the header, an agent sees these tools, named `plugin__flux3editing__<tool>`. The pictures are the app's: the start image is `ref_image_0` and the pictures of the Moodboard that are on follow in order (`ref_image_1`…), so the agent sets them with the app's own `set_start_image` and `set_moodboard`.
+
+- `get_status` (read): the pictures, the text, every element (id, kind, `from`, boxes `[top, left, bottom, right]` on the 0–1000 grid, description), the prompt Send would write, what stops Send, the warnings, and how *Improve prompt* would write (PUP or standard, and with which model).
+- `set_prompt_text`, `set_element`, `remove_element`, `clear_edit` (edit, «Modify the tab» or more): they draw what the tab draws. `set_element` adds or changes one element: `kind` (`new`, `existing`, `move`, `remove`, `from_reference`), `reference` (the number N of `<ref_image_N>`), `src_bbox` and `tgt_bbox` (four numbers on the 0–1000 grid; the origin box is on the start image, or on the reference for `from_reference`), `description` and `new_id`. The plug-in is strict: a box outside the grid, with the corners in the wrong order or smaller than 20, a box the kind does not take, a wrong or repeated id, an unknown reference or more than 30 elements are refused, and nothing changes.
+- `improve_prompt` and `undo_improve` (edit): the *Improve prompt* button and its Undo. The text and the descriptions are **replaced** by what the local language model writes (seconds to minutes, no image of the budget; the tool waits up to ten minutes, and the app's stop does not reach the model); the answer gives the new texts, to check before sending.
+- `send_prompt` (edit): the *Send* button: the prompt goes in the Prompt field of the Generation tab (replacing it) and the negative prompt is cleared. It is refused while `get_status` lists problems.
+
+**Nothing here generates.** After `send_prompt` the agent uses the app's own `run`, which makes one image through the usual path (the session budget and the user's confirmation threshold apply). Descriptions, ids, texts and the pictures' names come from the project and from the agent's own calls: DT Hub shows them to the agent as data, not instructions.
+
 ## Build and test
 
 ```

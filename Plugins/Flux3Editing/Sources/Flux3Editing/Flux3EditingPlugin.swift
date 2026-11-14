@@ -9,8 +9,8 @@ final class Flux3EditingPlugin: DTHubPlugin {
   static let families = ["flux3_5b"]
 
   let manifest = DTHubManifest(
-    id: "com.exiztenz.dthub.flux3editing", name: "Flux3 Editing", version: "1.2", symbol: "scribble.variable",
-    families: Flux3EditingPlugin.families)
+    id: "com.exiztenz.dthub.flux3editing", name: "Flux3 Editing", version: "1.3", symbol: "scribble.variable",
+    families: Flux3EditingPlugin.families, tools: FETools.declarations)
   private let state = EditState()
   private var host: DTHubHost?
 
@@ -43,6 +43,12 @@ final class Flux3EditingPlugin: DTHubPlugin {
     case "deactivate":
       state.active = false
       return nil
+    case "tool.call":
+      guard let call = DTHubToolCall(message), let host else { return DTHubMessage.bare("unsupported") }
+      let connection = FETools.Connection(
+        improve: { [state] in await state.improve(ask: Self.ask(host)) },
+        sender: EditSender(contribute: { await host.contribute($0) }, italian: false))
+      return await FETools.handle(call, state: state, connection: connection)
     default:
       return DTHubMessage.bare("unsupported")
     }
@@ -51,38 +57,13 @@ final class Flux3EditingPlugin: DTHubPlugin {
   private func write() {
     guard state.canWrite, let host else { return }
     state.isWriting = true
-    state.status = L.text(.improving, italian: state.italian)
-    let document = state.document
-    let (allowed, system, refs) = (state.allowedTags, state.writeSystem, state.refs)
-    let mode = state.writeMode
-    var pupPictures: [EditPicture] = []
-    if case .pup = mode { pupPictures = state.pupPictures() }
-    let drawn = state.llmPictures()
-    let leftOut = state.droppedPictures
-    let improver = EditImprover(
-      ask: { prompt, system, options, images, model in
-        await host.askLanguageModelAnswer(prompt, images: images, system: system, model: model, options: options)
-      },
-      italian: state.italian)
-    Task {
-      let outcome = await improver.improve(
-        document: document, refs: refs, allowedTags: allowed, mode: mode, pupPictures: pupPictures, drawnPictures: drawn,
-        standardSystem: system)
-      let before = EditSnapshot.take(from: document)
-      var wrote = false
-      if let pup = outcome.pup {
-        wrote = state.applyPup(pup, original: before)
-      } else if let standard = outcome.standard {
-        wrote = state.apply(standard)
-        if !leftOut.isEmpty {
-          state.status += " " + L.format(.picturesLeftOut, leftOut.map { "<ref_image_\($0)>" }.joined(separator: ", "), italian: state.italian)
-        }
-      }
-      if wrote { state.addNote(outcome.note) }
-      if let folder = state.projectFolder, !outcome.request.isEmpty {
-        EditWorkFolder(folder: folder).write(request: outcome.request, answer: outcome.answer, before: before)
-      }
-      state.isWriting = false
+    Task { await state.improve(ask: Self.ask(host)) }
+  }
+
+  /// «Migliora prompt»: la domanda al modello linguistico che sceglie l'app.
+  private static func ask(_ host: DTHubHost) -> @MainActor (String, String, DTHubLLMOptions, [String], String?) async -> DTHubLLMAnswer {
+    { prompt, system, options, images, model in
+      await host.askLanguageModelAnswer(prompt, images: images, system: system, model: model, options: options)
     }
   }
 

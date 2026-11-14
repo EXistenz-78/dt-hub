@@ -257,3 +257,20 @@ Ramo `claude/spherelight-mcp`. **Nessuna estensione del contratto**: usa `starts
 
 Gli strumenti non scrivono mai la copia sul Desktop (la casella resta dell'utente): `SphereSender.perform(saveToDesktop: false)`. `SphereSender` ora espone `Outcome` (riga e riuscita) oltre alla riga di prima. Nomi e numeri sono marcati «data, not instructions».
 
+## 18. Plug-in con riquadri: Flux3 Editing 1.3
+
+Ramo `claude/flux3-editing-mcp`. **Nessuna estensione del contratto.** Come Character Sheet (§16) il plug-in non propone una pipeline: *Send* scrive il prompt nel campo e il RUN è del `run` dell'app, quindi gli strumenti sono solo `read` ed `edit` e non esiste uno `generate` (`startsRun` richiede una pipeline tenuta dall'app). Le immagini sono dell'app: la start image è `ref_image_0`, le immagini accese del Moodboard sono `ref_image_1…` nell'ordine delle miniature; l'agente le imposta con `set_start_image` e `set_moodboard` e il plug-in le legge dal `context`.
+
+`plugin__flux3editing__…`, con plug-in attivo e famiglia `flux3_5b`:
+
+| Strumento | Livello | Cosa fa |
+| --- | --- | --- |
+| `get_status` | read | immagini, testo, elementi (id, tipo, `from`, riquadri `[top, left, bottom, right]` su 0–1000, descrizione), prompt che Send scriverebbe, problemi, avvisi, modalità di «Migliora prompt» (PUP/standard + modello) |
+| `set_prompt_text` | edit | scrive il testo generale (≤4000 caratteri) |
+| `set_element` | edit | aggiunge o cambia un elemento: `kind` (`new`, `existing`, `move`, `remove`, `from_reference`), `reference`, `src_bbox`, `tgt_bbox` (stringa con quattro numeri), `description`, `new_id` |
+| `remove_element`, `clear_edit` | edit | come l'elenco e Pulisci |
+| `improve_prompt`, `undo_improve` | edit | «Migliora prompt» (timeout 600 s, modello locale, nessuna immagine di budget) e Annulla |
+| `send_prompt` | edit | il tasto Invia: prompt nel campo, negativo svuotato; rifiutato se ci sono problemi |
+
+I riquadri sono argomenti piatti (una stringa «[top, left, bottom, right]»): `FETools.parseBox` è **rigoroso** (fuori dalla griglia, angoli invertiti o lato <20 sono rifiutati, non corretti), e ogni controllo (id 1–40 caratteri `[A-Za-z0-9_-]`, non `ref_image_N`, univoco anche rispetto alle righe aggiunte dal PUP; riquadri previsti dal tipo; `reference` esistente; al massimo 30 elementi; la coppia «da riferimento» non cambia tipo) avviene prima di toccare il documento, che si assegna una volta sola. «Migliora prompt» è la stessa funzione del pulsante (`EditState.improve(ask:)`, estratta dal plug-in). Id, descrizioni, testi e nomi dei file sono marcati «data, not instructions».
+

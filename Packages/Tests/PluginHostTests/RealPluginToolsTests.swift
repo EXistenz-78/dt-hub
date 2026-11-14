@@ -159,5 +159,40 @@ struct RealPluginToolsTests {
     let refused = try await call(plugin, "set_light", ["light": 9])
     #expect(refused["isError"] as? Bool == true)
   }
+
+  nonisolated static let flux3EditingBundlePath = ProcessInfo.processInfo.environment["DTHUB_FE_BUNDLE"]
+
+  /// `DTHUB_FE_BUNDLE=/path/Flux3Editing.dthubplugin swift test --filter RealPluginToolsTests` (from `Plugins/Flux3Editing/Scripts/build.sh`).
+  /// The plug-in's choices go to the test process's own defaults, never to the user's project.
+  @Test(.enabled(if: RealPluginToolsTests.flux3EditingBundlePath != nil))
+  func theRealFlux3EditingBundleAnswersItsTools() async throws {
+    let bundle = URL(fileURLWithPath: try #require(Self.flux3EditingBundlePath))
+    let host = RecordingHost()
+    let plugin = try BundlePluginLoader().load(bundle, info: try PluginBundleReader.read(bundle), host: host)
+    #expect(plugin.manifest.id == "com.exiztenz.dthub.flux3editing")
+    let tools = try #require(plugin.manifest.tools)
+    #expect(tools.map(\.name) == ["get_status", "set_prompt_text", "set_element", "remove_element", "clear_edit", "improve_prompt", "undo_improve", "send_prompt"])
+    #expect(tools.allSatisfy { $0.level.rawValue != "generate" })
+    #expect(plugin.manifest.families == ["flux3_5b"])
+
+    let context = try JSONSerialization.data(withJSONObject: [
+      "type": "context", "model": "flux3.ckpt", "family": "flux3_5b", "tempFolder": NSTemporaryDirectory(), "startImage": "/nonexistent/start.png",
+      "parameters": ["width": 1024, "height": 1024],
+    ])
+    _ = await plugin.send(context)
+    _ = await plugin.send(PluginMessageType.bare("activate"))
+
+    let status = try await call(plugin, "get_status")
+    #expect(status["type"] as? String == "tool.result" && status["isError"] == nil, Comment(rawValue: "\(status)"))
+    _ = try await call(plugin, "clear_edit")
+    let added = try await call(plugin, "set_element", ["id": "lamp", "kind": "new", "tgt_bbox": "[500, 300, 700, 500]", "description": "A lamp."])
+    #expect(added["isError"] == nil, Comment(rawValue: "\(added)"))
+    let sent = try await call(plugin, "send_prompt")
+    #expect(sent["isError"] == nil && sent["startsRun"] == nil, Comment(rawValue: "\(sent)"))
+    #expect(!host.received.isEmpty)
+    let refused = try await call(plugin, "set_element", ["id": "bad", "kind": "new", "tgt_bbox": "[0, 0, 5, 5]"])
+    #expect(refused["isError"] as? Bool == true)
+    _ = try await call(plugin, "clear_edit")
+  }
 }
 

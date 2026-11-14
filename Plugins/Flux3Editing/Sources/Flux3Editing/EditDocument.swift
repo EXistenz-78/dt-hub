@@ -90,6 +90,13 @@ struct EditDocument: Codable, Equatable, Sendable {
     elements.append(EditElement(id: freeID(), colorIndex: nextColor, kind: .new, refFile: nil, src: nil, tgt: box, desc: ""))
   }
 
+  /// Un elemento che arriva già scritto (da uno strumento di un agente): prende il colore successivo.
+  mutating func add(
+    id: String, kind: EditKind, refFile: String?, src: BBox?, tgt: BBox?, desc: String
+  ) {
+    elements.append(EditElement(id: id, colorIndex: nextColor, kind: kind, refFile: refFile, src: src, tgt: tgt, desc: desc))
+  }
+
   private var nextColor: Int { (elements.map(\.colorIndex).max() ?? -1) + 1 }
 
   private func freeID() -> String {
