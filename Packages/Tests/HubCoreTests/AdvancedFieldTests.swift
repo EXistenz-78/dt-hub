@@ -37,7 +37,14 @@ struct AdvancedFieldTests {
         optionalT5: false, clipSkip: false, nativeSize: 576))
     #expect(AdvancedField.teaCache.isInVideoCards(for: h3))
     #expect(AdvancedField.compressionArtifacts.isInVideoCards(for: h3))
-    #expect(AdvancedField.stochasticSamplingGamma.isInVideoCards(for: h3))
+    // H3's video card has no gamma slider, so the Advanced card keeps it for TCD.
+    #expect(!AdvancedField.stochasticSamplingGamma.isInVideoCards(for: h3))
+    let ltx = CatalogModel(
+      file: "ltx.ckpt", name: "LTX", family: "ltx2.3",
+      capabilities: ModelCapabilities(
+        guidanceEmbed: false, teaCache: false, clipL: false, openClipG: false, t5: false,
+        optionalT5: false, clipSkip: false, nativeSize: 576))
+    #expect(AdvancedField.stochasticSamplingGamma.isInVideoCards(for: ltx))
     #expect(!AdvancedField.teaCache.isInVideoCards(for: klein))
     #expect(!AdvancedField.teaCache.isInVideoCards(for: nil))
     #expect(!AdvancedField.guidanceEmbed.isInVideoCards(for: h3))

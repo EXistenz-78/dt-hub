@@ -85,7 +85,9 @@ public enum AdvancedField: String, CaseIterable, Identifiable, Sendable {
   public func isInVideoCards(for model: CatalogModel?) -> Bool {
     guard VideoFamilies.isEnabled(model?.family) else { return false }
     switch self {
-    case .teaCache, .compressionArtifacts, .stochasticSamplingGamma: return true
+    case .teaCache, .compressionArtifacts: return true
+    // Only where the video card draws the slider; otherwise the Advanced card keeps it.
+    case .stochasticSamplingGamma: return VideoFamilies.info(for: model?.family)?.usesStochasticSampling == true
     default: return false
     }
   }
