@@ -1,3 +1,4 @@
+import HubCore
 import HubKit
 import SwiftUI
 
@@ -51,6 +52,16 @@ struct SamplingCard: View {
           .labelsHidden()
           .fixedSize()
           .accessibilityLabel(String(localized: "card.sampling.sampler"))
+        }
+
+        // Only TCD samplers use it, so it sits right under the sampler instead of in the Advanced cards.
+        if AdvancedField.stochasticSamplingGamma.isShown(for: controller.selectedModel(), sampler: controller.parameters.sampler) {
+          CardRow(label: String(localized: "advanced.field.stochasticSamplingGamma")) {
+            DecimalField(
+              label: String(localized: "advanced.field.stochasticSamplingGamma"),
+              value: $controller.parameters.advanced.stochasticSamplingGamma,
+              range: AdvancedParameters.unitRange, step: 0.05, fractionDigits: 2)
+          }
         }
 
         if usesShift {

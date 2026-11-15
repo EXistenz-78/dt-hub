@@ -154,13 +154,6 @@ struct AdvancedCardView: View {
         label: String(localized: "advanced.field.sharpness"), value: advanced.sharpness,
         range: AdvancedParameters.sharpnessRange, step: 0.5)
     }
-    if shows(.stochasticSamplingGamma) {
-      CardRow(label: String(localized: "advanced.field.stochasticSamplingGamma")) {
-        DecimalField(
-          label: String(localized: "advanced.field.stochasticSamplingGamma"), value: advanced.stochasticSamplingGamma,
-          range: AdvancedParameters.unitRange, step: 0.05, fractionDigits: 2)
-      }
-    }
   }
 
   // MARK: Text encoders

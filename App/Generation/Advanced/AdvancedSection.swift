@@ -28,7 +28,8 @@ struct AdvancedSection: View {
           Text("advanced.show")
         }
         .toggleStyle(DSCheckboxToggleStyle())
-        let modified = advanced.modifiedFields.count
+        // The sampling gamma is edited in the Sampling card, under the sampler: it is not one of the cards' values.
+        let modified = advanced.modifiedFields.filter { $0 != .stochasticSamplingGamma }.count
         if !isOn.wrappedValue, modified > 0 {
           Text(String(format: String(localized: "advanced.modifiedCount"), modified))
             .font(.caption)
