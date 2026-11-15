@@ -48,6 +48,9 @@ final class DrawThingsConnection {
   @ObservationIgnored private let managedStore = ManagedServerSettingsStore()
   @ObservationIgnored private let secretStore: any SecretStore = KeychainSecretStore()
   @ObservationIgnored private var loop: Task<Void, Never>?
+  /// The memory of the Mac while a run goes on (the meter under the progress bar). The server DT Hub starts is read by
+  /// its pid; Draw Things (attach mode) is found by name.
+  @ObservationIgnored private(set) var memory: MemoryMonitor!
   /// True while an image is being made or about to be (set by the app): the image model is
   /// never released then, whatever the language model asks.
   @ObservationIgnored var isImageWorkActive: @MainActor () -> Bool = { false }
@@ -55,6 +58,10 @@ final class DrawThingsConnection {
   init() {
     settings = settingsStore.load()
     managed = managedStore.load()
+    memory = MemoryMonitor(serverPid: { [unowned self] in
+      guard managed.mode == .managed, case .running(let pid) = managedServer.state else { return nil }
+      return pid
+    })
     // Quitting stops the managed server whichever windows are open: this object lives as long
     // as the app, a window's view does not.
     NotificationCenter.default.addObserver(

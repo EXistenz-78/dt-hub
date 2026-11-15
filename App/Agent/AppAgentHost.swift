@@ -93,7 +93,28 @@ final class AppAgentHost: AgentHost {
     state.selectedPipeline = generation.contributions?.pipeline.map { $0.userPipelineName ?? $0.pipeline.name }
     state.dtPlus = connection.dtPlus && connection.canUseDTPlus
     if state.dtPlus { state.computeUnits = computeUnitsReading() }
+    state.memory = memoryReading()
     return state
+  }
+
+  /// The memory of the Mac, read now (a few system calls, no timer): the monitor's last reading while a run goes on,
+  /// otherwise a fresh one.
+  private func memoryReading() -> AgentMemoryReading? {
+    var pid: Int32?
+    if connection.managed.mode == .managed, case .running(let running) = connection.managedServer.state { pid = running }
+    guard let snapshot = connection.memory.snapshot ?? MemorySampler.live.sample(pid ?? MemorySampler.live.findServer()) else {
+      return nil
+    }
+    func gb(_ bytes: UInt64) -> Double { (Double(bytes) / 1_073_741_824 * 10).rounded() / 10 }
+    let pressure: String
+    switch snapshot.pressure {
+    case .normal: pressure = "normal"
+    case .warning: pressure = "warning"
+    case .critical: pressure = "critical"
+    }
+    return AgentMemoryReading(
+      totalGB: gb(snapshot.totalBytes), availableGB: gb(snapshot.availableBytes), pressure: pressure,
+      swapUsedGB: gb(snapshot.swapUsedBytes), appGB: gb(snapshot.appBytes), serverGB: snapshot.serverBytes.map(gb))
   }
 
   /// What the header's CU meter shows: the heaviest pass of the next run against the limit of one run.

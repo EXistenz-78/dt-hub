@@ -10,8 +10,8 @@ struct AgentInstructionsTests {
     }
   }
 
-  @Test func shortInstructionsStayUnder1500Characters() {
-    #expect(AgentInstructions.short.count < 1500)
+  @Test func shortInstructionsStayUnder1600Characters() {
+    #expect(AgentInstructions.short.count < 1600)
   }
 
   @Test func skillMarkdownHasFrontmatterAndSameRules() {

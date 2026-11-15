@@ -205,7 +205,33 @@ public struct AgentState: Equatable, Sendable, Codable {
   public var dtPlus = false
   /// The CU meter of the header (the heaviest pass of the next run); only with DT+ on and an estimate.
   public var computeUnits: AgentCUReading?
+  /// The memory of the Mac right now, always present (a language model inside DT Hub weighs on it with DT+ too).
+  public var memory: AgentMemoryReading?
   public init() {}
+}
+
+/// The memory of the Mac, in GB with one decimal. Unified memory: the image server, DT Hub (with its language models)
+/// and the rest share it, so a run that does not fit goes to swap or crashes.
+public struct AgentMemoryReading: Equatable, Sendable, Codable {
+  public var totalGB: Double
+  /// What the system hands out without writing to disk (free, inactive, purgeable).
+  public var availableGB: Double
+  /// "normal", "warning" or "critical".
+  public var pressure: String
+  public var swapUsedGB: Double
+  public var appGB: Double
+  /// The image server (gRPCServerCLI or Draw Things); nil when it could not be found.
+  public var serverGB: Double?
+  public init(
+    totalGB: Double, availableGB: Double, pressure: String, swapUsedGB: Double, appGB: Double, serverGB: Double?
+  ) {
+    self.totalGB = totalGB
+    self.availableGB = availableGB
+    self.pressure = pressure
+    self.swapUsedGB = swapUsedGB
+    self.appGB = appGB
+    self.serverGB = serverGB
+  }
 }
 
 /// What the CU meter reads: the estimate of the next run against the limit of a single run.

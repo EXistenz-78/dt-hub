@@ -221,6 +221,10 @@ struct ResultsView: View {
             }
           }
           .font(.caption).foregroundStyle(.secondary)
+          // Without DT+ the model runs on this Mac: its memory is the thing to watch (with DT+ it is in the cloud).
+          if !(controller.connection.dtPlus && controller.connection.canUseDTPlus) {
+            MemoryMeterView(monitor: controller.connection.memory)
+          }
         }
         Button {
           controller.stop()
