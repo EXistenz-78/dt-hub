@@ -8,8 +8,8 @@ final class Panorama360Plugin: DTHubPlugin {
   static let families = ["flux2_9b", "flux2_4b"]
 
   let manifest = DTHubManifest(
-    id: "com.exiztenz.dthub.panorama360", name: "Panorama 360", version: "1.4", symbol: "globe",
-    families: Panorama360Plugin.families)
+    id: "com.exiztenz.dthub.panorama360", name: "Panorama 360", version: "1.5", symbol: "globe",
+    families: Panorama360Plugin.families, tools: PSTools.declarations)
   private let state = PSState()
   private var host: DTHubHost?
   private var presetsAccepted = false
@@ -96,9 +96,21 @@ final class Panorama360Plugin: DTHubPlugin {
       if let host { await state.seamEnded(message, contribute: { await host.contribute($0) }) }
       return nil
     case "activate":
+      state.active = true
       registerPresetsInBackground()
       return nil
-    case "deactivate": return nil
+    case "deactivate":
+      state.active = false
+      return nil
+    case "tool.call":
+      guard let call = DTHubToolCall(message), let host else { return DTHubMessage.bare("unsupported") }
+      let connection = PSTools.Connection(
+        contribute: { await host.contribute($0) },
+        registerPresets: { [weak self] in await self?.registerPresets(using: { await host.registerPresets($0) }) },
+        ask: { prompt, system, images in
+          await host.askLanguageModelAnswer(prompt, images: images, system: system, options: PSPrompt.options)
+        })
+      return await PSTools.handle(call, state: state, connection: connection)
     default: return DTHubMessage.bare("unsupported")
     }
   }

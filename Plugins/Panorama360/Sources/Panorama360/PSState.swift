@@ -35,6 +35,8 @@ final class PSState: ObservableObject {
   private var cameraDirty = false
   private var committingCamera = false
   @Published private(set) var projectFolder: URL?
+  /// The app turned the plug-in on for the job (`activate`): the tools of an agent work only then.
+  var active = false
   /// The chosen model's file and the folder to exchange pictures through, from the last `context`.
   @Published var modelFile: String?
   private(set) var tempFolder = ""
