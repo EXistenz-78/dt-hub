@@ -308,3 +308,21 @@ Ramo `claude/panorama360f3-mcp`. **Nessuna estensione del contratto**: il plug-i
 
 Il Cutout non è esposto. Nomi delle immagini e descrizione sono marcati «data, not instructions».
 
+## 21. Plug-in con tela e correzione guidata: Panorama 360 1.5
+
+Ramo `claude/panorama360-mcp`. **Nessuna estensione del contratto.** Due modi di lavorare nello stesso plug-in. *Send to Generation* è un solo `contribute` (preset, start image, campi, strength) e non una pipeline: il RUN è del `run` dell'app, quindi `send_panorama` è `edit` (come Character Sheet, §16). *Correggi giunzione* invece propone la **pipeline guidata di un passaggio** (`session.next` / `session.end`, come Tiled Upscale §14): `fix_seam` è `generate`, risponde `startsRun`, il budget conta un'immagine e a fine corsa il plug-in incolla la giunzione e manda il panorama ai Risultati.
+
+`plugin__panorama360__…`, con plug-in attivo e famiglia `flux2_9b`/`flux2_4b`:
+
+| Strumento | Livello | Cosa fa |
+| --- | --- | --- |
+| `get_status` | read | sticker in ordine di livello (1 = sotto), descrizione, modalità, modello (Base o no), `canSend`, ultimo risultato, `canFixSeam` e perché no |
+| `add_sticker` | edit | `image` (`format: "image"`), `yaw`, `pitch`, `rotation`, `fov` (campo visivo orizzontale 5–170°), `opacity`; copia l'immagine nel progetto (richiede un progetto aperto) |
+| `set_sticker`, `remove_sticker`, `clear_stickers` | edit | per numero di livello; `visible` e `layer` (posizione nella pila) |
+| `set_description` | edit | descrizione (≤1000 caratteri) e/o modalità `normal`/`fast` |
+| `improve_description`, `undo_improve` | edit | «Migliora prompt» (timeout 600 s, modello locale, nessuna immagine di budget) e Annulla |
+| `send_panorama` | edit | Send to Generation: preset della modalità, tela 2048×1024 come start image (strength 1), descrizione; registra i preset se mancano |
+| `fix_seam` | generate | prepara la correzione (pipeline guidata a 1 passaggio) e preme RUN; rifiutata se il risultato non è 2:1 con lati multipli di 64 o se il modello dell'intestazione non è quello del preset `PAN · 360 ERP Fast` (la risposta dice quale: `set_model`) |
+
+I valori sono controllati prima di cambiare lo stato (yaw/rotation ±180, pitch ±89, fov 5–170, opacity 0–1, al massimo 50 sticker). Il plug-in ha ora un flag `active` (messaggi `activate`/`deactivate`). Non esposti: vista sfera, Cutout e «rimetti a posto», pulsante della coda. Nomi, descrizione e avvisi sono marcati «data, not instructions».
+

@@ -195,6 +195,36 @@ struct RealPluginToolsTests {
     _ = try await call(plugin, "clear_edit")
   }
 
+  nonisolated static let panorama360BundlePath = ProcessInfo.processInfo.environment["DTHUB_P3_BUNDLE"]
+
+  /// `DTHUB_P3_BUNDLE=/path/Panorama360.dthubplugin swift test --filter RealPluginToolsTests` (from `Plugins/Panorama360/Scripts/build.sh`).
+  /// No project is opened and no sticker is added, so nothing of the user's is touched.
+  @Test(.enabled(if: RealPluginToolsTests.panorama360BundlePath != nil))
+  func theRealPanorama360BundleAnswersItsTools() async throws {
+    let bundle = URL(fileURLWithPath: try #require(Self.panorama360BundlePath))
+    let host = RecordingHost()
+    let plugin = try BundlePluginLoader().load(bundle, info: try PluginBundleReader.read(bundle), host: host)
+    #expect(plugin.manifest.id == "com.exiztenz.dthub.panorama360")
+    let tools = try #require(plugin.manifest.tools)
+    #expect(tools.map(\.name) == ["get_status", "add_sticker", "set_sticker", "remove_sticker", "clear_stickers", "set_description", "improve_description", "undo_improve", "send_panorama", "fix_seam"])
+    #expect(tools.map(\.level.rawValue) == ["read"] + Array(repeating: "edit", count: 8) + ["generate"])
+    #expect(plugin.manifest.families == ["flux2_9b", "flux2_4b"])
+
+    let context = try JSONSerialization.data(withJSONObject: [
+      "type": "context", "model": "flux_2_klein_base_9b_i8x.ckpt", "family": "flux2_9b", "tempFolder": NSTemporaryDirectory(),
+    ])
+    _ = await plugin.send(context)
+    _ = await plugin.send(PluginMessageType.bare("activate"))
+
+    let status = try await call(plugin, "get_status")
+    #expect(status["type"] as? String == "tool.result" && status["isError"] == nil, Comment(rawValue: "\(status)"))
+    let refused = try await call(plugin, "set_sticker", ["sticker": 1])
+    #expect(refused["isError"] as? Bool == true)
+    let noSeam = try await call(plugin, "fix_seam")
+    #expect(noSeam["isError"] as? Bool == true && noSeam["startsRun"] == nil)
+  }
+}
+
   nonisolated static let qwenInpaintingBundlePath = ProcessInfo.processInfo.environment["DTHUB_QI_BUNDLE"]
 
   /// `DTHUB_QI_BUNDLE=/path/QwenInpainting.dthubplugin swift test --filter RealPluginToolsTests` (from `Plugins/QwenInpainting/Scripts/build.sh`).
