@@ -194,5 +194,38 @@ struct RealPluginToolsTests {
     #expect(refused["isError"] as? Bool == true)
     _ = try await call(plugin, "clear_edit")
   }
+
+  nonisolated static let panorama360F3BundlePath = ProcessInfo.processInfo.environment["DTHUB_P3F_BUNDLE"]
+
+  /// `DTHUB_P3F_BUNDLE=/path/Panorama360F3.dthubplugin swift test --filter RealPluginToolsTests` (from `Plugins/Panorama360F3/Scripts/build.sh`).
+  /// The project is a temporary folder: the user's projects are never touched.
+  @Test(.enabled(if: RealPluginToolsTests.panorama360F3BundlePath != nil))
+  func theRealPanorama360F3BundleAnswersItsTools() async throws {
+    let bundle = URL(fileURLWithPath: try #require(Self.panorama360F3BundlePath))
+    let host = RecordingHost()
+    let plugin = try BundlePluginLoader().load(bundle, info: try PluginBundleReader.read(bundle), host: host)
+    #expect(plugin.manifest.id == "com.exiztenz.dthub.panorama360f3")
+    let tools = try #require(plugin.manifest.tools)
+    #expect(tools.map(\.name).contains("make_panorama") && tools.map(\.name).contains("fix_seam"))
+    #expect(tools.filter { $0.level.rawValue == "generate" }.map(\.name) == ["make_panorama", "fix_seam"])
+    #expect(plugin.manifest.families == ["flux3_5b"])
+
+    let folder = FileManager.default.temporaryDirectory.appendingPathComponent("p3f-real-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    let project = try JSONSerialization.data(withJSONObject: ["type": "project", "name": "T", "folder": folder.path, "adoptLegacy": false])
+    _ = await plugin.send(project)
+    let context = try JSONSerialization.data(withJSONObject: ["type": "context", "model": "flux3.ckpt", "family": "flux3_5b", "tempFolder": folder.path])
+    _ = await plugin.send(context)
+    _ = await plugin.send(PluginMessageType.bare("activate"))
+
+    let status = try await call(plugin, "get_status")
+    #expect(status["type"] as? String == "tool.result" && status["isError"] == nil, Comment(rawValue: "\(status)"))
+    let refused = try await call(plugin, "make_panorama")
+    #expect(refused["isError"] as? Bool == true && refused["startsRun"] == nil)
+    let size = try await call(plugin, "set_size", ["width": 1024])
+    #expect(size["isError"] == nil, Comment(rawValue: "\(size)"))
+    let badSize = try await call(plugin, "set_size", ["width": 1000])
+    #expect(badSize["isError"] as? Bool == true)
+  }
 }
 

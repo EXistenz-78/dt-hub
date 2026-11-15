@@ -8,8 +8,8 @@ final class Panorama360F3Plugin: DTHubPlugin {
   static let families = ["flux3_5b"]
 
   let manifest = DTHubManifest(
-    id: "com.exiztenz.dthub.panorama360f3", name: "Pano 360 F3", version: "1.0", symbol: "globe",
-    families: Panorama360F3Plugin.families)
+    id: "com.exiztenz.dthub.panorama360f3", name: "Pano 360 F3", version: "1.1", symbol: "globe",
+    families: Panorama360F3Plugin.families, tools: PFTools.declarations)
   private let state = PFState()
   private var host: DTHubHost?
   private var presetsAccepted = false
@@ -96,6 +96,15 @@ final class Panorama360F3Plugin: DTHubPlugin {
     case "session.end":
       if let host { await state.sessionEnded(message, contribute: { await host.contribute($0) }) }
       return nil
+    case "tool.call":
+      guard let call = DTHubToolCall(message), let host else { return DTHubMessage.bare("unsupported") }
+      let connection = PFTools.Connection(
+        contribute: { await host.contribute($0) },
+        registerPresets: { [weak self] in await self?.registerPresets(using: { await host.registerPresets($0) }) },
+        ask: { prompt, system, images in
+          await host.askLanguageModelAnswer(prompt, images: images, system: system, options: PFPrompt.options)
+        })
+      return await PFTools.handle(call, state: state, connection: connection)
     case "activate":
       registerPresetsInBackground()
       return nil
