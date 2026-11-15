@@ -31,6 +31,18 @@ The sentences, in the order of the cards, are followed by **«Remove all the col
 
 If an LLM is assigned to **Qwen Image 2.1 · I2I** in Settings › LLM (the PE I2I), a box *Improve with …* appears (off by default): the prompt is sent to it together with the start image and the marks, and the rewritten prompt is written into the tab. If it fails, the direct prompt is sent and the status says why. Without it, the sentences go straight into the prompt.
 
+## For AI agents (MCP)
+
+Since **1.3**. With DT Hub's remote control on (Settings › Remote control), the plug-in **on for the job** and Qwen Image 2.1 in the header, an agent sees these tools, named `plugin__qweninpainting__<tool>`. The picture is the app's start image (`set_start_image`), as the Canvas has it when the app sends it framed. A mark's coordinates are **fractions of that picture from 0 to 1, x to the right and y downward, origin at the top left**.
+
+- `get_status` (read): whether there is a start image (and its size), the marks (number, tool, colour, width, points), the cards of text with their counts, the prompt Send would write, Undo and Redo, whether the enhancer is available and on, and what stops Send.
+- `add_mark`, `remove_mark`, `clear_marks`, `undo_mark` (edit, «Modify the tab» or more): they draw what the tab draws. `add_mark` takes `tool` (`box`, `circle`, `arrow`, `sketch`), `color` (the nine pure colours), `width` (4–128 px of the start image) and, for a box, an oval or an arrow, `x1, y1, x2, y2` (two opposite corners; the tail and the tip); for a sketch `points` as «x,y x,y …» (2 to 4000 points). The plug-in is strict: a value outside 0–1, a box that is a hair thin, an arrow that is a dot, a width out of range, arguments of another tool, a missing start image or more than 200 marks are refused, and nothing changes. The marks go (the texts stay) when the start image changes.
+- `set_card_text` (edit): what to change for one pair of colour and tool («Inside the red box: …»); kept even when the marks are gone.
+- `preview_drawing` (read): the marks over the start image as a picture file in the app's temporary folder, to look at before sending.
+- `send_drawing` (edit): the Send button: the drawing goes to the Canvas's Brush layer and the prompt, written from the texts, replaces the Prompt field. With `enhance: true` (and an I2I enhancer assigned in Settings › LLM) Qwen's enhancer rewrites it first (up to ten minutes; the app's stop does not reach the model).
+
+**Nothing here generates.** After `send_drawing` the agent uses the app's own `run`, which makes one image through the usual path (the session budget and the user's confirmation threshold apply). The texts come from the project and from the agent's own calls: DT Hub shows them to the agent as data, not instructions.
+
 ## State
 
 The marks, the texts, the tool, the color, the width and the box are kept **per project**.

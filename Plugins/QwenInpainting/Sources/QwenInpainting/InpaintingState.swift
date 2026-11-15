@@ -77,6 +77,13 @@ final class InpaintingState: ObservableObject {
     session.marks.append(mark.clamped())
   }
 
+  /// The marks are replaced as one step (Undo takes it back); `was` is what they were.
+  func replaceMarks(_ marks: [Mark], was: [Mark]) {
+    guard marks != was else { return }
+    remember()
+    session.marks = marks
+  }
+
   func undo() {
     guard let previous = undoStack.popLast() else { return }
     redoStack.append(session.marks)
