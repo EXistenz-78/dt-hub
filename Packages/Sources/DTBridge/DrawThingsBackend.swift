@@ -128,6 +128,16 @@ public actor DrawThingsBackend: GenerationBackend {
     return CatalogBuilder.addingRemoteModels(to: catalog, live: remote, sources: sources)
   }
 
+  /// The imported LoRAs of the job that nothing describes (the gRPCServerCLI does not send them): their entry of the
+  /// models folder's `custom_lora.json`, so the request carries it whole, with its `modifier`.
+  private func registerCustomLoRASpecs(_ files: [String], on service: DrawThingsService) async {
+    guard let customModels, let folderFile = customModels.folderFile, !files.isEmpty else { return }
+    var undescribed: [String] = []
+    for file in files where await service.modelSpecs.spec(for: file) == nil { undescribed.append(file) }
+    let specs = CustomModelFiles.loraSpecs(for: undescribed, besides: folderFile).values.compactMap { ModelSpec(json: $0) }
+    if !specs.isEmpty { await service.modelSpecs.register(specs) }
+  }
+
   /// A model the server's folder does not have (DT+): its specification goes with the request, so the cloud knows it.
   private func registerRemoteSpec(for file: String, loras lorasFiles: [String], on service: DrawThingsService) async {
     guard includeRemoteModels else { return }
@@ -171,6 +181,7 @@ public actor DrawThingsBackend: GenerationBackend {
         do {
           let service = await self.currentService()
           await self.registerRemoteSpec(for: job.model, loras: job.parameters.loras.map(\.file), on: service)
+          await self.registerCustomLoRASpecs(job.parameters.loras.map(\.file), on: service)
           // The actor's state, read before the events come in.
           let runsLocally = await self.runsLocally(job.model)
           let hires = job.parameters.advanced.hiresFix ? job.parameters.advanced.hiresFixStrength : nil

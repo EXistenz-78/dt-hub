@@ -21,6 +21,19 @@ struct CustomModelFilesTests {
     #expect(json["version"] as? String == "krea_2" && json["name"] as? String == "Kroma")
   }
 
+  @Test func theLoRAsOfAJobAreReadFromTheFoldersCustomLoRAFile() throws {
+    _ = try write(
+      "custom_lora.json",
+      #"[{"file":"edit_lora_f16.ckpt","name":"Edit","version":"moss_image","modifier":"kontext"},{"file":"other_lora_f16.ckpt","name":"Other","version":"v1"}]"#)
+    let customModels = folder.appendingPathComponent("custom.json")
+    let specs = CustomModelFiles.loraSpecs(for: ["edit_lora_f16.ckpt", "missing_lora_f16.ckpt"], besides: customModels)
+    #expect(Array(specs.keys) == ["edit_lora_f16.ckpt"])
+    let json = try #require(specs["edit_lora_f16.ckpt"].flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] })
+    // The modifier is what makes the engine take references; a thinner spec would turn it off.
+    #expect(json["modifier"] as? String == "kontext")
+    #expect(CustomModelFiles.loraSpecs(for: ["edit_lora_f16.ckpt"], besides: folder.appendingPathComponent("nowhere/custom.json")).isEmpty)
+  }
+
   @Test func theFirstFileWinsAndAMissingOrBrokenOneIsSkipped() throws {
     let first = try write("first.json", #"[{"file":"m.ckpt","name":"first"}]"#)
     let second = try write("second.json", #"[{"file":"m.ckpt","name":"second"},{"file":"n.ckpt","name":"n"}]"#)

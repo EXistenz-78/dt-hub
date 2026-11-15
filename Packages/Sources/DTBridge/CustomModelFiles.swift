@@ -35,6 +35,15 @@ enum CustomModelFiles {
     return result
   }
 
+  /// The specification of each LoRA of `files`, from the `custom_lora.json` next to the models folder's `custom.json`.
+  /// The client library takes only the models of the server's echo, so for an imported LoRA it invents a thin
+  /// specification with no `modifier`, and the server uses what comes with the request instead of its own file: the
+  /// LoRA would lose what its file says, such as being an edit LoRA that takes reference images.
+  static func loraSpecs(for files: [String], besides customModels: URL) -> [String: Data] {
+    let all = read(customModels.deletingLastPathComponent().appendingPathComponent("custom_lora.json")) ?? [:]
+    return all.filter { files.contains($0.key) }
+  }
+
   /// The specification of each model of the files, by its file name; the first file that has a model wins. A file that
   /// is missing, unreadable or not a list is skipped.
   static func specs(in urls: [URL]) -> [String: Data] {
