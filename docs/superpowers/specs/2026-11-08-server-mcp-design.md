@@ -291,3 +291,20 @@ Ramo `claude/qwen-inpainting-mcp`. **Nessuna estensione del contratto.** Come Ch
 
 Controlli rigorosi prima di cambiare lo stato (fuori da 0–1, lato <1% o freccia puntiforme, `points` malformati, spessore fuori intervallo, argomenti dell'altro tipo di segno, niente start image, 200 segni); `send_drawing` rifiuta se non ci sono segni o immagine. `InpaintingState.replaceMarks(_:was:)` fa di «togli un segno» un solo passo di Undo e `QwenInpaintingPlugin.sendDrawing` è la stessa funzione del pulsante e dello strumento. Il testo (schede, prompt) è marcato «data, not instructions».
 
+## 20. Plug-in con pipeline guidata e Moodboard proprio: Pano 360 F3 1.1
+
+Ramo `claude/panorama360f3-mcp`. **Nessuna estensione del contratto**: il plug-in propone già una pipeline **guidata** a due passaggi (panorama, poi Seamfix sul quadrato della cucitura) e l'app la guida con `session.next`/`session.end`; gli strumenti `generate` rispondono `startsRun` come Tiled Upscale (§14). Budget: **un'immagine per passaggio** (2 per `make_panorama`, 1 per `fix_seam`). Il Moodboard è quello del plug-in (immagini copiate nel progetto, `PFImageStore`), non quello dell'app: l'agente le aggiunge con `add_image` (`format: "image"`).
+
+`plugin__panorama360f3__…`, con plug-in attivo e famiglia `flux3_5b`:
+
+| Strumento | Livello | Cosa fa |
+| --- | --- | --- |
+| `get_status` | read | immagini (posizione, numero `<image N>`, nome, acceso), descrizione, dimensione, `canMake`/`blocker`, `canFixSeam`/`seamBlocker`, nota del modello, avviso/errore |
+| `add_image`, `remove_image`, `set_image_visible`, `move_image` | edit | gestione delle immagini (massimo 9; indici da 1) |
+| `set_description`, `set_size` | edit | descrizione (≤2000 caratteri, mai la parola d'innesco) e larghezza 2:1 (1024–8192, passo 128) |
+| `improve_description`, `undo_improve` | edit | «Migliora prompt» (LLM locale, timeout 600 s) e Annulla |
+| `make_panorama` | generate | registra i preset, propone la pipeline e RUN; oltre 4096 px di larghezza serve `confirm_large` |
+| `fix_seam` | generate | Seamfix da solo sul panorama mostrato o su `image` |
+
+Il Cutout non è esposto. Nomi delle immagini e descrizione sono marcati «data, not instructions».
+
