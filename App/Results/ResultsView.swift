@@ -205,11 +205,6 @@ struct ResultsView: View {
     case .running(let step, let total):
       HStack(alignment: .center, spacing: DS.controlGap) {
         VStack(alignment: .leading, spacing: 4) {
-          if let step {
-            ProgressView(value: Double(step), total: Double(max(total, 1)))
-          } else {
-            ProgressView().progressViewStyle(.linear)
-          }
           HStack(spacing: DS.controlGap) {
             if session.batch.count > 1 {
               Text(String(format: String(localized: "results.progress.batch"), session.batch.index, session.batch.count))
@@ -221,6 +216,11 @@ struct ResultsView: View {
             }
           }
           .font(.caption).foregroundStyle(.secondary)
+          if let step {
+            ProgressView(value: Double(step), total: Double(max(total, 1)))
+          } else {
+            ProgressView().progressViewStyle(.linear)
+          }
           // Without DT+ the model runs on this Mac: its memory is the thing to watch (with DT+ it is in the cloud).
           if !(controller.connection.dtPlus && controller.connection.canUseDTPlus) {
             MemoryMeterView(monitor: controller.connection.memory)
