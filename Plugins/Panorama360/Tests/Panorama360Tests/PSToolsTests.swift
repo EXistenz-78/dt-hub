@@ -101,6 +101,19 @@ struct PSToolsTests {
     #expect((json["note"] as? String)?.contains("data") == true)
   }
 
+  @Test func anAgentReadsEnglishWhateverTheSystemLanguageIsAndTheTabKeepsIts() async {
+    let italian = PSState(italian: true)
+    italian.switchProject(folder: TestImages.tempFolder())
+    italian.active = true
+    let call = DTHubToolCall(Data(#"{"type":"tool.call","tool":"get_status","arguments":{}}"#.utf8))!
+    let data = await PSTools.handle(
+      call, state: italian, connection: PSTools.Connection(contribute: { _ in nil }, registerPresets: {}, ask: { _, _, _ in .failure("") }))
+    let object = try! JSONSerialization.jsonObject(with: data) as! [String: Any]
+    let json = (try! JSONSerialization.jsonObject(with: Data((object["text"] as? String ?? "").utf8))) as! [String: Any]
+    #expect(json["seamProblem"] as? String == L.text(.seamNoResult, italian: false))
+    #expect(italian.italian == true)
+  }
+
   @Test func anInactivePlugInRefusesEverything() async {
     state.active = false
     for tool in PSTools.declarations.map(\.name) {

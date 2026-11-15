@@ -107,6 +107,10 @@ enum PSTools {
 
   @MainActor
   static func handle(_ call: DTHubToolCall, state: PSState, connection: Connection) async -> Data {
+    // The notices and errors the tab writes are in the user's language; an agent reads English, whatever the system language is.
+    let language = state.italian
+    state.italian = false
+    defer { state.italian = language }
     do {
       switch call.tool {
       case "get_status": return DTHubMessage.toolResult(try status(state))

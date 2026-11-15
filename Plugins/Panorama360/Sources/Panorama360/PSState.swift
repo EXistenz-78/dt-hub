@@ -89,7 +89,7 @@ final class PSState: ObservableObject {
   /// A save held back: while a pointer drag goes on, or for a short while after the camera moved.
   private var saveWaiting = false
   private var saveTask: Task<Void, Never>?
-  let italian: Bool
+  var italian: Bool
   /// The size the canvas pictures are drawn at (the ERP, and the 4:3 view from the camera).
   static let planeSize = CGSize(width: 1024, height: 512)
   static let sphereSize = CGSize(width: 1024, height: 768)
