@@ -5,8 +5,8 @@ import SwiftUI
 @MainActor
 final class QwenInpaintingPlugin: DTHubPlugin {
   let manifest = DTHubManifest(
-    id: "com.exiztenz.dthub.qweninpainting", name: "Qwen 2.1 Inpainting", version: "1.2", symbol: "scribble.variable",
-    families: ["qwen_image_2.1"])
+    id: "com.exiztenz.dthub.qweninpainting", name: "Qwen 2.1 Inpainting", version: "1.3", symbol: "scribble.variable",
+    families: ["qwen_image_2.1"], tools: QITools.declarations)
   private let state = InpaintingState()
   private var host: DTHubHost?
 
@@ -35,6 +35,9 @@ final class QwenInpaintingPlugin: DTHubPlugin {
     case "deactivate":
       state.active = false
       return nil
+    case "tool.call":
+      guard let call = DTHubToolCall(message), let host else { return DTHubMessage.bare("unsupported") }
+      return await QITools.handle(call, state: state, connection: QITools.Connection(send: { [state] in await Self.sendDrawing(state, host) }))
     default:
       return DTHubMessage.bare("unsupported")
     }
@@ -42,14 +45,17 @@ final class QwenInpaintingPlugin: DTHubPlugin {
 
   private func send() {
     guard let host else { return }
-    Task {
-      await state.send(
-        using: { text, images, system, model in
-          await host.askLanguageModelAnswer(
-            text, images: images, system: system, model: model, options: PromptEnhancer.options)
-        },
-        contribute: { await host.contribute($0) })
-    }
+    Task { await Self.sendDrawing(state, host) }
+  }
+
+  /// The Send button, from the tab and from a tool of an agent: the same work.
+  private static func sendDrawing(_ state: InpaintingState, _ host: DTHubHost) async {
+    await state.send(
+      using: { text, images, system, model in
+        await host.askLanguageModelAnswer(
+          text, images: images, system: system, model: model, options: PromptEnhancer.options)
+      },
+      contribute: { await host.contribute($0) })
   }
 }
 

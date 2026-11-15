@@ -274,3 +274,20 @@ Ramo `claude/flux3-editing-mcp`. **Nessuna estensione del contratto.** Come Char
 
 I riquadri sono argomenti piatti (una stringa «[top, left, bottom, right]»): `FETools.parseBox` è **rigoroso** (fuori dalla griglia, angoli invertiti o lato <20 sono rifiutati, non corretti), e ogni controllo (id 1–40 caratteri `[A-Za-z0-9_-]`, non `ref_image_N`, univoco anche rispetto alle righe aggiunte dal PUP; riquadri previsti dal tipo; `reference` esistente; al massimo 30 elementi; la coppia «da riferimento» non cambia tipo) avviene prima di toccare il documento, che si assegna una volta sola. «Migliora prompt» è la stessa funzione del pulsante (`EditState.improve(ask:)`, estratta dal plug-in). Id, descrizioni, testi e nomi dei file sono marcati «data, not instructions».
 
+## 19. Plug-in che disegnano segni: Qwen 2.1 Inpainting 1.3
+
+Ramo `claude/qwen-inpainting-mcp`. **Nessuna estensione del contratto.** Come Character Sheet (§16) e Flux3 Editing (§18) il plug-in non propone una pipeline: *Send* mette il disegno nel Brush layer (`contribute.paint`) e scrive il prompt, e il RUN è del `run` dell'app, quindi gli strumenti sono `read` ed `edit` e non esiste uno `generate`. L'immagine è la start image dell'app (inquadrata se l'app la manda così): i segni sono **frazioni 0–1 dell'immagine, x a destra, y in basso, origine in alto a sinistra**.
+
+`plugin__qweninpainting__…`, con plug-in attivo e famiglia `qwen_image_2.1`:
+
+| Strumento | Livello | Cosa fa |
+| --- | --- | --- |
+| `get_status` | read | immagine, segni (numero, strumento, colore, spessore, punti), schede con testo, prompt, Undo/Redo, enhancer, problemi |
+| `add_mark` | edit | `tool` (`box`, `circle`, `arrow`, `sketch`), `color` (nove), `width` 4–128, `x1,y1,x2,y2` oppure `points` «x,y x,y …» (2–4000) |
+| `remove_mark`, `clear_marks`, `undo_mark` | edit | togli un segno (un passo di Undo), pulisci, annulla/ripeti |
+| `set_card_text` | edit | il testo di una coppia colore+strumento (≤1000 caratteri; resta senza segni) |
+| `preview_drawing` | read | i segni sopra la start image in un PNG nella cartella temporanea dell'app (nome fisso; `get_image` prende solo risultati, quindi lo vede solo chi legge file) |
+| `send_drawing` | edit | il tasto Invia; con `enhance` e un enhancer I2I assegnato lo riscrive il PE (timeout 600 s) |
+
+Controlli rigorosi prima di cambiare lo stato (fuori da 0–1, lato <1% o freccia puntiforme, `points` malformati, spessore fuori intervallo, argomenti dell'altro tipo di segno, niente start image, 200 segni); `send_drawing` rifiuta se non ci sono segni o immagine. `InpaintingState.replaceMarks(_:was:)` fa di «togli un segno» un solo passo di Undo e `QwenInpaintingPlugin.sendDrawing` è la stessa funzione del pulsante e dello strumento. Il testo (schede, prompt) è marcato «data, not instructions».
+
