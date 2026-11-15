@@ -10,7 +10,6 @@ public struct VideoFamilyInfo: Equatable, Sendable {
   public let maxFrames: Int
   public let usesAudioShift: Bool
   public let usesAccelerators: Bool
-  public let usesStochasticSampling: Bool
 
   /// The valid frame count closest to `frames`, inside `minFrames...maxFrames`.
   public func snap(_ frames: Int) -> Int {
@@ -46,10 +45,10 @@ public enum VideoFamilies {
   private static let enabled: [String: VideoFamilyInfo] = [
     "minimax_h3": VideoFamilyInfo(
       family: "minimax_h3", framesPerSecond: 24, audioSampleRate: 32000, frameStep: 17, frameOffset: 5,
-      minFrames: 5, maxFrames: 192, usesAudioShift: true, usesAccelerators: true, usesStochasticSampling: false),
+      minFrames: 5, maxFrames: 192, usesAudioShift: true, usesAccelerators: true),
     "ltx2.3": VideoFamilyInfo(
       family: "ltx2.3", framesPerSecond: 25, audioSampleRate: 48000, frameStep: 8, frameOffset: 1,
-      minFrames: 9, maxFrames: 249, usesAudioShift: false, usesAccelerators: false, usesStochasticSampling: true),
+      minFrames: 9, maxFrames: 249, usesAudioShift: false, usesAccelerators: false),
   ]
 
   /// The parameters of an enabled video family; `nil` for any other.

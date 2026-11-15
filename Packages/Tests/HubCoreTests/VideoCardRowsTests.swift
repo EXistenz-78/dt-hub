@@ -14,29 +14,21 @@ struct VideoCardRowsTests {
 
   @Test func imageModelHasNoVideoCards() {
     let rows = VideoCardRows(model: model("flux1"), sampler: .tcd)
-    #expect(!rows.showsVideoCard && !rows.showsAccelerators && !rows.showsAudioShift && !rows.showsStochasticSampling)
+    #expect(!rows.showsVideoCard && !rows.showsAccelerators && !rows.showsAudioShift)
     #expect(!VideoCardRows(model: nil, sampler: .tcd).showsVideoCard)
   }
 
-  @Test func h3ShowsAudioShiftAndAcceleratorsButNotStochastic() {
+  @Test func h3ShowsAudioShiftAndAccelerators() {
     let rows = VideoCardRows(model: model("minimax_h3"), sampler: .tcdTrailing)
     #expect(rows.showsVideoCard && rows.showsAudioShift && rows.showsAccelerators)
-    #expect(!rows.showsStochasticSampling)
   }
 
-  @Test func ltxShowsStochasticOnlyWithTCDSamplers() {
-    #expect(VideoCardRows(model: model("ltx2.3"), sampler: .tcd).showsStochasticSampling)
-    #expect(VideoCardRows(model: model("ltx2.3"), sampler: .tcdTrailing).showsStochasticSampling)
-    #expect(!VideoCardRows(model: model("ltx2.3"), sampler: .eulerAncestral).showsStochasticSampling)
+  @Test func ltxShowsNoAccelerators() {
     #expect(!VideoCardRows(model: model("ltx2.3"), sampler: .tcd).showsAccelerators)
-  }
-
-  @Test func h3WithANonTCDSamplerShowsNoStochasticRow() {
-    #expect(!VideoCardRows(model: model("minimax_h3"), sampler: .eulerAncestral).showsStochasticSampling)
   }
 
   @Test func hiddenVideoFamilyHasNoVideoRows() {
     let rows = VideoCardRows(model: model("wan_v2.1_14b"), sampler: .tcd)
-    #expect(!rows.showsVideoCard && !rows.showsAccelerators && !rows.showsAudioShift && !rows.showsStochasticSampling)
+    #expect(!rows.showsVideoCard && !rows.showsAccelerators && !rows.showsAudioShift)
   }
 }

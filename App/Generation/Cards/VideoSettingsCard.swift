@@ -29,14 +29,6 @@ struct VideoSettingsCard: View {
                 range: VideoParameters.audioShiftRange, step: 0.1)
             }
           }
-          if rows.showsStochasticSampling {
-            CardRow(label: String(localized: "card.video.stochastic")) {
-              DecimalField(
-                label: String(localized: "card.video.stochastic"),
-                value: $controller.parameters.advanced.stochasticSamplingGamma,
-                range: AdvancedParameters.unitRange, step: 0.05, fractionDigits: 2)
-            }
-          }
           compressionRows
         }
       }

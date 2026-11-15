@@ -54,8 +54,8 @@ struct VideoFamiliesTests {
   @Test func theFlagsFollowTheFamily() throws {
     let h3 = try #require(VideoFamilies.info(for: "minimax_h3"))
     let ltx = try #require(VideoFamilies.info(for: "ltx2.3"))
-    #expect(h3.usesAudioShift && h3.usesAccelerators && !h3.usesStochasticSampling)
-    #expect(!ltx.usesAudioShift && !ltx.usesAccelerators && ltx.usesStochasticSampling)
+    #expect(h3.usesAudioShift && h3.usesAccelerators)
+    #expect(!ltx.usesAudioShift && !ltx.usesAccelerators)
     #expect(h3.framesPerSecond == 24 && h3.audioSampleRate == 32000)
     #expect(ltx.framesPerSecond == 25 && ltx.audioSampleRate == 48000)
   }
