@@ -31,7 +31,10 @@ struct MemoryMeterView: View {
   }
 
   var body: some View {
-    Group {
+    // The task hangs on a container that always exists: on an empty view (no reading yet) it would never start, and
+    // with it the first reading.
+    ZStack(alignment: .leading) {
+      Color.clear.frame(height: 0)
       if let snapshot = monitor.snapshot {
         let presentation = MemoryMeterPresentation(snapshot: snapshot, locale: locale)
         Button {
