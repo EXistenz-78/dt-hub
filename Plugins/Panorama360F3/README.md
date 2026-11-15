@@ -45,6 +45,18 @@ The first time DT Hub starts with the plug-in, it adds `PANO F3` and `PANO F3 Se
 
 A guided pass always runs on the model chosen in DT Hub's header: pick the model of the presets before pressing RUN (the note after the button says which one if they differ).
 
+## For AI agents (MCP)
+
+Since **1.1**. With DT Hub's remote control on (Settings › Remote control), the plug-in **on for the job** and FLUX.3 [klein] in the header, an agent sees these tools, named `plugin__panorama360f3__<tool>`. The pictures are the plug-in's own Moodboard (copied into the project), not the app's.
+
+- `get_status` (read): the pictures (position, the number `<image N>` the model sees if it is on, name, on or off), the description, the size, whether a panorama can be made and what stops it, whether the seam can be fixed on the panorama the viewer shows, the model note and the last notice or error.
+- `add_image` (a `result_id` from `list_results`, or a picture file in a folder DT Hub allows; up to 9), `remove_image`, `set_image_visible`, `move_image`, `set_description` (never the LoRA's trigger word), `set_size` (2:1, 1024 to 8192 px of width in steps of 128): they do what the tab does (edit, «Modify the tab» or more). Everything is checked before anything changes.
+- `improve_description` and `undo_improve` (edit): *Improve prompt* and its Undo with the local language model; the description is replaced and the answer gives it back to check (the tool waits up to ten minutes; the app's stop does not reach the model).
+- `make_panorama` (generate, «Full control» only): offers the presets, proposes the two-pass guided pipeline (panorama, then Seamfix) and presses RUN, through the app's own Run path: one job at a time, **each of the two passes counts as an image** of the session budget, and a job over the user's confirmation threshold waits for the user's yes in DT Hub. A panorama wider than 4096 px needs `confirm_large: true`: the agent must ask the user first. It returns a `job_id`; the agent follows it with `wait_for_job` and the corrected panorama becomes a result (`get_results` / `get_image`).
+- `fix_seam` (generate): the Seamfix pass alone (1 image) on the panorama the viewer shows, or on `image` (2:1, height a multiple of 64 and at most 4096 px).
+
+A pass runs on the model chosen in DT Hub's header: the answer's note says which model the presets want. Not offered to agents: the Cutout. The pictures' names and the description come from the project and from the agent's own calls: DT Hub shows them to the agent as data, not instructions.
+
 ## Where to get the LoRAs
 
 By denrakeiw (put the files in Draw Things' LoRA folder, or import them from Draw Things; the names above are the ones Draw Things gives them). Trained on the **Base** model; the licence is the FLUX Kommunity License.

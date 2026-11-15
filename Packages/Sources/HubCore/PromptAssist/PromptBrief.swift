@@ -1,5 +1,6 @@
 import Foundation
 import HubKit
+import ImageIO
 
 /// The prompt and the negative prompt as they sit in the fields.
 public struct PromptPair: Equatable, Sendable {
@@ -221,6 +222,107 @@ public enum PromptBrief {
       prompt: pupScaffold(request), images: [url], options: pupOptions(system: pup.i2i, presencePenalty: 0))
   }
 
+  // MARK: A prompt expander with its own request (`prompt/t2i/`, `prompt/edit/`)
+
+  /// What the expander is asked by Generate Prompt: the text-to-image request, with the picture attached. (The edit
+  /// prompt would describe the picture as a change to «Picture 1», which means nothing without that picture.)
+  static let expanderDescribeRequest =
+    "Recreate the attached image exactly: describe everything visible in it as the image to generate."
+
+  /// Python's `template.format(argument)` for a template with one `{}`: `{{` and `}}` are braces, the first `{}` is the
+  /// argument (as it is), any other `{}` is empty.
+  static func pythonFormat(_ template: String, _ argument: String) -> String {
+    var result = ""
+    var used = false
+    var index = template.startIndex
+    while index < template.endIndex {
+      let rest = template[index...]
+      if rest.hasPrefix("{{") || rest.hasPrefix("}}") {
+        result.append(template[index])
+        index = template.index(index, offsetBy: 2)
+      } else if rest.hasPrefix("{}") {
+        if !used { result += argument }
+        used = true
+        index = template.index(index, offsetBy: 2)
+      } else {
+        result.append(template[index])
+        index = template.index(after: index)
+      }
+    }
+    return result
+  }
+
+  /// A width and a height as the lowest `W:H`; nil when either is not positive.
+  static func reducedRatio(width: Int, height: Int) -> String? {
+    guard width > 0, height > 0 else { return nil }
+    var (a, b) = (width, height)
+    while b != 0 { (a, b) = (b, a % b) }
+    return "\(width / a):\(height / a)"
+  }
+
+  /// The display ratio of a picture file (EXIF orientation applied), as the lowest `W:H`.
+  public static func aspectRatio(of url: URL) -> String? {
+    guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+      let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+      let width = (properties[kCGImagePropertyPixelWidth] as? NSNumber)?.intValue,
+      let height = (properties[kCGImagePropertyPixelHeight] as? NSNumber)?.intValue
+    else { return nil }
+    // Orientations 5…8 lie on their side.
+    let turned = ((properties[kCGImagePropertyOrientation] as? NSNumber)?.intValue ?? 1) >= 5
+    return turned ? reducedRatio(width: height, height: width) : reducedRatio(width: width, height: height)
+  }
+
+  private static func expanderOptions(_ expander: LanguageModelProfile.Expander, system: String?) -> LanguageModelOptions {
+    LanguageModelOptions(
+      system: system, temperature: expander.temperature, topP: expander.topP, topK: expander.topK,
+      maxTokens: expander.maxTokens, thinking: true)
+  }
+
+  /// Enhance with an expander. Without pictures: its system prompt and its template filled with the prompt. With pictures
+  /// (the start image first, then the references): no system prompt, and one message that opens with the fixed edit
+  /// prompt, then says how many pictures there are and the label and ratio of each, then gives the prompt as the editing
+  /// instruction; the ratio of the result is left to the model. (The release puts each label right before its picture; the
+  /// app's language models take one text and the pictures, in order.)
+  public static func enhance(
+    _ current: PromptPair, expander: LanguageModelProfile.Expander, images: EnhanceImages,
+    ratio: (URL) -> String? = PromptBrief.aspectRatio
+  ) -> PromptRequest {
+    guard let editTask = expander.editTask, !images.isEmpty else {
+      return PromptRequest(
+        prompt: pythonFormat(expander.t2iTask, current.prompt), images: [],
+        options: expanderOptions(expander, system: expander.t2iSystem))
+    }
+    let attached = images.all
+    var parts = [
+      editTask,
+      "Reference Image Count:\n\(attached.count) input image(s), labeled <Picture 1> through <Picture \(attached.count)>.",
+    ]
+    for (index, url) in attached.enumerated() {
+      let metadata = ratio(url).map { "aspect_ratio \($0)" } ?? "aspect_ratio unavailable"
+      parts.append("Reference Media:\n- <Picture \(index + 1)> [\(metadata)]")
+    }
+    let instruction =
+      (try? JSONSerialization.data(withJSONObject: current.prompt, options: [.fragmentsAllowed, .withoutEscapingSlashes]))
+      .map { String(decoding: $0, as: UTF8.self) } ?? "\"\""
+    parts.append(
+      "\nUser Editing Instruction (JSON string):\n\(instruction)\n\nUser Aspect Ratio Selection:\nadaptive\n\n"
+        + "Apply the instructions above to the supplied inputs and reference images. Output only the required two-field JSON object."
+    )
+    return PromptRequest(
+      prompt: parts.joined(separator: "\n\n"), images: attached, options: expanderOptions(expander, system: nil))
+  }
+
+  /// Generate with an expander: the text-to-image request with the picture attached; with a `focus`, the sentence for it
+  /// and the text of the field follow.
+  public static func describe(
+    imageAt url: URL, current: PromptPair, expander: LanguageModelProfile.Expander, focus: DescribeFocus? = nil
+  ) -> PromptRequest {
+    let request = focus.map { expanderDescribeRequest + " " + focusText($0, userText: current.prompt) } ?? expanderDescribeRequest
+    return PromptRequest(
+      prompt: pythonFormat(expander.t2iTask, request), images: [url],
+      options: expanderOptions(expander, system: expander.t2iSystem))
+  }
+
   private static func ownOptions(_ system: String, _ generation: LanguageModelProfile.Generation?) -> LanguageModelOptions {
     LanguageModelOptions(
       system: system, temperature: generation?.temperature, topP: generation?.topP, topK: generation?.topK,
@@ -229,7 +331,7 @@ public enum PromptBrief {
 
   /// The prompt (and negative prompt) in an answer. Same logic as Prompt Master's `AnswerParser`, copied because the
   /// plug-in is a separate package. Reasoning blocks (`<think>…</think>`) and code fences go; a JSON object gives its
-  /// `prompt` (or `rewritten_prompt`, `positive_prompt`) and `negative` (or `negative_prompt`); anything else, a
+  /// `prompt` (or `rewritten_prompt`, `positive_prompt`, `expanded_caption`) and `negative` (or `negative_prompt`); anything else, a
   /// malformed JSON included, is the prompt itself. `negative` is "" when the answer has none; nil when nothing is left.
   public static func parse(_ raw: String) -> PromptPair? {
     var text = withoutThinking(raw)
@@ -237,7 +339,7 @@ public enum PromptBrief {
     guard !text.isEmpty else { return nil }
     if let start = text.firstIndex(of: "{"), let end = text.lastIndex(of: "}"), start < end,
       let object = (try? JSONSerialization.jsonObject(with: Data(text[start...end].utf8))) as? [String: Any],
-      let prompt = ["prompt", "rewritten_prompt", "positive_prompt"].lazy.compactMap({ clean(object[$0]) }).first
+      let prompt = ["prompt", "rewritten_prompt", "positive_prompt", "expanded_caption"].lazy.compactMap({ clean(object[$0]) }).first
     {
       let negative = ["negative", "negative_prompt"].lazy.compactMap { clean(object[$0]) }.first
       return PromptPair(prompt: prompt, negative: negative ?? "")

@@ -194,5 +194,109 @@ struct RealPluginToolsTests {
     #expect(refused["isError"] as? Bool == true)
     _ = try await call(plugin, "clear_edit")
   }
-}
 
+  nonisolated static let panorama360BundlePath = ProcessInfo.processInfo.environment["DTHUB_P3_BUNDLE"]
+
+  /// `DTHUB_P3_BUNDLE=/path/Panorama360.dthubplugin swift test --filter RealPluginToolsTests` (from `Plugins/Panorama360/Scripts/build.sh`).
+  /// No project is opened and no sticker is added, so nothing of the user's is touched.
+  @Test(.enabled(if: RealPluginToolsTests.panorama360BundlePath != nil))
+  func theRealPanorama360BundleAnswersItsTools() async throws {
+    let bundle = URL(fileURLWithPath: try #require(Self.panorama360BundlePath))
+    let host = RecordingHost()
+    let plugin = try BundlePluginLoader().load(bundle, info: try PluginBundleReader.read(bundle), host: host)
+    #expect(plugin.manifest.id == "com.exiztenz.dthub.panorama360")
+    let tools = try #require(plugin.manifest.tools)
+    #expect(tools.map(\.name) == ["get_status", "add_sticker", "set_sticker", "remove_sticker", "clear_stickers", "set_description", "improve_description", "undo_improve", "send_panorama", "fix_seam"])
+    #expect(tools.map(\.level.rawValue) == ["read"] + Array(repeating: "edit", count: 8) + ["generate"])
+    #expect(plugin.manifest.families == ["flux2_9b", "flux2_4b"])
+
+    let context = try JSONSerialization.data(withJSONObject: [
+      "type": "context", "model": "flux_2_klein_base_9b_i8x.ckpt", "family": "flux2_9b", "tempFolder": NSTemporaryDirectory(),
+    ])
+    _ = await plugin.send(context)
+    _ = await plugin.send(PluginMessageType.bare("activate"))
+
+    let status = try await call(plugin, "get_status")
+    #expect(status["type"] as? String == "tool.result" && status["isError"] == nil, Comment(rawValue: "\(status)"))
+    let refused = try await call(plugin, "set_sticker", ["sticker": 1])
+    #expect(refused["isError"] as? Bool == true)
+    let noSeam = try await call(plugin, "fix_seam")
+    #expect(noSeam["isError"] as? Bool == true && noSeam["startsRun"] == nil)
+  }
+
+  nonisolated static let qwenInpaintingBundlePath = ProcessInfo.processInfo.environment["DTHUB_QI_BUNDLE"]
+
+  /// `DTHUB_QI_BUNDLE=/path/QwenInpainting.dthubplugin swift test --filter RealPluginToolsTests` (from `Plugins/QwenInpainting/Scripts/build.sh`).
+  /// Before the first `project` message the plug-in keeps its state in memory: nothing of the user's is touched.
+  @Test(.enabled(if: RealPluginToolsTests.qwenInpaintingBundlePath != nil))
+  func theRealQwenInpaintingBundleAnswersItsTools() async throws {
+    let bundle = URL(fileURLWithPath: try #require(Self.qwenInpaintingBundlePath))
+    let host = RecordingHost()
+    let plugin = try BundlePluginLoader().load(bundle, info: try PluginBundleReader.read(bundle), host: host)
+    #expect(plugin.manifest.id == "com.exiztenz.dthub.qweninpainting")
+    let tools = try #require(plugin.manifest.tools)
+    #expect(tools.map(\.name) == ["get_status", "add_mark", "remove_mark", "clear_marks", "undo_mark", "set_card_text", "preview_drawing", "send_drawing"])
+    #expect(tools.allSatisfy { $0.level.rawValue != "generate" })
+    #expect(plugin.manifest.families == ["qwen_image_2.1"])
+
+    let folder = FileManager.default.temporaryDirectory.appendingPathComponent("qi-real-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    let space = CGColorSpaceCreateDeviceRGB()
+    let canvas = try #require(CGContext(data: nil, width: 200, height: 100, bitsPerComponent: 8, bytesPerRow: 0, space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+    canvas.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: 1))
+    canvas.fill(CGRect(x: 0, y: 0, width: 200, height: 100))
+    let png = folder.appendingPathComponent("start.png")
+    let destination = try #require(CGImageDestinationCreateWithURL(png as CFURL, UTType.png.identifier as CFString, 1, nil))
+    CGImageDestinationAddImage(destination, try #require(canvas.makeImage()), nil)
+    #expect(CGImageDestinationFinalize(destination))
+    let context = try JSONSerialization.data(withJSONObject: [
+      "type": "context", "model": "qwen.ckpt", "family": "qwen_image_2.1", "tempFolder": folder.path, "startImage": png.path,
+    ])
+    _ = await plugin.send(context)
+    _ = await plugin.send(PluginMessageType.bare("activate"))
+
+    let status = try await call(plugin, "get_status")
+    #expect(status["type"] as? String == "tool.result" && status["isError"] == nil, Comment(rawValue: "\(status)"))
+    let added = try await call(plugin, "add_mark", ["tool": "box", "color": "red", "x1": 0.1, "y1": 0.2, "x2": 0.6, "y2": 0.8])
+    #expect(added["isError"] == nil, Comment(rawValue: "\(added)"))
+    _ = try await call(plugin, "set_card_text", ["tool": "box", "color": "red", "text": "a lamp"])
+    let sent = try await call(plugin, "send_drawing")
+    #expect(sent["isError"] == nil && sent["startsRun"] == nil, Comment(rawValue: "\(sent)"))
+    #expect(!host.received.isEmpty)
+    let refused = try await call(plugin, "add_mark", ["tool": "box", "color": "red", "x1": 0.1, "y1": 0.2, "x2": 1.6, "y2": 0.8])
+    #expect(refused["isError"] as? Bool == true)
+  }
+
+  nonisolated static let panorama360F3BundlePath = ProcessInfo.processInfo.environment["DTHUB_P3F_BUNDLE"]
+
+  /// `DTHUB_P3F_BUNDLE=/path/Panorama360F3.dthubplugin swift test --filter RealPluginToolsTests` (from `Plugins/Panorama360F3/Scripts/build.sh`).
+  /// The project is a temporary folder: the user's projects are never touched.
+  @Test(.enabled(if: RealPluginToolsTests.panorama360F3BundlePath != nil))
+  func theRealPanorama360F3BundleAnswersItsTools() async throws {
+    let bundle = URL(fileURLWithPath: try #require(Self.panorama360F3BundlePath))
+    let host = RecordingHost()
+    let plugin = try BundlePluginLoader().load(bundle, info: try PluginBundleReader.read(bundle), host: host)
+    #expect(plugin.manifest.id == "com.exiztenz.dthub.panorama360f3")
+    let tools = try #require(plugin.manifest.tools)
+    #expect(tools.map(\.name).contains("make_panorama") && tools.map(\.name).contains("fix_seam"))
+    #expect(tools.filter { $0.level.rawValue == "generate" }.map(\.name) == ["make_panorama", "fix_seam"])
+    #expect(plugin.manifest.families == ["flux3_5b"])
+
+    let folder = FileManager.default.temporaryDirectory.appendingPathComponent("p3f-real-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    let project = try JSONSerialization.data(withJSONObject: ["type": "project", "name": "T", "folder": folder.path, "adoptLegacy": false])
+    _ = await plugin.send(project)
+    let context = try JSONSerialization.data(withJSONObject: ["type": "context", "model": "flux3.ckpt", "family": "flux3_5b", "tempFolder": folder.path])
+    _ = await plugin.send(context)
+    _ = await plugin.send(PluginMessageType.bare("activate"))
+
+    let status = try await call(plugin, "get_status")
+    #expect(status["type"] as? String == "tool.result" && status["isError"] == nil, Comment(rawValue: "\(status)"))
+    let refused = try await call(plugin, "make_panorama")
+    #expect(refused["isError"] as? Bool == true && refused["startsRun"] == nil)
+    let size = try await call(plugin, "set_size", ["width": 1024])
+    #expect(size["isError"] == nil, Comment(rawValue: "\(size)"))
+    let badSize = try await call(plugin, "set_size", ["width": 1000])
+    #expect(badSize["isError"] as? Bool == true)
+  }
+}

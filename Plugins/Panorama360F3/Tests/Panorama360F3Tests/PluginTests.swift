@@ -11,7 +11,7 @@ struct PluginTests {
     let manifest = plugin().manifest
     #expect(manifest.id == "com.exiztenz.dthub.panorama360f3" && manifest.name == "Pano 360 F3")
     #expect(manifest.symbol == "globe" && manifest.families == ["flux3_5b"])
-    #expect(manifest.version == "1.0")
+    #expect(manifest.version == "1.1")
   }
 
   @Test func anUnknownMessageIsUnsupportedAndTheKnownOnesAreAnswered() async throws {

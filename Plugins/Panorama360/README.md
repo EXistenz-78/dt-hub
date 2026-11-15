@@ -52,6 +52,18 @@ The button is off, with the reason in its tooltip, when there is no result, the 
 
 **In the queue.** With the correction prepared, the **+** of DT Hub's queue sidebar keeps it as an entry: the panorama it was made from (the one at the time of the click, even if a newer result has arrived) is copied into the entry's folder. When the entry runs the plug-in makes the correction again from that copy, without touching the result shown in the tab, and DT Hub presses RUN. The plug-in must be switched on at that moment, otherwise the entry fails (orange X) and the queue goes on.
 
+## For AI agents (MCP)
+
+Since **1.5**. With DT Hub's remote control on (Settings › Remote control), the plug-in **on for the job** and a FLUX.2 [klein] model in the header, an agent sees these tools, named `plugin__panorama360__<tool>`. They need a project to be open in DT Hub (the stickers' pictures are copied into it).
+
+- `get_status` (read): the stickers in layer order (1 = the bottom one: name, yaw, pitch, rotation, fov, opacity, visible), the description, the mode, the model in the header (and whether it is a Base one), whether the canvas can be sent, the newest result and whether its seam can be fixed (and why not).
+- `add_sticker`, `set_sticker`, `remove_sticker`, `clear_stickers`, `set_description` (edit, «Modify the tab» or more): they do what the tab does. `add_sticker` takes `image` (a `result_id` from `list_results`, or a picture file in a folder DT Hub allows; DT Hub checks it) and, optionally, `yaw`, `pitch`, `rotation`, `fov` (the horizontal field of view, 5–170°) and `opacity`; `set_sticker` changes one by its layer number (and `visible`, `layer`); `set_description` writes the description and/or the mode (`normal` or `fast`). Every value is checked before anything changes.
+- `improve_description` and `undo_improve` (edit): *Improve prompt* and Undo. The local language model rewrites the description, looking at the canvas (seconds to minutes, no image of the budget; the tool waits up to ten minutes); the answer gives the new text as data.
+- `send_panorama` (edit): **Send to Generation**: preset of the mode, the canvas as the start image, 2048 × 1024 and the description go in the Generation tab, replacing what is there. **It does not generate**: the app's own `run` makes the panorama (one image, through the usual path with the session budget and the user's confirmation threshold).
+- `fix_seam` (generate, «Full control» only): *Fix the seam* and RUN in one call. It proposes the guided one-pass pipeline and returns a `job_id` for `wait_for_job`; when the pass ends the corrected panorama goes to the Results (`get_results` / `get_image`). One pass is one image of the budget. The model in the header must be the one of the preset `PAN · 360 ERP Fast` (the answer says which, and `set_model` sets it); `get_status` says why the seam cannot be fixed (no result, not 2:1, sides not multiples of 64, too big).
+
+Not offered to agents: the sphere view, the Cutout and putting a retouch back, and the queue button (the app's own `queue_add` captures a prepared seam correction as usual). Picture names, the description and the plug-in's notices are shown to the agent as data, not instructions.
+
 ## The presets are yours
 
 The first time DT Hub starts with the plug-in, it adds `PAN · 360 ERP` and `PAN · 360 ERP Fast` to the Preset menu. After that it never touches them: change them as you like (the 4B model and its LoRA, other quantisations, other steps). Values of the shipped ones:

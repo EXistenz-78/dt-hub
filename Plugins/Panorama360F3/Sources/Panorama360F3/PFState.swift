@@ -41,7 +41,8 @@ final class PFState: ObservableObject {
   var presetsFolder = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/DT Hub/Presets", isDirectory: true)
   /// Brings a picture file into the project folder (the real store; a test puts another here).
   var addPicture: (URL, URL) throws -> PFImage = { try PFImageStore.add(contentsOf: $0, into: $1) }
-  let italian: Bool
+  /// The words shown; an agent's tools turn it to English for the length of a call.
+  var italian: Bool
   private var isLoading = false
 
   init(italian: Bool = L.systemIsItalian) { self.italian = italian }

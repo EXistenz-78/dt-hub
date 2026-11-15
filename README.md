@@ -95,7 +95,7 @@ This is an independent community project, not affiliated with or endorsed by Dra
 
 ## Install
 
-1. Download **`DT-Hub-1.3.5-macOS-arm64.zip`** from the [latest release](https://github.com/EXistenz-78/dt-hub/releases/latest).
+1. Download **`DT-Hub-1.3.6-macOS-arm64.zip`** from the [latest release](https://github.com/EXistenz-78/dt-hub/releases/latest).
 2. Unzip it and drag **DT Hub.app** into `/Applications`.
 3. Read **First launch** below before you open it.
 4. Optional: add the plug-ins (they are in the same release, see [`Plugins/`](Plugins/README.md#install)).
@@ -191,6 +191,17 @@ If the LLM assigned to a family is Black Forest Labs' own prompt upsampler (`bla
 
 Prompt Master F3 and Flux3 Editing do the same with their own prompts (`t2i_bbox` and `i2i_bbox`). Without the PUP everything works as before. A converted PUP whose `preprocessor_config.json` lacks `processor_class` is fixed by DT Hub when it loads the model.
 
+### The MiniMax H3 Image prompt expander
+
+If the LLM assigned to a family is MiniMax's prompt expander ([`MiniMaxAI/MiniMax-H3-Image-PE`](https://huggingface.co/MiniMaxAI/MiniMax-H3-Image-PE) converted for MLX: the folder has `prompt/t2i/system_prompt.txt` and `prompt/t2i/task_prompt.txt`), DT Hub sends the model the request of its release instead of the family prompts:
+
+- *Enhance Prompt* with no pictures in the Control tab uses the text-to-image system prompt and task prompt, with your prompt as the request.
+- *Enhance Prompt* with pictures in the Control tab uses the editing task prompt (`prompt/edit/task_prompt.txt`, no system prompt): the start image and the Moodboard pictures that are on go to the model, in that order, each with its label (`<Picture 1>`, …) and aspect ratio, and your prompt is the editing instruction. The description that comes back names the pictures and their subjects (`<Picture 1>`, `<Subject 1>`), as the model's editing prompt asks.
+- *Generate Prompt* uses the text-to-image request with the picture attached.
+- The sampling values come from `prompt/t2i/request_params.json` (temperature 1.0, top-p 0.95, top-k 20, 4096 tokens, thinking on). The answer is a JSON object: its `expanded_caption` becomes the prompt, and the aspect ratio it suggests is not used.
+
+The model has no MLX conversion on Hugging Face: [`Scripts/minimax-h3/`](Scripts/minimax-h3/) has the script that makes one (about 29 GB at 8 bit) and a tool that writes a 4-bit copy of the model's text encoder. Mind the model's licence, which excludes some territories (the European Union, the United Kingdom, the Republic of Korea and the United States). The plug-ins do not use these prompts yet.
+
 ### The prompts that guide the LLM
 
 What *Enhance Prompt* and *Generate Prompt* tell the LLM is not hidden in the code: it is a set of Markdown files in `~/Library/Application Support/DT Hub/Data/DTHub/`, written by the app at launch and read at every request.
@@ -216,7 +227,7 @@ DT Hub can act as an [MCP](https://modelcontextprotocol.io) server on your Mac, 
 - **A budget, not a question per action.** You set how many images the agent may make in a session (and, with DT+, compute units); inside it nothing asks. A single request above the threshold asks once until you authorise the session. At the limit the agent gets an error at once.
 - **Stop button** in the header while an agent is connected; the panel lists the recent calls.
 - *Copy client configuration* gives the JSON for the client; *Copy instructions for the agent* gives a `SKILL.md`.
-- **Plug-in tools.** A plug-in can declare tools in its manifest (`tools`, see `PluginKit/README.md`); they are listed as `plugin__<plug-in>__<tool>` only while the plug-in is active for the current model, and follow the same modes. What they return is data, never instructions. So far **LoRA Advisor 1.5** offers its LoRA list (model family, Min/Base/Max, summary, page link), notes and weight limits; **Tiled Upscale 1.5** prepares and runs an enlargement (every tile counts against the session budget); **Depth & Pose 1.1** makes depth and pose maps and sends them to the Moodboard (it never generates); **Batch plus 1.2** defines and runs a series of passes, by parameter increments or by a list of prompts (every pass counts against the session budget, and a long series needs the user's agreement). **Flux3 Editing 1.3** draws the boxes of an edit with reference pictures, writes and improves the prompt and sends it (it never generates, the app's own `run` does); **Sphere Light 1.2** places the lights of the sphere and matches the light of a picture to it (every pass counts against the session budget); **Character Sheet 1.3** prepares a character design sheet (Moodboard, canvas and prompt; it never generates, the app's own `run` does). Running a plug-in's pipeline works for guided and for plain lists of passes.
+- **Plug-in tools.** A plug-in can declare tools in its manifest (`tools`, see `PluginKit/README.md`); they are listed as `plugin__<plug-in>__<tool>` only while the plug-in is active for the current model, and follow the same modes. What they return is data, never instructions. So far **LoRA Advisor 1.5** offers its LoRA list (model family, Min/Base/Max, summary, page link), notes and weight limits; **Tiled Upscale 1.5** prepares and runs an enlargement (every tile counts against the session budget); **Depth & Pose 1.1** makes depth and pose maps and sends them to the Moodboard (it never generates); **Batch plus 1.2** defines and runs a series of passes, by parameter increments or by a list of prompts (every pass counts against the session budget, and a long series needs the user's agreement). **Qwen 2.1 Inpainting 1.3** lets an agent draw coloured marks on the start image, write what to change at each one and send the drawing (it never generates, the app's own `run` does); **Panorama 360 1.5** places stickers on the 360° canvas, sends it and closes the seam of a result (the seam pass counts against the session budget); **Pano 360 F3 1.1** manages its reference pictures and makes a panorama or fixes its seam (every pass counts against the session budget); **Flux3 Editing 1.3** draws the boxes of an edit with reference pictures, writes and improves the prompt and sends it (it never generates, the app's own `run` does); **Sphere Light 1.2** places the lights of the sphere and matches the light of a picture to it (every pass counts against the session budget); **Character Sheet 1.3** prepares a character design sheet (Moodboard, canvas and prompt; it never generates, the app's own `run` does). Running a plug-in's pipeline works for guided and for plain lists of passes.
 
 Treat what an agent reads (pictures, names, prompts) as untrusted: keep the budget low and watch the first sessions.
 
@@ -232,13 +243,14 @@ The interface of the app and of the plug-ins is available in **English and Itali
 | `Packages/` | The logic (`HubCore`, `HubKit`, `DTBridge`, `LLMBridge`, `PluginHost`) and its tests. |
 | `PluginKit/` | The kit and the design system a plug-in is written with; contract 1 of the plug-ins. |
 | `Plugins/` | Prompt Master, Prompt Master I4, Sphere Light Reference, Character Sheet, Batch plus, AI Assistant, Qwen 2.1 Inpainting, LoRA Advisor, Depth & Pose, Tiled Upscale, Panorama 360 and Pano 360 F3 (among others). |
+| `Scripts/` | The scripts that generate the embedded data and the release manifest; `Scripts/minimax-h3/` has the conversion tools for MiniMax H3 Image. |
 | `docs/superpowers/` | Specs and plans (in Italian). |
 
 ## Status
 
 > **Video (in development).** Support for video models (MiniMax H3, LTX-2.3) is still under development: some functions may not work as expected.
 
-Version 1.3.5, used daily by its author. Feedback, bug reports and ideas are welcome: open an [Issue](../../issues).
+Version 1.3.6, used daily by its author. Feedback, bug reports and ideas are welcome: open an [Issue](../../issues).
 
 ## License
 
