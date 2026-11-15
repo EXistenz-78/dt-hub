@@ -216,6 +216,8 @@ struct ResultsView: View {
             }
           }
           .font(.caption).foregroundStyle(.secondary)
+          // The linear ProgressView keeps empty space above its bar: the text is pulled down into it.
+          .padding(.bottom, -6)
           if let step {
             ProgressView(value: Double(step), total: Double(max(total, 1)))
           } else {
