@@ -223,7 +223,6 @@ struct RealPluginToolsTests {
     let noSeam = try await call(plugin, "fix_seam")
     #expect(noSeam["isError"] as? Bool == true && noSeam["startsRun"] == nil)
   }
-}
 
   nonisolated static let qwenInpaintingBundlePath = ProcessInfo.processInfo.environment["DTHUB_QI_BUNDLE"]
 
