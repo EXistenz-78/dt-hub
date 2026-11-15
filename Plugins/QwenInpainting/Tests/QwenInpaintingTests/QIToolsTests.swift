@@ -237,10 +237,10 @@ struct QIToolsTests {
     let answer = await call("send_drawing", ["enhance": true])
     #expect(!answer.isError && spy.asked.count == 1 && spy.asked[0].hasSuffix("|pe-i2i"))
     #expect((spy.contributions.last?["fields"] as? [String: Any])?["prompt"] as? String == "Rewritten prompt.")
-    #expect(answer.json["enhanced"] as? Bool == true)
+    #expect(answer.json["enhanced"] as? Bool == true && answer.json["prompt"] as? String == "Rewritten prompt.")
     spy.llm = .failure("out of memory")
     let fallback = await call("send_drawing")
-    #expect(!fallback.isError)
+    #expect(!fallback.isError && fallback.json["enhanced"] as? Bool == false && fallback.json["prompt"] as? String == state.composedPrompt)
     #expect((spy.contributions.last?["fields"] as? [String: Any])?["prompt"] as? String == state.composedPrompt)
   }
 

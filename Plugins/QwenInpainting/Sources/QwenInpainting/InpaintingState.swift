@@ -23,6 +23,8 @@ final class InpaintingState: ObservableObject {
   @Published var status = ""
   @Published var statusIsError = false
   @Published var isSending = false
+  /// The prompt the last Send put in the Prompt field (after the enhancer, if it wrote it); nil when that Send left the field alone.
+  private(set) var lastSentPrompt: String?
   /// The mark being drawn, for the canvas.
   @Published var live: Mark?
 
@@ -179,6 +181,7 @@ final class InpaintingState: ObservableObject {
     if drawsOnFramed { paint["space"] = "canvas" }
     var body: [String: Any] = ["paint": paint]
     if !prompt.isEmpty { body["fields"] = ["prompt": prompt] }
+    lastSentPrompt = prompt.isEmpty ? nil : prompt
     let answer = await contribute(body)
     describe(answer, peNote: peNote)
   }

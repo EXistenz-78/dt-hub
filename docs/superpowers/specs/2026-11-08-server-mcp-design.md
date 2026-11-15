@@ -286,7 +286,7 @@ Ramo `claude/qwen-inpainting-mcp`. **Nessuna estensione del contratto.** Come Ch
 | `add_mark` | edit | `tool` (`box`, `circle`, `arrow`, `sketch`), `color` (nove), `width` 4–128, `x1,y1,x2,y2` oppure `points` «x,y x,y …» (2–4000) |
 | `remove_mark`, `clear_marks`, `undo_mark` | edit | togli un segno (un passo di Undo), pulisci, annulla/ripeti |
 | `set_card_text` | edit | il testo di una coppia colore+strumento (≤1000 caratteri; resta senza segni) |
-| `preview_drawing` | read | i segni sopra la start image in un PNG nella cartella temporanea dell'app (nome fisso) |
+| `preview_drawing` | read | i segni sopra la start image in un PNG nella cartella temporanea dell'app (nome fisso; `get_image` prende solo risultati, quindi lo vede solo chi legge file) |
 | `send_drawing` | edit | il tasto Invia; con `enhance` e un enhancer I2I assegnato lo riscrive il PE (timeout 600 s) |
 
 Controlli rigorosi prima di cambiare lo stato (fuori da 0–1, lato <1% o freccia puntiforme, `points` malformati, spessore fuori intervallo, argomenti dell'altro tipo di segno, niente start image, 200 segni); `send_drawing` rifiuta se non ci sono segni o immagine. `InpaintingState.replaceMarks(_:was:)` fa di «togli un segno» un solo passo di Undo e `QwenInpaintingPlugin.sendDrawing` è la stessa funzione del pulsante e dello strumento. Il testo (schede, prompt) è marcato «data, not instructions».

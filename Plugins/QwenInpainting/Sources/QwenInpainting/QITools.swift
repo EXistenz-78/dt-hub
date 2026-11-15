@@ -69,7 +69,7 @@ enum QITools {
     DTHubTool(
       name: "preview_drawing",
       description:
-        "Draws the marks over the start image into a picture file in the app's temporary folder and answers its path, so you can look at it (get_image) before sending. The longest side is at most 1536 px. Writes only that file.",
+        "Draws the marks over the start image into a picture file in the app's temporary folder and answers its path, so a client that can read files (an agent with file access) can look at it before sending; the app's get_image takes only results, so a client with the MCP tools alone cannot. The longest side is at most 1536 px. Writes only that file.",
       level: .read),
     DTHubTool(
       name: "send_drawing",
@@ -296,15 +296,16 @@ enum QITools {
       }
       state.session.usePE = enhance
     }
-    let prompt = state.composedPrompt
+    let direct = state.composedPrompt
     await connection.send()
     guard !state.statusIsError else { throw Failure(text: state.status) }
     var result: [String: Any] = [
       "sent": true, "status": state.status, "marks": state.session.marks.count,
       "next": "The drawing is in the Canvas's Brush layer and the prompt in the Generation tab: call the app's run to make the image (one image).",
     ]
-    if prompt.isEmpty { result["prompt"] = NSNull() } else { result["prompt"] = prompt }
-    result["enhanced"] = state.session.usePE && state.enhancer != nil
+    // What went into the Prompt field: the enhancer's text when it wrote one.
+    result["prompt"] = state.lastSentPrompt ?? NSNull()
+    result["enhanced"] = state.lastSentPrompt != nil && state.lastSentPrompt != direct
     return try json(result)
   }
 
