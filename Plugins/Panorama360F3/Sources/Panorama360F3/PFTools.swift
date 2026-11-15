@@ -108,6 +108,10 @@ enum PFTools {
 
   @MainActor
   static func handle(_ call: DTHubToolCall, state: PFState, connection: Connection) async -> Data {
+    // The words of the notices and errors an agent reads are English, whatever the language of the tab.
+    let language = state.italian
+    state.italian = false
+    defer { state.italian = language }
     do {
       switch call.tool {
       case "get_status": return DTHubMessage.toolResult(try status(state))

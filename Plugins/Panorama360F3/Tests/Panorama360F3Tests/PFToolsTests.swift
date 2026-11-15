@@ -100,6 +100,14 @@ struct PFToolsTests {
     #expect((answer.json["note"] as? String)?.contains("data") == true)
   }
 
+  @Test func theWordsAnAgentReadsAreEnglishWhateverTheTabLanguage() async {
+    let italian = PFState(italian: true)
+    italian.switchProject(folder: TestImages.tempFolder())
+    let answer = await call("get_status", state: italian)
+    #expect(answer.json["seamBlocker"] as? String == L.text(.seamNoResult, italian: false))
+    #expect(italian.italian == true)
+  }
+
   @Test func addRemoveMoveAndTurnOffPictures() async {
     #expect(await call("add_image", ["image": "/no/such.png"]).isError)
     #expect(await call("add_image").isError)
