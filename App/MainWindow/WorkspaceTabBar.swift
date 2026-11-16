@@ -27,7 +27,7 @@ struct WorkspaceTabBar: View {
           hoveredID: $hoveredTabID, showsBadge: tab.id == WorkspaceTab.controlID && controlHasImages
         ) {
           // A tab in a window of its own only brings that window to the front; with Option a tab opens in one.
-          if workspace.isDetached(tab.id) || NSEvent.modifierFlags.contains(.option) {
+          if workspace.isDetached(tab.id) || Self.isOptionClick {
             openInOwnWindow(tab.id)
           } else {
             workspace.select(tab.id)
@@ -50,6 +50,13 @@ struct WorkspaceTabBar: View {
     .onHover { inside in
       if !inside, hoveredTabID != nil { withAnimation(.easeOut(duration: 0.15)) { hoveredTabID = nil } }
     }
+  }
+
+  /// True while a mouse click with Option is being handled. The keys held down alone are not enough: VoiceOver presses
+  /// a button with Control-Option-Space, and that must open the tab, not move it to a window.
+  private static var isOptionClick: Bool {
+    guard let event = NSApp.currentEvent, event.type == .leftMouseUp else { return false }
+    return event.modifierFlags.contains(.option)
   }
 
   /// Opens the tab's own window, or brings it to the front. The tab leaves the main window first: a plug-in has one
@@ -122,7 +129,7 @@ private struct WorkspaceTabButton: View {
       HStack(spacing: DS.pillIconGap) {
         Image(systemName: tab.systemImage)
           .font(.system(size: 13, weight: .semibold))
-          .foregroundStyle(isDetached ? AnyShapeStyle(Color.orange) : AnyShapeStyle(.foreground))
+          .modifier(DetachedTint(isOn: isDetached))
           .overlay(alignment: .topTrailing) {
             if showsBadge && !isSelected {
               Circle().fill(DS.accent).frame(width: 7, height: 7)
@@ -159,5 +166,14 @@ private struct WorkspaceTabButton: View {
         }
       }
     }
+  }
+}
+
+/// Orange for the icon of a tab that is in a window of its own; otherwise the icon keeps the colour the tab gives it.
+private struct DetachedTint: ViewModifier {
+  let isOn: Bool
+
+  func body(content: Content) -> some View {
+    if isOn { content.foregroundStyle(Color.orange) } else { content }
   }
 }

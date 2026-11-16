@@ -1,3 +1,4 @@
+import AppKit
 import HubCore
 import HubKit
 import SwiftUI
@@ -68,6 +69,7 @@ struct TabWindowView: View {
       )
       .background(DSBackground())
       .background(DSWindowConfigurator())
+      .background(NoWindowTabbing())
       .background(WindowFrameKeeper(key: "tabWindow.frame.\(tabID)", minSize: TabWindow.minSize))
       .tint(DS.accent)
       .environment(plugins)
@@ -88,5 +90,19 @@ struct TabWindowView: View {
       .onChange(of: workspace.isDetached(tabID)) { _, isDetached in
         if !isDetached { dismissWindow(id: TabWindow.id, value: tabID) }
       }
+  }
+}
+
+/// Keeps a tab's window out of the system's window tabs ("Prefer tabs: always", or a window in full screen): as a
+/// system tab behind another one the window is taken off the screen, and the app would read that as closed.
+private struct NoWindowTabbing: NSViewRepresentable {
+  func makeNSView(context: Context) -> NSView { Marker() }
+  func updateNSView(_ nsView: NSView, context: Context) {}
+
+  private final class Marker: NSView {
+    override func viewDidMoveToWindow() {
+      super.viewDidMoveToWindow()
+      window?.tabbingMode = .disallowed
+    }
   }
 }
