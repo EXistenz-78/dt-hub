@@ -9,6 +9,7 @@ This is an independent community project, not affiliated with or endorsed by Dra
 ## What DT Hub adds
 
 - **Canvas on your iPad.** The Canvas card opens in a window of its own that shows nothing but the drawing, as large as the window allows. Move it to an iPad connected with **Sidecar** and paint the inpainting mask, or draw in colour onto the image, with an **Apple Pencil** or your fingers. Undo and redo keep working in the window.
+- **Local editing.** The Canvas card has a third mode, **Local editing**: draw a rectangle on the start image and **Use the Crop** makes that part (sides multiples of 64, 512 to 4096 px) the start image at its real resolution, with the Generation tab set to its exact size. Run as many times as you like; the card shows each retouch already in place in the whole picture (‹ › to browse them), and **Confirm and Put Back** pastes the chosen one in with a soft edge and matched colour and brightness, saves the whole picture as a new result and makes it the start image; the other retouches go to the Trash. Only **Cancel** or **Confirm** end it: switching mode, undo and restarting the app keep it.
 - **Image and Moodboard always in sight.** The Control tab is two wide cards, the Canvas and the Moodboard, one under the other. Drop a picture on the Canvas to make it the start image (a second one replaces it); its ✕ and its number sit on the corners, and the strength, *Adapt dimensions* and *Generate Prompt* are under the Zoom and Rotation sliders. Every Moodboard picture can be switched on or off with its eye, and you drag pictures in from the Results strip, the Finder or the clipboard.
 - **Input, on the Generation tab.** With an edit model, an **Input** card under the prompt shows thumbnails of the start image and of the Moodboard, so you see what is in Control without leaving the Generation tab. Click it to open Control, or drop pictures on it.
 - **A lock on the canvas proportions.** Width and height follow the ratio you choose: *Lock ratio* keeps it while you type or step either value, and the Ratios menu and the swap button change it in one click.
@@ -26,6 +27,7 @@ This is an independent community project, not affiliated with or endorsed by Dra
 - **Prompt tools.** *Enhance Prompt* rewrites your prompt for the selected model's family (and sees the start image and the Moodboard pictures, so "image 1", "image 2"… keep their meaning) and *Generate Prompt* writes one from the start image, both with the local language model. Two places beside *Enhance Prompt*, **Subject** and **Style**, take a picture dropped from the gallery or from Finder (it is not loaded anywhere else): the model takes the subject, setting and action from it (Subject) or its style (Style), takes the rest from the text of your prompt, and writes one new prompt.
 - **Plug-ins**, each with its own tab and active only on the model families it was made for: Prompt Master, Prompt Master I4 (Ideogram 4), Prompt Master F3 (the structured prompt of FLUX.3, with boxes), Flux3 Editing (FLUX.3 editing with reference pictures and boxes), Prompt Master MOSS (the JSON layout prompt of MOSS Image: a summary and boxes in pixels from the centre), Sphere Light Reference, Character Sheet (Qwen Image 2.1), Batch plus (a series of RUNs with growing parameters, or one per prompt; all families), AI Assistant (chat with a local LLM that can write the prompt and the settings on command), Qwen 2.1 Inpainting (colored marks and instructions on the start image, for Qwen Image 2.1) LoRA Advisor (a visual list of your LoRAs with thumbnails and notes, and the LLM's advice on which to use; all families), Depth & Pose (a depth map and a DWPose-style skeleton with face and hands from one picture, sent to the Moodboard; edit and in-context models) Tiled Upscale (a 2× or 4× enlargement tile by tile with FLUX.2 klein 9B, FLUX.3 klein or Qwen Image 2.1, with joins that do not show; the result goes to the Results) and Panorama 360 (360° panoramas: pictures placed on the unrolled sphere become the start image for nomadoor's *360 ERP outpaint* [LoRA](https://huggingface.co/nomadoor/flux-2-klein-9B-360-erp-outpaint-lora) of FLUX.2 klein; inspired by the [ComfyUI-Panorama-Stickers](https://github.com/nomadoor/ComfyUI-Panorama-Stickers) custom nodes) and Pano 360 F3 (360° panoramas with FLUX.3 [klein] 5.6B and denrakeiw's *360* and *Seamfix* LoRAs: the reference pictures go in the Moodboard, with no start image, and the panorama pass and the seam-fixing pass run as one guided pipeline). See [`Plugins/`](Plugins/README.md).
 - **Keyboard.** ⌘↩ Run, ⌘. Stop, ⌘R Results, ⌃Page Up / ⌃Page Down to step through the tabs.
+- **Any tab in its own window.** Right-click a tab, or Option-click it, to open it (plug-in tabs too) in a window of its own; in the tab bar it stays with an orange icon, and a click brings its window to the front. Close the window to bring the tab back.
 - **Managed server.** DT Hub can start Draw Things' `gRPCServerCLI` by itself, or connect to the server of the Draw Things app; the header shows which one is in use (**DT** or **CLI**) under its status dot. Preferences set the weights cache, Metal FlashAttention, CPU offload and fread for the server DT Hub starts.
 - **Guided first launch.** The first time it opens, DT Hub walks you through the server (the Draw Things app, the `gRPCServerCLI`, or both), the output folder and an optional language model. **Help › Guided Setup…** opens it again.
 - **Negative prompt only where it is read.** The field appears, and is sent with RUN, only for the model families whose Family prompt says they use it.
@@ -97,7 +99,7 @@ This is an independent community project, not affiliated with or endorsed by Dra
 
 ## Install
 
-1. Download **`DT-Hub-1.4.1-macOS-arm64.zip`** from the [latest release](https://github.com/EXistenz-78/dt-hub/releases/latest).
+1. Download **`DT-Hub-1.5.0-macOS-arm64.zip`** from the [latest release](https://github.com/EXistenz-78/dt-hub/releases/latest).
 2. Unzip it and drag **DT Hub.app** into `/Applications`.
 3. Read **First launch** below before you open it.
 4. Optional: add the plug-ins (they are in the same release, see [`Plugins/`](Plugins/README.md#install)).
@@ -252,7 +254,7 @@ The interface of the app and of the plug-ins is available in **English and Itali
 
 > **Video (in development).** Support for video models (MiniMax H3, LTX-2.3) is still under development: some functions may not work as expected.
 
-Version 1.4.1, used daily by its author. Feedback, bug reports and ideas are welcome: open an [Issue](../../issues).
+Version 1.5.0, used daily by its author. Feedback, bug reports and ideas are welcome: open an [Issue](../../issues).
 
 ## License
 
