@@ -49,16 +49,16 @@ struct ControlStoreLocalEditTests {
     try store.commitPaint(bitmap)
   }
 
-  func begin(_ store: ControlStore) throws {
-    try store.beginLocalEdit(rect: Self.rect, generation: (width: 1024, height: 768, highRes: false))
+  func begin(_ store: ControlStore) async throws {
+    try await store.beginLocalEdit(rect: Self.rect, generation: (width: 1024, height: 768, highRes: false))
   }
 
-  @Test func beginningMakesTheCropTheStartImage() throws {
+  @Test func beginningMakesTheCropTheStartImage() async throws {
     let store = try withImage(folder())
     store.setZoom(30)
     store.setStrength(0.6)
     let original = try #require(store.inputs.image)
-    try begin(store)
+    try await begin(store)
     let image = try #require(store.inputs.image)
     #expect(image.pixelWidth == 512 && image.pixelHeight == 512)
     #expect(image.name == "photo (crop).png")
@@ -76,18 +76,18 @@ struct ControlStoreLocalEditTests {
     #expect(store.originalImage(maxPixel: 256)?.width == 256)
   }
 
-  @Test func beginningTwiceIsRefused() throws {
+  @Test func beginningTwiceIsRefused() async throws {
     let store = try withImage(folder())
-    try begin(store)
-    #expect(throws: ControlError.localEditOpen) { try begin(store) }
+    try await begin(store)
+    await #expect(throws: ControlError.localEditOpen) { try await begin(store) }
   }
 
-  @Test func theMaskAndTheDrawingAreCroppedToo() throws {
+  @Test func theMaskAndTheDrawingAreCroppedToo() async throws {
     let store = try withImage(folder())
     try addMask(store)
     try addPaint(store)
     let (mask, paint) = (try #require(store.inputs.mask), try #require(store.inputs.paint))
-    try begin(store)
+    try await begin(store)
     let croppedMask = try #require(store.inputs.mask)
     let croppedPaint = try #require(store.inputs.paint)
     #expect(croppedMask.fileName != mask.fileName)
@@ -107,19 +107,19 @@ struct ControlStoreLocalEditTests {
     #expect(paintBitmap.alpha(x: 10, y: 10) == 0)
   }
 
-  @Test func anEmptyCropOfTheMaskIsNoMask() throws {
+  @Test func anEmptyCropOfTheMaskIsNoMask() async throws {
     let store = try withImage(folder())
     try addMask(store, at: CGPoint(x: 50, y: 50))
-    try begin(store)
+    try await begin(store)
     #expect(store.inputs.mask == nil)
     #expect(store.inputs.localEdit?.mask != nil)
   }
 
-  @Test func undoAfterBeginningBringsEverythingBack() throws {
+  @Test func undoAfterBeginningBringsEverythingBack() async throws {
     let store = try withImage(folder())
     try addMask(store)
     let before = store.inputs
-    try begin(store)
+    try await begin(store)
     store.undo()
     #expect(store.inputs == before)
     #expect(store.inputs.localEdit == nil)
@@ -129,12 +129,12 @@ struct ControlStoreLocalEditTests {
     #expect(store.inputs.image?.pixelWidth == 512)
   }
 
-  @Test func cancelBringsBackTheOriginalAndTheMask() throws {
+  @Test func cancelBringsBackTheOriginalAndTheMask() async throws {
     let store = try withImage(folder())
     try addMask(store)
     store.setZoom(-20)
     let before = store.inputs
-    try begin(store)
+    try await begin(store)
     try addMask(store, at: CGPoint(x: 100, y: 100))
     store.cancelLocalEdit()
     #expect(store.inputs.image == before.image)
@@ -145,13 +145,13 @@ struct ControlStoreLocalEditTests {
     #expect(store.inputs.localEdit != nil)
   }
 
-  @Test func confirmPutsTheMontageAndClosesTheSession() throws {
+  @Test func confirmPutsTheMontageAndClosesTheSession() async throws {
     let store = try withImage(folder())
     try addMask(store)
     try addPaint(store)
     store.setZoom(10)
     let before = store.inputs
-    try begin(store)
+    try await begin(store)
     store.setZoom(50)
     try store.confirmLocalEdit(montage: pictureData(width: Self.width, height: Self.height), name: "montage.png")
     let image = try #require(store.inputs.image)
@@ -165,7 +165,7 @@ struct ControlStoreLocalEditTests {
     #expect(store.inputs.localEdit == nil)
   }
 
-  @Test func confirmingWithoutASessionDoesNothing() throws {
+  @Test func confirmingWithoutASessionDoesNothing() async throws {
     let store = try withImage(folder())
     let before = store.inputs
     let couldUndo = store.canUndo
@@ -175,9 +175,9 @@ struct ControlStoreLocalEditTests {
     #expect(store.canUndo == couldUndo)
   }
 
-  @Test func undoAfterConfirmReopensTheSession() throws {
+  @Test func undoAfterConfirmReopensTheSession() async throws {
     let store = try withImage(folder())
-    try begin(store)
+    try await begin(store)
     let session = try #require(store.inputs.localEdit)
     let crop = store.inputs.image
     try store.confirmLocalEdit(montage: pictureData(width: Self.width, height: Self.height), name: "montage.png")
@@ -189,9 +189,9 @@ struct ControlStoreLocalEditTests {
     #expect(store.inputs.image?.name == "montage.png")
   }
 
-  @Test func theStartImageCannotBeReplacedDuringASession() throws {
+  @Test func theStartImageCannotBeReplacedDuringASession() async throws {
     let store = try withImage(folder())
-    try begin(store)
+    try await begin(store)
     let during = store.inputs
     #expect(throws: ControlError.localEditOpen) {
       try store.setImage(data: pictureData(width: 64, height: 64), name: "other.png", source: .pasteboard)
@@ -206,13 +206,13 @@ struct ControlStoreLocalEditTests {
     #expect(store.inputs == during)
   }
 
-  @Test func theOriginalFileSurvivesTheGarbageCollection() throws {
+  @Test func theOriginalFileSurvivesTheGarbageCollection() async throws {
     let root = folder()
     let store = try withImage(root)
     try addMask(store)
     let original = try #require(store.inputs.image)
     let mask = try #require(store.inputs.mask)
-    try begin(store)
+    try await begin(store)
     // More steps than the history keeps: the state before the session is gone from it.
     for index in 0..<25 { try addMask(store, at: CGPoint(x: 260 + index * 5, y: 140)) }
     #expect(copies(in: root).contains(original.fileName))
@@ -222,10 +222,10 @@ struct ControlStoreLocalEditTests {
     #expect(store.inputs.mask == mask)
   }
 
-  @Test func theSessionSurvivesAReload() throws {
+  @Test func theSessionSurvivesAReload() async throws {
     let root = folder()
     let store = try withImage(root)
-    try begin(store)
+    try await begin(store)
     store.setLocalEditMatchColors(false)
     let reloaded = self.store(in: root)
     #expect(reloaded.inputs.localEdit == store.inputs.localEdit)
@@ -234,9 +234,9 @@ struct ControlStoreLocalEditTests {
     #expect(reloaded.originalImage(maxPixel: nil)?.width == Self.width)
   }
 
-  @Test func matchColorsIsOutsideTheHistory() throws {
+  @Test func matchColorsIsOutsideTheHistory() async throws {
     let store = try withImage(folder())
-    try begin(store)
+    try await begin(store)
     #expect(store.inputs.localEdit?.matchColors == true)
     let couldUndo = store.canUndo
     store.setLocalEditMatchColors(false)
@@ -249,21 +249,21 @@ struct ControlStoreLocalEditTests {
     #expect(store.inputs.localEdit?.matchColors == false)
   }
 
-  @Test func aQueueEntryCapturedDuringASessionHasNoSession() throws {
+  @Test func aQueueEntryCapturedDuringASessionHasNoSession() async throws {
     let root = folder()
     let store = try withImage(root)
-    try begin(store)
+    try await begin(store)
     let captured = try store.captureForQueue(into: root.appendingPathComponent("Entry"))
     #expect(captured.localEdit == nil)
     #expect(captured.image == store.inputs.image)
     #expect(store.inputs.localEdit != nil)
   }
 
-  @Test func aQueueEntryOfTheCropRunsAndKeepsTheSession() throws {
+  @Test func aQueueEntryOfTheCropRunsAndKeepsTheSession() async throws {
     let root = folder()
     let entry = root.appendingPathComponent("Entry")
     let store = try withImage(root)
-    try begin(store)
+    try await begin(store)
     let session = try #require(store.inputs.localEdit)
     store.setStrength(0.4)
     let captured = try store.captureForQueue(into: entry)
@@ -276,14 +276,14 @@ struct ControlStoreLocalEditTests {
     #expect(store.inputs.strength == 0.4)
   }
 
-  @Test func aQueueEntryOfAnotherImageIsRefusedDuringASession() throws {
+  @Test func aQueueEntryOfAnotherImageIsRefusedDuringASession() async throws {
     let root = folder()
     let entry = root.appendingPathComponent("Entry")
     let other = store(in: folder())
     try other.setImage(data: pictureData(width: 64, height: 64), name: "other.png", source: .pasteboard)
     let captured = try other.captureForQueue(into: entry)
     let store = try withImage(root)
-    try begin(store)
+    try await begin(store)
     let during = store.inputs
     let files = copies(in: root)
     #expect(throws: ControlError.localEditOpen) { try store.restoreFromQueue(captured, from: entry) }
@@ -291,13 +291,13 @@ struct ControlStoreLocalEditTests {
     #expect(copies(in: root) == files)
   }
 
-  @Test func theChangeIsReportedForEveryWay() throws {
+  @Test func theChangeIsReportedForEveryWay() async throws {
     let (a, b) = (folder(), folder())
     let store = try withImage(a)
     var changes: [(old: UUID?, new: UUID?)] = []
     store.onLocalEditChange = { old, new in changes.append((old?.id, new?.id)) }
 
-    try begin(store)
+    try await begin(store)
     let id = try #require(store.inputs.localEdit?.id)
     #expect(changes.count == 1 && changes.last?.old == nil && changes.last?.new == id)
     store.setLocalEditMatchColors(false)

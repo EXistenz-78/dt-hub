@@ -12,39 +12,36 @@ extension ControlStore {
   /// Makes the crop `rect` (pixels of the start image) the start image, with the mask and the drawing
   /// cut to it; the session keeps the whole image, the framing, mask, drawing, strength and fill from
   /// before, and the Generation tab's size (`generation`) to give back when it closes. Nothing without
-  /// a start image; refused when a session is already open.
+  /// a start image; refused when a session is already open. The pictures are cut away from the main actor;
+  /// when the start image changes meanwhile nothing opens.
   public func beginLocalEdit(
     rect: PixelRect, generation: (width: Int, height: Int, highRes: Bool), now: Date = .now
-  ) throws(ControlError) {
+  ) async throws(ControlError) {
     guard inputs.localEdit == nil else { throw .localEditOpen }
     guard let original = inputs.image else { return }
-    let (fullWidth, fullHeight) = (original.pixelWidth, original.pixelHeight)
-    guard
-      let whole = storage.image(named: original.fileName, maxPixel: max(fullWidth, fullHeight)),
-      whole.width == fullWidth, whole.height == fullHeight,
-      let cut = LocalEditCompositor.crop(whole, to: rect), let data = Self.pngData(of: cut)
-    else { throw .unreadable(original.name) }
+    let (mask, paint, storage) = (inputs.mask, inputs.paint, storage)
+    let cuts = await Task.detached(priority: .userInitiated) {
+      Self.localEditCuts(of: original, mask: mask, paint: paint, rect: rect, storage: storage)
+    }.value
+    guard inputs.localEdit == nil else { throw .localEditOpen }
+    guard inputs.image == original else { return }
+    // The mask or the drawing changed while the pictures were cut: cut them again.
+    guard inputs.mask == mask, inputs.paint == paint else {
+      return try await beginLocalEdit(rect: rect, generation: generation, now: now)
+    }
+    let cut = try cuts.get()
     let base = (original.name as NSString).deletingPathExtension
-    let crop = try reference(from: data, name: "\(base) (crop).png", source: Self.localEditSource)
-    let working = MaskBitmap.workingSize(imageWidth: rect.width, imageHeight: rect.height)
+    let crop = try reference(from: cut.crop, name: "\(base) (crop).png", source: Self.localEditSource)
 
     var next = inputs
     next.image = crop
     next.framing = Framing()
     next.mask = nil
     next.paint = nil
-    if let mask = inputs.mask, let stored = storage.image(named: mask.fileName, maxPixel: MaskBitmap.maxSide),
-      let part = LocalEditCompositor.crop(stored, to: rect, fullWidth: fullWidth, fullHeight: fullHeight),
-      let bitmap = Self.maskBitmap(part, width: working.width, height: working.height), !bitmap.isEmpty
-    {
-      guard let png = bitmap.pngData() else { throw .cannotSave("mask") }
-      next.mask = MaskReference(fileName: try storage.save(png, name: "mask.png").fileName, coverage: bitmap.coverage)
+    if let part = cut.mask {
+      next.mask = MaskReference(fileName: try storage.save(part.png, name: "mask.png").fileName, coverage: part.coverage)
     }
-    if let paint = inputs.paint, let stored = storage.image(named: paint.fileName, maxPixel: MaskBitmap.maxSide),
-      let part = Self.cut(stored, to: rect, fullWidth: fullWidth, fullHeight: fullHeight),
-      let bitmap = PaintBitmap.fitted(from: part, width: working.width, height: working.height), !bitmap.isEmpty
-    {
-      guard let png = bitmap.pngData() else { throw .cannotSave("drawing") }
+    if let png = cut.paint {
       next.paint = PaintReference(fileName: try storage.save(png, name: "drawing.png").fileName)
     }
     next.localEdit = LocalEditSession(
@@ -96,9 +93,49 @@ extension ControlStore {
     return next
   }
 
+  /// The crop, mask and drawing of a local edit, as PNG bytes ready to be saved.
+  struct LocalEditCuts: Sendable {
+    let crop: Data
+    /// The mask cut to the crop, with its coverage; nil when nothing of it falls in the crop.
+    let mask: (png: Data, coverage: Double)?
+    let paint: Data?
+  }
+
+  /// Decodes the whole image, the mask and the drawing and cuts them to `rect`: the heavy part of
+  /// `beginLocalEdit`, run away from the main actor.
+  nonisolated static func localEditCuts(
+    of original: ReferenceImage, mask: MaskReference?, paint: PaintReference?, rect: PixelRect,
+    storage: any ReferenceStorage
+  ) -> Result<LocalEditCuts, ControlError> {
+    let (fullWidth, fullHeight) = (original.pixelWidth, original.pixelHeight)
+    guard
+      let whole = storage.image(named: original.fileName, maxPixel: max(fullWidth, fullHeight)),
+      whole.width == fullWidth, whole.height == fullHeight,
+      let cropped = LocalEditCompositor.crop(whole, to: rect), let crop = pngData(of: cropped)
+    else { return .failure(.unreadable(original.name)) }
+    let working = MaskBitmap.workingSize(imageWidth: rect.width, imageHeight: rect.height)
+    var maskPart: (png: Data, coverage: Double)?
+    if let mask, let stored = storage.image(named: mask.fileName, maxPixel: MaskBitmap.maxSide),
+      let part = LocalEditCompositor.crop(stored, to: rect, fullWidth: fullWidth, fullHeight: fullHeight),
+      let bitmap = maskBitmap(part, width: working.width, height: working.height), !bitmap.isEmpty
+    {
+      guard let png = bitmap.pngData() else { return .failure(.cannotSave("mask")) }
+      maskPart = (png, bitmap.coverage)
+    }
+    var paintPart: Data?
+    if let paint, let stored = storage.image(named: paint.fileName, maxPixel: MaskBitmap.maxSide),
+      let part = cut(stored, to: rect, fullWidth: fullWidth, fullHeight: fullHeight),
+      let bitmap = PaintBitmap.fitted(from: part, width: working.width, height: working.height), !bitmap.isEmpty
+    {
+      guard let png = bitmap.pngData() else { return .failure(.cannotSave("drawing")) }
+      paintPart = png
+    }
+    return .success(LocalEditCuts(crop: crop, mask: maskPart, paint: paintPart))
+  }
+
   /// The part of a drawing (saved smaller than the whole image) that covers `rect` of the whole image,
   /// transparency kept (`LocalEditCompositor.crop` makes it opaque).
-  private static func cut(_ image: CGImage, to rect: PixelRect, fullWidth: Int, fullHeight: Int) -> CGImage? {
+  nonisolated private static func cut(_ image: CGImage, to rect: PixelRect, fullWidth: Int, fullHeight: Int) -> CGImage? {
     guard fullWidth > 0, fullHeight > 0 else { return nil }
     let sx = Double(image.width) / Double(fullWidth)
     let sy = Double(image.height) / Double(fullHeight)
@@ -110,7 +147,7 @@ extension ControlStore {
   }
 
   /// A mask from a picture, stretched to `width × height`.
-  private static func maskBitmap(_ image: CGImage, width: Int, height: Int) -> MaskBitmap? {
+  nonisolated private static func maskBitmap(_ image: CGImage, width: Int, height: Int) -> MaskBitmap? {
     guard
       let context = CGContext(
         data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width,

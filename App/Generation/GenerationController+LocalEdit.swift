@@ -16,8 +16,8 @@ extension GenerationController {
 
   /// Opens a local edit on `rect` of the start image. The store keeps the tab's size, to give back at the
   /// end; the size of the crop comes through `localEditChanged`.
-  func beginLocalEdit(rect: PixelRect) throws(ControlError) {
-    try control.beginLocalEdit(
+  func beginLocalEdit(rect: PixelRect) async throws(ControlError) {
+    try await control.beginLocalEdit(
       rect: rect, generation: (parameters.width, parameters.height, parameters.highRes))
   }
 
@@ -46,13 +46,15 @@ extension GenerationController {
     guard let localEdit = control.inputs.localEdit else { return }
     let others = localEditAttempts.filter { $0.id != attempt.id }.map(\.id)
     let original = localEdit.original
-    guard let whole = control.originalImage(maxPixel: nil) else { throw .unreadable(original.name) }
+    guard let request = control.originalPreviewRequest(maxPixel: max(original.pixelWidth, original.pixelHeight))
+    else { throw .unreadable(original.name) }
     let attemptName = attempt.fileURL?.lastPathComponent ?? String(localized: "results.unsaved.name")
     let fileURL = attempt.fileURL
     let shown = attempt.image
     let rect = localEdit.rect
     let matchColors = localEdit.matchColors
     let made = await Task.detached(priority: .userInitiated) { () -> Result<(url: URL, data: Data), ControlError> in
+      guard let whole = request.render() else { return .failure(.unreadable(original.name)) }
       let retouch = fileURL.flatMap { PNGImageStore.image(at: $0, maxPixel: max(rect.width, rect.height)) } ?? shown
       guard
         let montage = LocalEditCompositor.montage(

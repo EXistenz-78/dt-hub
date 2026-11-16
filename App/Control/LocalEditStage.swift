@@ -30,6 +30,8 @@ struct LocalEditStage: View {
   /// The attempt shown: 0 is the newest.
   @State private var shownIndex = 0
   @State private var isConfirming = false
+  /// True while «Use the Crop» cuts the pictures.
+  @State private var isBeginning = false
 
   @Environment(\.controlViewportHeight) private var viewportHeight
 
@@ -227,17 +229,22 @@ struct LocalEditStage: View {
       }
       .font(.callout).foregroundStyle(.secondary)
       .frame(maxWidth: .infinity, alignment: .leading)
+      if isBeginning { ProgressView().controlSize(.small) }
       Button("localEdit.useCrop") {
         guard let crop else { return }
-        do throws(ControlError) {
-          try generation.beginLocalEdit(rect: crop)
-          drawn = nil
-        } catch {
-          report(.error(ControlText.error(error)))
+        isBeginning = true
+        Task {
+          defer { isBeginning = false }
+          do throws(ControlError) {
+            try await generation.beginLocalEdit(rect: crop)
+            drawn = nil
+          } catch {
+            report(.error(ControlText.error(error)))
+          }
         }
       }
       .buttonStyle(DSPillButtonStyle(prominent: true))
-      .disabled(crop == nil)
+      .disabled(crop == nil || isBeginning)
       .help(tooSmall ? String(localized: "localEdit.tooSmall") : "")
     }
   }
