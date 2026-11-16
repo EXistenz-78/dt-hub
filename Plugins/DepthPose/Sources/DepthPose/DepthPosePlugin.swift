@@ -16,7 +16,7 @@ final class DepthPosePlugin: DTHubPlugin {
       files: DPModelManifest.dwposeLF16, packageName: DPModelManifest.dwposeLPackageName,
       baseURL: DPModelManifest.dwposeLBaseURL),
     makeFullPose: { url in
-      DWPoseDetector(network: try CoreMLPoseNetwork(compiledModel: url), boxFinder: VisionPersonBoxFinder())
+      DWPoseDetector(network: try CoreMLPoseNetwork(compiledModel: url), boxFinder: VisionPersonBoxFinder(), sweeps: true)
     })
   private var host: DTHubHost?
 
