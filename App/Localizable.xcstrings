@@ -12767,6 +12767,91 @@
           }
         }
       }
+    },
+    "tabs.allDetached": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All tabs are in separate windows"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tutti i tab sono in finestre separate"
+          }
+        }
+      }
+    },
+    "tabs.bringToFront": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bring Window to Front"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Porta la finestra in primo piano"
+          }
+        }
+      }
+    },
+    "tabs.detach": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open in a Separate Window"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apri in una finestra separata"
+          }
+        }
+      }
+    },
+    "tabs.detached.value": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In a separate window"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In una finestra separata"
+          }
+        }
+      }
+    },
+    "tabs.reattach": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move Back to the Main Window"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Riporta nella finestra principale"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

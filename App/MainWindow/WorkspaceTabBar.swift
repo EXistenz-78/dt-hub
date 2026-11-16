@@ -1,3 +1,4 @@
+import AppKit
 import HubCore
 import HubKit
 import SwiftUI
@@ -12,6 +13,8 @@ struct WorkspaceTabBar: View {
   /// Read here, not in the window: the pictures and their framing change often, and only this bar has to follow.
   private var controlHasImages: Bool { control.inputs.image != nil || !control.inputs.moodboard.isEmpty }
   @Environment(\.openSettings) private var openSettings
+  @Environment(\.openWindow) private var openWindow
+  @Environment(\.dismissWindow) private var dismissWindow
   /// The tab the mouse rests on: its name shows too (one at a time).
   @State private var hoveredTabID: String?
 
@@ -20,10 +23,24 @@ struct WorkspaceTabBar: View {
       pluginsMenu
       ForEach(workspace.tabs) { tab in
         WorkspaceTabButton(
-          tab: tab, isSelected: tab.id == workspace.selectedTabID, hoveredID: $hoveredTabID,
-          showsBadge: tab.id == WorkspaceTab.controlID && controlHasImages
+          tab: tab, isSelected: tab.id == workspace.selectedTabID, isDetached: workspace.isDetached(tab.id),
+          hoveredID: $hoveredTabID, showsBadge: tab.id == WorkspaceTab.controlID && controlHasImages
         ) {
-          workspace.select(tab.id)
+          // A tab in a window of its own only brings that window to the front; with Option a tab opens in one.
+          if workspace.isDetached(tab.id) || NSEvent.modifierFlags.contains(.option) {
+            openInOwnWindow(tab.id)
+          } else {
+            workspace.select(tab.id)
+          }
+        }
+        .contextMenu {
+          if workspace.isDetached(tab.id) {
+            Button("tabs.bringToFront") { openInOwnWindow(tab.id) }
+            // Closing the window is what brings the tab back.
+            Button("tabs.reattach") { dismissWindow(id: TabWindow.id, value: tab.id) }
+          } else {
+            Button("tabs.detach") { openInOwnWindow(tab.id) }
+          }
         }
       }
       Spacer(minLength: 0)
@@ -33,6 +50,13 @@ struct WorkspaceTabBar: View {
     .onHover { inside in
       if !inside, hoveredTabID != nil { withAnimation(.easeOut(duration: 0.15)) { hoveredTabID = nil } }
     }
+  }
+
+  /// Opens the tab's own window, or brings it to the front. The tab leaves the main window first: a plug-in has one
+  /// view controller, and it must be out of this window before the other one takes it.
+  private func openInOwnWindow(_ id: WorkspaceTab.ID) {
+    workspace.detach(id)
+    openWindow(id: TabWindow.id, value: id)
   }
 
   /// The plug-ins on or off, and the way to Preferences: only the icon (and the arrow), always there so a plug-in can be
@@ -81,6 +105,8 @@ struct WorkspaceTabBar: View {
 private struct WorkspaceTabButton: View {
   let tab: WorkspaceTab
   let isSelected: Bool
+  /// The tab is in a window of its own: its icon is orange.
+  let isDetached: Bool
   @Binding var hoveredID: String?
   /// A small teal dot on the icon; only while the tab is not the open one.
   var showsBadge = false
@@ -96,6 +122,7 @@ private struct WorkspaceTabButton: View {
       HStack(spacing: DS.pillIconGap) {
         Image(systemName: tab.systemImage)
           .font(.system(size: 13, weight: .semibold))
+          .foregroundStyle(isDetached ? AnyShapeStyle(Color.orange) : AnyShapeStyle(.foreground))
           .overlay(alignment: .topTrailing) {
             if showsBadge && !isSelected {
               Circle().fill(DS.accent).frame(width: 7, height: 7)
@@ -114,6 +141,7 @@ private struct WorkspaceTabButton: View {
     .animation(animation, value: isExpanded)
     // The name is always the VoiceOver label and the tooltip, shown or not.
     .accessibilityLabel(tab.title)
+    .accessibilityValue(isDetached ? String(localized: "tabs.detached.value") : "")
     .help(tab.title)
     .onHover { inside in
       pendingHover?.cancel()
