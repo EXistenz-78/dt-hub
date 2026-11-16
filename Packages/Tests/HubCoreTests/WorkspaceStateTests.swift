@@ -112,4 +112,90 @@ struct WorkspaceStateTests {
     #expect(state.selectedTabID == WorkspaceTab.controlID)
     #expect(defaults.string(forKey: WorkspaceState.selectedTabKey) == WorkspaceTab.controlID)
   }
+
+  // MARK: Tabs in a window of their own
+
+  @Test func detachingTheOpenTabOpensGeneration() {
+    let state = state()
+    state.setPluginTabs([promptMaster])
+    state.select(promptMaster.id)
+    state.detach(promptMaster.id)
+    #expect(state.isDetached(promptMaster.id))
+    #expect(state.tabs.contains(promptMaster))
+    #expect(state.selectedTabID == WorkspaceTab.generationID)
+  }
+
+  @Test func detachingGenerationOpensControlThenTheFirstTabLeft() {
+    let state = state()
+    state.setPluginTabs([promptMaster])
+    state.detach(WorkspaceTab.generationID)
+    #expect(state.selectedTabID == WorkspaceTab.controlID)
+    state.detach(WorkspaceTab.controlID)
+    #expect(state.selectedTabID == promptMaster.id)
+    state.detach(promptMaster.id)
+    #expect(state.selectedTabID == nil)
+  }
+
+  @Test func detachingAnotherTabKeepsTheOpenOne() {
+    let state = state()
+    state.detach(WorkspaceTab.controlID)
+    #expect(state.selectedTabID == WorkspaceTab.generationID)
+  }
+
+  @Test func aDetachedTabCannotBeSelected() {
+    let state = state()
+    state.detach(WorkspaceTab.controlID)
+    state.select(WorkspaceTab.controlID)
+    #expect(state.selectedTabID == WorkspaceTab.generationID)
+  }
+
+  @Test func attachingOpensTheTab() {
+    let state = state()
+    state.detach(WorkspaceTab.controlID)
+    state.attach(WorkspaceTab.controlID)
+    #expect(!state.isDetached(WorkspaceTab.controlID))
+    #expect(state.selectedTabID == WorkspaceTab.controlID)
+  }
+
+  @Test func nextAndPreviousSkipDetachedTabs() {
+    let state = state()
+    state.setPluginTabs([promptMaster, sphereLight])   // promptMaster, sphereLight, control, generation
+    state.detach(WorkspaceTab.controlID)
+    state.selectPrevious()
+    #expect(state.selectedTabID == sphereLight.id)
+    state.selectNext()
+    #expect(state.selectedTabID == WorkspaceTab.generationID)
+  }
+
+  @Test func nextDoesNothingWhenEveryTabIsDetached() {
+    let state = state()
+    state.detach(WorkspaceTab.generationID)
+    state.detach(WorkspaceTab.controlID)
+    state.selectNext()
+    #expect(state.selectedTabID == nil)
+  }
+
+  @Test func aPluginTabThatGoesIsNoLongerDetached() {
+    let state = state()
+    state.setPluginTabs([promptMaster])
+    state.detach(promptMaster.id)
+    state.setPluginTabs([])
+    #expect(!state.isDetached(promptMaster.id))
+    state.attach(promptMaster.id)   // the window closing afterwards
+    #expect(state.selectedTabID == WorkspaceTab.generationID)
+  }
+
+  @Test func detachingAnUnknownTabIsIgnored() {
+    let state = state()
+    state.detach("nope")
+    #expect(state.detachedTabIDs.isEmpty)
+  }
+
+  @Test func detachingDoesNotChangeTheRememberedTab() {
+    let defaults = UserDefaults(suiteName: "WorkspaceStateTests-\(UUID())")!
+    let state = state(defaults)
+    state.select(WorkspaceTab.controlID)
+    state.detach(WorkspaceTab.controlID)
+    #expect(defaults.string(forKey: WorkspaceState.selectedTabKey) == WorkspaceTab.controlID)
+  }
 }
