@@ -75,16 +75,12 @@ struct MainWindowView: View {
   }
 
   @ViewBuilder private var tabContent: some View {
-    if workspace.selectedTabID == WorkspaceTab.controlID {
-      ControlTabView(generation: generation, connection: connection)
-    } else if workspace.selectedTabID == WorkspaceTab.generationID {
-      GenerationTabView(
-        controller: generation, connection: connection, openControl: { workspace.select(WorkspaceTab.controlID) })
-    } else if let controller = plugins.viewController(forTab: workspace.selectedTabID) as? NSViewController {
-      // One view per tab: without the id SwiftUI keeps the first plug-in's controller when another plug-in tab is chosen.
-      PluginTabView(controller: controller).id(workspace.selectedTabID)
+    if let tabID = workspace.selectedTabID {
+      WorkspaceTabContent(
+        tabID: tabID, workspace: workspace, generation: generation, connection: connection, plugins: plugins)
     } else {
-      EmptyView()
+      // Every tab is in a window of its own.
+      Text("tabs.allDetached").font(.callout).foregroundStyle(.secondary)
     }
   }
 }

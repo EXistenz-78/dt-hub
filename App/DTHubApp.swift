@@ -248,6 +248,19 @@ struct DTHubApp: App {
     }
     .windowResizability(.contentMinSize)
 
+    // A tab in a window of its own: one window per tab, never put back at the next launch.
+    WindowGroup(id: TabWindow.id, for: String.self) { $tabID in
+      if let tabID {
+        TabWindowView(
+          tabID: tabID, workspace: workspace, generation: generation, connection: connection, plugins: plugins)
+          .environment(canvasWindow)
+          .environment(remote)
+      }
+    }
+    .windowResizability(.contentMinSize)
+    .restorationBehavior(.disabled)
+    .commandsRemoved()
+
     Settings {
       PreferencesView(
         connection: connection, generation: generation, languageModel: languageModel, download: download,
