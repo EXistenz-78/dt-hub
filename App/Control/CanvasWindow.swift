@@ -55,9 +55,11 @@ struct CanvasWindowView: View {
   private var undoShortcuts: some View {
     HStack {
       Button { generation.control.undo() } label: { EmptyView() }
-        .keyboardShortcut("z", modifiers: .command).disabled(!generation.control.canUndo)
+        .keyboardShortcut("z", modifiers: .command)
+        .disabled(!generation.control.canUndo || generation.isConfirmingLocalEdit)
       Button { generation.control.redo() } label: { EmptyView() }
-        .keyboardShortcut("z", modifiers: [.command, .shift]).disabled(!generation.control.canRedo)
+        .keyboardShortcut("z", modifiers: [.command, .shift])
+        .disabled(!generation.control.canRedo || generation.isConfirmingLocalEdit)
     }
     .opacity(0).frame(width: 0, height: 0).accessibilityHidden(true)
   }

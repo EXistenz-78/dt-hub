@@ -550,8 +550,12 @@ struct CanvasStage: View {
           }
         }
         Spacer(minLength: 0)
-        iconButton("arrow.uturn.backward", "control.undo", enabled: control.canUndo) { control.undo() }
-        iconButton("arrow.uturn.forward", "control.redo", enabled: control.canRedo) { control.redo() }
+        iconButton("arrow.uturn.backward", "control.undo", enabled: control.canUndo && !generation.isConfirmingLocalEdit) {
+          control.undo()
+        }
+        iconButton("arrow.uturn.forward", "control.redo", enabled: control.canRedo && !generation.isConfirmingLocalEdit) {
+          control.redo()
+        }
       }
       CardRow(label: String(localized: "control.mask.size")) {
         Slider(value: $brushSize, in: 8...512, step: 1).frame(minWidth: 120)

@@ -11,6 +11,8 @@ public enum ControlError: Error, Equatable, Sendable {
   case cannotSave(String)
   /// A local edit is open: the start image cannot be replaced until it is confirmed or cancelled.
   case localEditOpen
+  /// The local edit being confirmed was cancelled, undone or replaced meanwhile: nothing was put back.
+  case localEditChanged
 }
 
 /// A copy that was just written.

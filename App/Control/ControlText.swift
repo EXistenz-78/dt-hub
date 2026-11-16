@@ -9,6 +9,7 @@ enum ControlText {
     case .unreadable(let name): String(format: String(localized: "control.error.unreadable"), name)
     case .cannotSave(let detail): String(format: String(localized: "control.error.cannotSave"), detail)
     case .localEditOpen: String(localized: "control.notice.localEditOpen")
+    case .localEditChanged: String(localized: "control.error.localEditChanged")
     }
   }
 

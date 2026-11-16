@@ -1956,6 +1956,23 @@
         }
       }
     },
+    "control.error.localEditChanged": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The local edit changed while it was being confirmed: nothing was put back"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L'Editing locale è cambiato durante la conferma: non è stato rimesso nulla"
+          }
+        }
+      }
+    },
     "control.error.unreadable": {
       "extractionState": "manual",
       "localizations": {

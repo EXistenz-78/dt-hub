@@ -53,6 +53,13 @@ struct ControlStoreLocalEditTests {
     try await store.beginLocalEdit(rect: Self.rect, generation: (width: 1024, height: 768, highRes: false))
   }
 
+  /// Confirms the open session with a montage of the whole image's size.
+  func confirm(_ store: ControlStore) throws {
+    let id = try #require(store.inputs.localEdit?.id)
+    try store.confirmLocalEdit(
+      sessionID: id, montage: pictureData(width: Self.width, height: Self.height), name: "montage.png")
+  }
+
   @Test func beginningMakesTheCropTheStartImage() async throws {
     let store = try withImage(folder())
     store.setZoom(30)
@@ -153,7 +160,7 @@ struct ControlStoreLocalEditTests {
     let before = store.inputs
     try await begin(store)
     store.setZoom(50)
-    try store.confirmLocalEdit(montage: pictureData(width: Self.width, height: Self.height), name: "montage.png")
+    try confirm(store)
     let image = try #require(store.inputs.image)
     #expect(image.source == .result)
     #expect(image.name == "montage.png")
@@ -165,13 +172,28 @@ struct ControlStoreLocalEditTests {
     #expect(store.inputs.localEdit == nil)
   }
 
-  @Test func confirmingWithoutASessionDoesNothing() async throws {
+  @Test func confirmWithoutSessionThrows() async throws {
     let store = try withImage(folder())
     let before = store.inputs
     let couldUndo = store.canUndo
-    try store.confirmLocalEdit(montage: pictureData(width: 64, height: 64), name: "montage.png")
+    #expect(throws: ControlError.localEditChanged) {
+      try store.confirmLocalEdit(sessionID: UUID(), montage: pictureData(width: 64, height: 64), name: "montage.png")
+    }
     store.cancelLocalEdit()
     #expect(store.inputs == before)
+    #expect(store.canUndo == couldUndo)
+  }
+
+  @Test func confirmWithAnotherSessionIdThrows() async throws {
+    let store = try withImage(folder())
+    try await begin(store)
+    let during = store.inputs
+    let couldUndo = store.canUndo
+    #expect(throws: ControlError.localEditChanged) {
+      try store.confirmLocalEdit(
+        sessionID: UUID(), montage: pictureData(width: Self.width, height: Self.height), name: "montage.png")
+    }
+    #expect(store.inputs == during)
     #expect(store.canUndo == couldUndo)
   }
 
@@ -180,7 +202,7 @@ struct ControlStoreLocalEditTests {
     try await begin(store)
     let session = try #require(store.inputs.localEdit)
     let crop = store.inputs.image
-    try store.confirmLocalEdit(montage: pictureData(width: Self.width, height: Self.height), name: "montage.png")
+    try confirm(store)
     store.undo()
     #expect(store.inputs.localEdit == session)
     #expect(store.inputs.image == crop)
@@ -313,7 +335,7 @@ struct ControlStoreLocalEditTests {
     #expect(changes.count == 4 && changes.last?.old == id && changes.last?.new == nil)
     store.undo()
     #expect(changes.count == 5 && changes.last?.new == id)
-    try store.confirmLocalEdit(montage: pictureData(width: Self.width, height: Self.height), name: "montage.png")
+    try confirm(store)
     #expect(changes.count == 6 && changes.last?.old == id && changes.last?.new == nil)
     store.undo()
     #expect(changes.count == 7 && changes.last?.new == id)

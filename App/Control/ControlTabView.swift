@@ -76,9 +76,10 @@ struct ControlTabView: View {
   private var undoShortcuts: some View {
     HStack {
       Button { control.undo() } label: { EmptyView() }
-        .keyboardShortcut("z", modifiers: .command).disabled(!control.canUndo)
+        .keyboardShortcut("z", modifiers: .command).disabled(!control.canUndo || generation.isConfirmingLocalEdit)
       Button { control.redo() } label: { EmptyView() }
-        .keyboardShortcut("z", modifiers: [.command, .shift]).disabled(!control.canRedo)
+        .keyboardShortcut("z", modifiers: [.command, .shift])
+        .disabled(!control.canRedo || generation.isConfirmingLocalEdit)
     }
     .opacity(0).frame(width: 0, height: 0).accessibilityHidden(true)
   }
@@ -89,7 +90,7 @@ struct ControlTabView: View {
         systemImage: "info.circle", text: ControlText.notice(notice), tint: .secondary,
         close: { control.dismissNotice() }
       ) {
-        if control.canUndo { compactButton("control.undo") { control.undo() } }
+        if control.canUndo, !generation.isConfirmingLocalEdit { compactButton("control.undo") { control.undo() } }
       }
     }
     if let message {

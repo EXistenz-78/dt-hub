@@ -46,6 +46,8 @@ final class GenerationController {
   private(set) var lockedRatio: Double?
   /// The pixel size of each result's file, read once for the list of local-edit attempts.
   @ObservationIgnored var localEditPixelSizes: [GeneratedImage.ID: (width: Int, height: Int)] = [:]
+  /// True while a local edit is being confirmed: the history, the session's buttons and the project stay as they are.
+  var isConfirmingLocalEdit = false
   /// The RUN. Its pictures go to the open project's folder and its strip is the project's (`ProjectManager`).
   let session: GenerationSession
   /// The link to Draw Things: the chosen model, the catalog and the backend every method here reads.
@@ -381,7 +383,7 @@ final class GenerationController {
 
   /// True while the project cannot change: a RUN, its preparation or a pipeline is under way.
   func isBusyForProjectSwitch() -> Bool {
-    session.isRunning || isPreparing || pipelinePass != nil || queueIsRunning()
+    session.isRunning || isPreparing || pipelinePass != nil || queueIsRunning() || isConfirmingLocalEdit
   }
 
   /// True while the queue is running its entries; set by the app next to the queue (`GenerationController+Queue.swift`).

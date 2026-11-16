@@ -41,9 +41,16 @@ extension GenerationController {
 
   /// Confirms the session with `attempt`: the montage of the whole image is saved as a result (with the
   /// attempt's job at the whole image's size), becomes the start image, and the other attempts go to the
-  /// Trash. Any failure before the Control store takes the montage leaves everything as it was.
-  func confirmLocalEdit(attempt: GeneratedImage) async throws(ControlError) {
-    guard let localEdit = control.inputs.localEdit else { return }
+  /// Trash. Any failure before the Control store takes the montage leaves everything as it was; a session
+  /// cancelled, undone or replaced meanwhile throws `localEditChanged` and nothing is put back. Returns the
+  /// attempts the Trash refused, one line each.
+  @discardableResult
+  func confirmLocalEdit(attempt: GeneratedImage) async throws(ControlError) -> [String] {
+    guard !isConfirmingLocalEdit, let localEdit = control.inputs.localEdit else { return [] }
+    isConfirmingLocalEdit = true
+    defer { isConfirmingLocalEdit = false }
+    let sessionID = localEdit.id
+    // The attempts the user saw when confirming; nothing made later goes to the Trash.
     let others = localEditAttempts.filter { $0.id != attempt.id }.map(\.id)
     let original = localEdit.original
     guard let request = control.originalPreviewRequest(maxPixel: max(original.pixelWidth, original.pixelHeight))
@@ -73,6 +80,7 @@ extension GenerationController {
     }.value
     let montage = try made.get()
     defer { try? FileManager.default.removeItem(at: montage.url) }
+    guard control.inputs.localEdit?.id == sessionID else { throw .localEditChanged }
 
     var parameters = attempt.job.parameters
     parameters.width = original.pixelWidth
@@ -82,10 +90,18 @@ extension GenerationController {
       parameters: parameters, imageStrength: attempt.job.imageStrength, moodboardCount: attempt.job.moodboardCount,
       maskSettings: attempt.job.maskSettings, videoFPS: attempt.job.videoFPS)
     guard await session.adopt(fileAt: montage.url, job: job) else { throw .unreadable(attemptName) }
+    let adopted = session.results.first?.id
 
+    // The montage belongs to this session only: when it changed meanwhile, the montage leaves again.
     let base = (original.name as NSString).deletingPathExtension
-    try control.confirmLocalEdit(montage: montage.data, name: "\(base) (local edit).png")
-    session.remove(Set(others))
+    do throws(ControlError) {
+      guard control.inputs.localEdit?.id == sessionID else { throw .localEditChanged }
+      try control.confirmLocalEdit(sessionID: sessionID, montage: montage.data, name: "\(base) (local edit).png")
+    } catch {
+      if let adopted { session.remove([adopted]) }
+      throw error
+    }
+    return session.remove(Set(others))
   }
 
   /// The size of a result's picture: read from its file (`image` is a reduced copy), once per result.

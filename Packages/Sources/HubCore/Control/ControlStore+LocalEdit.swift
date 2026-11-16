@@ -53,9 +53,9 @@ extension ControlStore {
 
   /// Puts the montage (the whole image with the retouch in it, PNG or other image bytes) as the start
   /// image, with the framing, mask, drawing, strength and fill from before the session, and closes it.
-  /// Nothing without a session.
-  public func confirmLocalEdit(montage data: Data, name: String) throws(ControlError) {
-    guard let session = inputs.localEdit else { return }
+  /// Refused with `localEditChanged` when the open session is not `sessionID` (or none is open).
+  public func confirmLocalEdit(sessionID: UUID, montage data: Data, name: String) throws(ControlError) {
+    guard let session = inputs.localEdit, session.id == sessionID else { throw .localEditChanged }
     let montage = try reference(from: data, name: name, source: .result)
     commit(closing(session, with: montage))
   }

@@ -29,13 +29,14 @@ struct LocalEditStage: View {
   @State private var drag: DragKind?
   /// The attempt shown: 0 is the newest.
   @State private var shownIndex = 0
-  @State private var isConfirming = false
   /// True while «Use the Crop» cuts the pictures.
   @State private var isBeginning = false
 
   @Environment(\.controlViewportHeight) private var viewportHeight
 
   private var control: ControlStore { generation.control }
+  /// True while the confirm is under way (kept by the controller, so it survives a change of mode).
+  private var isConfirming: Bool { generation.isConfirmingLocalEdit }
   /// The image the rectangle is drawn on: the original of the session, or the start image.
   private var original: ReferenceImage? { control.inputs.localEdit?.original ?? control.inputs.image }
 
@@ -303,12 +304,11 @@ struct LocalEditStage: View {
   }
 
   private func confirm(_ attempt: GeneratedImage?) {
-    guard let attempt else { return }
-    isConfirming = true
+    guard let attempt, !isConfirming else { return }
     Task {
-      defer { isConfirming = false }
       do throws(ControlError) {
-        try await generation.confirmLocalEdit(attempt: attempt)
+        let refused = try await generation.confirmLocalEdit(attempt: attempt)
+        if !refused.isEmpty { report(.error(refused.joined(separator: "; "))) }
       } catch {
         report(.error(ControlText.error(error)))
       }
