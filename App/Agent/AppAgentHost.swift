@@ -378,6 +378,9 @@ final class AppAgentHost: AgentHost {
 
   func clearStartImage() throws(AgentError) {
     guard generation.control.inputs.image != nil else { throw .invalid("There is no start image.") }
+    guard generation.control.inputs.localEdit == nil else {
+      throw .invalid("A local edit is open: confirm or cancel it in the Control tab before clearing the start image.")
+    }
     generation.control.removeImage()
   }
 

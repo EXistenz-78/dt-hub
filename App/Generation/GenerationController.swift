@@ -44,6 +44,8 @@ final class GenerationController {
   static let incrementalKey = "generation.incremental"
   /// Width ÷ height kept while `lockRatio` is on.
   private(set) var lockedRatio: Double?
+  /// The pixel size of each result's file, read once for the list of local-edit attempts.
+  @ObservationIgnored var localEditPixelSizes: [GeneratedImage.ID: (width: Int, height: Int)] = [:]
   /// The RUN. Its pictures go to the open project's folder and its strip is the project's (`ProjectManager`).
   let session: GenerationSession
   /// The link to Draw Things: the chosen model, the catalog and the backend every method here reads.
@@ -461,7 +463,8 @@ final class GenerationController {
           return
         }
         let made = await runPipeline(passes, presets: loadedPresets)
-        if incremental, let made, !Task.isCancelled { await useAsStart(made) }
+        // During a local edit the results are retouches of the crop: they never replace the start image.
+        if incremental, control.inputs.localEdit == nil, let made, !Task.isCancelled { await useAsStart(made) }
         return
       }
       let inputs = await renderInputs(parameters: parameters, model: selectedModel())
@@ -470,10 +473,10 @@ final class GenerationController {
       guard !Task.isCancelled, let inputs else { return }
       let before = session.results.first?.id
       start(inputs: inputs)
-      guard incremental else { return }
+      guard incremental, control.inputs.localEdit == nil else { return }
       await session.waitUntilFinished()
       if let made = IncrementalRun.output(
-        enabled: incremental, phase: session.phase, stopped: session.lastRunWasStopped, before: before,
+        enabled: incremental && control.inputs.localEdit == nil, phase: session.phase, stopped: session.lastRunWasStopped, before: before,
         results: session.results)
       {
         await useAsStart(made)

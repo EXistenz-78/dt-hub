@@ -53,6 +53,9 @@ struct DTHubApp: App {
     let selection = DefaultsProjectSelection()
     let generation = GenerationController(
       connection: connection, languageModel: languageModel, control: control, restoringProject: selection.currentName())
+    // The Generation tab's size follows a local edit that opens or closes; a session read back with the store is applied now.
+    control.onLocalEditChange = { [weak generation] old, new in generation?.localEditChanged(from: old, to: new) }
+    generation.applyLocalEditSize()
     // The queue follows the open project (its folder is set in `onOpen` below).
     let queueStore = QueueStore(folder: nil)
     let queueRunner = QueueRunner(
@@ -163,6 +166,8 @@ struct DTHubApp: App {
           // A session read back at launch (this project's) is more recent than the last image: it stays.
           if !generation.sessionWasRestored { generation.apply(ProjectImages.latestJob(in: project)) }
         }
+        // A local edit open in this project keeps the crop's size over the parameters just applied.
+        generation.applyLocalEditSize()
         generation.saveSessionNow()
         plugins.projectChanged(project, adoptLegacy: reason == .created(adoptsLegacy: true))
       })
