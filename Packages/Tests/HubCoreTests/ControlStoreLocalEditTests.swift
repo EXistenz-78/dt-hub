@@ -249,6 +249,48 @@ struct ControlStoreLocalEditTests {
     #expect(store.inputs.localEdit?.matchColors == false)
   }
 
+  @Test func aQueueEntryCapturedDuringASessionHasNoSession() throws {
+    let root = folder()
+    let store = try withImage(root)
+    try begin(store)
+    let captured = try store.captureForQueue(into: root.appendingPathComponent("Entry"))
+    #expect(captured.localEdit == nil)
+    #expect(captured.image == store.inputs.image)
+    #expect(store.inputs.localEdit != nil)
+  }
+
+  @Test func aQueueEntryOfTheCropRunsAndKeepsTheSession() throws {
+    let root = folder()
+    let entry = root.appendingPathComponent("Entry")
+    let store = try withImage(root)
+    try begin(store)
+    let session = try #require(store.inputs.localEdit)
+    store.setStrength(0.4)
+    let captured = try store.captureForQueue(into: entry)
+    store.setStrength(0.9)
+    try addMask(store, at: CGPoint(x: 100, y: 100))
+    try store.restoreFromQueue(captured, from: entry)
+    #expect(store.inputs.localEdit == session)
+    #expect(store.inputs.image == captured.image)
+    #expect(store.inputs.mask == nil)
+    #expect(store.inputs.strength == 0.4)
+  }
+
+  @Test func aQueueEntryOfAnotherImageIsRefusedDuringASession() throws {
+    let root = folder()
+    let entry = root.appendingPathComponent("Entry")
+    let other = store(in: folder())
+    try other.setImage(data: pictureData(width: 64, height: 64), name: "other.png", source: .pasteboard)
+    let captured = try other.captureForQueue(into: entry)
+    let store = try withImage(root)
+    try begin(store)
+    let during = store.inputs
+    let files = copies(in: root)
+    #expect(throws: ControlError.localEditOpen) { try store.restoreFromQueue(captured, from: entry) }
+    #expect(store.inputs == during)
+    #expect(copies(in: root) == files)
+  }
+
   @Test func theChangeIsReportedForEveryWay() throws {
     let (a, b) = (folder(), folder())
     let store = try withImage(a)
