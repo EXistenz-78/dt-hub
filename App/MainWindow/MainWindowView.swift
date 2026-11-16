@@ -109,8 +109,10 @@ private struct PluginContextFeeder: View {
     let key = contextKey
     Color.clear
       .task(id: key) {
+        // An empty list of models: the server is stopped or not reached yet, and the model chosen before still counts.
         plugins.updateContext(
-          model: key.model, family: key.family, isEditModel: key.isEditModel, parameters: generation.parameters)
+          model: key.model, family: key.family, isEditModel: key.isEditModel, parameters: generation.parameters,
+          catalogIsKnown: !connection.monitor.catalog.models.isEmpty)
         workspace.setPluginTabs(plugins.activeTabs)
       }
   }

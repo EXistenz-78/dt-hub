@@ -291,12 +291,19 @@ public final class PluginRegistry: PluginHosting {
 
   /// The model or its parameters changed: active plug-ins hear about it.
   /// `isEditModel` is nil while the model is unknown.
+  ///
+  /// `catalogIsKnown` is false while the server gives no list of models (it is stopped, or was not reached yet). The
+  /// model chosen before then still counts: an unknown model works with every plug-in, and stopping the server (to
+  /// free the memory for the language model) would otherwise put the tab of every plug-in in the bar.
   public func updateContext(
-    model: String?, family: String?, isEditModel: Bool? = nil, parameters: GenerationParameters
+    model: String?, family: String?, isEditModel: Bool? = nil, parameters: GenerationParameters,
+    catalogIsKnown: Bool = true
   ) {
-    self.model = model
-    self.family = family
-    self.isEditModel = isEditModel
+    if catalogIsKnown || model != nil {
+      self.model = model
+      self.family = family
+      self.isEditModel = isEditModel
+    }
     latestParameters = parameters
     sendContextToActivePlugins()
   }

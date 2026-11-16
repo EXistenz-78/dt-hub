@@ -338,6 +338,27 @@ struct PluginRegistryTests {
     #expect(registry.activeTabs.map(\.title) == ["A"], "an unknown family: everything applies")
   }
 
+  @Test func theTabsStayAsTheyAreWhileTheServerIsDown() throws {
+    try PluginFixture.bundle(in: root, id: "a", name: "A")
+    try PluginFixture.bundle(in: root, id: "b", name: "B")
+    let loader = FakeLoader()
+    loader.families["a"] = ["qwen21"]
+    loader.families["b"] = ["flux2_9b"]
+    let registry = registry(loader: loader, enabled: ["a", "b"])
+    registry.start()
+    registry.updateContext(model: "q.ckpt", family: "qwen21", isEditModel: true, parameters: GenerationParameters())
+    #expect(registry.activeTabs.map(\.title) == ["A"])
+    // The image server was stopped (to free the memory for the language model): its catalog is empty, the model unknown.
+    registry.updateContext(
+      model: nil, family: nil, isEditModel: nil, parameters: GenerationParameters(steps: 8), catalogIsKnown: false)
+    #expect(registry.activeTabs.map(\.title) == ["A"], "the model chosen before still counts")
+    #expect(registry.model == "q.ckpt")
+    #expect(registry.isEditModel == true)
+    // The server is back with another model chosen.
+    registry.updateContext(model: "f.ckpt", family: "flux2_9b", parameters: GenerationParameters())
+    #expect(registry.activeTabs.map(\.title) == ["B"])
+  }
+
   @Test func aPluginThatNeedsAnEditModelHasNoTabWithAnotherModel() throws {
     try PluginFixture.bundle(in: root, id: "a", name: "A")
     let loader = FakeLoader()
