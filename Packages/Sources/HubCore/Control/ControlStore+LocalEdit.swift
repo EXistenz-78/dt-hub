@@ -76,6 +76,13 @@ extension ControlStore {
     return storage.image(named: image.fileName, maxPixel: maxPixel ?? max(image.pixelWidth, image.pixelHeight))
   }
 
+  /// The preview of the whole image of the open session (or of the start image without one), to be
+  /// decoded away from the main actor.
+  public func originalPreviewRequest(maxPixel: Int) -> PreviewRequest? {
+    guard let image = inputs.localEdit?.original ?? inputs.image else { return nil }
+    return PreviewRequest(storage: storage, fileName: image.fileName, maxPixel: maxPixel)
+  }
+
   /// The inputs with `image` as the start image and the state the session remembers.
   private func closing(_ session: LocalEditSession, with image: ReferenceImage) -> ControlInputs {
     var next = inputs

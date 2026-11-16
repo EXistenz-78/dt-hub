@@ -3,11 +3,12 @@ import HubCore
 import HubKit
 import SwiftUI
 
-/// The canvas (spec: tab Control §3, §5), in two modes. **Canvas** shows the start image with the
+/// The canvas (spec: tab Control §3, §5), in three modes. **Canvas** shows the start image with the
 /// part that is cut off darkened; dragging moves the cut along the axis that is cropped. **Draw**
 /// shows the canvas as Draw Things will get it, with the tools: Mask + (paints the area to
 /// regenerate, in orange), Mask − (takes it away) and Brush (draws in colour on the image).
-/// Each stroke is one step of the tab's history (⌘Z).
+/// Each stroke is one step of the tab's history (⌘Z). **Local Editing** (`LocalEditStage`, only in the card) crops a
+/// part of the start image to retouch and puts it back.
 struct CanvasStage: View {
   let generation: GenerationController
   let connection: DrawThingsConnection
@@ -19,7 +20,7 @@ struct CanvasStage: View {
   var isInOwnWindow = false
 
   private enum Mode: Hashable {
-    case canvas, draw
+    case canvas, draw, localEdit
   }
 
   @State private var picture: CGImage?
@@ -88,7 +89,9 @@ struct CanvasStage: View {
         if let image = control.inputs.image {
           modePicker
           if mode == .draw { tools }
-          if mode == .canvas {
+          if mode == .localEdit {
+            LocalEditStage(generation: generation, connection: connection, report: report)
+          } else if mode == .canvas {
             stage(for: image)
             zoomRow(for: image)
             rotationRow
@@ -140,11 +143,12 @@ struct CanvasStage: View {
       canvasHeight: canvasHeight, framing: control.inputs.framing)
   }
 
-  /// The two modes, as wide as the card: the top of the card's hierarchy.
+  /// The three modes, as wide as the card: the top of the card's hierarchy. Local Editing needs a start image.
   private var modePicker: some View {
     HStack(spacing: 2) {
       modeButton("control.stage.mode.canvas", .canvas)
       modeButton("control.stage.mode.draw", .draw)
+      modeButton("control.stage.mode.localEdit", .localEdit).disabled(control.inputs.image == nil)
     }
     .padding(2)
     .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(Color.primary.opacity(0.08)))
