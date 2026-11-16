@@ -67,7 +67,14 @@ struct LocalEditStage: View {
     .onChange(of: attempts.count) { old, new in
       if new > old { shownIndex = 0 }
     }
-    .onChange(of: control.inputs.localEdit?.id) { drawn = nil }
+    .onChange(of: control.inputs.localEdit?.id) {
+      drawn = nil
+      montage = nil
+    }
+    // A rectangle drawn on another image means nothing on this one.
+    .onChange(of: original?.fileName) { drawn = nil }
+    // The picture never shows an attempt other than the one the counter says.
+    .onChange(of: shownAttempt(in: attempts)?.id) { montage = nil }
     .background { escapeShortcut }
   }
 

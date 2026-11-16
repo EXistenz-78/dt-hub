@@ -455,6 +455,9 @@ final class GenerationController {
     isPreparing = true
     isPipelineRunning = passes != nil
     let guidedOwner = contributions?.pipeline?.pluginID
+    // During a local edit the results are retouches of the crop: they never replace the start image, also when the
+    // session closes before the RUN ends.
+    let startedInLocalEdit = control.inputs.localEdit != nil
     preparation = Task {
       // Memory first: the language model leaves, a server parked for it comes back.
       await languageModel.prepareForRun()
@@ -465,8 +468,9 @@ final class GenerationController {
           return
         }
         let made = await runPipeline(passes, presets: loadedPresets)
-        // During a local edit the results are retouches of the crop: they never replace the start image.
-        if incremental, control.inputs.localEdit == nil, let made, !Task.isCancelled { await useAsStart(made) }
+        if incremental, !startedInLocalEdit, control.inputs.localEdit == nil, let made, !Task.isCancelled {
+          await useAsStart(made)
+        }
         return
       }
       let inputs = await renderInputs(parameters: parameters, model: selectedModel())
@@ -475,10 +479,10 @@ final class GenerationController {
       guard !Task.isCancelled, let inputs else { return }
       let before = session.results.first?.id
       start(inputs: inputs)
-      guard incremental, control.inputs.localEdit == nil else { return }
+      guard incremental, !startedInLocalEdit, control.inputs.localEdit == nil else { return }
       await session.waitUntilFinished()
       if let made = IncrementalRun.output(
-        enabled: incremental && control.inputs.localEdit == nil, phase: session.phase, stopped: session.lastRunWasStopped, before: before,
+        enabled: incremental && !startedInLocalEdit && control.inputs.localEdit == nil, phase: session.phase, stopped: session.lastRunWasStopped, before: before,
         results: session.results)
       {
         await useAsStart(made)

@@ -149,6 +149,10 @@ public final class ControlStore {
       loaded.image = nil
       loaded.framing = Framing()
       notice = .missingAtLaunch(name: image.name)
+      // The crop of a local edit is gone but the whole image is there: it comes back, as with a cancel.
+      if let session = loaded.localEdit, storage.exists(session.original.fileName) {
+        loaded = Self.closing(session, with: session.original, in: loaded)
+      }
     }
     if let mask = loaded.mask, !storage.exists(mask.fileName) {
       loaded.mask = nil

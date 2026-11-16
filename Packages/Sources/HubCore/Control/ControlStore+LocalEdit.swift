@@ -82,6 +82,11 @@ extension ControlStore {
 
   /// The inputs with `image` as the start image and the state the session remembers.
   private func closing(_ session: LocalEditSession, with image: ReferenceImage) -> ControlInputs {
+    Self.closing(session, with: image, in: inputs)
+  }
+
+  /// `inputs` with `image` as the start image and the state the session remembers.
+  static func closing(_ session: LocalEditSession, with image: ReferenceImage, in inputs: ControlInputs) -> ControlInputs {
     var next = inputs
     next.image = image
     next.framing = session.framing

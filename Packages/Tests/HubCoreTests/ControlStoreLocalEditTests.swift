@@ -256,6 +256,29 @@ struct ControlStoreLocalEditTests {
     #expect(reloaded.originalImage(maxPixel: nil)?.width == Self.width)
   }
 
+  @Test func aMissingCropPutsTheOriginalBackAtLoad() async throws {
+    let root = folder()
+    let store = try withImage(root)
+    try addMask(store)
+    store.setZoom(20)
+    store.setStrength(0.7)
+    let before = store.inputs
+    try await begin(store)
+    store.setStrength(0.3)
+    let crop = try #require(store.inputs.image)
+    try FileManager.default.removeItem(
+      at: root.appendingPathComponent("Control", isDirectory: true).appendingPathComponent(crop.fileName))
+    let reloaded = self.store(in: root)
+    #expect(reloaded.inputs.localEdit == nil)
+    #expect(reloaded.inputs.image == before.image)
+    #expect(reloaded.inputs.framing == before.framing)
+    #expect(reloaded.inputs.mask == before.mask)
+    #expect(reloaded.inputs.paint == before.paint)
+    #expect(reloaded.inputs.strength == 0.7)
+    #expect(reloaded.inputs.marginFill == before.marginFill)
+    #expect(reloaded.notice == .missingAtLaunch(name: crop.name))
+  }
+
   @Test func matchColorsIsOutsideTheHistory() async throws {
     let store = try withImage(folder())
     try await begin(store)
