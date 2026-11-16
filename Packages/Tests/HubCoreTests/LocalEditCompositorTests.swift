@@ -80,6 +80,17 @@ import Testing
     for c in pixel(out, 512, 384) { #expect(c <= 9) }
   }
 
+  @Test func theRetouchLandsTheRightWayUp() {
+    let original = grey(1024, 768, 100)
+    let retouch = picture(512, 512) { x, y in (UInt8(x % 256), UInt8(y / 2), 50) }
+    let rect = PixelRect(x: 128, y: 0, width: 512, height: 512)
+    let out = LocalEditCompositor.montage(
+      original: original, retouch: retouch, rect: rect, matchColors: false)!
+    #expect(pixel(out, rect.x + 300, rect.y + 60) == pixel(retouch, 300, 60))
+    #expect(pixel(out, rect.x + 100, rect.y + 400) == pixel(retouch, 100, 400))
+    #expect(pixel(out, rect.x + 300, rect.y + 512) == [100, 100, 100])
+  }
+
   @Test func aRetouchOfAnotherSizeIsRefused() {
     let rect = PixelRect(x: 0, y: 0, width: 512, height: 512)
     #expect(
@@ -95,7 +106,9 @@ import Testing
     #expect(crop?.width == 256 && crop?.height == 192)
   }
 
-  @Test func aBigPasteIsFast() {
+  /// Release timing measured at 0.34 s; a debug build needs about 10 s, so it only runs on request.
+  @Test(.enabled(if: ProcessInfo.processInfo.environment["DTHUB_SLOW_TESTS"] != nil))
+  func aBigPasteIsFast() {
     let original = grey(8192, 5000, 120)
     let retouch = grey(4096, 4096, 90)
     let start = Date()
