@@ -201,12 +201,15 @@ public struct ControlInputs: Equatable, Codable, Sendable {
   /// What fills the margins when the image is smaller than the canvas. nil = automatic: from the
   /// LoRAs of the job (`MarginFill.automatic`). The user's choice, once made, wins.
   public var marginFill: MarginFill?
+  /// The local edit in progress (a crop being retouched). Like the mask, it goes when the image goes.
+  public var localEdit: LocalEditSession?
 
   public init(
     image: ReferenceImage? = nil, framing: Framing = Framing(), strength: Double? = nil,
     moodboard: [MoodboardEntry] = [], mask: MaskReference? = nil, maskSettings: MaskSettings = MaskSettings(),
-    paint: PaintReference? = nil, marginFill: MarginFill? = nil
+    paint: PaintReference? = nil, marginFill: MarginFill? = nil, localEdit: LocalEditSession? = nil
   ) {
+    self.localEdit = localEdit
     self.marginFill = marginFill
     self.paint = paint
     self.mask = mask
@@ -234,6 +237,7 @@ public struct ControlInputs: Equatable, Codable, Sendable {
     mask = image == nil ? nil : try? container.decodeIfPresent(MaskReference.self, forKey: .mask)
     maskSettings = (try? container.decodeIfPresent(MaskSettings.self, forKey: .maskSettings)) ?? MaskSettings()
     paint = image == nil ? nil : try? container.decodeIfPresent(PaintReference.self, forKey: .paint)
+    localEdit = image == nil ? nil : try? container.decodeIfPresent(LocalEditSession.self, forKey: .localEdit)
     moodboard = ((try? container.decodeIfPresent([Lossy<MoodboardEntry>].self, forKey: .moodboard)) ?? [])
       .compactMap(\.value)
   }
