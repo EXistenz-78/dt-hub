@@ -8,6 +8,7 @@ enum ControlText {
     switch error {
     case .unreadable(let name): String(format: String(localized: "control.error.unreadable"), name)
     case .cannotSave(let detail): String(format: String(localized: "control.error.cannotSave"), detail)
+    case .localEditOpen: String(localized: "control.notice.localEditOpen")
     }
   }
 
@@ -29,6 +30,7 @@ enum ControlText {
     case .missingAtLaunch(let name): String(format: String(localized: "control.notice.missing"), name)
     case .maskMissingAtLaunch: String(localized: "control.notice.maskMissing")
     case .paintMissingAtLaunch: String(localized: "control.notice.paintMissing")
+    case .localEditOpen: String(localized: "control.notice.localEditOpen")
     }
   }
 

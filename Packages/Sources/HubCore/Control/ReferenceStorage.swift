@@ -9,6 +9,8 @@ public enum ControlError: Error, Equatable, Sendable {
   case unreadable(String)
   /// The copy could not be written (disk full, folder not writable); the detail says why.
   case cannotSave(String)
+  /// A local edit is open: the start image cannot be replaced until it is confirmed or cancelled.
+  case localEditOpen
 }
 
 /// A copy that was just written.

@@ -17,6 +17,8 @@ public enum ControlNotice: Equatable, Sendable {
   case paintMissingAtLaunch
   /// At launch the copy of the saved image was gone.
   case missingAtLaunch(name: String)
+  /// The start image was not replaced or removed: a local edit is open.
+  case localEditOpen
 }
 
 /// A reason to look before pressing RUN; shown in the strip.
@@ -110,6 +112,10 @@ public final class ControlStore {
   @ObservationIgnored private var undoStack: [ControlInputs] = []
   @ObservationIgnored private var redoStack: [ControlInputs] = []
 
+  /// Called when a local edit opens or closes (by any way: beginning, confirming, cancelling, undo, redo, another
+  /// project), with the session before and after. Not called for the state read at launch.
+  @ObservationIgnored public var onLocalEditChange: ((_ old: LocalEditSession?, _ new: LocalEditSession?) -> Void)?
+
   /// Restores `fileURL` (an image whose copy is gone is dropped, with a notice) and sweeps the
   /// copies nothing refers to.
   public init(storage: any ReferenceStorage, fileURL: URL, undoLimit: Int = 20) {
@@ -130,7 +136,9 @@ public final class ControlStore {
     redoStack = []
     historyVersion += 1
     notice = nil
+    let old = inputs.localEdit
     loadFromDisk()
+    reportLocalEditChange(from: old)
   }
 
   /// Reads `fileURL` into `inputs`, saves it back and sweeps the copies nothing refers to.
@@ -149,6 +157,11 @@ public final class ControlStore {
     if let paint = loaded.paint, !storage.exists(paint.fileName) {
       loaded.paint = nil
       notice = .paintMissingAtLaunch
+    }
+    if let session = loaded.localEdit, loaded.image == nil || !storage.exists(session.original.fileName) {
+      // Without the whole image the crop cannot be put back: it stays as a plain start image.
+      loaded.localEdit = nil
+      if loaded.image != nil { notice = .missingAtLaunch(name: session.original.name) }
     }
     for entry in loaded.moodboard where !storage.exists(entry.image.fileName) {
       loaded.moodboard.removeAll { $0.id == entry.id }
@@ -180,8 +193,10 @@ public final class ControlStore {
 
   /// Takes a picture from its bytes: copies it, describes it, and makes it the start image
   /// (the one there was, if any, can be brought back with `undo`). The framing starts centered.
+  /// Refused while a local edit is open.
   @discardableResult
   public func setImage(data: Data, name: String, source: ReferenceImage.Source) throws(ControlError) -> UUID {
+    guard inputs.localEdit == nil else { throw .localEditOpen }
     let image = try reference(from: data, name: name, source: source)
     var next = inputs
     next.image = image
@@ -210,8 +225,13 @@ public final class ControlStore {
     try setImage(data: data, name: name, source: source ?? .file(path: url.path))
   }
 
+  /// Refused, with a notice, while a local edit is open.
   public func removeImage() {
     guard let image = inputs.image else { return }
+    guard inputs.localEdit == nil else {
+      notice = .localEditOpen
+      return
+    }
     var next = inputs
     next.image = nil
     next.framing = Framing()
@@ -221,9 +241,13 @@ public final class ControlStore {
     notice = .removed(name: image.name)
   }
 
-  /// Takes everything out of the tab.
+  /// Takes everything out of the tab. Refused, with a notice, while a local edit is open.
   public func clear() {
     guard inputs != ControlInputs() else { return }
+    guard inputs.localEdit == nil else {
+      notice = .localEditOpen
+      return
+    }
     commit(ControlInputs())
     notice = .cleared
   }
@@ -395,6 +419,13 @@ public final class ControlStore {
     save()
   }
 
+  /// Whether the retouched crop is colour-matched when it is put back; not part of the history.
+  public func setLocalEditMatchColors(_ on: Bool) {
+    guard inputs.localEdit != nil else { return }
+    inputs.localEdit?.matchColors = on
+    save()
+  }
+
   // MARK: Strength and framing (not part of the history)
 
   /// nil goes back to the automatic strength.
@@ -465,11 +496,14 @@ public final class ControlStore {
     redoStack.append(inputs)
     previous.moodboard = Self.keepingSwitchesAndOrder(of: inputs.moodboard, in: previous.moodboard)
     Self.keepingSettings(of: inputs, in: &previous)
+    Self.keepingMatchColors(of: inputs, in: &previous)
+    let old = inputs.localEdit
     inputs = previous
     historyVersion += 1
     notice = nil
     save()
     collectGarbage()
+    reportLocalEditChange(from: old)
   }
 
   public func redo() {
@@ -477,11 +511,14 @@ public final class ControlStore {
     undoStack.append(inputs)
     next.moodboard = Self.keepingSwitchesAndOrder(of: inputs.moodboard, in: next.moodboard)
     Self.keepingSettings(of: inputs, in: &next)
+    Self.keepingMatchColors(of: inputs, in: &next)
+    let old = inputs.localEdit
     inputs = next
     historyVersion += 1
     notice = nil
     save()
     collectGarbage()
+    reportLocalEditChange(from: old)
   }
 
   public func dismissNotice() {
@@ -548,7 +585,7 @@ public final class ControlStore {
   // MARK: Private
 
   /// Copies the bytes into the Control folder and describes the picture.
-  private func reference(
+  func reference(
     from data: Data, name: String, source: ReferenceImage.Source
   ) throws(ControlError) -> ReferenceImage {
     let stored = try storage.save(data, name: name)
@@ -585,6 +622,19 @@ public final class ControlStore {
     restored.marginFill = current.marginFill
   }
 
+  /// The colour-match switch of a local edit is not a step of the history: a state of the same session brought
+  /// back by undo or redo keeps the value it has now.
+  private static func keepingMatchColors(of current: ControlInputs, in restored: inout ControlInputs) {
+    guard let now = current.localEdit, restored.localEdit?.id == now.id else { return }
+    restored.localEdit?.matchColors = now.matchColors
+  }
+
+  /// Tells `onLocalEditChange` when the open session is another one than `old`.
+  private func reportLocalEditChange(from old: LocalEditSession?) {
+    guard old?.id != inputs.localEdit?.id else { return }
+    onLocalEditChange?(old, inputs.localEdit)
+  }
+
   nonisolated static func pngData(of image: CGImage) -> Data? {
     let data = NSMutableData()
     guard let destination = CGImageDestinationCreateWithData(data, UTType.png.identifier as CFString, 1, nil)
@@ -594,6 +644,7 @@ public final class ControlStore {
   }
 
   func commit(_ next: ControlInputs) {
+    let old = inputs.localEdit
     undoStack.append(inputs)
     if undoStack.count > undoLimit { undoStack.removeFirst(undoStack.count - undoLimit) }
     redoStack = []
@@ -602,6 +653,7 @@ public final class ControlStore {
     notice = nil
     save()
     collectGarbage()
+    reportLocalEditChange(from: old)
   }
 
   private func save() {
@@ -621,6 +673,12 @@ public final class ControlStore {
       if let image = state.image { referenced.insert(image.fileName) }
       if let mask = state.mask { referenced.insert(mask.fileName) }
       if let paint = state.paint { referenced.insert(paint.fileName) }
+      if let session = state.localEdit {
+        // What a cancel or a confirm puts back.
+        referenced.insert(session.original.fileName)
+        if let mask = session.mask { referenced.insert(mask.fileName) }
+        if let paint = session.paint { referenced.insert(paint.fileName) }
+      }
       for entry in state.moodboard { referenced.insert(entry.image.fileName) }
     }
     for name in storage.allFileNames() where !referenced.contains(name) { storage.remove(name) }

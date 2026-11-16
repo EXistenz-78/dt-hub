@@ -2534,6 +2534,23 @@
         }
       }
     },
+    "control.notice.localEditOpen": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirm or cancel the local edit first"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conferma o annulla prima l'Editing locale"
+          }
+        }
+      }
+    },
     "control.notice.maskMissing": {
       "extractionState": "manual",
       "localizations": {
