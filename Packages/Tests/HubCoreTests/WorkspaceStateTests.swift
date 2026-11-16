@@ -198,4 +198,14 @@ struct WorkspaceStateTests {
     state.detach(WorkspaceTab.controlID)
     #expect(defaults.string(forKey: WorkspaceState.selectedTabKey) == WorkspaceTab.controlID)
   }
+
+  @Test func attachingDoesNotChangeTheRememberedTab() {
+    let defaults = UserDefaults(suiteName: "WorkspaceStateTests-\(UUID())")!
+    let state = state(defaults)
+    state.select(WorkspaceTab.generationID)
+    state.detach(WorkspaceTab.controlID)
+    state.attach(WorkspaceTab.controlID)   // as when the app quits with the tab's window open
+    #expect(state.selectedTabID == WorkspaceTab.controlID)
+    #expect(defaults.string(forKey: WorkspaceState.selectedTabKey) == WorkspaceTab.generationID)
+  }
 }

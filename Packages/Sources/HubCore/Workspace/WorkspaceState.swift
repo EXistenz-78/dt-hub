@@ -53,10 +53,11 @@ public final class WorkspaceState {
     if selectedTabID == id { selectedTabID = replacementTabID }
   }
 
-  /// The tab's window closed: the tab is back in the main window, and open there (when it still exists).
+  /// The tab's window closed: the tab is back in the main window, and open there (when it still exists). The tab
+  /// remembered for the next launch does not change: the windows also close when the app quits.
   public func attach(_ id: WorkspaceTab.ID) {
-    guard detachedTabIDs.remove(id) != nil else { return }
-    select(id)
+    guard detachedTabIDs.remove(id) != nil, tabs.contains(where: { $0.id == id }) else { return }
+    selectedTabID = id
   }
 
   /// The tabs the main window can show.

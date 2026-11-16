@@ -258,6 +258,7 @@ struct DTHubApp: App {
       }
     }
     .windowResizability(.contentMinSize)
+    .defaultSize(TabWindow.defaultSize)
     .restorationBehavior(.disabled)
     .commandsRemoved()
 

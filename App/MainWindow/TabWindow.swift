@@ -7,7 +7,9 @@ import SwiftUI
 /// open the tab stays in the bar, in orange, and the main window does not show it; closing the window brings it back.
 enum TabWindow {
   static let id = "tab"
-  static let minSize = CGSize(width: 520, height: 420)
+  /// The tabs are made for the main window: a tab's own window gives them at least the room they have there.
+  static let minSize = CGSize(width: 880, height: 540)
+  static let defaultSize = CGSize(width: 1000, height: 760)
 }
 
 /// What a tab shows: the main window uses it for the open tab, a tab's own window for its tab.
@@ -65,7 +67,8 @@ struct TabWindowView: View {
       }
       .padding(20)
       .frame(
-        minWidth: TabWindow.minSize.width, idealWidth: 900, minHeight: TabWindow.minSize.height, idealHeight: 760
+        minWidth: TabWindow.minSize.width, idealWidth: TabWindow.defaultSize.width,
+        minHeight: TabWindow.minSize.height, idealHeight: TabWindow.defaultSize.height
       )
       .background(DSBackground())
       .background(DSWindowConfigurator())
