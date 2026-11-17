@@ -24,7 +24,7 @@ Objective-C selectors and JSON messages (see `docs/superpowers/specs/2026-10-03-
 The manifest also says which models the plug-in is for: `families` (model families; nil = all) and, since DT Hub 0.3.0,
 `requiresEditModel: true` for a plug-in that only makes sense with an edit or in-context model (one that takes pictures as
 references: FLUX.2 [klein], Qwen Image Edit, Kontext…). With any other model DT Hub switches the plug-in off and hides its
-tab. An older DT Hub ignores the key and keeps the plug-in on.
+tab. An older DT Hub ignores the key and keeps the plug-in on. A model also counts as an edit model while an Edit-category LoRA is selected, so such a plug-in stays on then too.
 
 The bundle is added in DT Hub › Preferences › Plug-ins.
 
