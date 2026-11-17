@@ -103,12 +103,12 @@ struct DTHubApp: App {
     }
     plugins.currentParameters = { generation.parameters }
     plugins.setLoRAWeights = { file, low, base, high in
-      guard let lora = connection.monitor.serverCatalog.loras.first(where: { $0.file == file }) else { return false }
+      guard let lora = LoRAOverrides.target(file: file, in: connection.monitor.serverCatalog) else { return false }
       connection.monitor.loraOverrides.setWeights(min: low, base: base, max: high, for: lora)
       return true
     }
     plugins.setLoRASettings = { file, update in
-      guard let lora = connection.monitor.serverCatalog.loras.first(where: { $0.file == file }) else { return false }
+      guard let lora = LoRAOverrides.target(file: file, in: connection.monitor.serverCatalog) else { return false }
       connection.monitor.loraOverrides.apply(update, for: lora)
       return true
     }

@@ -85,6 +85,14 @@ public struct LoRAOverrides: Equatable, Sendable {
   /// True when the user changed the trigger word or the weight of this LoRA.
   public func isChanged(_ lora: CatalogLoRA) -> Bool { entries[lora.file] != nil }
 
+  /// The LoRA a plug-in means by `file`. With a server that lists LoRAs, one it does not list is refused (a typo). With no
+  /// LoRAs listed (the server is stopped or parked for the language model) the file is taken as it is: a plug-in still
+  /// shows the list it saw, and the entries of LoRAs the server does not list are kept for when it is back.
+  public static func target(file: String, in serverCatalog: ModelCatalog) -> CatalogLoRA? {
+    if let listed = serverCatalog.loras.first(where: { $0.file == file }) { return listed }
+    return serverCatalog.loras.isEmpty ? CatalogLoRA(file: file, name: file, family: nil) : nil
+  }
+
   /// True when the user changed the trigger word, the weight or its limits: what Manage LoRAs shows and can reset.
   public func hasManagerChanges(_ lora: CatalogLoRA) -> Bool {
     guard let entry = entries[lora.file] else { return false }

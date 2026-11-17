@@ -236,6 +236,22 @@ struct LoRAOverridesTests {
     #expect(lora[1].category == nil && lora[1].steps == nil && lora[1].guidance == nil && lora[1].shift == nil)
   }
 
+  @Test func aPluginCanEditALoRAWhileTheServerListsNone() {
+    // The server is stopped or parked: its catalog is empty, but the plug-in still shows the LoRAs it saw.
+    let target = LoRAOverrides.target(file: fox.file, in: catalog([]))
+    #expect(target?.file == fox.file && target?.trigger == "")
+    var overrides = LoRAOverrides()
+    overrides.apply(LoRASettingsUpdate(trigger: .set("my fox"), category: .set("style")), for: target!)
+    #expect(overrides.entries[fox.file]?.trigger == "my fox" && overrides.entries[fox.file]?.category == "style")
+    // Once the server is back the user's trigger wins, as for any other override.
+    #expect(overrides.apply(to: catalog([fox])).loras.first?.trigger == "my fox")
+  }
+
+  @Test func aListedLoRAIsFoundAndAnUnknownOneIsRefusedWhenTheServerListsSome() {
+    #expect(LoRAOverrides.target(file: fox.file, in: catalog([fox, bare]))?.trigger == "foxstyle")
+    #expect(LoRAOverrides.target(file: "typo.ckpt", in: catalog([fox, bare])) == nil)
+  }
+
   @Test func anEntryWithOnlyACategoryIsChanged() {
     var overrides = LoRAOverrides()
     overrides.apply(LoRASettingsUpdate(category: .set("slider")), for: fox)
