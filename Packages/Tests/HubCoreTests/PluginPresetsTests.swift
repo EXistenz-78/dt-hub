@@ -180,6 +180,16 @@ struct PluginPresetsRoutingTests {
     #expect(try await send(#"{"type":"loraSettings","file":"gone.ckpt","trigger":"x"}"#, loader)["type"] as? String == "error")
     #expect(try await send(#"{"type":"loraSettings","trigger":"x"}"#, loader)["type"] as? String == "error")
     #expect(seen.count == 2)
+    func last(_ json: String) async throws -> LoRASettingsUpdate {
+      _ = try await send(json, loader)
+      return seen[seen.count - 1].1
+    }
+    #expect(try await last(#"{"type":"loraSettings","file":"fox.ckpt","steps":4.6}"#).steps == .set(5))
+    #expect(try await last(#"{"type":"loraSettings","file":"fox.ckpt","steps":true}"#).steps == .keep)
+    #expect(try await last(#"{"type":"loraSettings","file":"fox.ckpt","steps":1e30}"#).steps == .keep)
+    #expect(try await last(#"{"type":"loraSettings","file":"fox.ckpt","steps":-1e30}"#).steps == .keep)
+    #expect(try await last(#"{"type":"loraSettings","file":"fox.ckpt","trigger":""}"#).trigger == .set(""))
+    #expect(try await last(#"{"type":"loraSettings","file":"fox.ckpt","category":5}"#).category == .keep)
   }
 
   @Test func aPluginThatIsNotActiveCannotChangeLoRASettings() async throws {

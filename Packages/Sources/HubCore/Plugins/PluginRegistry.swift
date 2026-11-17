@@ -559,7 +559,7 @@ public final class PluginRegistry: PluginHosting {
     }
     let update = LoRASettingsUpdate(
       trigger: patch("trigger", text), category: patch("category", text),
-      steps: patch("steps") { number($0).map { Int($0.rounded()) } }, guidance: patch("guidance", number),
+      steps: patch("steps") { number($0).flatMap { Int(exactly: $0.rounded()) } }, guidance: patch("guidance", number),
       shift: patch("shift", number))
     guard setLoRASettings?(file, update) == true else {
       return PluginMessageType.failure("The LoRA is not on the server.")
