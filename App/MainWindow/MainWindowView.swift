@@ -98,7 +98,8 @@ private struct PluginContextFeeder: View {
     let model = connection.selection.selectedModel(in: connection.monitor.catalog)
     let moodboard = generation.control.inputs.moodboard.filter(\.isOn).map { $0.id.uuidString }.joined(separator: ",")
     return PluginContextKey(
-      model: model?.file, family: model?.family, isEditModel: model?.capabilities.isEditModel, startImageID: generation.control.inputs.image?.id.uuidString,
+      model: model?.file, family: model?.family, isEditModel: model.map { EditModel.isEdit(model: $0, loras: generation.parameters.loras, catalog: connection.monitor.catalog) },
+      startImageID: generation.control.inputs.image?.id.uuidString,
       moodboardIDs: moodboard, width: generation.parameters.width, height: generation.parameters.height,
       framingZoom: generation.control.inputs.framing.zoom, framingOffsetX: generation.control.inputs.framing.offsetX,
       framingOffsetY: generation.control.inputs.framing.offsetY,

@@ -602,7 +602,9 @@ final class GenerationController {
         : PipelineInputs.strength(
           tab: control.inputs, replacesStart: replacesStart,
           editModel: JobComposer.usesFullStrength(
-            editModel: passModel?.capabilities.isEditModel ?? false, family: family),
+            editModel: EditModel.isEdit(
+              model: passModel, loras: used.parameters.loras, catalog: connection.monitor.catalog),
+            family: family),
           hasMargins: control.hasMargins(canvasWidth: used.parameters.width, canvasHeight: used.parameters.height),
           step: pass.strength)
     let batches = JobComposer.batches(
@@ -768,9 +770,9 @@ final class GenerationController {
     store.pipelineLocked = isPipelineRunning
   }
 
-  /// True when the chosen model is an Edit model (the canvas image is the one to modify).
+  /// True when the chosen model is an Edit model (the canvas image is the one to modify), or an Edit LoRA is selected.
   func isEditModel() -> Bool {
-    selectedModel()?.capabilities.isEditModel ?? false
+    EditModel.isEdit(model: selectedModel(), loras: parameters.loras, catalog: connection.monitor.catalog)
   }
 
   /// "Adapt the dimensions": the canvas takes the start image's ratio, with a similar area.

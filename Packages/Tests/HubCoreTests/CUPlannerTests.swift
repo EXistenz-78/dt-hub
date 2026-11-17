@@ -184,6 +184,25 @@ struct CUPlannerTests {
     #expect(try #require(result[1].inputs).strength == 0.42)
   }
 
+  @Test func aPassWithAnEditLoRAIsMeasuredAsAnEditModel() throws {
+    let editLoRA = CatalogLoRA(file: "edit_lora.ckpt", name: "Edit", family: nil, category: "edit")
+    let withLoRA = ModelCatalog(models: [flux, zimage, sdxl], loras: [editLoRA], fileCount: 4, upscalers: [])
+    let plain = fields()
+    var edited = fields()
+    edited.parameters.loras = [LoRASelection(file: "edit_lora.ckpt")]
+    nonisolated(unsafe) var seen: [Bool] = []
+    for f in [plain, edited] {
+      _ = CUPlanner.passes(
+        fields: f, model: zimage, control: control, pipeline: PluginPipeline(steps: [PipelineStep(title: "a")]),
+        presets: [:], catalog: withLoRA, headerModel: zimage.file,
+        strengthOfPass: { _, _, editModel, _, _ in
+          seen.append(editModel)
+          return 0.7
+        })
+    }
+    #expect(seen == [false, true])
+  }
+
   @Test func presetsThatLoadAreKeptWhenAnotherIsMissing() throws {
     let folder = FileManager.default.temporaryDirectory.appendingPathComponent("cu-presets-\(UUID())")
     let store = PresetStore(folder: folder)

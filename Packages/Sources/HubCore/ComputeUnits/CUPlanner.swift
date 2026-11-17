@@ -70,7 +70,7 @@ public enum CUPlanner {
       let replacesStart = guided != nil || step.startImage != nil || (step.useOutputAsStart && index > 0)
       let hasImage = control.hasImage || replacesStart
       let strength = strengthOfPass(
-        step, replacesStart, passModel?.capabilities.isEditModel ?? false, used.parameters.width, used.parameters.height)
+        step, replacesStart, EditModel.isEdit(model: passModel, loras: used.parameters.loras, catalog: catalog), used.parameters.width, used.parameters.height)
       result.append(
         CUPass(
           title: step.title,
