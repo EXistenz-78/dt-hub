@@ -348,4 +348,151 @@ struct LAStateTests {
     #expect(state.canUseControlImage && state.useControlImage(for: "a.ckpt"))
     #expect(store.entry(for: "a.ckpt").manualThumbnail)
   }
+
+  // MARK: Category, manual edits and trigger proposals
+
+  static let kinds = """
+    [{"file":"a.ckpt","name":"Alpha","family":"b","trigger":"aa","weight":1,"category":"turbo"},
+     {"file":"p.ckpt","name":"Piu luce","family":"b","trigger":"","weight":1,"category":"style"},
+     {"file":"z.ckpt","name":"Zeta","family":"a","trigger":"","weight":1,"category":"turbo"},
+     {"file":"u.ckpt","name":"Unknown","trigger":"","weight":1}]
+    """
+
+  /// What the app was sent, and the answer it gives.
+  final class Sent: @unchecked Sendable {
+    var settings: [(String, DTHubLoRASettings)] = []
+    var answer: [String: Any]? = ["type": "ok"]
+  }
+
+  /// A context that says the app takes `loraSettings`.
+  func settingsContext(catalog: String = LAStateTests.kinds) -> Data {
+    var text = String(decoding: context(catalog: catalog), as: UTF8.self)
+    text.removeLast()
+    return Data((text + #","loraSettings":true}"#).utf8)
+  }
+
+  func connected(_ sent: Sent, catalog: String = LAStateTests.kinds) {
+    state.apply(context: settingsContext(catalog: catalog))
+    state.saveSettings = { file, settings in
+      sent.settings.append((file, settings))
+      return sent.answer
+    }
+  }
+
+  @Test func theCategoryFilterCombinesWithSearchAndIncomplete() {
+    state.apply(context: context(catalog: LAStateTests.kinds))
+    #expect(state.categoryFilter == .all && state.groups.flatMap(\.loras).count == 4)
+    state.categoryFilter = .only(.turbo)
+    #expect(state.groups.flatMap(\.loras).map(\.name) == ["Alpha", "Zeta"])
+    #expect(state.groups.map(\.family) == ["b", "a"])  // the groups stay, by family
+    #expect(state.isSearching)
+    state.categoryFilter = .none
+    #expect(state.groups.flatMap(\.loras).map(\.name) == ["Unknown"])
+    state.categoryFilter = .only(.style)
+    state.filter = "luce"
+    #expect(state.groups.flatMap(\.loras).map(\.name) == ["Piu luce"])
+    state.filter = "alpha"
+    #expect(state.groups.isEmpty)
+    state.filter = ""
+    state.categoryFilter = .only(.turbo)
+    store.setThumbnail(Pictures.png(), manual: true, for: "a.ckpt")
+    state.onlyIncomplete = true
+    #expect(state.groups.flatMap(\.loras).map(\.name) == ["Zeta"])
+    state.categoryFilter = .all
+    state.onlyIncomplete = false
+    #expect(!state.isSearching && state.category(of: "a.ckpt") == .turbo && state.category(of: "u.ckpt") == nil)
+  }
+
+  @Test func aManualCategoryIsSentAndFlagged() async {
+    let sent = Sent()
+    connected(sent)
+    await state.setCategory(.slider, for: "u.ckpt")
+    #expect(sent.settings.count == 1 && sent.settings[0].0 == "u.ckpt" && sent.settings[0].1 == DTHubLoRASettings(category: .set("slider")))
+    #expect(state.entry(for: "u.ckpt").categoryManual && state.category(of: "u.ckpt") == .slider && state.settingsMessage == nil)
+    await state.setCategory(nil, for: "u.ckpt")
+    #expect(sent.settings[1].1 == DTHubLoRASettings(category: .clear) && state.category(of: "u.ckpt") == nil)
+  }
+
+  @Test func theTurboFieldsAreLimitedAndFlagged() async {
+    let sent = Sent()
+    connected(sent)
+    await state.setTurbo(steps: 500, guidance: -2, shift: nil, for: "a.ckpt")
+    #expect(sent.settings[0].1 == DTHubLoRASettings(steps: .set(200), guidance: .set(0), shift: .clear))
+    let lora = state.catalog.first { $0.file == "a.ckpt" }
+    #expect(lora?.steps == 200 && lora?.guidance == 0 && lora?.shift == nil)
+    #expect(state.entry(for: "a.ckpt").paramsManual && !state.entry(for: "a.ckpt").categoryManual)
+    await state.setTurbo(steps: 8, guidance: 99, shift: 3, for: "a.ckpt")
+    #expect(sent.settings[1].1 == DTHubLoRASettings(steps: .set(8), guidance: .set(50), shift: .set(3)))
+  }
+
+  @Test func aTypedTriggerIsSentAndClearsTheProposal() async {
+    let sent = Sent()
+    connected(sent)
+    store.update("a.ckpt") { $0.triggerProposal = "zap" }
+    await state.setTrigger(" bb ", for: "a.ckpt")
+    #expect(sent.settings.count == 1 && sent.settings[0].1 == DTHubLoRASettings(trigger: .set("bb")))
+    #expect(state.catalog.first { $0.file == "a.ckpt" }?.trigger == "bb" && state.entry(for: "a.ckpt").triggerProposal == nil)
+    await state.setTrigger("", for: "a.ckpt")
+    #expect(sent.settings[1].1 == DTHubLoRASettings(trigger: .set("")))
+  }
+
+  @Test func aProposalIsAppliedOnlyWhenTheAppSaysOK() async {
+    let sent = Sent()
+    connected(sent)
+    store.update("a.ckpt") { $0.triggerProposal = "zap, zip" }
+    sent.answer = nil
+    await state.applyProposal(for: "a.ckpt")
+    #expect(state.entry(for: "a.ckpt").triggerProposal == "zap, zip" && state.settingsMessage == state.text(.settingsNotSaved))
+    #expect(state.catalog.first { $0.file == "a.ckpt" }?.trigger == "aa")
+    sent.answer = ["type": "error", "text": "no"]
+    await state.applyProposal(for: "a.ckpt")
+    #expect(state.entry(for: "a.ckpt").triggerProposal == "zap, zip" && state.settingsMessage != nil)
+    sent.answer = ["type": "ok"]
+    await state.applyProposal(for: "a.ckpt")
+    #expect(state.settingsMessage == nil && state.entry(for: "a.ckpt").triggerProposal == nil)
+    #expect(sent.settings.last?.1 == DTHubLoRASettings(trigger: .set("zap, zip")))
+    #expect(state.catalog.first { $0.file == "a.ckpt" }?.trigger == "zap, zip")
+  }
+
+  @Test func dismissingAProposalRemembersIt() {
+    state.apply(context: context(catalog: LAStateTests.kinds))
+    store.update("a.ckpt") { $0.triggerProposal = "zap" }
+    #expect(state.triggerProposals.map(\.proposal) == ["zap"] && state.triggerProposals[0].lora.file == "a.ckpt")
+    state.dismissProposal(for: "a.ckpt")
+    #expect(state.entry(for: "a.ckpt").triggerProposal == nil && state.entry(for: "a.ckpt").triggerDismissed == "zap")
+    #expect(state.triggerProposals.isEmpty)
+  }
+
+  @Test func applyingAllTakesWhatIsLeft() async {
+    let sent = Sent()
+    connected(sent)
+    store.update("a.ckpt") { $0.triggerProposal = "one" }
+    store.update("p.ckpt") { $0.triggerProposal = "two" }
+    store.update("z.ckpt") { $0.triggerProposal = "three" }
+    state.dismissProposal(for: "p.ckpt")
+    await state.applyAllProposals()
+    #expect(sent.settings.map(\.0) == ["a.ckpt", "z.ckpt"])
+    #expect(state.triggerProposals.isEmpty && state.entry(for: "p.ckpt").triggerDismissed == "two")
+  }
+
+  @Test func withoutSupportFromTheAppNothingChanges() async {
+    let sent = Sent()
+    state.apply(context: context(catalog: LAStateTests.kinds))
+    state.saveSettings = { file, settings in
+      sent.settings.append((file, settings))
+      return ["type": "ok"]
+    }
+    #expect(!state.canSaveSettings)
+    store.update("a.ckpt") { $0.triggerProposal = "zap" }
+    await state.setCategory(.style, for: "a.ckpt")
+    #expect(state.settingsMessage == state.text(.settingsNeedNewApp))
+    await state.setTurbo(steps: 4, guidance: nil, shift: nil, for: "a.ckpt")
+    await state.setTrigger("x", for: "a.ckpt")
+    await state.applyProposal(for: "a.ckpt")
+    await state.applyAllProposals()
+    #expect(sent.settings.isEmpty && state.settingsMessage != nil)
+    #expect(state.category(of: "a.ckpt") == .turbo && state.catalog.first { $0.file == "a.ckpt" }?.trigger == "aa")
+    #expect(state.entry(for: "a.ckpt") == LAEntry(triggerProposal: "zap"))
+  }
 }
+

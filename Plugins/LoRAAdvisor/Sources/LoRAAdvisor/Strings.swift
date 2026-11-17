@@ -4,7 +4,7 @@ import Foundation
 /// `.strings` files: the table is here.
 enum L {
   enum Key: CaseIterable {
-    case dropOnlyAddress, choosePage, useThis, openInBrowser, downloads, needsNewApp, notActive, noLoRAs, unreadableStore, listTitle, weightsNotSaved, weightMin, weightBase, weightMax, adviceTitle, filterPlaceholder, filterIncomplete, replaceHelp, findPages, summariseAll, jobsNote, stop, progress, currentModel, unknownFamily, trigger, noTrigger, weight, noNotes, foundAuto, pageNotFound, toSummarise, add, onTab, otherFamily,
+    case dropOnlyAddress, choosePage, useThis, openInBrowser, downloads, needsNewApp, notActive, noLoRAs, unreadableStore, listTitle, weightsNotSaved, settingsNotSaved, settingsNeedNewApp, weightMin, weightBase, weightMax, adviceTitle, filterPlaceholder, filterIncomplete, replaceHelp, findPages, summariseAll, jobsNote, stop, progress, currentModel, unknownFamily, trigger, noTrigger, weight, noNotes, foundAuto, pageNotFound, toSummarise, add, onTab, otherFamily,
       notes, link, importPage, cancel, summarise, notThisOne, searchAgain, thumbnail, chooseFile, useControlImage, removeThumbnail, unreadableImage, replaceNotesQuestion, replace, keepMine, linkNotRecognised, needsAccess, noImageInPage, notFound, unreachable, unreadableAnswer, tooLarge, notAllowed,
       rateLimited, imported, summaryFailed,
       needsLLM, request, onlyFamily, advise, resetRequest, noSuitable, adviceNotUnderstood, noLoRAsForFamily, updateWeight, addAll, sent, sentWithConflicts, notAnswered, languageName
@@ -35,6 +35,8 @@ enum L {
     .unreadableStore: "Il file delle note non si legge: resta com'è finché non modifichi qualcosa.",
     .listTitle: "I tuoi LoRA",
     .weightsNotSaved: "L'app non ha salvato i pesi: serve DT Hub 0.8.0 o successivo.",
+    .settingsNotSaved: "L'app non ha salvato la modifica: non è cambiato nulla.",
+    .settingsNeedNewApp: "Questa versione di DT Hub non accetta modifiche a categoria, trigger e parametri: aggiorna l'app.",
     .weightMin: "Min",
     .weightBase: "Base",
     .weightMax: "Max",
@@ -113,6 +115,8 @@ enum L {
     .unreadableStore: "The notes file cannot be read: it stays as it is until you change something.",
     .listTitle: "Your LoRAs",
     .weightsNotSaved: "The app did not save the weights: DT Hub 0.8.0 or later is needed.",
+    .settingsNotSaved: "The app did not save the change: nothing was changed.",
+    .settingsNeedNewApp: "This version of DT Hub does not accept changes to category, trigger and settings: update the app.",
     .weightMin: "Min",
     .weightBase: "Base",
     .weightMax: "Max",

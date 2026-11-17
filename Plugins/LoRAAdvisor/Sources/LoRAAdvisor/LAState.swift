@@ -17,6 +17,13 @@ final class LAState: ObservableObject {
   @Published var filter = ""
   /// Keep only the LoRAs with no thumbnail, or whose page is still to be chosen.
   @Published var onlyIncomplete = false
+  /// Keep only the LoRAs of a category, or those with none (spec §6).
+  @Published var categoryFilter: CategoryFilter = .all
+
+  enum CategoryFilter: Equatable {
+    case all, none
+    case only(LACategory)
+  }
   /// The row that is open; one at a time.
   @Published var openFile: String? {
     didSet {
@@ -49,6 +56,8 @@ final class LAState: ObservableObject {
   var contribute: (([String: Any]) async -> [String: Any]?)?
   /// Sends the weights of a LoRA to the app (file, min, base, max).
   var saveWeights: ((String, Double?, Double?, Double?) async -> [String: Any]?)?
+  /// Sends the trigger, category and turbo settings of a LoRA to the app. The plug-in never writes the app's file.
+  var saveSettings: ((String, DTHubLoRASettings) async -> [String: Any]?)?
   var askModel: ((String, String) async -> DTHubLLMAnswer)?
 
   private var saveNotes: Task<Void, Never>?
@@ -116,7 +125,7 @@ final class LAState: ObservableObject {
   var groups: [Group] {
     let wanted = Self.folded(filter.trimmingCharacters(in: .whitespacesAndNewlines))
     let shown = catalog.filter { lora in
-      (!onlyIncomplete || isIncomplete(lora.file))
+      (!onlyIncomplete || isIncomplete(lora.file)) && matches(lora)
         && (wanted.isEmpty
           || [lora.name, lora.trigger, notes(for: lora.file)].contains { Self.folded($0).contains(wanted) })
     }
@@ -127,6 +136,19 @@ final class LAState: ObservableObject {
     return order.map { family in
       Group(family: family, isCurrent: family != nil && family == current, loras: shown.filter { $0.family == family })
     }
+  }
+
+  private func matches(_ lora: DTHubCatalogLoRA) -> Bool {
+    switch categoryFilter {
+    case .all: true
+    case .none: LACategory(raw: lora.category) == nil
+    case .only(let wanted): LACategory(raw: lora.category) == wanted
+    }
+  }
+
+  /// The category of a LoRA, as the app has it; nil when none (or one this version does not know).
+  func category(of file: String) -> LACategory? {
+    catalog.first { $0.file == file }.flatMap { LACategory(raw: $0.category) }
   }
 
   /// The key a family is kept under in `openFamilies`: the empty one is for the LoRAs of no family.
@@ -140,7 +162,7 @@ final class LAState: ObservableObject {
   }
 
   /// Searching, the list shows every family that has a result, so the user does not have to open them one by one.
-  var isSearching: Bool { !filter.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+  var isSearching: Bool { !filter.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || categoryFilter != .all }
 
   /// Whether the LoRAs of a family are shown: it is open, or a search is on (the groups are then only those with
   /// results).
@@ -378,6 +400,113 @@ final class LAState: ObservableObject {
   }
 
   @Published private(set) var weightsMessage: String?
+
+  // MARK: Category, turbo settings and trigger
+
+  @Published private(set) var settingsMessage: String?
+
+  /// The app takes `loraSettings` messages (an older one does not).
+  var canSaveSettings: Bool { context?.loraSettings == true }
+
+  /// Sends one change to the app; true only when it answered `ok`. Otherwise `settingsMessage` says why and the caller
+  /// changes nothing.
+  private func send(_ settings: DTHubLoRASettings, for file: String) async -> Bool {
+    settingsMessage = nil
+    guard canSaveSettings else {
+      settingsMessage = text(.settingsNeedNewApp)
+      return false
+    }
+    guard let saveSettings, let answer = await saveSettings(file, settings), answer["type"] as? String != "error" else {
+      settingsMessage = text(.settingsNotSaved)
+      return false
+    }
+    return true
+  }
+
+  private func change(_ file: String, _ edit: (inout DTHubCatalogLoRA) -> Void) {
+    if let index = catalog.firstIndex(where: { $0.file == file }) { edit(&catalog[index]) }
+  }
+
+  /// The category the user chose (nil: none). Automatic passes leave a category that was chosen by hand.
+  func setCategory(_ category: LACategory?, for file: String) async {
+    guard category != self.category(of: file) || !entry(for: file).categoryManual else { return }
+    let patch: DTHubLoRAPatch<String> = category.map { .set($0.rawValue) } ?? .clear
+    guard await send(DTHubLoRASettings(category: patch), for: file) else { return }
+    change(file) { $0.category = category?.rawValue }
+    store.update(file) { $0.categoryManual = true }
+  }
+
+  static let stepsRange = 1...200
+  static let guidanceRange = 0.0...50
+  static let shiftRange = 0.0...50
+
+  /// Steps, guidance and shift of a Turbo LoRA: values outside the limits are brought in, empty is none.
+  func setTurbo(steps: Int?, guidance: Double?, shift: Double?, for file: String) async {
+    let steps = steps.map { min(max($0, Self.stepsRange.lowerBound), Self.stepsRange.upperBound) }
+    let guidance = guidance.flatMap { $0.isFinite ? min(max($0, Self.guidanceRange.lowerBound), Self.guidanceRange.upperBound) : nil }
+    let shift = shift.flatMap { $0.isFinite ? min(max($0, Self.shiftRange.lowerBound), Self.shiftRange.upperBound) : nil }
+    if let current = catalog.first(where: { $0.file == file }), entry(for: file).paramsManual,
+      current.steps == steps, current.guidance == guidance, current.shift == shift
+    {
+      return
+    }
+    let settings = DTHubLoRASettings(
+      steps: steps.map { .set($0) } ?? .clear, guidance: guidance.map { .set($0) } ?? .clear, shift: shift.map { .set($0) } ?? .clear)
+    guard await send(settings, for: file) else { return }
+    change(file) {
+      $0.steps = steps
+      $0.guidance = guidance
+      $0.shift = shift
+    }
+    store.update(file) { $0.paramsManual = true }
+  }
+
+  /// The trigger typed by the user ("" = none). A proposal waiting for this LoRA is dropped: the user decided.
+  func setTrigger(_ typed: String, for file: String) async {
+    let trigger = typed.trimmingCharacters(in: .whitespacesAndNewlines)
+    if catalog.first(where: { $0.file == file })?.trigger == trigger, entry(for: file).triggerProposal == nil { return }
+    guard await send(DTHubLoRASettings(trigger: .set(trigger)), for: file) else { return }
+    change(file) { $0.trigger = trigger }
+    store.update(file) { $0.triggerProposal = nil }
+    objectWillChange.send()
+  }
+
+  /// The LoRAs whose page names a trigger other than the one they have, waiting for the user's answer.
+  var triggerProposals: [(lora: DTHubCatalogLoRA, proposal: String)] {
+    catalog.compactMap { lora in
+      guard let proposal = entry(for: lora.file).triggerProposal, !proposal.isEmpty,
+        LATriggers.proposal(current: lora.trigger, found: [proposal]) != nil
+      else { return nil }
+      return (lora, proposal)
+    }
+  }
+
+  /// "Apply": the proposal becomes the trigger, but only once the app has taken it.
+  func applyProposal(for file: String) async {
+    guard let proposal = entry(for: file).triggerProposal, !proposal.isEmpty else { return }
+    guard await send(DTHubLoRASettings(trigger: .set(proposal)), for: file) else { return }
+    change(file) { $0.trigger = proposal }
+    store.update(file) { $0.triggerProposal = nil }
+    objectWillChange.send()
+  }
+
+  /// "Apply all": what is still waiting; it stops at the first one the app does not take.
+  func applyAllProposals() async {
+    for (lora, _) in triggerProposals {
+      await applyProposal(for: lora.file)
+      if settingsMessage != nil { return }
+    }
+  }
+
+  /// "Not this one": the proposal is remembered so that the next analysis does not offer it again.
+  func dismissProposal(for file: String) {
+    guard let proposal = entry(for: file).triggerProposal else { return }
+    store.update(file) {
+      $0.triggerDismissed = proposal
+      $0.triggerProposal = nil
+    }
+    objectWillChange.send()
+  }
 
   // MARK: The advice
 

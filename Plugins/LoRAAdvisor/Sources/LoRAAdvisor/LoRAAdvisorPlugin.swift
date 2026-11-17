@@ -8,17 +8,52 @@ final class LoRAAdvisorPlugin: DTHubPlugin {
     id: "com.exiztenz.dthub.loraadvisor", name: "LoRA Advisor", version: "1.6.1", symbol: "square.stack.3d.down.right",
     families: nil, tools: LATools.declarations)
   private var host: DTHubHost?
-  private let state: LAState
+  let state: LAState
 
-  init() {
+  /// How the plug-in talks to the app: the jobs and the state both go through these two, so one place decides what
+  /// "saved" means. The tests replace them.
+  var sendSettings: (String, DTHubLoRASettings) async -> [String: Any]? = { _, _ in nil }
+  var sendWeights: (String, Double?, Double?, Double?) async -> [String: Any]? = { _, _, _, _ in nil }
+
+  /// The jobs are made before the state and the state needs them: they reach the plug-in through this box.
+  private final class Link {
+    weak var plugin: LoRAAdvisorPlugin?
+  }
+
+  /// An answer counts as a save only when it is there and is not an error.
+  private static func isOK(_ answer: [String: Any]?) -> Bool {
+    guard let answer else { return false }
+    return answer["type"] as? String != "error"
+  }
+
+  convenience init() {
     // The master prompt, written to Data/LoRAAdvisor if missing or older (and custom/ made).
     LAPrompts.install()
-    let store = LAStore(folder: LAStore.defaultFolder)
-    let fetcher = LAFetcher()
+    self.init(store: LAStore(folder: LAStore.defaultFolder), fetcher: LAFetcher(), summarise: nil)
+  }
+
+  /// `summarise` replaces the language model of the app (tests only).
+  init(
+    store: LAStore, fetcher: any LAFetching, summarise: ((String, String) async -> String?)?,
+    pause: Duration = .milliseconds(500)
+  ) {
     let asker = Asker()
     self.asker = asker
-    let jobs = LAJobs(store: store, fetcher: fetcher, summarise: { system, prompt in await asker.text(system, prompt) })
+    let link = Link()
+    let jobs = LAJobs(
+      store: store, fetcher: fetcher, summarise: summarise ?? { system, prompt in await asker.text(system, prompt) },
+      pause: pause,
+      saveSettings: { file, settings in await Self.isOK(link.plugin?.sendSettings(file, settings)) },
+      saveWeights: { file, low, base, high in await Self.isOK(link.plugin?.sendWeights(file, low, base, high)) },
+      catalog: { MainActor.assumeIsolated { link.plugin?.state.catalog ?? [] } })
     state = LAState(store: store, jobs: jobs, fetcher: fetcher)
+    link.plugin = self
+    sendSettings = { [weak self] file, settings in await self?.host?.setLoRASettings(file: file, settings) }
+    sendWeights = { [weak self] file, low, base, high in
+      await self?.host?.setLoRAWeights(file: file, min: low, base: base, max: high)
+    }
+    state.saveSettings = { [weak self] file, settings in await self?.sendSettings(file, settings) }
+    state.saveWeights = { [weak self] file, low, base, high in await self?.sendWeights(file, low, base, high) }
   }
 
   func makeViewController() -> NSViewController {
@@ -29,9 +64,6 @@ final class LoRAAdvisorPlugin: DTHubPlugin {
     self.host = host
     asker.host = host
     state.contribute = { [weak self] body in await self?.host?.contribute(body) }
-    state.saveWeights = { [weak self] file, low, base, high in
-      await self?.host?.setLoRAWeights(file: file, min: low, base: base, max: high)
-    }
     state.askModel = { [weak self] system, prompt in await self?.asker.answer(system, prompt) ?? .failure("No answer.") }
   }
 
