@@ -124,6 +124,13 @@ struct RenderTests {
     _ = try render(state, dark: true, name: "tab-categories-dark.png")
   }
 
+  @Test func theListOfProposalsIsAsTallAsItsRowsUpToALimit() {
+    #expect(LATriggerReview.height(for: 0) == 0)
+    #expect(LATriggerReview.height(for: 2) < LATriggerReview.listHeight)
+    #expect(LATriggerReview.height(for: 300) == LATriggerReview.listHeight)
+    #expect(LATriggerReview.height(for: 3) < LATriggerReview.height(for: 4))
+  }
+
   @Test func withoutProposalsTheReviewIsAbsent() throws {
     let state = try state(filled: true, categories: true)
     #expect(state.triggerProposals.isEmpty)

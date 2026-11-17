@@ -6,6 +6,15 @@ import SwiftUI
 /// without a click (spec §5). Shown only while there is something to check.
 struct LATriggerReview: View {
   @ObservedObject var state: LAState
+  /// The most the list of proposals takes; beyond it the list scrolls.
+  static let listHeight: CGFloat = 190
+  /// A row with its two lines of text and its buttons, and the gap between rows.
+  private static let rowHeight: CGFloat = 46, rowGap: CGFloat = 6
+
+  /// The list is as tall as its rows, up to `listHeight`.
+  static func height(for rows: Int) -> CGFloat {
+    min(CGFloat(rows) * (rowHeight + rowGap), listHeight)
+  }
 
   var body: some View {
     let proposals = state.triggerProposals
@@ -21,26 +30,33 @@ struct LATriggerReview: View {
             .controlSize(.small)
             .disabled(!state.canSaveSettings)
         }
-        ForEach(proposals, id: \.lora.file) { item in
-          HStack(spacing: DS.controlGap) {
-            VStack(alignment: .leading, spacing: 1) {
-              Text(verbatim: item.lora.name).lineLimit(1).truncationMode(.middle)
-              Text(verbatim: current(of: item.lora) + " · " + L.text(.foundTrigger, item.proposal, italian: state.italian))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .truncationMode(.middle)
+        // Lazy and of limited height: hundreds of proposals must not make every redraw lay out every row, nor push the
+        // list of LoRAs out of the column.
+        ScrollView {
+          LazyVStack(alignment: .leading, spacing: 6) {
+            ForEach(proposals, id: \.lora.file) { item in
+              HStack(spacing: DS.controlGap) {
+                VStack(alignment: .leading, spacing: 1) {
+                  Text(verbatim: item.lora.name).lineLimit(1).truncationMode(.middle)
+                  Text(verbatim: current(of: item.lora) + " · " + L.text(.foundTrigger, item.proposal, italian: state.italian))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                }
+                Spacer(minLength: 0)
+                Button(state.text(.apply)) { Task { await state.applyProposal(for: item.lora.file) } }
+                  .buttonStyle(DSPillButtonStyle())
+                  .controlSize(.small)
+                  .disabled(!state.canSaveSettings)
+                Button(state.text(.notThisTrigger)) { state.dismissProposal(for: item.lora.file) }
+                  .buttonStyle(DSPillButtonStyle())
+                  .controlSize(.small)
+              }
             }
-            Spacer(minLength: 0)
-            Button(state.text(.apply)) { Task { await state.applyProposal(for: item.lora.file) } }
-              .buttonStyle(DSPillButtonStyle())
-              .controlSize(.small)
-              .disabled(!state.canSaveSettings)
-            Button(state.text(.notThisTrigger)) { state.dismissProposal(for: item.lora.file) }
-              .buttonStyle(DSPillButtonStyle())
-              .controlSize(.small)
           }
         }
+        .frame(height: Self.height(for: proposals.count))
         if let message = state.settingsMessage {
           Text(verbatim: message).font(.caption).foregroundStyle(DS.remove)
         }
