@@ -10,7 +10,7 @@ import Testing
 @MainActor
 @Suite("The tab on screen")
 struct RenderTests {
-  private func state(filled: Bool, candidatesOpen: Bool = false) throws -> LAState {
+  private func state(filled: Bool, candidatesOpen: Bool = false, categories: Bool = false, canSave: Bool = true, proposals: Bool = false) throws -> LAState {
     let folder = FileManager.default.temporaryDirectory.appendingPathComponent("la-render-\(UUID().uuidString)", isDirectory: true)
     let store = LAStore(folder: folder)
     let fetcher = FakeFetcher()
@@ -24,13 +24,19 @@ struct RenderTests {
        {"file":"sun.ckpt","name":"SLR · Match the sun","family":"flux2_9b","trigger":"","weight":1},
        {"file":"light.ckpt","name":"Qwen Lightning 8 steps","family":"qwen_image_2.1","trigger":"","weight":1}]
       """
+    let categorised = """
+      [{"file":"film.ckpt","name":"Analog Film 35","family":"flux2_9b","trigger":"analogfilm35","weight":0.8,"category":"style"},
+       {"file":"skin.ckpt","name":"Skin Detail Realism","family":"flux2_9b","trigger":"skindetail","weight":1,"category":"slider"},
+       {"file":"turbo.ckpt","name":"Flux Turbo 8 steps","family":"flux2_9b","trigger":"","weight":1,"category":"turbo","steps":8,"guidance":1.5,"shift":3},
+       {"file":"sun.ckpt","name":"SLR · Match the sun","family":"flux2_9b","trigger":"","weight":1}]
+      """
     let context = """
       {"type":"context","tempFolder":"/tmp/x","model":"flux.ckpt","family":"flux2_9b",
        "prompt":"ritratto di una donna anziana in una cucina, luce dalla finestra, pellicola 35 mm",
        "promptGuide":{"label":"FLUX.2 klein","usesNegative":false,"notes":""},
        "languageModels":[{"name":"llm","path":"/x","supportsImages":false}],
        "parameters":{"loras":[{"file":"film.ckpt","weight":0.8,"mode":0,"trigger":"analogfilm35"}]},
-       "loraCatalog":\(catalog)}
+       "loraCatalog":\(categories ? categorised : catalog)\(canSave ? ",\"loraSettings\":true" : "")}
       """
     state.apply(context: Data(context.utf8))
     let picture = try #require(LAThumbnail.jpeg(from: Pictures.png()))
@@ -55,7 +61,12 @@ struct RenderTests {
         LACandidate(title: "eric-venti-seeds/Sun-Direction-Lora-Flux2Klein9B", link: "https://huggingface.co/eric-venti-seeds/Sun-Direction-Lora-Flux2Klein9B", downloads: 40308),
       ]
     }
-    state.openFile = candidatesOpen ? "sun.ckpt" : "skin.ckpt"
+    if proposals {
+      store.update("film.ckpt") { $0.triggerProposal = "analog35, film grain" }
+      store.update("skin.ckpt") { $0.triggerProposal = "skin detail" }
+    }
+    if categories { state.categoryFilter = .only(.turbo) }
+    state.openFile = categories ? "turbo.ckpt" : candidatesOpen ? "sun.ckpt" : "skin.ckpt"
     state.setAdvice(
       #"[{"n":1,"weight":0.8,"why":"Dà la grana e i colori della pellicola 35 mm che chiedi."},{"n":2,"weight":0.6,"why":"Rughe e pelle credibili per un volto anziano."}]"#,
       candidates: state.candidates())
@@ -101,5 +112,27 @@ struct RenderTests {
         #expect(rep.pixelsWide >= 1180 && distinctColors(rep) > (filled ? 20 : 3), "\(label) \(dark)")
       }
     }
+  }
+
+  @Test func theCategoryFilterAndTheTurboFieldsAreDrawn() throws {
+    let state = try state(filled: true, categories: true, proposals: true)
+    let rep = try render(state, dark: false, name: "tab-categories-light.png")
+    #expect(distinctColors(rep) > 20)
+    #expect(state.triggerProposals.count == 2)
+    #expect(state.text(.triggersToCheck).contains("%d"))
+    #expect(L.text(.triggersToCheck, 2, italian: true) == "Trigger da controllare · 2")
+    _ = try render(state, dark: true, name: "tab-categories-dark.png")
+  }
+
+  @Test func withoutProposalsTheReviewIsAbsent() throws {
+    let state = try state(filled: true, categories: true)
+    #expect(state.triggerProposals.isEmpty)
+    _ = try render(state, dark: false, name: "tab-categories-noproposals.png")
+  }
+
+  @Test func anOldAppShowsTheFieldsDisabled() throws {
+    let state = try state(filled: true, categories: true, canSave: false)
+    #expect(!state.canSaveSettings)
+    _ = try render(state, dark: false, name: "tab-categories-oldapp.png")
   }
 }

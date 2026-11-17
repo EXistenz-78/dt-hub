@@ -9,7 +9,7 @@ final class LAState: ObservableObject {
   let store: LAStore
   let jobs: LAJobs
   private let fetcher: any LAFetching
-  private let italian: Bool
+  let italian: Bool
 
   @Published private(set) var context: DTHubContext?
   /// On for the job (header menu): only then the app sends the context and takes what the plug-in adds.

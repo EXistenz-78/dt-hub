@@ -7,7 +7,8 @@ enum L {
     case dropOnlyAddress, choosePage, useThis, openInBrowser, downloads, needsNewApp, notActive, noLoRAs, unreadableStore, listTitle, weightsNotSaved, settingsNotSaved, settingsNeedNewApp, weightMin, weightBase, weightMax, adviceTitle, filterPlaceholder, filterIncomplete, replaceHelp, findPages, summariseAll, jobsNote, stop, progress, currentModel, unknownFamily, trigger, noTrigger, weight, noNotes, foundAuto, pageNotFound, toSummarise, add, onTab, otherFamily,
       notes, link, importPage, cancel, summarise, notThisOne, searchAgain, thumbnail, chooseFile, useControlImage, removeThumbnail, unreadableImage, replaceNotesQuestion, replace, keepMine, linkNotRecognised, needsAccess, noImageInPage, notFound, unreachable, unreadableAnswer, tooLarge, notAllowed,
       rateLimited, imported, summaryFailed,
-      needsLLM, request, onlyFamily, advise, resetRequest, noSuitable, adviceNotUnderstood, noLoRAsForFamily, updateWeight, addAll, sent, sentWithConflicts, notAnswered, languageName
+      needsLLM, request, onlyFamily, advise, resetRequest, noSuitable, adviceNotUnderstood, noLoRAsForFamily, updateWeight, addAll, sent, sentWithConflicts, notAnswered, languageName,
+      category, categoryNone, noCategory, categoryAll, categoryCharacter, categoryStyle, categorySlider, categoryEdit, categoryTurbo, steps, guidance, shift, triggerField, triggersToCheck, foundTrigger, apply, applyAll, notThisTrigger
   }
 
   static var systemIsItalian: Bool {
@@ -105,6 +106,24 @@ enum L {
     .sent: "Aggiunto a Generazione.",
     .sentWithConflicts: "Aggiunto. %d conflitto/i da risolvere.",
     .notAnswered: "L'app non ha risposto: il plug-in è acceso per il lavoro?",
+    .category: "Categoria",
+    .categoryNone: "Nessuna",
+    .categoryAll: "Tutte",
+    .noCategory: "Senza categoria",
+    .categoryCharacter: "Personaggio",
+    .categoryStyle: "Stile",
+    .categorySlider: "Slider",
+    .categoryEdit: "Edit",
+    .categoryTurbo: "Turbo",
+    .steps: "Steps",
+    .guidance: "Guidance",
+    .shift: "Shift",
+    .triggerField: "Trigger",
+    .triggersToCheck: "Trigger da controllare · %d",
+    .foundTrigger: "trovato: %@",
+    .apply: "Applica",
+    .applyAll: "Applica tutti",
+    .notThisTrigger: "Non questo",
     .languageName: "italiano",
   ]
 
@@ -185,6 +204,24 @@ enum L {
     .sent: "Added to Generation.",
     .sentWithConflicts: "Added. %d conflict(s) to resolve.",
     .notAnswered: "The app did not answer: is the plug-in on for the job?",
+    .category: "Category",
+    .categoryNone: "None",
+    .categoryAll: "All",
+    .noCategory: "No category",
+    .categoryCharacter: "Character",
+    .categoryStyle: "Style",
+    .categorySlider: "Slider",
+    .categoryEdit: "Edit",
+    .categoryTurbo: "Turbo",
+    .steps: "Steps",
+    .guidance: "Guidance",
+    .shift: "Shift",
+    .triggerField: "Trigger",
+    .triggersToCheck: "Triggers to check · %d",
+    .foundTrigger: "found: %@",
+    .apply: "Apply",
+    .applyAll: "Apply All",
+    .notThisTrigger: "Not this one",
     .languageName: "English",
   ]
 }

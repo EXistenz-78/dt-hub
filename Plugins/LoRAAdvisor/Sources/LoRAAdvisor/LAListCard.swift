@@ -22,6 +22,8 @@ struct LAListCard: View {
           .frame(maxWidth: 240)
       }
       jobsRow
+      LACategoryFilter(state: state)
+      LATriggerReview(state: state)
       if let message = state.jobs.message {
         Text(verbatim: message).font(.caption).foregroundStyle(DS.remove)
       }
@@ -156,6 +158,9 @@ struct LARow: View {
       VStack(alignment: .leading, spacing: 3) {
         HStack(alignment: .firstTextBaseline, spacing: DS.controlGap) {
           Text(verbatim: lora.name).fontWeight(.semibold).lineLimit(1).truncationMode(.middle)
+          if let category = state.category(of: file) {
+            Text(verbatim: state.name(of: category)).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+          }
           Image(systemName: isOpen ? "chevron.up" : "chevron.down")
             .font(.caption2)
             .foregroundStyle(.secondary)
