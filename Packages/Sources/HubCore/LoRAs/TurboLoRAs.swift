@@ -46,6 +46,17 @@ public struct TurboLoRAs: Equatable, Sendable {
     stack.first { $0.file == file }?.applied
   }
 
+  /// The values the activation of this file set that the parameters still hold. Nil when the file is not chosen, not in
+  /// the stack, or none of its values is current any more (a bulk assignment or a new model overwrote them).
+  public func stillApplied(for file: String, in parameters: GenerationParameters) -> TurboValues? {
+    guard parameters.loras.contains(where: { $0.file == file }), let applied = applied(for: file) else { return nil }
+    var current = TurboValues()
+    if let steps = applied.steps, parameters.steps == steps { current.steps = steps }
+    if let guidance = applied.guidance, parameters.guidanceScale == guidance { current.guidance = guidance }
+    if let shift = applied.shift, parameters.shift == shift { current.shift = shift }
+    return current.isEmpty ? nil : current
+  }
+
   /// Sets the values (brought into range) and remembers the parameters before. A file already in the stack, or values with
   /// nothing in them, change nothing.
   public mutating func activate(file: String, values: TurboValues, in parameters: inout GenerationParameters) {

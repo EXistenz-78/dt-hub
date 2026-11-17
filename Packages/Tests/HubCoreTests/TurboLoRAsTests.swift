@@ -154,4 +154,27 @@ struct TurboLoRAsTests {
     #expect(stack.files == ["a"])
     #expect(parameters.guidanceScale == 50)
   }
+
+  @Test func stillAppliedListsOnlyValuesThatStillMatch() {
+    var parameters = start()
+    parameters.loras = [LoRASelection(file: "a")]
+    var stack = TurboLoRAs()
+    stack.activate(file: "a", values: TurboValues(steps: 8, guidance: 1, shift: 2), in: &parameters)
+    #expect(stack.stillApplied(for: "a", in: parameters) == TurboValues(steps: 8, guidance: 1, shift: 2))
+    parameters.steps = 30
+    #expect(stack.stillApplied(for: "a", in: parameters) == TurboValues(steps: nil, guidance: 1, shift: 2))
+    parameters.guidanceScale = 5
+    parameters.shift = 9
+    #expect(stack.stillApplied(for: "a", in: parameters) == nil)
+  }
+
+  @Test func stillAppliedIsNilWhenTheFileIsNotChosenOrNotInTheStack() {
+    var parameters = start()
+    parameters.loras = [LoRASelection(file: "a")]
+    var stack = TurboLoRAs()
+    stack.activate(file: "a", values: TurboValues(steps: 8), in: &parameters)
+    #expect(stack.stillApplied(for: "b", in: parameters) == nil)
+    parameters.loras = []
+    #expect(stack.stillApplied(for: "a", in: parameters) == nil)
+  }
 }
