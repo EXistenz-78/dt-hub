@@ -133,7 +133,10 @@ struct LASettingsFields: View {
     .disabled(!state.canSaveSettings)
     .onAppear(perform: sync)
     .onChange(of: lora.file) { sync() }
-    .onChange(of: lora.trigger) { if focus != .trigger { trigger = lora.trigger } }
+    .onChange(of: lora.trigger) { old, new in
+      // A field the user has not edited follows the app (an applied proposal), even while it has the focus.
+      if focus != .trigger || trigger.trimmingCharacters(in: .whitespacesAndNewlines) == old { trigger = new }
+    }
     .onChange(of: [lora.steps.map(Double.init), lora.guidance, lora.shift]) { if focus == nil || focus == .trigger { syncTurbo() } }
     .onChange(of: focus) { old, _ in
       switch old {
@@ -176,7 +179,7 @@ struct LASettingsFields: View {
   private func commitTrigger() {
     let (file, typed) = (lora.file, trigger)
     Task {
-      await state.setTrigger(typed, for: file)
+      await state.commitTypedTrigger(typed, for: file)
       if focus != .trigger { trigger = state.catalog.first { $0.file == file }?.trigger ?? typed }
     }
   }

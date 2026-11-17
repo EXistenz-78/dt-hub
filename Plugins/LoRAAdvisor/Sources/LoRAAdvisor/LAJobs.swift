@@ -106,20 +106,23 @@ final class LAJobs: ObservableObject {
   private let saveSettings: (String, DTHubLoRASettings) async -> Bool
   private let saveWeights: (String, Double?, Double?, Double?) async -> Bool
   private let catalog: () -> [DTHubCatalogLoRA]
+  private let canSaveSettings: () -> Bool
   private let stopFlag = Flag()
   /// The last summarise step downloaded a page again: the next one waits, as the search does.
   private var fetchedLast = false
 
   /// `summarise` asks the language model: the system prompt and the prompt in, the answer (or nil) out. `saveSettings` and
   /// `saveWeights` send what the analysis found to the app (true when it was saved); `catalog` gives the LoRAs as the app
-  /// has them now, read when an answer is written (the user may have changed a trigger meanwhile).
+  /// has them now, read when an answer is written (the user may have changed a trigger meanwhile). `canSaveSettings` says
+  /// whether the app takes the fields at all: when it does not, the LoRAs already summarised are left alone.
   init(
     store: LAStore, fetcher: any LAFetching, summarise: @escaping (String, String) async -> String?,
     pause: Duration = .milliseconds(500), italian: Bool = L.systemIsItalian,
     saveSettings: @escaping (String, DTHubLoRASettings) async -> Bool = { _, _ in true },
     saveWeights: @escaping (String, Double?, Double?, Double?) async -> Bool = { _, _, _, _ in true },
-    catalog: @escaping () -> [DTHubCatalogLoRA] = { [] }
+    catalog: @escaping () -> [DTHubCatalogLoRA] = { [] }, canSaveSettings: @escaping () -> Bool = { true }
   ) {
+    self.canSaveSettings = canSaveSettings
     self.saveSettings = saveSettings
     self.saveWeights = saveWeights
     self.catalog = catalog
@@ -146,7 +149,7 @@ final class LAJobs: ObservableObject {
 
   private func needsFields(_ file: String) -> Bool {
     let entry = store.entry(for: file)
-    return entry.link.flatMap(LALink.parse) != nil && !entry.rawNotes && !entry.analysed
+    return entry.link.flatMap(LALink.parse) != nil && !entry.rawNotes && !entry.analysed && canSaveSettings()
   }
 
   func isRaw(_ file: String) -> Bool { store.entry(for: file).rawNotes && store.pageText(for: file) != nil }

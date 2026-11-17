@@ -396,7 +396,7 @@ final class LAState: ObservableObject {
     weightsMessage = nil
     guard let saveWeights else { return }
     let answer = await saveWeights(file, values.min, values.base, values.max)
-    if answer == nil || answer?["type"] as? String == "error" { weightsMessage = text(.weightsNotSaved) }
+    if answer?["type"] as? String != "ok" { weightsMessage = text(.weightsNotSaved) }
   }
 
   @Published private(set) var weightsMessage: String?
@@ -429,6 +429,7 @@ final class LAState: ObservableObject {
 
   /// The category the user chose (nil: none). Automatic passes leave a category that was chosen by hand.
   func setCategory(_ category: LACategory?, for file: String) async {
+    settingsMessage = nil
     guard category != self.category(of: file) || !entry(for: file).categoryManual else { return }
     let patch: DTHubLoRAPatch<String> = category.map { .set($0.rawValue) } ?? .clear
     // Flagged before sending: an analysis that resumes meanwhile must not overwrite the user's choice.
@@ -447,6 +448,7 @@ final class LAState: ObservableObject {
 
   /// Steps, guidance and shift of a Turbo LoRA: values outside the limits are brought in, empty is none.
   func setTurbo(steps: Int?, guidance: Double?, shift: Double?, for file: String) async {
+    settingsMessage = nil
     let steps = steps.map { min(max($0, Self.stepsRange.lowerBound), Self.stepsRange.upperBound) }
     let guidance = guidance.flatMap { $0.isFinite ? min(max($0, Self.guidanceRange.lowerBound), Self.guidanceRange.upperBound) : nil }
     let shift = shift.flatMap { $0.isFinite ? min(max($0, Self.shiftRange.lowerBound), Self.shiftRange.upperBound) : nil }
@@ -472,12 +474,21 @@ final class LAState: ObservableObject {
 
   /// The trigger typed by the user ("" = none). A proposal waiting for this LoRA is dropped: the user decided.
   func setTrigger(_ typed: String, for file: String) async {
+    settingsMessage = nil
     let trigger = typed.trimmingCharacters(in: .whitespacesAndNewlines)
     if catalog.first(where: { $0.file == file })?.trigger == trigger, entry(for: file).triggerProposal == nil { return }
     guard await send(DTHubLoRASettings(trigger: .set(trigger)), for: file) else { return }
     change(file) { $0.trigger = trigger }
     store.update(file) { $0.triggerProposal = nil }
     objectWillChange.send()
+  }
+
+  /// The trigger field was left or confirmed: only a real edit counts (a blur with the same text must neither send nor
+  /// drop a proposal waiting for the user's answer).
+  func commitTypedTrigger(_ typed: String, for file: String) async {
+    let trigger = typed.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard let lora = catalog.first(where: { $0.file == file }), trigger != lora.trigger else { return }
+    await setTrigger(trigger, for: file)
   }
 
   /// The LoRAs whose page names a trigger other than the one they have, waiting for the user's answer.

@@ -261,6 +261,19 @@ struct LAToolsTests {
     #expect(await call("set_trigger", ["file": "a.ckpt"]).isError)
   }
 
+  @Test func aStaleUIFailureDoesNotMakeANoOpToolCallFail() async {
+    let sent = LAStateTests.Sent()
+    connect(sent, catalog: Self.rich)
+    #expect(!(await call("set_trigger", ["file": "u.ckpt", "trigger": "x"])).isError)
+    sent.answer = ["type": "error"]
+    await state.setCategory(.style, for: "u.ckpt")
+    #expect(state.settingsMessage != nil)
+    sent.answer = ["type": "ok"]
+    let count = sent.settings.count
+    #expect(!(await call("set_trigger", ["file": "u.ckpt", "trigger": "x"])).isError)
+    #expect(sent.settings.count == count && state.settingsMessage == nil)
+  }
+
   @Test func theNewToolsFailWithAnOldAppOrAFailedSave() async {
     start(loras: "[]")
     let old = await call("set_category", ["file": "a.ckpt", "category": "style"])

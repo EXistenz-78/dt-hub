@@ -436,6 +436,24 @@ struct LAStateTests {
     #expect(sent.settings[1].1 == DTHubLoRASettings(trigger: .set("")))
   }
 
+  @Test func leavingTheTriggerFieldUnchangedKeepsTheProposalAndSendsNothing() async {
+    let sent = Sent()
+    connected(sent)
+    store.update("a.ckpt") { $0.triggerProposal = "zap" }
+    await state.commitTypedTrigger("aa", for: "a.ckpt")
+    await state.commitTypedTrigger("  aa ", for: "a.ckpt")
+    #expect(sent.settings.isEmpty && state.entry(for: "a.ckpt").triggerProposal == "zap")
+    await state.commitTypedTrigger("aa2", for: "a.ckpt")  // a real edit decides
+    #expect(sent.settings.count == 1 && state.entry(for: "a.ckpt").triggerProposal == nil)
+  }
+
+  @Test func anUnsupportedAnswerMeansTheWeightsAreNotSaved() async {
+    state.apply(context: context())
+    state.saveWeights = { _, _, _, _ in ["type": "unsupported"] }
+    await state.setWeights(min: 0.1, base: nil, max: nil, for: "a.ckpt")
+    #expect(state.weightsMessage == state.text(.weightsNotSaved))
+  }
+
   @Test func aProposalIsAppliedOnlyWhenTheAppSaysOK() async {
     let sent = Sent()
     connected(sent)

@@ -47,7 +47,8 @@ final class LoRAAdvisorPlugin: DTHubPlugin {
         return await Self.isOK(link.plugin?.sendSettings(file, settings))
       },
       saveWeights: { file, low, base, high in await Self.isOK(link.plugin?.sendWeights(file, low, base, high)) },
-      catalog: { MainActor.assumeIsolated { link.plugin?.state.catalog ?? [] } })
+      catalog: { MainActor.assumeIsolated { link.plugin?.state.catalog ?? [] } },
+      canSaveSettings: { MainActor.assumeIsolated { link.plugin?.state.canSaveSettings ?? false } })
     state = LAState(store: store, jobs: jobs, fetcher: fetcher)
     link.plugin = self
     sendSettings = { [weak self] file, settings in await self?.host?.setLoRASettings(file: file, settings) }

@@ -229,6 +229,7 @@ struct LAJobsTests {
     var weights: [(String, Double?, Double?, Double?)] = []
     var settingsOK = true
     var weightsOK = true
+    var canSave = true
     var catalog: [DTHubCatalogLoRA] = []
   }
 
@@ -244,7 +245,7 @@ struct LAJobsTests {
         saved.weights.append((file, low, base, high))
         return saved.weightsOK
       },
-      catalog: { saved.catalog })
+      catalog: { saved.catalog }, canSaveSettings: { saved.canSave })
   }
 
   @Test func aRawLoRAGetsNotesAndFields() async {
@@ -281,6 +282,41 @@ struct LAJobsTests {
     #expect(store.pageText(for: "a.ckpt") == nil)
     #expect(saved.settings.count == 1 && saved.weights.count == 1)
     #expect(jobs.toSummarise(in: catalog).isEmpty)
+  }
+
+  @Test func withoutAppSupportForFieldsSummarisedLoRAsAreLeftAlone() async {
+    store.setNotesByUser("mie note", for: "a.ckpt")
+    let saved = Saved()
+    saved.catalog = catalog
+    saved.canSave = false
+    llm.answer = { [json] _ in json }
+    let jobs = analysing(saved)
+    #expect(jobs.toSummarise(in: catalog).isEmpty)
+    await jobs.summariseAll(catalog)
+    #expect(fetcher.requests.isEmpty && llm.calls.isEmpty && saved.settings.isEmpty)
+    #expect(!store.entry(for: "a.ckpt").analysed)
+    // The app is upgraded: the same LoRA is picked up again.
+    saved.canSave = true
+    #expect(jobs.toSummarise(in: catalog) == [a])
+  }
+
+  @Test func withoutAppSupportForFieldsRawLoRAsStillGetTheirNotes() async {
+    serveBoth()
+    await jobs.searchAll(catalog)
+    let saved = Saved()
+    saved.catalog = catalog
+    saved.canSave = false
+    saved.settingsOK = false  // as the plug-in answers while the app lacks the fields
+    llm.answer = { [json] _ in json }
+    let jobs = analysing(saved)
+    #expect(jobs.toSummarise(in: catalog) == [c])
+    await jobs.summariseAll([c])
+    let entry = store.entry(for: "c.ckpt")
+    #expect(entry.notes == "Stile acquarello." && !entry.rawNotes && !entry.analysed)
+    #expect(jobs.toSummarise(in: catalog).isEmpty)
+    let asked = llm.calls.count
+    await jobs.summariseAll(catalog)
+    #expect(llm.calls.count == asked)
   }
 
   @Test func aSummaryOnlyAnswerKeepsTheOldBehaviour() async {
