@@ -103,13 +103,24 @@ final class LAJobs: ObservableObject {
   private let ask: (String, String) async -> String?
   private let pause: Duration
   private let italian: Bool
+  private let saveSettings: (String, DTHubLoRASettings) async -> Bool
+  private let saveWeights: (String, Double?, Double?, Double?) async -> Bool
+  private let catalog: () -> [DTHubCatalogLoRA]
   private let stopFlag = Flag()
 
-  /// `summarise` asks the language model: the system prompt and the prompt in, the answer (or nil) out.
+  /// `summarise` asks the language model: the system prompt and the prompt in, the answer (or nil) out. `saveSettings` and
+  /// `saveWeights` send what the analysis found to the app (true when it was saved); `catalog` gives the LoRAs as the app
+  /// has them now, read when an answer is written (the user may have changed a trigger meanwhile).
   init(
     store: LAStore, fetcher: any LAFetching, summarise: @escaping (String, String) async -> String?,
-    pause: Duration = .milliseconds(500), italian: Bool = L.systemIsItalian
+    pause: Duration = .milliseconds(500), italian: Bool = L.systemIsItalian,
+    saveSettings: @escaping (String, DTHubLoRASettings) async -> Bool = { _, _ in true },
+    saveWeights: @escaping (String, Double?, Double?, Double?) async -> Bool = { _, _, _, _ in true },
+    catalog: @escaping () -> [DTHubCatalogLoRA] = { [] }
   ) {
+    self.saveSettings = saveSettings
+    self.saveWeights = saveWeights
+    self.catalog = catalog
     self.store = store
     self.fetcher = fetcher
     ask = summarise
@@ -125,9 +136,15 @@ final class LAJobs: ObservableObject {
     }
   }
 
-  /// The LoRAs "Summarise all" works on: those whose notes are still the raw text of their page.
+  /// The LoRAs "Summarise all" works on: those whose notes are still the raw text of their page, and those with a link
+  /// and notes that are not raw that the full analysis has not seen yet (summarised by the older step).
   func toSummarise(in catalog: [DTHubCatalogLoRA]) -> [DTHubCatalogLoRA] {
-    catalog.filter { isRaw($0.file) }
+    catalog.filter { isRaw($0.file) || needsFields($0.file) }
+  }
+
+  private func needsFields(_ file: String) -> Bool {
+    let entry = store.entry(for: file)
+    return entry.link.flatMap(LALink.parse) != nil && !entry.rawNotes && !entry.analysed
   }
 
   func isRaw(_ file: String) -> Bool { store.entry(for: file).rawNotes && store.pageText(for: file) != nil }
@@ -159,7 +176,7 @@ final class LAJobs: ObservableObject {
   @discardableResult
   func summarise(_ lora: DTHubCatalogLoRA) async -> Bool {
     var done = false
-    await run(.summarise, isRaw(lora.file) ? [lora] : []) { lora in
+    await run(.summarise, toSummarise(in: [lora])) { lora in
       done = await self.write(lora)
       return true
     }
@@ -307,18 +324,60 @@ final class LAJobs: ObservableObject {
     return false
   }
 
+  /// Asks the language model about the page of a LoRA and writes what it says (spec §4). False when nothing was written:
+  /// the page could not be had, the model gave nothing readable, or the LoRA left the catalog.
   private func write(_ lora: DTHubCatalogLoRA) async -> Bool {
-    guard isRaw(lora.file), let text = store.pageText(for: lora.file) else { return false }
-    guard let answer = await ask(LASummary.system(italian: italian), LASummary.prompt(pageText: text)),
-      let summary = LASummary.clean(answer), isRaw(lora.file)
-    else { return false }
-    store.setPageText(nil, for: lora.file)
-    store.update(lora.file) {
-      $0.notes = summary
-      $0.rawNotes = false
+    let raw = isRaw(lora.file)
+    let text: String
+    if raw {
+      guard let page = store.pageText(for: lora.file) else { return false }
+      text = page
+    } else {
+      // Summarised by the older step: the page text was deleted, so it is downloaded again (the notes stay as they are).
+      guard needsFields(lora.file), let link = entry(of: lora.file).link.flatMap(LALink.parse) else { return false }
+      let importer = LAImporter(fetcher: fetcher, store: store)
+      guard case .imported = await importer.refreshPageText(link, for: lora.file),
+        let page = store.pageText(for: lora.file)
+      else {
+        store.setPageText(nil, for: lora.file)
+        return false
+      }
+      text = page
     }
+    let answer = await ask(LASummary.system(italian: italian), LASummary.prompt(pageText: text))
+    // What was read is not kept for a LoRA that is not raw: its notes are not waiting for the text.
+    defer { if !raw { store.setPageText(nil, for: lora.file) } }
+    guard let answer, raw ? isRaw(lora.file) : needsFields(lora.file) else { return false }
+
+    guard let analysis = LASummary.parse(answer) else {
+      // No JSON at all: the whole answer is the summary and no field is touched. A "{" with no JSON in it is a failure.
+      guard raw, !answer.contains("{"), let summary = LASummary.clean(answer) else { return false }
+      store.setPageText(nil, for: lora.file)
+      store.update(lora.file) {
+        $0.notes = String(summary.prefix(LAAnalysisPlan.maxNotes))
+        $0.rawNotes = false
+      }
+      return true
+    }
+    // The LoRA as it is now: its trigger may have changed while the model was thinking.
+    guard let current = catalog().first(where: { $0.file == lora.file }) else { return false }
+    let plan = LAAnalysisPlan.make(analysis: analysis, lora: current, entry: entry(of: lora.file), replaceNotes: raw)
+    if plan.notes != nil { store.setPageText(nil, for: lora.file) }
+    store.update(lora.file) {
+      if let notes = plan.notes {
+        $0.notes = notes
+        $0.rawNotes = false
+      }
+      $0.analysed = true
+      $0.triggerProposal = plan.triggerProposal
+    }
+    // A save that fails costs nothing else: the entry is as it should be and the app keeps what it had.
+    if plan.settings != DTHubLoRASettings() { _ = await saveSettings(lora.file, plan.settings) }
+    if let weights = plan.weights { _ = await saveWeights(lora.file, weights.min, weights.base, weights.max) }
     return true
   }
+
+  private func entry(of file: String) -> LAEntry { store.entry(for: file) }
 
   private final class Flag: @unchecked Sendable {
     private let lock = NSLock()

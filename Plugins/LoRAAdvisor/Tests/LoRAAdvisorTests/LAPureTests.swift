@@ -1,3 +1,4 @@
+import DTHubPluginKit
 import Foundation
 import Testing
 
@@ -127,5 +128,88 @@ struct LATriggersTests {
 
   @Test func foundWordsAreKeptAsWrittenWithoutDuplicates() {
     #expect(LATriggers.proposal(current: "", found: ["Foo", "foo", "Bar,"]) == "Foo, Bar")
+  }
+}
+
+struct LAAnalysisPlanTests {
+  let full = LASummary.Analysis(
+    summary: "Un riassunto.", category: .turbo, min: 0.6, base: 0.8, max: 1, steps: 8, guidance: 1.5, shift: 3,
+    triggers: ["zap"])
+  let raw = DTHubCatalogLoRA(file: "a.ckpt", name: "Alpha")
+
+  func make(
+    _ analysis: LASummary.Analysis? = nil, lora: DTHubCatalogLoRA? = nil, entry: LAEntry = LAEntry(), replace: Bool = true
+  ) -> LAAnalysisPlan {
+    LAAnalysisPlan.make(analysis: analysis ?? full, lora: lora ?? raw, entry: entry, replaceNotes: replace)
+  }
+
+  @Test func aCompleteAnswerFillsEverything() {
+    let plan = make()
+    #expect(plan.notes == "Un riassunto.")
+    #expect(plan.settings == DTHubLoRASettings(category: .set("turbo"), steps: .set(8), guidance: .set(1.5), shift: .set(3)))
+    #expect(plan.weights == LAWeights.Values(min: 0.6, base: 0.8, max: 1))
+    #expect(plan.triggerProposal == "zap")
+  }
+
+  @Test func aManualCategoryIsNotTouched() {
+    var lora = raw
+    lora.category = "style"
+    let plan = make(lora: lora, entry: LAEntry(categoryManual: true))
+    #expect(plan.settings.category == .keep)
+    // The final category is the user's (style), so no turbo values.
+    #expect(plan.settings.steps == .keep && plan.settings.guidance == .keep && plan.settings.shift == .keep)
+  }
+
+  @Test func aManualTurboCategoryStillTakesTheValues() {
+    var lora = raw
+    lora.category = "turbo"
+    let plan = make(lora: lora, entry: LAEntry(categoryManual: true))
+    #expect(plan.settings.category == .keep && plan.settings.steps == .set(8))
+  }
+
+  @Test func weightsAreWrittenOnlyWhileAllAtDefault() {
+    #expect(make(lora: DTHubCatalogLoRA(file: "a", name: "A", minWeight: 0.5)).weights == nil)
+    #expect(make(lora: DTHubCatalogLoRA(file: "a", name: "A", weight: 0.7)).weights == nil)
+    #expect(make(lora: DTHubCatalogLoRA(file: "a", name: "A", maxWeight: 2)).weights == nil)
+    #expect(make(LASummary.Analysis(summary: "x")).weights == nil)
+    let onlyMax = make(LASummary.Analysis(max: 1.2))
+    #expect(onlyMax.weights == LAWeights.Values(min: nil, base: 1, max: 1.2))
+  }
+
+  @Test func manualParamsKeepTheTurboValues() {
+    let plan = make(entry: LAEntry(paramsManual: true))
+    #expect(plan.settings.category == .set("turbo"))
+    #expect(plan.settings.steps == .keep && plan.settings.guidance == .keep && plan.settings.shift == .keep)
+  }
+
+  @Test func aCategoryOtherThanTurboKeepsTheTurboValues() {
+    var analysis = full
+    analysis.category = .style
+    let plan = make(analysis)
+    #expect(plan.settings.category == .set("style"))
+    #expect(plan.settings.steps == .keep && plan.settings.guidance == .keep && plan.settings.shift == .keep)
+  }
+
+  @Test func notesFollowTheFlagAndTheSummary() {
+    #expect(make(replace: false).notes == nil)
+    var empty = full
+    empty.summary = nil
+    #expect(make(empty).notes == nil)
+    empty.summary = ""
+    #expect(make(empty).notes == nil)
+    var long = full
+    long.summary = String(repeating: "a", count: 3000)
+    #expect(make(long).notes?.count == 1200)
+  }
+
+  @Test func theTriggerIsOnlyProposed() {
+    var same = raw
+    same.trigger = "ZAP"
+    #expect(make(lora: same).triggerProposal == nil)
+    #expect(make(lora: same).settings.trigger == .keep && make().settings.trigger == .keep)
+    #expect(make(entry: LAEntry(triggerDismissed: "zap")).triggerProposal == nil)
+    var none = full
+    none.triggers = []
+    #expect(make(none).triggerProposal == nil)
   }
 }

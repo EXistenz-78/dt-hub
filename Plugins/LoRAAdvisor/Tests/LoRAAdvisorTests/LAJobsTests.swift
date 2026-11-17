@@ -137,11 +137,14 @@ struct LAJobsTests {
     serveBoth()
     await jobs.searchAll(catalog)
     store.setNotesByUser("mie", for: "a.ckpt")
+    store.update("a.ckpt") { $0.analysed = true }
     #expect(jobs.toSummarise(in: catalog) == [c])
     await jobs.summariseAll(catalog)
     #expect(llm.calls.count == 1)
     #expect(store.entry(for: "c.ckpt").notes == "Riassunto breve." && !store.entry(for: "c.ckpt").rawNotes)
     #expect(store.pageText(for: "c.ckpt") == nil && jobs.message == nil)
+    // A plain-text answer is a summary but not an analysis: only an analysis marks the LoRA as seen.
+    store.update("c.ckpt") { $0.analysed = true }
     await jobs.summariseAll(catalog)
     #expect(llm.calls.count == 1)
   }
@@ -149,6 +152,7 @@ struct LAJobsTests {
   @Test func aFailedSummaryLeavesTheEntryRaw() async {
     serveBoth()
     await jobs.searchAll(catalog)
+    store.update("a.ckpt") { $0.analysed = true }
     llm.answer = { _ in nil }
     await jobs.summariseAll(catalog)
     #expect(store.entry(for: "c.ckpt").rawNotes && jobs.toSummarise(in: catalog) == [c])
@@ -162,6 +166,8 @@ struct LAJobsTests {
     serveBoth()
     await jobs.searchAll(catalog)
     store.setNotesByUser("corrette da me", for: "c.ckpt")
+    store.update("a.ckpt") { $0.analysed = true }
+    store.update("c.ckpt") { $0.analysed = true }
     #expect(jobs.toSummarise(in: catalog).isEmpty)
     await jobs.summariseAll(catalog)
     #expect(llm.calls.isEmpty && store.entry(for: "c.ckpt").notes == "corrette da me")
@@ -211,5 +217,144 @@ struct LAJobsTests {
     await jobs.searchAgain(d)
     #expect(searches.count == before + 1)
     #expect(store.entry(for: "d.ckpt").link == "https://civitai.com/models/8" && store.entry(for: "d.ckpt").foundBySearch)
+  }
+
+  // MARK: The analysis
+
+  let json = #"{"summary":"Stile acquarello.","category":"turbo","weight":{"min":0.6,"base":0.8,"max":1},"turbo":{"steps":8,"guidance":1.5,"shift":3},"triggers":["zap"]}"#
+
+  /// A jobs object with the closures that save and the catalog the app has now.
+  final class Saved: @unchecked Sendable {
+    var settings: [(String, DTHubLoRASettings)] = []
+    var weights: [(String, Double?, Double?, Double?)] = []
+    var settingsOK = true
+    var catalog: [DTHubCatalogLoRA] = []
+  }
+
+  func analysing(_ saved: Saved) -> LAJobs {
+    let llm = llm
+    return LAJobs(
+      store: store, fetcher: fetcher, summarise: { await llm.ask($0, $1) }, pause: .zero, italian: true,
+      saveSettings: { file, settings in
+        saved.settings.append((file, settings))
+        return saved.settingsOK
+      },
+      saveWeights: { file, low, base, high in
+        saved.weights.append((file, low, base, high))
+        return true
+      },
+      catalog: { saved.catalog })
+  }
+
+  @Test func aRawLoRAGetsNotesAndFields() async {
+    serveBoth()
+    await jobs.searchAll(catalog)
+    let saved = Saved()
+    saved.catalog = catalog
+    llm.answer = { [json] _ in json }
+    let jobs = analysing(saved)
+    #expect(jobs.toSummarise(in: catalog).contains(c))
+    await jobs.summariseAll([c])
+    let entry = store.entry(for: "c.ckpt")
+    #expect(entry.notes == "Stile acquarello." && !entry.rawNotes && entry.analysed && entry.triggerProposal == "zap")
+    #expect(store.pageText(for: "c.ckpt") == nil && jobs.message == nil)
+    #expect(saved.settings.count == 1 && saved.settings[0].0 == "c.ckpt")
+    #expect(saved.settings[0].1 == DTHubLoRASettings(category: .set("turbo"), steps: .set(8), guidance: .set(1.5), shift: .set(3)))
+    #expect(saved.weights.count == 1 && saved.weights[0].1 == 0.6 && saved.weights[0].2 == 0.8 && saved.weights[0].3 == 1)
+  }
+
+  @Test func anAlreadySummarisedLoRARefetchesAndKeepsItsNotes() async {
+    serve("Alpha", results: [])
+    fetcher.set(
+      LACivitai.modelURL(1), text: #"{"description":"<p>Page of Alpha</p>","modelVersions":[{"id":1,"images":[]}]}"#)
+    store.setNotesByUser("mie note", for: "a.ckpt")
+    let saved = Saved()
+    saved.catalog = catalog
+    llm.answer = { [json] _ in json }
+    let jobs = analysing(saved)
+    #expect(jobs.toSummarise(in: catalog) == [a])
+    await jobs.summariseAll(catalog)
+    #expect(fetcher.requests.filter { $0.contains("/models/1") }.count == 1)
+    let entry = store.entry(for: "a.ckpt")
+    #expect(entry.notes == "mie note" && !entry.rawNotes && entry.analysed)
+    #expect(store.pageText(for: "a.ckpt") == nil)
+    #expect(saved.settings.count == 1 && saved.weights.count == 1)
+    #expect(jobs.toSummarise(in: catalog).isEmpty)
+  }
+
+  @Test func aSummaryOnlyAnswerKeepsTheOldBehaviour() async {
+    serveBoth()
+    await jobs.searchAll(catalog)
+    let saved = Saved()
+    saved.catalog = catalog
+    llm.answer = { _ in "  «Un riassunto semplice.»  " }
+    let jobs = analysing(saved)
+    await jobs.summariseAll([c])
+    let entry = store.entry(for: "c.ckpt")
+    #expect(entry.notes == "Un riassunto semplice." && !entry.rawNotes && !entry.analysed)
+    #expect(saved.settings.isEmpty && saved.weights.isEmpty)
+  }
+
+  @Test func brokenJSONCountsAsFailed() async {
+    serveBoth()
+    await jobs.searchAll(catalog)
+    let saved = Saved()
+    saved.catalog = catalog
+    llm.answer = { _ in "{ not json" }
+    let jobs = analysing(saved)
+    await jobs.summariseAll([c])
+    #expect(store.entry(for: "c.ckpt").rawNotes && !store.entry(for: "c.ckpt").analysed)
+    #expect(jobs.message == L.text(.summaryFailed, italian: true))
+  }
+
+  @Test func aFailedSaveDoesNotStopTheProposal() async {
+    serveBoth()
+    await jobs.searchAll(catalog)
+    let saved = Saved()
+    saved.catalog = catalog
+    saved.settingsOK = false
+    llm.answer = { [json] _ in json }
+    let jobs = analysing(saved)
+    await jobs.summariseAll([c])
+    let entry = store.entry(for: "c.ckpt")
+    #expect(entry.triggerProposal == "zap" && entry.analysed && jobs.message == nil)
+  }
+
+  @Test func anUnreachablePageSkipsThatLoRAOnly() async {
+    serveBoth()
+    await jobs.searchAll(catalog)
+    store.setNotesByUser("mie", for: "a.ckpt")
+    fetcher.set(LACivitai.modelURL(1), .failure(.unreachable))
+    let saved = Saved()
+    saved.catalog = catalog
+    llm.answer = { [json] _ in json }
+    let jobs = analysing(saved)
+    await jobs.summariseAll([a, c])
+    #expect(!store.entry(for: "a.ckpt").analysed && store.entry(for: "a.ckpt").notes == "mie")
+    #expect(store.entry(for: "c.ckpt").analysed)
+    #expect(jobs.message == L.text(.summaryFailed, italian: true))
+  }
+
+  @Test func aLoRAThatLeftTheCatalogIsSkipped() async {
+    serveBoth()
+    await jobs.searchAll(catalog)
+    let saved = Saved()
+    saved.catalog = [a, b, d]
+    llm.answer = { [json] _ in json }
+    let jobs = analysing(saved)
+    await jobs.summariseAll([c])
+    let entry = store.entry(for: "c.ckpt")
+    #expect(entry.rawNotes && !entry.analysed && saved.settings.isEmpty && saved.weights.isEmpty)
+  }
+
+  @Test func aTriggerTypedMeanwhileMeansNoProposal() async {
+    serveBoth()
+    await jobs.searchAll(catalog)
+    let saved = Saved()
+    saved.catalog = [a, b, DTHubCatalogLoRA(file: "c.ckpt", name: "Gamma Ray v1.0", trigger: "Zap"), d]
+    llm.answer = { [json] _ in json }
+    let jobs = analysing(saved)
+    await jobs.summariseAll([c])
+    #expect(store.entry(for: "c.ckpt").triggerProposal == nil && store.entry(for: "c.ckpt").analysed)
   }
 }

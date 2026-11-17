@@ -51,6 +51,19 @@ struct LAImporter {
     return .imported(noImage: false)
   }
 
+  /// Downloads the page again and keeps only its text (for the analysis): the notes, the link and the thumbnail stay as
+  /// they are.
+  func refreshPageText(_ link: LALink, for file: String) async -> Outcome {
+    let page: LAPage
+    do throws(LAFetchError) {
+      page = try await self.page(link)
+    } catch {
+      return .failed(error)
+    }
+    store.setPageText(page.text.isEmpty ? nil : page.text, for: file)
+    return .imported(noImage: false)
+  }
+
   private func page(_ link: LALink) async throws(LAFetchError) -> LAPage {
     switch link {
     case .civitai(let model, let version):
