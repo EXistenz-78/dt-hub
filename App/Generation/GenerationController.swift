@@ -885,7 +885,7 @@ extension GenerationController: ContributionTarget {
   /// Adds the LoRA (one already chosen only gets its weight, mode and trigger updated); a Turbo LoRA of the catalog also
   /// sets its steps, guidance and shift. The one door of every interactive add: bulk assignments never come through here.
   func addLoRA(_ lora: LoRASelection) {
-    loraActivator.add(lora, to: &parameters, catalog: connection.monitor.catalog)
+    loraActivator.add(lora, to: &parameters, catalog: connection.monitor.catalog, family: selectedModel()?.family)
   }
 
   /// Removes the LoRA and, for a Turbo one, puts back the values it had changed.
@@ -895,12 +895,13 @@ extension GenerationController: ContributionTarget {
 
   /// Replaces `old` with the LoRA in its place: the Turbo values of `old` are restored, those of the new one applied.
   func replaceLoRA(_ old: String, with lora: LoRASelection) {
-    loraActivator.replace(old, with: lora, in: &parameters, catalog: connection.monitor.catalog)
+    loraActivator.replace(
+      old, with: lora, in: &parameters, catalog: connection.monitor.catalog, family: selectedModel()?.family)
   }
 
-  /// The line under a LoRA's row about the Turbo values it set; nil when it has no active activation.
+  /// The line under a LoRA's row about the Turbo values it set; nil when it has no activation whose values are still current.
   func turboNote(for file: String) -> String? {
-    guard let applied = loraActivator.turbo.applied(for: file), !applied.isEmpty else { return nil }
+    guard let applied = loraActivator.turbo.stillApplied(for: file, in: parameters) else { return nil }
     var parts: [String] = []
     if let steps = applied.steps { parts.append("steps \(steps)") }
     if let guidance = applied.guidance { parts.append("guidance \(guidance.formatted(.number.precision(.fractionLength(0...2))))") }

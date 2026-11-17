@@ -61,7 +61,7 @@ Gli strumenti hanno annotazioni MCP (`readOnlyHint`, `destructiveHint`). Elenco 
 **Modifica della scheda** (modalità «Modifica la scheda» e superiori):
 
 - `set_fields`: prompt, negativo, larghezza, altezza, passi, guidance, shift, shift dipendente dalla risoluzione, CFG zero star e passi iniziali, seed, seed casuale, sampler, batch size, batch count. Lo schema parte dai campi già noti a `ActionBlock.fieldKeys` del plug-in AI Assistant.
-- `add_lora`, `set_lora_weight`, `remove_lora`. `add_lora` and `remove_lora` fanno ciò che fa la scheda: per una LoRA di categoria Turbo applicano i valori Turbo (passi, guidance, shift) e li ripristinano alla rimozione, se l'utente non li ha cambiati.
+- `add_lora`, `set_lora_weight`, `remove_lora`. `add_lora` e `remove_lora` fanno ciò che fa la scheda: per una LoRA di categoria Turbo applicano i valori Turbo (passi, guidance, shift) e li ripristinano alla rimozione, se l'utente non li ha cambiati.
 - `set_moodboard`: aggiunge o sostituisce immagini, ciascuna con un peso; accetta `result_id` o percorsi nelle cartelle consentite; dichiara se sostituisce ciò che c'era. `set_start_image` e `set_strength` analoghi.
 - `load_preset`, `save_preset`.
 

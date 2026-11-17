@@ -167,4 +167,21 @@ struct LoRAActivatorTests {
     #expect(parameters.steps == 30)
     #expect(activator.turbo.files.isEmpty)
   }
+
+  @Test func aTurboOfAnotherFamilyIsAddedButNeverActivates() {
+    let other = ModelCatalog(
+      models: [],
+      loras: [CatalogLoRA(file: "q.ckpt", name: "Q", family: "qwen_image", category: "turbo", steps: 4)], fileCount: 1)
+    var parameters = start()
+    var activator = LoRAActivator()
+    activator.add(LoRASelection(file: "q.ckpt"), to: &parameters, catalog: other, family: "flux2_9b")
+    #expect(parameters.loras.map(\.file) == ["q.ckpt"])
+    #expect(parameters.steps == 20)
+    #expect(activator.turbo.files.isEmpty)
+    activator.add(LoRASelection(file: "q2.ckpt"), to: &parameters, catalog: other, family: "qwen_image")
+    var ownFamily = start()
+    var again = LoRAActivator()
+    again.add(LoRASelection(file: "q.ckpt"), to: &ownFamily, catalog: other, family: "qwen_image")
+    #expect(ownFamily.steps == 4)
+  }
 }
