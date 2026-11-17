@@ -51,7 +51,7 @@ struct LATextTests {
   }
 
   @Test func theTextIsCutAtTheLimit() {
-    #expect(LAText.plain(fromHTML: String(repeating: "word ", count: 2000)).count == 6000)
+    #expect(LAText.plain(fromHTML: String(repeating: "word ", count: 9000)).count == 30000)
   }
 
   @Test func theFrontMatterGoes() {

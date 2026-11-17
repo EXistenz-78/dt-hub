@@ -4,7 +4,7 @@ import Foundation
 enum LAText {
   /// Tags out (scripts and styles with what they hold), entities decoded, white space made single; at most `limit`
   /// characters.
-  static func plain(fromHTML html: String, limit: Int = 6000) -> String {
+  static func plain(fromHTML html: String, limit: Int = 30000) -> String {
     var text = html.replacingOccurrences(
       of: "<(script|style)[^>]*>.*?</\\1\\s*>", with: " ", options: [.regularExpression, .caseInsensitive])
     text = text.replacingOccurrences(of: "<[^>]*>", with: " ", options: .regularExpression)
