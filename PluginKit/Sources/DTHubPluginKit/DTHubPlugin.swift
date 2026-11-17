@@ -272,12 +272,15 @@ public struct DTHubContext: Decodable, Sendable {
   public var startImageFramed: String?
   /// The newest result of the open project (a file); nil when there is none or from an app older than the release after 0.4.3.
   public var lastResult: DTHubLastResult?
+  /// True when the app accepts a `loraSettings` message (`DTHubHost.setLoRASettings`); nil from an older app.
+  public var loraSettings: Bool?
 
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
     startImageWindow = (try? container.decodeIfPresent(DTHubImageWindow.self, forKey: .startImageWindow)) ?? nil
     startImageFramed = (try? container.decodeIfPresent(String.self, forKey: .startImageFramed)) ?? nil
     lastResult = (try? container.decodeIfPresent(DTHubLastResult.self, forKey: .lastResult)) ?? nil
+    loraSettings = (try? container.decodeIfPresent(Bool.self, forKey: .loraSettings)) ?? nil
     model = try container.decodeIfPresent(String.self, forKey: .model)
     family = try container.decodeIfPresent(String.self, forKey: .family)
     tempFolder = try container.decode(String.self, forKey: .tempFolder)
@@ -297,7 +300,7 @@ public struct DTHubContext: Decodable, Sendable {
 
   private enum CodingKeys: String, CodingKey {
     case model, family, tempFolder, startImage, moodboard, languageModels, parameters, prompt, negativePrompt, strength
-    case promptGuide, loraCatalog, startImageWindow, startImageFramed, lastResult
+    case promptGuide, loraCatalog, startImageWindow, startImageFramed, lastResult, loraSettings
   }
 }
 
@@ -350,11 +353,21 @@ public struct DTHubCatalogLoRA: Decodable, Equatable, Sendable {
   /// The user's lowest and highest weight for the LoRA; nil when there is no limit.
   public var minWeight: Double?
   public var maxWeight: Double?
+  /// The user's category for the LoRA ("turbo", "style"...); nil when none (or from an older app).
+  public var category: String?
+  /// The user's recommended settings for the LoRA (turbo LoRAs: few steps, low guidance); nil when not set.
+  public var steps: Int?
+  public var guidance: Double?
+  public var shift: Double?
 
   public init(
     file: String, name: String, family: String? = nil, trigger: String = "", weight: Double = 1, minWeight: Double? = nil,
-    maxWeight: Double? = nil
+    maxWeight: Double? = nil, category: String? = nil, steps: Int? = nil, guidance: Double? = nil, shift: Double? = nil
   ) {
+    self.category = category
+    self.steps = steps
+    self.guidance = guidance
+    self.shift = shift
     self.minWeight = minWeight
     self.maxWeight = maxWeight
     self.file = file
@@ -376,10 +389,59 @@ public struct DTHubCatalogLoRA: Decodable, Equatable, Sendable {
     weight = ((try? container.decodeIfPresent(Double.self, forKey: .weight)) ?? nil) ?? 1
     minWeight = (try? container.decodeIfPresent(Double.self, forKey: .minWeight)) ?? nil
     maxWeight = (try? container.decodeIfPresent(Double.self, forKey: .maxWeight)) ?? nil
+    category = (try? container.decodeIfPresent(String.self, forKey: .category)) ?? nil
+    steps = (try? container.decodeIfPresent(Int.self, forKey: .steps)) ?? nil
+    guidance = (try? container.decodeIfPresent(Double.self, forKey: .guidance)) ?? nil
+    shift = (try? container.decodeIfPresent(Double.self, forKey: .shift)) ?? nil
   }
 
   private enum CodingKeys: String, CodingKey {
-    case file, name, family, trigger, weight, minWeight, maxWeight
+    case file, name, family, trigger, weight, minWeight, maxWeight, category, steps, guidance, shift
+  }
+}
+
+/// A change to one value of a LoRA: leave it, clear it (JSON null) or set it.
+public enum DTHubLoRAPatch<Value: Equatable & Sendable>: Equatable, Sendable {
+  case keep
+  case clear
+  case set(Value)
+}
+
+/// What `DTHubHost.setLoRASettings` changes for a LoRA. Every value is `.keep` unless given; a trigger of "" means no trigger.
+public struct DTHubLoRASettings: Equatable, Sendable {
+  public var trigger: DTHubLoRAPatch<String>
+  public var category: DTHubLoRAPatch<String>
+  public var steps: DTHubLoRAPatch<Int>
+  public var guidance: DTHubLoRAPatch<Double>
+  public var shift: DTHubLoRAPatch<Double>
+
+  public init(
+    trigger: DTHubLoRAPatch<String> = .keep, category: DTHubLoRAPatch<String> = .keep, steps: DTHubLoRAPatch<Int> = .keep,
+    guidance: DTHubLoRAPatch<Double> = .keep, shift: DTHubLoRAPatch<Double> = .keep
+  ) {
+    self.trigger = trigger
+    self.category = category
+    self.steps = steps
+    self.guidance = guidance
+    self.shift = shift
+  }
+
+  /// The `loraSettings` message: only the values that are not `.keep`; `.clear` is JSON null.
+  static func body(file: String, settings: DTHubLoRASettings) -> [String: Any] {
+    var body: [String: Any] = ["type": "loraSettings", "file": file]
+    func add<V>(_ key: String, _ patch: DTHubLoRAPatch<V>) {
+      switch patch {
+      case .keep: break
+      case .clear: body[key] = NSNull()
+      case .set(let value): body[key] = value
+      }
+    }
+    add("trigger", settings.trigger)
+    add("category", settings.category)
+    add("steps", settings.steps)
+    add("guidance", settings.guidance)
+    add("shift", settings.shift)
+    return body
   }
 }
 
@@ -601,6 +663,13 @@ public final class DTHubHost {
     if let base { body["base"] = base }
     if let max { body["max"] = max }
     return await sendJSON(body)
+  }
+
+  /// Sends a `loraSettings` message: trigger word, category and recommended steps, guidance and shift of a LoRA of the
+  /// server (kept with the app's LoRA manager data). Only the values that are not `.keep` are sent; `.clear` removes one.
+  /// Check `DTHubContext.loraSettings` first (nil from an older app). The answer is `{"type":"ok"}` or an `error`.
+  public func setLoRASettings(file: String, _ settings: DTHubLoRASettings) async -> [String: Any]? {
+    await sendJSON(DTHubLoRASettings.body(file: file, settings: settings))
   }
 
   /// Sends a `presets` message: presets for the app's Preset menu, each `{"name", "fields", "loras"}` (the keys of
