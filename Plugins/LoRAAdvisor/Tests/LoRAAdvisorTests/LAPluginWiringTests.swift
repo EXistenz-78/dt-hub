@@ -68,4 +68,40 @@ struct LAPluginWiringTests {
     #expect(sent.settings.map(\.0) == ["a.ckpt"] && sent.settings[0].1 == DTHubLoRASettings(category: .set("style")))
     #expect(sent.weights.count == 1 && sent.weights[0].1 == 0.5)
   }
+
+  @Test func anAppThatDoesNotKnowTheMessageIsNotASave() async {
+    sent.answer = ["type": "unsupported"]
+    await send(context: context)
+    await plugin.state.jobs.summariseAll(plugin.state.catalog)
+    #expect(!store.entry(for: "a.ckpt").analysed)
+  }
+
+  @Test func withoutLoRASettingsInTheContextTheJobSavesNothing() async {
+    await send(context: context.replacingOccurrences(of: #""loraSettings":true,"#, with: ""))
+    await plugin.state.jobs.summariseAll(plugin.state.catalog)
+    #expect(sent.settings.isEmpty && !store.entry(for: "a.ckpt").analysed)
+  }
+
+  /// The user's edit is still waiting for the app when an analysis runs: the analysis leaves the category alone.
+  @Test func anEditInFlightIsNotOverwrittenByTheAnalysis() async {
+    await send(context: context)
+    let plugin = plugin
+    let sent = sent
+    var inner = false
+    plugin.sendSettings = { file, settings in
+      sent.settings.append((file, settings))
+      if !inner {
+        inner = true
+        await plugin.state.jobs.summariseAll(plugin.state.catalog)
+      }
+      return ["type": "ok"]
+    }
+    await plugin.state.setCategory(.style, for: "a.ckpt")
+    #expect(sent.settings.map(\.1) == [DTHubLoRASettings(category: .set("style"))])
+    #expect(store.entry(for: "a.ckpt").categoryManual)
+    // A refused edit gives the flag back.
+    plugin.sendSettings = { _, _ in nil }
+    await plugin.state.setCategory(.slider, for: "p.ckpt")
+    #expect(!store.entry(for: "p.ckpt").categoryManual)
+  }
 }

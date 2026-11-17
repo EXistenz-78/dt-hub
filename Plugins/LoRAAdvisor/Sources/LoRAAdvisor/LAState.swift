@@ -416,7 +416,7 @@ final class LAState: ObservableObject {
       settingsMessage = text(.settingsNeedNewApp)
       return false
     }
-    guard let saveSettings, let answer = await saveSettings(file, settings), answer["type"] as? String != "error" else {
+    guard let saveSettings, let answer = await saveSettings(file, settings), answer["type"] as? String == "ok" else {
       settingsMessage = text(.settingsNotSaved)
       return false
     }
@@ -431,9 +431,14 @@ final class LAState: ObservableObject {
   func setCategory(_ category: LACategory?, for file: String) async {
     guard category != self.category(of: file) || !entry(for: file).categoryManual else { return }
     let patch: DTHubLoRAPatch<String> = category.map { .set($0.rawValue) } ?? .clear
-    guard await send(DTHubLoRASettings(category: patch), for: file) else { return }
-    change(file) { $0.category = category?.rawValue }
+    // Flagged before sending: an analysis that resumes meanwhile must not overwrite the user's choice.
+    let wasManual = entry(for: file).categoryManual
     store.update(file) { $0.categoryManual = true }
+    guard await send(DTHubLoRASettings(category: patch), for: file) else {
+      store.update(file) { $0.categoryManual = wasManual }
+      return
+    }
+    change(file) { $0.category = category?.rawValue }
   }
 
   static let stepsRange = 1...200
@@ -452,13 +457,17 @@ final class LAState: ObservableObject {
     }
     let settings = DTHubLoRASettings(
       steps: steps.map { .set($0) } ?? .clear, guidance: guidance.map { .set($0) } ?? .clear, shift: shift.map { .set($0) } ?? .clear)
-    guard await send(settings, for: file) else { return }
+    let wasManual = entry(for: file).paramsManual
+    store.update(file) { $0.paramsManual = true }
+    guard await send(settings, for: file) else {
+      store.update(file) { $0.paramsManual = wasManual }
+      return
+    }
     change(file) {
       $0.steps = steps
       $0.guidance = guidance
       $0.shift = shift
     }
-    store.update(file) { $0.paramsManual = true }
   }
 
   /// The trigger typed by the user ("" = none). A proposal waiting for this LoRA is dropped: the user decided.

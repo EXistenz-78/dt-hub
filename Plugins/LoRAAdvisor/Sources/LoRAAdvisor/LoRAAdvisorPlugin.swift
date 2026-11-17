@@ -20,10 +20,9 @@ final class LoRAAdvisorPlugin: DTHubPlugin {
     weak var plugin: LoRAAdvisorPlugin?
   }
 
-  /// An answer counts as a save only when it is there and is not an error.
+  /// An answer counts as a save only when it is `ok` (an app that does not know the message says `unsupported`).
   private static func isOK(_ answer: [String: Any]?) -> Bool {
-    guard let answer else { return false }
-    return answer["type"] as? String != "error"
+    answer?["type"] as? String == "ok"
   }
 
   convenience init() {
@@ -43,7 +42,10 @@ final class LoRAAdvisorPlugin: DTHubPlugin {
     let jobs = LAJobs(
       store: store, fetcher: fetcher, summarise: summarise ?? { system, prompt in await asker.text(system, prompt) },
       pause: pause,
-      saveSettings: { file, settings in await Self.isOK(link.plugin?.sendSettings(file, settings)) },
+      saveSettings: { file, settings in
+        guard link.plugin?.state.canSaveSettings == true else { return false }
+        return await Self.isOK(link.plugin?.sendSettings(file, settings))
+      },
       saveWeights: { file, low, base, high in await Self.isOK(link.plugin?.sendWeights(file, low, base, high)) },
       catalog: { MainActor.assumeIsolated { link.plugin?.state.catalog ?? [] } })
     state = LAState(store: store, jobs: jobs, fetcher: fetcher)
