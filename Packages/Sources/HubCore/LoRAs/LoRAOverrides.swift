@@ -85,6 +85,12 @@ public struct LoRAOverrides: Equatable, Sendable {
   /// True when the user changed the trigger word or the weight of this LoRA.
   public func isChanged(_ lora: CatalogLoRA) -> Bool { entries[lora.file] != nil }
 
+  /// True when the user changed the trigger word, the weight or its limits: what Manage LoRAs shows and can reset.
+  public func hasManagerChanges(_ lora: CatalogLoRA) -> Bool {
+    guard let entry = entries[lora.file] else { return false }
+    return entry.trigger != nil || entry.weight != nil || entry.minWeight != nil || entry.maxWeight != nil
+  }
+
   /// Another trigger word than the server's (empty = none). The server's own word, or the same after trimming, is no
   /// change at all.
   public mutating func setTrigger(_ text: String, for lora: CatalogLoRA) {
@@ -171,9 +177,15 @@ public struct LoRAOverrides: Equatable, Sendable {
     return Swift.min(Swift.max(value, numberRange.lowerBound), numberRange.upperBound)
   }
 
-  /// Back to the server's trigger word and the default weight.
+  /// Back to the server's trigger word and the default weight (no limits). The category and the turbo values stay: they
+  /// are not shown in Manage LoRAs, so resetting there never erases them.
   public mutating func reset(_ lora: CatalogLoRA) {
-    entries[lora.file] = nil
+    guard var entry = entries[lora.file] else { return }
+    entry.trigger = nil
+    entry.weight = nil
+    entry.minWeight = nil
+    entry.maxWeight = nil
+    store(entry, for: lora.file)
   }
 
   /// The catalog with the user's values: the trigger word is theirs if they changed it, the server's otherwise (empty when

@@ -86,6 +86,34 @@ struct LoRAOverridesTests {
     #expect(merged?.trigger == "foxstyle" && merged?.defaultWeight == 1)
   }
 
+  @Test func resettingKeepsCategoryAndTurboValues() {
+    var overrides = LoRAOverrides()
+    overrides.setTrigger("mine", for: fox)
+    overrides.setWeights(min: 0.2, base: 0.4, max: 0.9, for: fox)
+    overrides.apply(
+      LoRASettingsUpdate(category: .set("turbo"), steps: .set(8), guidance: .set(1.5), shift: .set(3)), for: fox)
+    #expect(overrides.hasManagerChanges(fox))
+    overrides.reset(fox)
+    #expect(!overrides.hasManagerChanges(fox))
+    let entry = overrides.entries[fox.file]
+    #expect(entry?.category == "turbo" && entry?.steps == 8 && entry?.guidance == 1.5 && entry?.shift == 3)
+    #expect(entry?.trigger == nil && entry?.weight == nil && entry?.minWeight == nil && entry?.maxWeight == nil)
+  }
+
+  @Test func resettingDropsTheEntryWhenNothingElseIsLeft() {
+    var overrides = LoRAOverrides()
+    overrides.setTrigger("mine", for: fox)
+    overrides.reset(fox)
+    #expect(overrides.entries[fox.file] == nil)
+  }
+
+  @Test func aCategoryAloneIsNotAChangeForTheManager() {
+    var overrides = LoRAOverrides()
+    overrides.apply(LoRASettingsUpdate(category: .set("style")), for: fox)
+    #expect(overrides.isChanged(fox))
+    #expect(!overrides.hasManagerChanges(fox))
+  }
+
   @Test func onlyTheTriggerCanBeChangedOrOnlyTheWeight() {
     var overrides = LoRAOverrides()
     overrides.setWeight(0.4, for: fox)

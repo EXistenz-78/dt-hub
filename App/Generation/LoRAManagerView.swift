@@ -139,7 +139,7 @@ private struct LoRAManagerRow: View {
     VStack(alignment: .leading, spacing: 3) {
       HStack(spacing: 6) {
         Text(verbatim: lora.name).font(.callout.weight(.medium)).lineLimit(1).truncationMode(.middle)
-        if monitor.loraOverrides.isChanged(lora) {
+        if monitor.loraOverrides.hasManagerChanges(lora) {
           Button {
             monitor.loraOverrides.reset(lora)
           } label: {
