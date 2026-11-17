@@ -57,12 +57,12 @@ public struct TurboLoRAs: Equatable, Sendable {
       parameters.steps = clean
       applied.steps = clean
     }
-    if let guidance = values.guidance, guidance.isFinite {
+    if let guidance = values.guidance, !guidance.isNaN {
       let clean = Self.clamp(guidance, GenerationParameters.guidanceRange)
       parameters.guidanceScale = clean
       applied.guidance = clean
     }
-    if let shift = values.shift, shift.isFinite {
+    if let shift = values.shift, !shift.isNaN {
       let clean = Self.clamp(shift, GenerationParameters.shiftRange)
       parameters.shift = clean
       applied.shift = clean
@@ -84,15 +84,22 @@ public struct TurboLoRAs: Equatable, Sendable {
       }
       if let shift = removed.applied.shift, parameters.shift == shift { parameters.shift = removed.before.shift }
     } else {
-      if let steps = removed.applied.steps, stack[index + 1].before.steps == steps {
-        stack[index + 1].before.steps = removed.before.steps
+      // The activation above inherits what its starting point was; if it does not own the parameter, it takes it over
+      // (the current value is the removed one's), so removing it later restores the inherited value.
+      var above = stack[index + 1]
+      if let steps = removed.applied.steps, above.before.steps == steps {
+        above.before.steps = removed.before.steps
+        if above.applied.steps == nil { above.applied.steps = steps }
       }
-      if let guidance = removed.applied.guidance, stack[index + 1].before.guidance == guidance {
-        stack[index + 1].before.guidance = removed.before.guidance
+      if let guidance = removed.applied.guidance, above.before.guidance == guidance {
+        above.before.guidance = removed.before.guidance
+        if above.applied.guidance == nil { above.applied.guidance = guidance }
       }
-      if let shift = removed.applied.shift, stack[index + 1].before.shift == shift {
-        stack[index + 1].before.shift = removed.before.shift
+      if let shift = removed.applied.shift, above.before.shift == shift {
+        above.before.shift = removed.before.shift
+        if above.applied.shift == nil { above.applied.shift = shift }
       }
+      stack[index + 1] = above
     }
     stack.remove(at: index)
   }

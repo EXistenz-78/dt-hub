@@ -118,4 +118,40 @@ struct TurboLoRAsTests {
     #expect(parameters == before)
     #expect(stack.files == ["a"])
   }
+
+  @Test func outOfOrderRemovalRestoresAParameterTheUpperTurboDoesNotOwn() {
+    var parameters = start()
+    var stack = TurboLoRAs()
+    stack.activate(file: "a", values: TurboValues(steps: 8, guidance: 2), in: &parameters)
+    stack.activate(file: "b", values: TurboValues(steps: 4), in: &parameters)
+    stack.deactivate(file: "a", in: &parameters)
+    #expect(parameters.steps == 4)
+    #expect(parameters.guidanceScale == 2)
+    stack.deactivate(file: "b", in: &parameters)
+    #expect(parameters == start())
+  }
+
+  @Test func outOfOrderRemovalKeepsAValueTheUserChangedAfterwards() {
+    var parameters = start()
+    var stack = TurboLoRAs()
+    stack.activate(file: "a", values: TurboValues(steps: 8, guidance: 2), in: &parameters)
+    stack.activate(file: "b", values: TurboValues(steps: 4), in: &parameters)
+    parameters.steps = 10
+    stack.deactivate(file: "a", in: &parameters)
+    stack.deactivate(file: "b", in: &parameters)
+    #expect(parameters.steps == 10)
+    #expect(parameters.guidanceScale == 4)
+  }
+
+  @Test func infiniteValuesAreClampedAndNaNIsIgnored() {
+    var parameters = start()
+    var stack = TurboLoRAs()
+    stack.activate(
+      file: "a", values: TurboValues(steps: nil, guidance: .infinity, shift: -.infinity), in: &parameters)
+    #expect(parameters.guidanceScale == 50)
+    #expect(parameters.shift == 0)
+    stack.activate(file: "n", values: TurboValues(steps: nil, guidance: .nan, shift: nil), in: &parameters)
+    #expect(stack.files == ["a"])
+    #expect(parameters.guidanceScale == 50)
+  }
 }
