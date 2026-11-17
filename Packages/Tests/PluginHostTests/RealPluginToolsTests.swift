@@ -299,4 +299,32 @@ struct RealPluginToolsTests {
     let badSize = try await call(plugin, "set_size", ["width": 1000])
     #expect(badSize["isError"] as? Bool == true)
   }
+
+  nonisolated static let loraAdvisorBundlePath = ProcessInfo.processInfo.environment["DTHUB_LA_BUNDLE"]
+
+  /// `DTHUB_LA_BUNDLE=/path/LoRAAdvisor.dthubplugin swift test --filter RealPluginToolsTests` (from `Plugins/LoRAAdvisor/Scripts/build.sh`).
+  /// Only the manifest and refusals that change nothing: the plug-in keeps its notes in the user's own data folder.
+  @Test(.enabled(if: RealPluginToolsTests.loraAdvisorBundlePath != nil))
+  func theRealLoRAAdvisorBundleDeclaresItsTools() async throws {
+    let bundle = URL(fileURLWithPath: try #require(Self.loraAdvisorBundlePath))
+    let host = RecordingHost()
+    let plugin = try BundlePluginLoader().load(bundle, info: try PluginBundleReader.read(bundle), host: host)
+    #expect(plugin.manifest.id == "com.exiztenz.dthub.loraadvisor")
+    let tools = try #require(plugin.manifest.tools)
+    #expect(
+      tools.map(\.name) == [
+        "list_loras", "get_lora", "set_notes", "set_weight_limits", "set_category", "set_turbo_settings", "set_trigger",
+      ])
+    #expect(tools.map(\.level.rawValue) == ["read", "read", "edit", "edit", "edit", "edit", "edit"])
+    #expect(tools.first { $0.name == "list_loras" }?.parameters.contains { $0.name == "category" } == true)
+
+    // Not active and without a context: every tool refuses, and nothing is written.
+    for (tool, arguments) in [
+      ("set_category", ["file": "x.ckpt", "category": "style"]), ("set_turbo_settings", ["file": "x.ckpt", "steps": 4]),
+      ("set_trigger", ["file": "x.ckpt", "trigger": "x"]),
+    ] as [(String, [String: Any])] {
+      let refused = try await call(plugin, tool, arguments)
+      #expect(refused["isError"] as? Bool == true, Comment(rawValue: "\(tool): \(refused)"))
+    }
+  }
 }

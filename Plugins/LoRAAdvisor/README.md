@@ -34,10 +34,15 @@ The instructions sent to the LLM are in `master-prompt.md` in `…/Data/LoRAAdvi
 
 With DT Hub's remote control on (Settings › Remote control) and the plug-in **on for the job**, an agent sees these tools, named `plugin__loraadvisor__<tool>`. Needs a DT Hub with MCP plug-in tools (after 1.3.0).
 
-- `list_loras` (read): the LoRAs of the current family (or `scope: all`), each with its model family, trigger word, Min/Base/Max weight, summary (the notes; `summaryIsRaw` if still the raw page text), the link of its page (read-only) and whether it is on the Generation tab; `query` and `limit` narrow it. The agent can open the link to read the page and its recommended settings.
-- `get_lora` (read): one LoRA in full: the whole summary, link and limits.
+- `list_loras` (read): the LoRAs of the current family (or `scope: all`), each with its model family, trigger word, Min/Base/Max weight, summary (the notes; `summaryIsRaw` if still the raw page text), the link of its page (read-only), whether it is on the Generation tab, and `category` (`character`, `style`, `slider`, `edit`, `turbo` or null), `steps`, `guidance`, `shift` (only for Turbo, otherwise null) and `triggerProposal` (a trigger found on its page and not yet accepted, or null); `query`, `limit` and `category` (`character|style|slider|edit|turbo|none`, `none` = no category) narrow it. The agent can open the link to read the page and its recommended settings.
+- `get_lora` (read): one LoRA in full: the whole summary, link, limits and the same category fields.
 - `set_notes` (edit): writes the notes of a LoRA as the user's own (never overwritten by a later step).
 - `set_weight_limits` (edit): Min, Base and Max of a LoRA.
+- `set_category` (edit): the category of a LoRA (`none` removes it); a category set this way is never changed by a later analysis.
+- `set_turbo_settings` (edit): `steps` (1 to 200), `guidance` and `shift` (0 to 50) of a LoRA whose category is Turbo (set it first with `set_category`); at least one value; the ones left out are cleared.
+- `set_trigger` (edit): the trigger word of a LoRA (empty = none); it also drops a waiting proposal.
+
+The three new tools change the LoRA in DT Hub's own list, so they need a DT Hub that takes these settings; with an older one they answer an error.
 
 Not offered to agents: **Advise** (the agent chooses the LoRAs itself, from `list_loras`; to put them on the tab it uses the app's `add_lora`), **Find pages**, **Import** and **Summarise all**. The notes come from web pages, so DT Hub marks everything these tools return as data, not instructions.
 

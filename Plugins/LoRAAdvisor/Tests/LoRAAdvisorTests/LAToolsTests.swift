@@ -36,10 +36,15 @@ struct LAToolsTests {
       #expect(tool.name.range(of: "^[a-z][a-z0-9_]{0,39}$", options: .regularExpression) != nil)
       #expect(tool.description.count > 20)
     }
-    #expect(LATools.declarations.map(\.name) == ["list_loras", "get_lora", "set_notes", "set_weight_limits"])
+    #expect(LATools.declarations.map(\.name) == [
+      "list_loras", "get_lora", "set_notes", "set_weight_limits", "set_category", "set_turbo_settings", "set_trigger",
+    ])
     let json = try JSONEncoder().encode(LATools.declarations)
     #expect(try JSONSerialization.jsonObject(with: json) is [[String: Any]])
-    #expect(LATools.declarations.filter { $0.level != .read }.map(\.name) == ["set_notes", "set_weight_limits"])
+    #expect(LATools.declarations.filter { $0.level != .read }.map(\.name) == [
+      "set_notes", "set_weight_limits", "set_category", "set_turbo_settings", "set_trigger",
+    ])
+    #expect(LATools.declarations.prefix(2).allSatisfy { $0.level == .read })
   }
 
   @Test func listingStartsWithTheCurrentFamilyAndCanShowAll() async {
@@ -131,5 +136,128 @@ struct LAToolsTests {
     start()
     state.saveWeights = { _, _, _, _ in ["type": "error"] }
     #expect(await call("set_weight_limits", ["file": "a.ckpt", "base": 1.2]).isError)
+  }
+
+  // MARK: category, turbo settings and trigger
+
+  /// A context with the app able to take settings, and a fake `saveSettings` that records what it gets.
+  func connect(_ sent: LAStateTests.Sent, catalog: String = LAStateTests.kinds) {
+    state.active = true
+    state.apply(context: helper.settingsContext(catalog: catalog))
+    state.saveSettings = { file, settings in
+      sent.settings.append((file, settings))
+      return sent.answer
+    }
+  }
+
+  static let rich = """
+    [{"file":"a.ckpt","name":"Alpha","family":"b","trigger":"aa","weight":1,"category":"turbo","steps":8,"guidance":1.5,"shift":3},
+     {"file":"p.ckpt","name":"Piu luce","family":"b","trigger":"","weight":1,"category":"style","steps":20,"guidance":4},
+     {"file":"u.ckpt","name":"Unknown","family":"b","trigger":"","weight":1}]
+    """
+
+  @Test func rowsCarryCategoryTurboValuesAndTheTriggerProposal() async {
+    let sent = LAStateTests.Sent()
+    connect(sent, catalog: Self.rich)
+    store.update("u.ckpt") { $0.triggerProposal = "uu" }
+    let rows = object(await call("list_loras").text)["loras"] as? [[String: Any]]
+    let a = rows?.first { $0["file"] as? String == "a.ckpt" }
+    #expect(a?["category"] as? String == "turbo" && a?["steps"] as? Int == 8 && a?["guidance"] as? Double == 1.5 && a?["shift"] as? Double == 3)
+    #expect(a?["triggerProposal"] is NSNull)
+    let p = rows?.first { $0["file"] as? String == "p.ckpt" }
+    #expect(p?["category"] as? String == "style" && p?["steps"] as? Int == 20 && p?["shift"] is NSNull)
+    let u = object(await call("get_lora", ["file": "u.ckpt"]).text)
+    #expect(u["category"] is NSNull && u["steps"] is NSNull && u["shift"] is NSNull && u["triggerProposal"] as? String == "uu")
+  }
+
+  @Test func theCategoryParameterNarrowsTheList() async {
+    let sent = LAStateTests.Sent()
+    connect(sent, catalog: Self.rich)
+    func files(_ arguments: [String: Any]) async -> [String?] {
+      (object(await call("list_loras", arguments).text)["loras"] as? [[String: Any]])?.map { $0["file"] as? String } ?? []
+    }
+    #expect(await files(["category": "turbo"]) == ["a.ckpt"])
+    #expect(await files(["category": "style"]) == ["p.ckpt"])
+    #expect(await files(["category": "none"]) == ["u.ckpt"])
+    #expect(await files(["category": "style", "query": "alpha"]).isEmpty)
+    #expect(await call("list_loras", ["category": "bogus"]).isError)
+  }
+
+  @Test func setCategoryWritesThroughTheApp() async {
+    let sent = LAStateTests.Sent()
+    connect(sent, catalog: Self.rich)
+    let answer = await call("set_category", ["file": "u.ckpt", "category": "slider"])
+    #expect(!answer.isError)
+    #expect(object(answer.text)["file"] as? String == "u.ckpt" && object(answer.text)["category"] as? String == "slider")
+    #expect(sent.settings.count == 1 && sent.settings[0].0 == "u.ckpt")
+    #expect(store.entry(for: "u.ckpt").categoryManual)
+    #expect(state.catalog.first { $0.file == "u.ckpt" }?.category == "slider")
+    let cleared = await call("set_category", ["file": "p.ckpt", "category": "none"])
+    #expect(!cleared.isError && object(cleared.text)["category"] is NSNull)
+    #expect(state.catalog.first { $0.file == "p.ckpt" }?.category == nil)
+    let before = sent.settings.count
+    #expect(await call("set_category", ["file": "u.ckpt", "category": "weird"]).isError)
+    #expect(await call("set_category", ["file": "u.ckpt"]).isError)
+    #expect(await call("set_category", ["file": "ghost.ckpt", "category": "style"]).isError)
+    #expect(sent.settings.count == before)
+  }
+
+  @Test func setTurboSettingsWritesAndChecksTheRanges() async {
+    let sent = LAStateTests.Sent()
+    connect(sent, catalog: Self.rich)
+    let answer = await call("set_turbo_settings", ["file": "a.ckpt", "steps": 4, "guidance": 1, "shift": 5])
+    #expect(!answer.isError)
+    let result = object(answer.text)
+    #expect(result["steps"] as? Int == 4 && result["guidance"] as? Double == 1 && result["shift"] as? Double == 5)
+    #expect(sent.settings.count == 1 && store.entry(for: "a.ckpt").paramsManual)
+    #expect(state.catalog.first { $0.file == "a.ckpt" }?.steps == 4)
+    let before = sent.settings.count
+    for bad: [String: Any] in [
+      ["steps": 0], ["steps": 201], ["steps": 2.5], ["guidance": -1], ["guidance": 51], ["shift": 51], [:],
+    ] {
+      var arguments = bad
+      arguments["file"] = "a.ckpt"
+      #expect(await call("set_turbo_settings", arguments).isError, Comment(rawValue: "\(bad)"))
+    }
+    let range = await call("set_turbo_settings", ["file": "a.ckpt", "steps": 0])
+    #expect(range.text.contains("1") && range.text.contains("200"))
+    // Not a Turbo LoRA: the category comes first.
+    let notTurbo = await call("set_turbo_settings", ["file": "p.ckpt", "steps": 8])
+    #expect(notTurbo.isError && notTurbo.text.contains("set_category"))
+    #expect(await call("set_turbo_settings", ["file": "u.ckpt", "steps": 8]).isError)
+    #expect(sent.settings.count == before)
+  }
+
+  @Test func setTriggerWritesAndClearsTheProposal() async {
+    let sent = LAStateTests.Sent()
+    connect(sent, catalog: Self.rich)
+    store.update("u.ckpt") { $0.triggerProposal = "uu" }
+    let answer = await call("set_trigger", ["file": "u.ckpt", "trigger": "  my trigger "])
+    #expect(!answer.isError && object(answer.text)["trigger"] as? String == "my trigger")
+    #expect(sent.settings.count == 1 && store.entry(for: "u.ckpt").triggerProposal == nil)
+    #expect(state.catalog.first { $0.file == "u.ckpt" }?.trigger == "my trigger")
+    #expect(!(await call("set_trigger", ["file": "a.ckpt", "trigger": ""])).isError)
+    #expect(state.catalog.first { $0.file == "a.ckpt" }?.trigger == "")
+    #expect(await call("set_trigger", ["file": "a.ckpt"]).isError)
+  }
+
+  @Test func theNewToolsFailWithAnOldAppOrAFailedSave() async {
+    start(loras: "[]")
+    let old = await call("set_category", ["file": "a.ckpt", "category": "style"])
+    #expect(old.isError && old.text == "This DT Hub is too old to change these settings.")
+    #expect(await call("set_turbo_settings", ["file": "a.ckpt", "steps": 4]).text == old.text)
+    #expect(await call("set_trigger", ["file": "a.ckpt", "trigger": "x"]).text == old.text)
+
+    let sent = LAStateTests.Sent()
+    sent.answer = ["type": "error"]
+    connect(sent, catalog: Self.rich)
+    for (tool, arguments) in [
+      ("set_category", ["file": "u.ckpt", "category": "style"]), ("set_turbo_settings", ["file": "a.ckpt", "steps": 4]),
+      ("set_trigger", ["file": "u.ckpt", "trigger": "x"]),
+    ] as [(String, [String: Any])] {
+      let failed = await call(tool, arguments)
+      #expect(failed.isError && failed.text == state.settingsMessage, Comment(rawValue: tool))
+    }
+    #expect(state.catalog.first { $0.file == "u.ckpt" }?.category == nil && !store.entry(for: "u.ckpt").categoryManual)
   }
 }
