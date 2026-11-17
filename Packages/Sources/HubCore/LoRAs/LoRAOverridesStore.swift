@@ -34,6 +34,11 @@ public struct LoRAOverridesStore: Sendable {
       entries[name]?.weight = clamped(entry.weight)
       entries[name]?.minWeight = clamped(entry.minWeight)
       entries[name]?.maxWeight = clamped(entry.maxWeight)
+      entries[name]?.steps = entry.steps.map { min(max($0, LoRAOverrides.stepsRange.lowerBound), LoRAOverrides.stepsRange.upperBound) }
+      entries[name]?.guidance = LoRAOverrides.inRange(entry.guidance)
+      entries[name]?.shift = LoRAOverrides.inRange(entry.shift)
+      if let category = entry.category, !LoRAOverrides.categories.contains(category) { entries[name]?.category = nil }
+      if entries[name]?.isEmpty == true { entries[name] = nil }
     }
     return LoRAOverrides(entries: entries)
   }

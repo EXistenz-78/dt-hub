@@ -90,4 +90,39 @@ struct LoRAOverridesStoreTests {
     let read = LoRAOverridesStore(fileURL: url).load().entries["a"]
     #expect(read?.minWeight == -4 && read?.maxWeight == 4)
   }
+
+  private func write(_ json: String) throws -> URL {
+    let url = file()
+    try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try Data(json.utf8).write(to: url)
+    return url
+  }
+
+  @Test func newFieldsRoundTrip() {
+    let store = LoRAOverridesStore(fileURL: file())
+    var overrides = LoRAOverrides()
+    overrides.entries["a.ckpt"] = LoRAOverride(category: "turbo", steps: 4, guidance: 1.5, shift: 3)
+    store.save(overrides)
+    #expect(store.load() == overrides)
+  }
+
+  @Test func anOldFileWithoutTheNewFieldsStillLoads() throws {
+    let url = try write(#"{"schema": 1, "loras": {"a.ckpt": {"trigger": "x", "weight": 0.5}}}"#)
+    let entry = LoRAOverridesStore(fileURL: url).load().entries["a.ckpt"]
+    #expect(entry == LoRAOverride(trigger: "x", weight: 0.5))
+  }
+
+  @Test func anUnknownCategoryInTheFileIsDropped() throws {
+    let url = try write(#"{"schema": 1, "loras": {"a.ckpt": {"category": "banana", "steps": 4}, "b.ckpt": {"category": "edit"}}}"#)
+    let loaded = LoRAOverridesStore(fileURL: url).load()
+    #expect(loaded.entries["a.ckpt"]?.category == nil && loaded.entries["a.ckpt"]?.steps == 4)
+    #expect(loaded.entries["b.ckpt"]?.category == "edit")
+  }
+
+  @Test func outOfRangeNumbersInTheFileAreBroughtIn() throws {
+    let url = try write(#"{"schema": 1, "loras": {"a.ckpt": {"steps": 900, "guidance": -3, "shift": 99}, "b.ckpt": {"steps": 0}}}"#)
+    let loaded = LoRAOverridesStore(fileURL: url).load()
+    #expect(loaded.entries["a.ckpt"]?.steps == 200 && loaded.entries["a.ckpt"]?.guidance == 0)
+    #expect(loaded.entries["a.ckpt"]?.shift == 50 && loaded.entries["b.ckpt"]?.steps == 1)
+  }
 }

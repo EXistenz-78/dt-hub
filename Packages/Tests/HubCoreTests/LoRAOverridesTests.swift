@@ -159,4 +159,60 @@ struct LoRAOverridesTests {
     overrides.setWeights(min: nil, base: 1, max: nil, for: fox)
     #expect(overrides.entries[fox.file] == nil)
   }
+
+  @Test func aSettingsUpdateSetsKeepsAndClearsEachField() {
+    var overrides = LoRAOverrides()
+    overrides.apply(
+      LoRASettingsUpdate(trigger: .set("my fox"), category: .set("turbo"), steps: .set(4), guidance: .set(1.5), shift: .set(3)),
+      for: fox)
+    let entry = overrides.entries[fox.file]
+    #expect(entry?.trigger == "my fox" && entry?.category == "turbo" && entry?.steps == 4)
+    #expect(entry?.guidance == 1.5 && entry?.shift == 3)
+    let before = overrides
+    overrides.apply(LoRASettingsUpdate(), for: fox)
+    #expect(overrides == before)
+    overrides.apply(LoRASettingsUpdate(category: .clear), for: fox)
+    #expect(overrides.entries[fox.file]?.category == nil && overrides.entries[fox.file]?.steps == 4)
+    overrides.apply(LoRASettingsUpdate(trigger: .set("")), for: fox)
+    #expect(overrides.entries[fox.file]?.trigger == "")
+    overrides.apply(LoRASettingsUpdate(trigger: .clear), for: fox)
+    #expect(overrides.entries[fox.file]?.trigger == nil)
+    overrides.apply(LoRASettingsUpdate(steps: .clear, guidance: .clear, shift: .clear), for: fox)
+    #expect(overrides.entries[fox.file] == nil)
+  }
+
+  @Test func anUnknownCategoryIsRefused() {
+    var overrides = LoRAOverrides()
+    overrides.apply(LoRASettingsUpdate(category: .set("style")), for: fox)
+    overrides.apply(LoRASettingsUpdate(category: .set("banana")), for: fox)
+    #expect(overrides.entries[fox.file]?.category == "style")
+    #expect(LoRAOverrides.categories == ["character", "style", "slider", "edit", "turbo"])
+  }
+
+  @Test func numbersAreBroughtIntoRange() {
+    var overrides = LoRAOverrides()
+    overrides.apply(LoRASettingsUpdate(steps: .set(900), guidance: .set(-3), shift: .set(80)), for: fox)
+    let entry = overrides.entries[fox.file]
+    #expect(entry?.steps == 200 && entry?.guidance == 0 && entry?.shift == 50)
+    overrides.apply(LoRASettingsUpdate(steps: .set(0), guidance: .set(.nan), shift: .set(.infinity)), for: fox)
+    #expect(overrides.entries[fox.file]?.steps == 1)
+    #expect(overrides.entries[fox.file]?.guidance == 0 && overrides.entries[fox.file]?.shift == 50)
+  }
+
+  @Test func theCatalogCarriesTheNewFields() {
+    var overrides = LoRAOverrides()
+    overrides.apply(
+      LoRASettingsUpdate(category: .set("turbo"), steps: .set(4), guidance: .set(1.5), shift: .set(3)), for: fox)
+    let lora = overrides.apply(to: catalog([fox, bare])).loras
+    #expect(lora[0].category == "turbo" && lora[0].steps == 4 && lora[0].guidance == 1.5 && lora[0].shift == 3)
+    #expect(lora[1].category == nil && lora[1].steps == nil && lora[1].guidance == nil && lora[1].shift == nil)
+  }
+
+  @Test func anEntryWithOnlyACategoryIsChanged() {
+    var overrides = LoRAOverrides()
+    overrides.apply(LoRASettingsUpdate(category: .set("slider")), for: fox)
+    #expect(overrides.isChanged(fox))
+    #expect(!LoRAOverride(category: "slider").isEmpty)
+    #expect(LoRAOverride().isEmpty)
+  }
 }

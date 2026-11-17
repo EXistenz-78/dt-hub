@@ -49,11 +49,21 @@ public struct CatalogLoRA: Identifiable, Equatable, Sendable {
   /// The user's own lowest and highest weight for it (LoRA Advisor); nil is no limit.
   public let minWeight: Double?
   public let maxWeight: Double?
+  /// The user's own kind for it (character, style, slider, edit, turbo) and, for a turbo LoRA, the settings it needs.
+  public let category: String?
+  public let steps: Int?
+  public let guidance: Double?
+  public let shift: Double?
 
   public init(
     file: String, name: String, family: String?, trigger: String = "", defaultWeight: Double? = nil,
-    minWeight: Double? = nil, maxWeight: Double? = nil
+    minWeight: Double? = nil, maxWeight: Double? = nil, category: String? = nil, steps: Int? = nil,
+    guidance: Double? = nil, shift: Double? = nil
   ) {
+    self.category = category
+    self.steps = steps
+    self.guidance = guidance
+    self.shift = shift
     self.minWeight = minWeight
     self.maxWeight = maxWeight
     self.file = file
