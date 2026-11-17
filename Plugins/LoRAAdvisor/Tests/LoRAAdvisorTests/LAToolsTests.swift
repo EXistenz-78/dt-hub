@@ -165,7 +165,7 @@ struct LAToolsTests {
     #expect(a?["category"] as? String == "turbo" && a?["steps"] as? Int == 8 && a?["guidance"] as? Double == 1.5 && a?["shift"] as? Double == 3)
     #expect(a?["triggerProposal"] is NSNull)
     let p = rows?.first { $0["file"] as? String == "p.ckpt" }
-    #expect(p?["category"] as? String == "style" && p?["steps"] as? Int == 20 && p?["shift"] is NSNull)
+    #expect(p?["category"] as? String == "style" && p?["steps"] is NSNull && p?["guidance"] is NSNull && p?["shift"] is NSNull)
     let u = object(await call("get_lora", ["file": "u.ckpt"]).text)
     #expect(u["category"] is NSNull && u["steps"] is NSNull && u["shift"] is NSNull && u["triggerProposal"] as? String == "uu")
   }
@@ -226,6 +226,26 @@ struct LAToolsTests {
     #expect(notTurbo.isError && notTurbo.text.contains("set_category"))
     #expect(await call("set_turbo_settings", ["file": "u.ckpt", "steps": 8]).isError)
     #expect(sent.settings.count == before)
+  }
+
+  @Test func omittedTurboValuesStayAsTheyAre() async {
+    let sent = LAStateTests.Sent()
+    connect(sent, catalog: Self.rich)
+    #expect(!(await call("set_turbo_settings", ["file": "a.ckpt", "steps": 4])).isError)
+    var a = state.catalog.first { $0.file == "a.ckpt" }
+    #expect(a?.steps == 4 && a?.guidance == 1.5 && a?.shift == 3)
+    let answer = await call("set_turbo_settings", ["file": "a.ckpt", "guidance": 2, "shift": 6])
+    a = state.catalog.first { $0.file == "a.ckpt" }
+    #expect(a?.steps == 4 && a?.guidance == 2 && a?.shift == 6)
+    #expect(object(answer.text)["steps"] as? Int == 4)
+  }
+
+  @Test func theTriggerIsBounded() async {
+    let sent = LAStateTests.Sent()
+    connect(sent, catalog: Self.rich)
+    let long = await call("set_trigger", ["file": "u.ckpt", "trigger": String(repeating: "x", count: 201)])
+    #expect(long.isError && long.text.contains("200") && sent.settings.isEmpty)
+    #expect(!(await call("set_trigger", ["file": "u.ckpt", "trigger": String(repeating: "x", count: 200)])).isError)
   }
 
   @Test func setTriggerWritesAndClearsTheProposal() async {
