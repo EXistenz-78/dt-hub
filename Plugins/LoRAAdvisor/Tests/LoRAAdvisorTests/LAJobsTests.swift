@@ -228,6 +228,7 @@ struct LAJobsTests {
     var settings: [(String, DTHubLoRASettings)] = []
     var weights: [(String, Double?, Double?, Double?)] = []
     var settingsOK = true
+    var weightsOK = true
     var catalog: [DTHubCatalogLoRA] = []
   }
 
@@ -241,7 +242,7 @@ struct LAJobsTests {
       },
       saveWeights: { file, low, base, high in
         saved.weights.append((file, low, base, high))
-        return true
+        return saved.weightsOK
       },
       catalog: { saved.catalog })
   }
@@ -317,7 +318,43 @@ struct LAJobsTests {
     let jobs = analysing(saved)
     await jobs.summariseAll([c])
     let entry = store.entry(for: "c.ckpt")
-    #expect(entry.triggerProposal == "zap" && entry.analysed && jobs.message == nil)
+    #expect(entry.triggerProposal == "zap" && !entry.analysed && jobs.message == nil)
+    // Tried again by the next run once the app takes the settings.
+    #expect(jobs.toSummarise(in: catalog).contains(c))
+  }
+
+  @Test func aFailedWeightsSaveKeepsNotesAndProposalAndTheRunGoesOn() async {
+    serveBoth()
+    await jobs.searchAll(catalog)
+    store.update("a.ckpt") { $0.analysed = true }
+    let saved = Saved()
+    saved.catalog = catalog
+    saved.weightsOK = false
+    llm.answer = { [json] _ in json }
+    let jobs = analysing(saved)
+    await jobs.summariseAll(catalog)
+    let entry = store.entry(for: "c.ckpt")
+    #expect(entry.notes == "Stile acquarello." && !entry.rawNotes && entry.triggerProposal == "zap" && !entry.analysed)
+    #expect(saved.settings.count == 1 && saved.weights.count == 1)
+    #expect(jobs.toSummarise(in: catalog) == [c])
+  }
+
+  @Test func aRateLimitedRefetchEndsTheRun() async {
+    serveBoth()
+    await jobs.searchAll(catalog)
+    store.setNotesByUser("mie", for: "a.ckpt")
+    store.setNotesByUser("mie", for: "b.ckpt")
+    store.update("b.ckpt") { $0.link = "https://civitai.com/models/2" }
+    fetcher.set(LACivitai.modelURL(1), .failure(.rateLimited))
+    let saved = Saved()
+    saved.catalog = catalog
+    llm.answer = { [json] _ in json }
+    let jobs = analysing(saved)
+    await jobs.summariseAll([a, b, c])
+    #expect(jobs.message == L.text(.rateLimited, italian: true))
+    #expect(!fetcher.requests.contains(LACivitai.modelURL(2).absoluteString))
+    #expect(llm.calls.isEmpty && store.entry(for: "a.ckpt") == LAEntry(link: "https://civitai.com/models/1", notes: "mie"))
+    #expect(store.entry(for: "c.ckpt").rawNotes)
   }
 
   @Test func anUnreachablePageSkipsThatLoRAOnly() async {

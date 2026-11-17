@@ -107,6 +107,8 @@ final class LAJobs: ObservableObject {
   private let saveWeights: (String, Double?, Double?, Double?) async -> Bool
   private let catalog: () -> [DTHubCatalogLoRA]
   private let stopFlag = Flag()
+  /// The last summarise step downloaded a page again: the next one waits, as the search does.
+  private var fetchedLast = false
 
   /// `summarise` asks the language model: the system prompt and the prompt in, the answer (or nil) out. `saveSettings` and
   /// `saveWeights` send what the analysis found to the app (true when it was saved); `catalog` gives the LoRAs as the app
@@ -164,12 +166,20 @@ final class LAJobs: ObservableObject {
 
   func summariseAll(_ catalog: [DTHubCatalogLoRA]) async {
     var failed = false
+    var slow = false
     await run(.summarise, toSummarise(in: catalog)) { lora in
-      if await !self.write(lora) { failed = true }
-      return true
+      switch await self.write(lora) {
+      case .done: return true
+      case .failed:
+        failed = true
+        return true
+      case .slowDown:
+        slow = true
+        return self.slowDown()
+      }
     }
     // The entries the language model gave nothing for are still raw: say so, they can be tried again.
-    if failed { message = L.text(.summaryFailed, italian: italian) }
+    if failed && !slow { message = L.text(.summaryFailed, italian: italian) }
   }
 
   /// "Summarise" on one LoRA; false when the language model gave nothing.
@@ -177,7 +187,11 @@ final class LAJobs: ObservableObject {
   func summarise(_ lora: DTHubCatalogLoRA) async -> Bool {
     var done = false
     await run(.summarise, toSummarise(in: [lora])) { lora in
-      done = await self.write(lora)
+      switch await self.write(lora) {
+      case .done: done = true
+      case .failed: break
+      case .slowDown: _ = self.slowDown()
+      }
       return true
     }
     return done
@@ -212,10 +226,11 @@ final class LAJobs: ObservableObject {
     running = kind
     message = nil
     stopFlag.set(false)
+    fetchedLast = false
     progress = (0, list.count)
     for (index, lora) in list.enumerated() {
       if stopFlag.isSet { break }
-      if index > 0, kind == .search, pause > .zero { try? await Task.sleep(for: pause) }
+      if index > 0, kind == .search || fetchedLast, pause > .zero { try? await Task.sleep(for: pause) }
       guard await step(lora) else { break }
       progress = (index + 1, list.count)
     }
@@ -326,55 +341,62 @@ final class LAJobs: ObservableObject {
 
   /// Asks the language model about the page of a LoRA and writes what it says (spec §4). False when nothing was written:
   /// the page could not be had, the model gave nothing readable, or the LoRA left the catalog.
-  private func write(_ lora: DTHubCatalogLoRA) async -> Bool {
+  private enum Written { case done, failed, slowDown }
+
+  private func write(_ lora: DTHubCatalogLoRA) async -> Written {
+    fetchedLast = false
     let raw = isRaw(lora.file)
     let text: String
     if raw {
-      guard let page = store.pageText(for: lora.file) else { return false }
+      guard let page = store.pageText(for: lora.file) else { return .failed }
       text = page
     } else {
       // Summarised by the older step: the page text was deleted, so it is downloaded again (the notes stay as they are).
-      guard needsFields(lora.file), let link = entry(of: lora.file).link.flatMap(LALink.parse) else { return false }
+      guard needsFields(lora.file), let link = entry(of: lora.file).link.flatMap(LALink.parse) else { return .failed }
       let importer = LAImporter(fetcher: fetcher, store: store)
-      guard case .imported = await importer.refreshPageText(link, for: lora.file),
-        let page = store.pageText(for: lora.file)
-      else {
+      fetchedLast = true
+      let outcome = await importer.refreshPageText(link, for: lora.file)
+      guard case .imported = outcome, let page = store.pageText(for: lora.file) else {
         store.setPageText(nil, for: lora.file)
-        return false
+        // The site asks to slow down: the run ends and the LoRA stays as it was.
+        return outcome == .failed(.rateLimited) ? .slowDown : .failed
       }
       text = page
     }
     let answer = await ask(LASummary.system(italian: italian), LASummary.prompt(pageText: text))
     // What was read is not kept for a LoRA that is not raw: its notes are not waiting for the text.
     defer { if !raw { store.setPageText(nil, for: lora.file) } }
-    guard let answer, raw ? isRaw(lora.file) : needsFields(lora.file) else { return false }
+    guard let answer, raw ? isRaw(lora.file) : needsFields(lora.file) else { return .failed }
 
     guard let analysis = LASummary.parse(answer) else {
       // No JSON at all: the whole answer is the summary and no field is touched. A "{" with no JSON in it is a failure.
-      guard raw, !answer.contains("{"), let summary = LASummary.clean(answer) else { return false }
+      guard raw, !answer.contains("{"), let summary = LASummary.clean(answer) else { return .failed }
       store.setPageText(nil, for: lora.file)
       store.update(lora.file) {
         $0.notes = String(summary.prefix(LAAnalysisPlan.maxNotes))
         $0.rawNotes = false
       }
-      return true
+      return .done
     }
     // The LoRA as it is now: its trigger may have changed while the model was thinking.
-    guard let current = catalog().first(where: { $0.file == lora.file }) else { return false }
+    guard let current = catalog().first(where: { $0.file == lora.file }) else { return .failed }
     let plan = LAAnalysisPlan.make(analysis: analysis, lora: current, entry: entry(of: lora.file), replaceNotes: raw)
     if plan.notes != nil { store.setPageText(nil, for: lora.file) }
+    // The notes and the proposal are written whatever happens; `analysed` only once the app has the fields, so a failed
+    // save is tried again by the next run.
+    // A new analysis replaces a pending proposal: the trigger or the page may have changed (nil clears it).
     store.update(lora.file) {
       if let notes = plan.notes {
         $0.notes = notes
         $0.rawNotes = false
       }
-      $0.analysed = true
       $0.triggerProposal = plan.triggerProposal
     }
-    // A save that fails costs nothing else: the entry is as it should be and the app keeps what it had.
-    if plan.settings != DTHubLoRASettings() { _ = await saveSettings(lora.file, plan.settings) }
-    if let weights = plan.weights { _ = await saveWeights(lora.file, weights.min, weights.base, weights.max) }
-    return true
+    var saved = true
+    if plan.settings != DTHubLoRASettings() { saved = await saveSettings(lora.file, plan.settings) }
+    if let weights = plan.weights, await !saveWeights(lora.file, weights.min, weights.base, weights.max) { saved = false }
+    if saved { store.update(lora.file) { $0.analysed = true } }
+    return .done
   }
 
   private func entry(of file: String) -> LAEntry { store.entry(for: file) }
