@@ -52,4 +52,24 @@ struct EditModelTests {
     let loras = [LoRASelection(file: "edit.ckpt")]
     #expect(!EditModel.isEdit(model: plainModel, loras: loras, catalog: empty))
   }
+
+  @Test func anEditLoRAOfAnotherFamilyDoesNotCount() {
+    let other = CatalogLoRA(file: "qwen_edit.ckpt", name: "QE", family: "qwen_image", category: "edit")
+    let cat = ModelCatalog(models: [plainModel], loras: [other], fileCount: 2)
+    let loras = [LoRASelection(file: "qwen_edit.ckpt")]
+    #expect(!EditModel.isEdit(model: plainModel, loras: loras, catalog: cat))
+  }
+
+  @Test func anEditLoRAOfTheModelsOwnFamilyCounts() {
+    let own = CatalogLoRA(file: "own_edit.ckpt", name: "OE", family: "flux2_9b", category: "edit")
+    let cat = ModelCatalog(models: [plainModel], loras: [own], fileCount: 2)
+    let loras = [LoRASelection(file: "own_edit.ckpt")]
+    #expect(EditModel.isEdit(model: plainModel, loras: loras, catalog: cat))
+  }
+
+  @Test func withNoModelAnEditLoRAOfAnyFamilyCounts() {
+    let other = CatalogLoRA(file: "qwen_edit.ckpt", name: "QE", family: "qwen_image", category: "edit")
+    let cat = ModelCatalog(models: [], loras: [other], fileCount: 1)
+    #expect(EditModel.isEdit(model: nil, loras: [LoRASelection(file: "qwen_edit.ckpt")], catalog: cat))
+  }
 }
