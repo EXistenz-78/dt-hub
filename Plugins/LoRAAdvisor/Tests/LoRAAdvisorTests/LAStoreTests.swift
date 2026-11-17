@@ -120,3 +120,41 @@ struct StringsTests {
     }
   }
 }
+
+@MainActor
+struct LAEntryNewFieldsTests {
+  @Test func roundTripOfTheNewFields() throws {
+    let entry = LAEntry(
+      categoryManual: true, paramsManual: true, analysed: true, triggerProposal: "a, b", triggerDismissed: "c")
+    let back = try JSONDecoder().decode(LAEntry.self, from: JSONEncoder().encode(entry))
+    #expect(back == entry)
+    #expect(back.triggerProposal == "a, b" && back.triggerDismissed == "c")
+  }
+
+  @Test func anOldEntryLoadsUnchangedAndDefaultsAreNotWritten() throws {
+    let old = try JSONDecoder().decode(LAEntry.self, from: Data(#"{"link":"L","notes":"N"}"#.utf8))
+    #expect(old == LAEntry(link: "L", notes: "N"))
+    #expect(!old.categoryManual && !old.paramsManual && !old.analysed)
+    #expect(old.triggerProposal == nil && old.triggerDismissed == nil)
+    let json = String(decoding: try JSONEncoder().encode(old), as: UTF8.self)
+    for key in ["categoryManual", "paramsManual", "analysed", "triggerProposal", "triggerDismissed"] {
+      #expect(!json.contains(key))
+    }
+  }
+
+  @Test func onlyNewFieldsMakeTheEntryNotEmpty() {
+    #expect(!LAEntry(categoryManual: true).isEmpty)
+    #expect(!LAEntry(paramsManual: true).isEmpty)
+    #expect(!LAEntry(analysed: true).isEmpty)
+    #expect(!LAEntry(triggerProposal: "x").isEmpty)
+    #expect(!LAEntry(triggerDismissed: "x").isEmpty)
+  }
+
+  @Test func wrongTypedNewFieldsAreIgnored() throws {
+    let text = #"{"link":"L","categoryManual":"yes","paramsManual":1,"analysed":[],"triggerProposal":5,"triggerDismissed":{}}"#
+    let entry = try JSONDecoder().decode(LAEntry.self, from: Data(text.utf8))
+    #expect(entry == LAEntry(link: "L"))
+  }
+
+  @Test func storeSchemaStaysOne() { #expect(LAStore.schema == 1) }
+}

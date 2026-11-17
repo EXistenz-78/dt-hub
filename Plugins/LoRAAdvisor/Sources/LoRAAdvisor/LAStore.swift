@@ -37,11 +37,27 @@ struct LAEntry: Codable, Equatable {
   var manualThumbnail: Bool
   /// The pages the search found without one of the LoRA's own name: the user picks one, or none.
   var candidates: [LACandidate]
+  /// The user chose the category: the analysis does not change it.
+  var categoryManual: Bool
+  /// The user chose the settings (steps, shift, guidance): the analysis does not change them.
+  var paramsManual: Bool
+  /// The full-page analysis has run on this LoRA.
+  var analysed: Bool
+  /// A Trigger the page suggests and the user has not answered yet.
+  var triggerProposal: String?
+  /// A Trigger the user refused: it is not proposed again.
+  var triggerDismissed: String?
 
   init(
     link: String? = nil, notes: String = "", thumbnail: String? = nil, searched: Bool = false, foundBySearch: Bool = false,
-    rawNotes: Bool = false, manualThumbnail: Bool = false, candidates: [LACandidate] = []
+    rawNotes: Bool = false, manualThumbnail: Bool = false, candidates: [LACandidate] = [], categoryManual: Bool = false,
+    paramsManual: Bool = false, analysed: Bool = false, triggerProposal: String? = nil, triggerDismissed: String? = nil
   ) {
+    self.categoryManual = categoryManual
+    self.paramsManual = paramsManual
+    self.analysed = analysed
+    self.triggerProposal = triggerProposal
+    self.triggerDismissed = triggerDismissed
     self.candidates = candidates
     self.link = link
     self.notes = notes
@@ -56,6 +72,7 @@ struct LAEntry: Codable, Equatable {
 
   private enum CodingKeys: String, CodingKey {
     case link, notes, thumbnail, searched, foundBySearch, rawNotes, manualThumbnail, candidates
+    case categoryManual, paramsManual, analysed, triggerProposal, triggerDismissed
   }
 
   /// A candidate that cannot be read is left out without costing the others.
@@ -74,7 +91,9 @@ struct LAEntry: Codable, Equatable {
       link: text(.link), notes: text(.notes) ?? "", thumbnail: text(.thumbnail), searched: flag(.searched),
       foundBySearch: flag(.foundBySearch), rawNotes: flag(.rawNotes), manualThumbnail: flag(.manualThumbnail),
       candidates: ((try? container.decodeIfPresent([LenientCandidate].self, forKey: .candidates)) ?? nil)?
-        .compactMap(\.value) ?? [])
+        .compactMap(\.value) ?? [],
+      categoryManual: flag(.categoryManual), paramsManual: flag(.paramsManual), analysed: flag(.analysed),
+      triggerProposal: text(.triggerProposal), triggerDismissed: text(.triggerDismissed))
   }
 
   /// Only what is not the default is written.
@@ -88,6 +107,11 @@ struct LAEntry: Codable, Equatable {
     if rawNotes { try container.encode(true, forKey: .rawNotes) }
     if manualThumbnail { try container.encode(true, forKey: .manualThumbnail) }
     if !candidates.isEmpty { try container.encode(candidates, forKey: .candidates) }
+    if categoryManual { try container.encode(true, forKey: .categoryManual) }
+    if paramsManual { try container.encode(true, forKey: .paramsManual) }
+    if analysed { try container.encode(true, forKey: .analysed) }
+    try container.encodeIfPresent(triggerProposal, forKey: .triggerProposal)
+    try container.encodeIfPresent(triggerDismissed, forKey: .triggerDismissed)
   }
 }
 

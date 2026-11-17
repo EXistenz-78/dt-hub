@@ -89,3 +89,43 @@ struct LANameTests {
     #expect(!LAName.matches(lora: "v1.0", result: "v2"))
   }
 }
+
+struct LACategoryTests {
+  @Test func theFiveCategoriesAndUnknowns() {
+    for name in ["character", "style", "slider", "edit", "turbo"] { #expect(LACategory(raw: name)?.rawValue == name) }
+    #expect(LACategory(raw: "banana") == nil)
+    #expect(LACategory(raw: nil) == nil)
+    #expect(LACategory.allCases.count == 5)
+  }
+
+  @Test func namesInBothLanguages() {
+    #expect(LACategory.character.name(italian: true) == "Personaggio")
+    #expect(LACategory.character.name(italian: false) == "Character")
+    #expect(LACategory.style.name(italian: true) == "Stile")
+    #expect(LACategory.style.name(italian: false) == "Style")
+    #expect(LACategory.slider.name(italian: true) == "Slider")
+    #expect(LACategory.edit.name(italian: false) == "Edit")
+    #expect(LACategory.turbo.name(italian: true) == "Turbo")
+  }
+}
+
+struct LATriggersTests {
+  @Test func proposalRules() {
+    #expect(LATriggers.proposal(current: "foo style", found: ["Foo Style"]) == nil)
+    #expect(LATriggers.proposal(current: "foo style", found: ["foo style,"]) == nil)
+    #expect(LATriggers.proposal(current: "", found: ["foo"]) == "foo")
+    #expect(LATriggers.proposal(current: "foo", found: ["foo", "bar"]) == "foo, bar")
+    #expect(LATriggers.proposal(current: "foo", found: []) == nil)
+    #expect(LATriggers.proposal(current: "foo", found: ["bar"]) == "bar")
+  }
+
+  @Test func wordsIgnoreCaseAccentsSpacesAndCommas() {
+    #expect(LATriggers.words("  Café,, b  a,a ") == ["a", "b", "cafe"])
+    #expect(LATriggers.words("") == [])
+    #expect(LATriggers.proposal(current: "Café, a", found: ["a  cafe"]) == nil)
+  }
+
+  @Test func foundWordsAreKeptAsWrittenWithoutDuplicates() {
+    #expect(LATriggers.proposal(current: "", found: ["Foo", "foo", "Bar,"]) == "Foo, Bar")
+  }
+}
