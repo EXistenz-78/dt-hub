@@ -67,6 +67,9 @@ public final class PluginRegistry: PluginHosting {
   /// Sets the weights of a LoRA (file, min, base, max) in the app's LoRA manager data; false when the server has no such
   /// LoRA. Set by the app.
   @ObservationIgnored public var setLoRAWeights: (@MainActor (String, Double?, Double?, Double?) -> Bool)?
+  /// Changes the trigger word, category and turbo settings of a LoRA in the app's LoRA manager data; false when the server
+  /// has no such LoRA. Set by the app; a plug-in learns it is there from `PluginContext.loraSettings`.
+  @ObservationIgnored public var setLoRASettings: (@MainActor (String, LoRASettingsUpdate) -> Bool)?
   /// The Preset menu's store, where the presets a plug-in brings go; set by the app.
   @ObservationIgnored public var presetStore: PresetStore?
   /// Answers a plug-in's question to the language model (`llm` message); nil = no language model. `modelName` is the
@@ -344,7 +347,7 @@ public final class PluginRegistry: PluginHosting {
       strength: startImageStrength?(), promptGuide: promptGuide?(),
       loraCatalog: loraCatalog?().map(PluginCatalogLoRA.init), startImageWindow: startImageWindow?(),
       lastResult: lastResultPath?().map { PluginLastResult(path: $0, name: URL(fileURLWithPath: $0).lastPathComponent) },
-      startImageFramed: startImageFramedPath?())
+      startImageFramed: startImageFramedPath?(), loraSettings: setLoRASettings != nil ? true : nil)
     return try? JSONEncoder().encode(context)
   }
 
@@ -487,6 +490,8 @@ public final class PluginRegistry: PluginHosting {
       return contribute(message, from: pluginID)
     case PluginMessageType.loraWeights:
       return changeLoRAWeights(message, from: pluginID)
+    case PluginMessageType.loraSettings:
+      return changeLoRASettings(message, from: pluginID)
     case PluginMessageType.presets:
       return addPresets(message, from: pluginID)
     case PluginMessageType.llm:
@@ -529,6 +534,34 @@ public final class PluginRegistry: PluginHosting {
     else { return PluginMessageType.failure("The message has no file.") }
     func number(_ key: String) -> Double? { (object[key] as? NSNumber).map(\.doubleValue) }
     guard setLoRAWeights?(file, number("min"), number("base"), number("max")) == true else {
+      return PluginMessageType.failure("The LoRA is not on the server.")
+    }
+    refreshContext()
+    return PluginMessageType.bare(PluginMessageType.ok)
+  }
+
+  /// `{"type":"loraSettings","file":…,"trigger":…,"category":…,"steps":…,"guidance":…,"shift":…}`: a key that is missing keeps
+  /// the field, `null` clears it, a value sets it (a value of the wrong type keeps it).
+  private func changeLoRASettings(_ message: Data, from pluginID: String) -> Data {
+    guard isActive(pluginID) else { return PluginMessageType.failure("The plug-in is not active.") }
+    guard let object = (try? JSONSerialization.jsonObject(with: message)) as? [String: Any],
+      let file = object["file"] as? String, !file.isEmpty
+    else { return PluginMessageType.failure("The message has no file.") }
+    func patch<V>(_ key: String, _ read: (Any) -> V?) -> LoRAPatch<V> {
+      guard let raw = object[key] else { return .keep }
+      if raw is NSNull { return .clear }
+      return read(raw).map { .set($0) } ?? .keep
+    }
+    func text(_ raw: Any) -> String? { raw as? String }
+    func number(_ raw: Any) -> Double? {
+      guard let value = raw as? NSNumber, CFGetTypeID(value) != CFBooleanGetTypeID() else { return nil }
+      return value.doubleValue
+    }
+    let update = LoRASettingsUpdate(
+      trigger: patch("trigger", text), category: patch("category", text),
+      steps: patch("steps") { number($0).map { Int($0.rounded()) } }, guidance: patch("guidance", number),
+      shift: patch("shift", number))
+    guard setLoRASettings?(file, update) == true else {
       return PluginMessageType.failure("The LoRA is not on the server.")
     }
     refreshContext()

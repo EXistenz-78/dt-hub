@@ -14,6 +14,9 @@ public enum PluginMessageType {
   /// Plug-in → app: the lowest, default and highest weight of one LoRA (`{"file", "min", "base", "max"}`; a missing or
   /// null value is cleared).
   public static let loraWeights = "loraWeights"
+  /// Plug-in → app: the trigger word, category and turbo settings of one LoRA (`{"file", "trigger", "category", "steps",
+  /// "guidance", "shift"}`; a key that is missing is kept, `null` is cleared, a value is set; trigger `""` = no trigger).
+  public static let loraSettings = "loraSettings"
   /// Plug-in → app: presets to add to the Preset menu (`PluginPresets`).
   public static let presets = "presets"
   /// Plug-in → app: a question for the language model; the answer is `{"type":"llm","text":…}`.
@@ -130,8 +133,18 @@ public struct PluginCatalogLoRA: Codable, Equatable, Sendable {
   /// The user's lowest and highest weight for the LoRA; left out when there is no limit.
   public var minWeight: Double?
   public var maxWeight: Double?
+  /// The user's kind for the LoRA (character, style, slider, edit, turbo) and, for a turbo one, the settings it needs;
+  /// left out when not set.
+  public var category: String?
+  public var steps: Int?
+  public var guidance: Double?
+  public var shift: Double?
 
   public init(_ lora: CatalogLoRA) {
+    category = lora.category
+    steps = lora.steps
+    guidance = lora.guidance
+    shift = lora.shift
     minWeight = lora.minWeight
     maxWeight = lora.maxWeight
     file = lora.file
@@ -210,14 +223,18 @@ public struct PluginContext: Codable, Equatable, Sendable {
   /// The newest result of the open project (the first of the Results strip): its file. Absent when there is none or from an
   /// older app.
   public var lastResult: PluginLastResult?
+  /// True when the app takes the `loraSettings` message (trigger, category, turbo settings). Absent from an older app.
+  public var loraSettings: Bool?
 
   public init(
     model: String?, family: String?, parameters: GenerationParameters, tempFolder: String, startImage: String? = nil,
     moodboard: [String]? = nil, languageModels: [PluginLanguageModel]? = nil, prompt: String? = nil,
     negativePrompt: String? = nil, strength: Double? = nil, promptGuide: PluginPromptGuide? = nil,
     loraCatalog: [PluginCatalogLoRA]? = nil, startImageWindow: PluginImageWindow? = nil,
-    lastResult: PluginLastResult? = nil, startImageFramed: String? = nil
+    lastResult: PluginLastResult? = nil, startImageFramed: String? = nil,
+    loraSettings: Bool? = nil
   ) {
+    self.loraSettings = loraSettings
     self.startImageFramed = startImageFramed
     self.lastResult = lastResult
     self.startImageWindow = startImageWindow

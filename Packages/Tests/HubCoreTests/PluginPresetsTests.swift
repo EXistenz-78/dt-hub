@@ -164,4 +164,45 @@ struct PluginPresetsRoutingTests {
     #expect(try await send(#"{"type":"loraWeights","file":"gone.ckpt"}"#, loader)["type"] as? String == "error")
     #expect(try await send(#"{"type":"loraWeights"}"#, loader)["type"] as? String == "error")
   }
+
+  @Test func aPluginChangesTheSettingsOfALoRA() async throws {
+    let (registry, loader) = try started()
+    var seen: [(String, LoRASettingsUpdate)] = []
+    registry.setLoRASettings = { file, update in
+      seen.append((file, update))
+      return file == "fox.ckpt"
+    }
+    let ok = try await send(#"{"type":"loraSettings","file":"fox.ckpt","trigger":"fx","category":"turbo","steps":4,"guidance":null}"#, loader)
+    #expect(ok["type"] as? String == "ok" && seen.count == 1 && seen[0].0 == "fox.ckpt")
+    let update = seen[0].1
+    #expect(update.trigger == .set("fx") && update.category == .set("turbo") && update.steps == .set(4))
+    #expect(update.guidance == .clear && update.shift == .keep)
+    #expect(try await send(#"{"type":"loraSettings","file":"gone.ckpt","trigger":"x"}"#, loader)["type"] as? String == "error")
+    #expect(try await send(#"{"type":"loraSettings","trigger":"x"}"#, loader)["type"] as? String == "error")
+    #expect(seen.count == 2)
+  }
+
+  @Test func aPluginThatIsNotActiveCannotChangeLoRASettings() async throws {
+    let (registry, loader) = try started()
+    var called = false
+    registry.setLoRASettings = { _, _ in called = true; return true }
+    let reply = await (try #require(loader.host)).receive(Data(#"{"type":"loraSettings","file":"fox.ckpt"}"#.utf8), from: "other")
+    #expect(try #require(try JSONSerialization.jsonObject(with: reply) as? [String: Any])["type"] as? String == "error")
+    #expect(!called)
+  }
+
+  @Test func theContextSaysSettingsAreSupported() async throws {
+    let (registry, loader) = try started()
+    let plugin = try #require(loader.plugins["a"])
+    func flag() async throws -> Any? {
+      let before = plugin.sent.count
+      registry.refreshContext()
+      for _ in 0..<200 where plugin.sent.count == before { try await Task.sleep(for: .milliseconds(10)) }
+      let last = try #require(plugin.sent.last)
+      return (try JSONSerialization.jsonObject(with: last) as? [String: Any])?["loraSettings"]
+    }
+    #expect(try await flag() == nil)
+    registry.setLoRASettings = { _, _ in true }
+    #expect(try await flag() as? Bool == true)
+  }
 }

@@ -107,6 +107,11 @@ struct DTHubApp: App {
       connection.monitor.loraOverrides.setWeights(min: low, base: base, max: high, for: lora)
       return true
     }
+    plugins.setLoRASettings = { file, update in
+      guard let lora = connection.monitor.serverCatalog.loras.first(where: { $0.file == file }) else { return false }
+      connection.monitor.loraOverrides.apply(update, for: lora)
+      return true
+    }
     plugins.loraCatalog = { connection.monitor.catalog.loras }
     plugins.currentPrompts = { (generation.prompt, generation.negativePrompt) }
     plugins.promptGuide = {
