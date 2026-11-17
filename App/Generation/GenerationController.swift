@@ -53,6 +53,8 @@ final class GenerationController {
   /// The link to Draw Things: the chosen model, the catalog and the backend every method here reads.
   @ObservationIgnored let connection: DrawThingsConnection
   let cards = CardExpansionStore(fileURL: CardExpansionStore.defaultFileURL)
+  /// The Turbo activations of the LoRAs added by hand (see `addLoRA`), so removing one puts the old values back.
+  private var loraActivator = LoRAActivator()
   private(set) var outputFolder: URL
   /// The Explore gallery of the Results window: every project's pictures, the extra folders and the stars.
   let gallery: GalleryModel
@@ -878,15 +880,31 @@ extension GenerationController: ContributionTarget {
     }
   }
 
+  /// Adds the LoRA (one already chosen only gets its weight, mode and trigger updated); a Turbo LoRA of the catalog also
+  /// sets its steps, guidance and shift. The one door of every interactive add: bulk assignments never come through here.
   func addLoRA(_ lora: LoRASelection) {
-    if parameters.loras.contains(where: { $0.file == lora.file }) {
-      parameters.updateLoRA(lora)
-    } else {
-      parameters.loras.append(lora)
-    }
+    loraActivator.add(lora, to: &parameters, catalog: connection.monitor.catalog)
   }
 
-  func removeLoRA(_ file: String) { parameters.removeLoRA(file) }
+  /// Removes the LoRA and, for a Turbo one, puts back the values it had changed.
+  func removeLoRA(_ file: String) {
+    loraActivator.remove(file, from: &parameters)
+  }
+
+  /// Replaces `old` with the LoRA in its place: the Turbo values of `old` are restored, those of the new one applied.
+  func replaceLoRA(_ old: String, with lora: LoRASelection) {
+    loraActivator.replace(old, with: lora, in: &parameters, catalog: connection.monitor.catalog)
+  }
+
+  /// The line under a LoRA's row about the Turbo values it set; nil when it has no active activation.
+  func turboNote(for file: String) -> String? {
+    guard let applied = loraActivator.turbo.applied(for: file), !applied.isEmpty else { return nil }
+    var parts: [String] = []
+    if let steps = applied.steps { parts.append("steps \(steps)") }
+    if let guidance = applied.guidance { parts.append("guidance \(guidance.formatted(.number.precision(.fractionLength(0...2))))") }
+    if let shift = applied.shift { parts.append("shift \(shift.formatted(.number.precision(.fractionLength(0...2))))") }
+    return String(format: String(localized: "card.lora.turbo"), parts.joined(separator: " · "))
+  }
 
   var moodboardIDs: Set<UUID> { Set(control.inputs.moodboard.map(\.id)) }
   var startImageID: UUID? { control.inputs.image?.id }

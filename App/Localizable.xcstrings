@@ -1395,6 +1395,23 @@
         }
       }
     },
+    "card.lora.turbo": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turbo: %@ set"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turbo: %@ impostati"
+          }
+        }
+      }
+    },
     "card.lora.unknownFamily": {
       "extractionState": "manual",
       "localizations": {

@@ -34,7 +34,8 @@ struct LoRACard: View {
             limits: limits(of: catalog.lora(forFile: selection.file)),
             status: catalog.status(of: selection, family: family),
             isContributed: contributions?.loraPlugins[selection.file] != nil,
-            remove: { controller.parameters.removeLoRA(selection.file) })
+            turboNote: controller.turboNote(for: selection.file),
+            remove: { controller.removeLoRA(selection.file) })
         }
         HStack(spacing: DS.controlGap) {
           addMenu
@@ -113,9 +114,10 @@ struct LoRACard: View {
   private func choiceButton(_ lora: CatalogLoRA, chosen: Set<String>, current: String?) -> some View {
     Button {
       if let current {
-        controller.parameters.replaceLoRA(current, with: lora.file, weight: lora.defaultWeight ?? 1, trigger: lora.trigger)
+        controller.replaceLoRA(
+          current, with: LoRASelection(file: lora.file, weight: lora.defaultWeight ?? 1, trigger: lora.trigger))
       } else {
-        controller.parameters.addLoRA(lora.file, weight: lora.defaultWeight ?? 1, trigger: lora.trigger)
+        controller.addLoRA(LoRASelection(file: lora.file, weight: lora.defaultWeight ?? 1, trigger: lora.trigger))
       }
     } label: {
       if lora.file == current {
@@ -139,6 +141,8 @@ private struct LoRARow<Choices: View>: View {
   let status: LoRAStatus
   /// A plug-in added this LoRA: teal at 30%.
   let isContributed: Bool
+  /// What a Turbo LoRA set (steps, guidance, shift), nil for the others.
+  let turboNote: String?
   let remove: () -> Void
 
   var body: some View {
@@ -193,6 +197,11 @@ private struct LoRARow<Choices: View>: View {
         TextField(String(localized: "card.lora.trigger"), text: $selection.trigger, prompt: Text("card.lora.trigger.placeholder"))
           .labelsHidden()
           .textFieldStyle(.roundedBorder)
+      }
+      if let turboNote {
+        Text(turboNote)
+          .font(.caption)
+          .foregroundStyle(.secondary)
       }
       if let reason {
         Text(reason)
