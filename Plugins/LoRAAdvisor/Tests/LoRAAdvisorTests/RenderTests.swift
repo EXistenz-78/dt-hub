@@ -125,10 +125,10 @@ struct RenderTests {
   }
 
   @Test func theListOfProposalsIsAsTallAsItsRowsUpToALimit() {
-    #expect(LATriggerReview.height(for: 0) == 0)
-    #expect(LATriggerReview.height(for: 2) < LATriggerReview.listHeight)
-    #expect(LATriggerReview.height(for: 300) == LATriggerReview.listHeight)
-    #expect(LATriggerReview.height(for: 3) < LATriggerReview.height(for: 4))
+    #expect(LATriggerReviewList.height(for: 0) == 0)
+    #expect(LATriggerReviewList.height(for: 2) < LATriggerReviewList.listHeight)
+    #expect(LATriggerReviewList.height(for: 300) == LATriggerReviewList.listHeight)
+    #expect(LATriggerReviewList.height(for: 3) < LATriggerReviewList.height(for: 4))
   }
 
   @Test func withoutProposalsTheReviewIsAbsent() throws {

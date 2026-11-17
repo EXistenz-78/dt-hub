@@ -23,7 +23,6 @@ struct LAListCard: View {
       }
       jobsRow
       LACategoryFilter(state: state)
-      LATriggerReview(state: state)
       if let message = state.jobs.message {
         Text(verbatim: message).font(.caption).foregroundStyle(DS.remove)
       }
@@ -80,6 +79,8 @@ struct LAListCard: View {
         Text(verbatim: state.text(.jobsNote)).font(.caption).foregroundStyle(.secondary).lineLimit(1)
       }
       Spacer(minLength: 0)
+      // In this row and not a row of its own: one more child of the column made SwiftUI's size negotiation explode.
+      LATriggerReview(state: state)
     }
   }
 
