@@ -1,6 +1,6 @@
-# MOSS Image Edit LoRA in DT Hub (with Atelier's engine)
+# MOSS Image Edit LoRA in DT Hub (with the custom gRPCServerCLI)
 
-A LoRA from the **MOSS Image Edit** trainer turns MOSS Image into an edit model: you give it a picture and an instruction ("change the green velvet couch to deep red velvet, keep everything else the same") and it changes just that. A LoRA file alone is not enough. The engine has to feed the picture to the model as references, and that code is **not** in the official Draw Things `gRPCServerCLI`. It is in the engine fork that **Atelier** uses.
+A LoRA from the **MOSS Image Edit** trainer turns MOSS Image into an edit model: you give it a picture and an instruction ("change the green velvet couch to deep red velvet, keep everything else the same") and it changes just that. A LoRA file alone is not enough. The engine has to feed the picture to the model as references, and that code is **not** in the official Draw Things `gRPCServerCLI`. It is in the engine fork that Atelier uses, which the custom gRPCServerCLI of this release is built from.
 
 ## Credits
 
@@ -13,7 +13,7 @@ A LoRA from the **MOSS Image Edit** trainer turns MOSS Image into an edit model:
 1. **MOSS Image SFT** (or Base) installed in Draw Things' models folder.
 2. **The LoRA file:** `adapter_model.safetensors` and `adapter_config.json` from [chinoll/Moss-Image-Edit](https://huggingface.co/chinoll/Moss-Image-Edit) (about 300 MB). Keep the two files in the same folder.
 3. **Atelier 0.12 or later** ([releases](https://github.com/ianiv/Atelier/releases)), to import the LoRA.
-4. **The engine server of this release:** `DrawThings-engine-Atelier-8f89941-Krea2Edit-macOS-arm64.zip` (see its own README inside; it also adds Krea 2 Edit LoRAs).
+4. **The engine server of this release:** `Custom-gRPCServerCLI.zip` (see its own README inside; it also adds Krea 2 Edit LoRAs).
 
 ## Steps
 
