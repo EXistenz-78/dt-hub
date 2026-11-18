@@ -20,6 +20,7 @@ This is an independent community project, not affiliated with or endorsed by Dra
 - **Incremental mode.** A switch in the header makes each result the start image of the next RUN.
 - **Projects.** Each project is a subfolder of the output folder with its own start image, mask, Moodboard, results strip and plug-in state; reopening one restores the prompt and settings of its last image. Switch from the **Project** menu in the header.
 - **Your own LoRA trigger words and weights.** *Manage LoRAs…* (LoRA card) lists the LoRAs of the server by model family, compactly: change a trigger word or the default weight (−4 to 4) of any of them. The server's trigger words are inherited and only your changes are kept, in a file of DT Hub's own: Draw Things' files are never touched.
+- **LoRA picker.** *Add LoRA* (and the name of a chosen LoRA, to replace it) opens a list with a search field (name or trigger word, ignoring case and accents) and the LoRAs in sections by category: Character, Style, Slider, Edit, Turbo, No category. LoRA Advisor 1.7 sets the categories.
 - **Turbo and Edit LoRAs.** A LoRA of category **Turbo** applies its steps, guidance and shift when you add it and restores the previous values when you remove it (only if you have not changed them meanwhile); the LoRA row says what was set. A LoRA of category **Edit** makes the model count as an Edit model, as if you had chosen an edit model: Control and Generation tabs, start-image strength and the plug-ins that require an edit model follow it. Both categories (and the Turbo values) are set in LoRA Advisor and kept in the app's own `loras.json`.
 - **Presets and preset pipelines.** Save a configuration as a preset and chain several presets into one Run. Recommended settings per model family are suggested for you.
 - **Video generation (in development).** Text-to-video and image-to-video with **MiniMax H3**, **FastH3 Omni** and **LTX-2.3**, on the DT+ cloud (and with models you have downloaded, untested). A **Video Settings** card sets the number of frames (the valid counts of each model, with the length in seconds next to it), a **Format** menu (480p, NTSC, PAL, 720p, 1080p, 2K DCI, 1440p, 4K, 8K) that sets the size to the next multiples of 64 and, when the MP4 is made, crops every frame to the exact format, always from the centre; Audio Shift, Strategic Stochastic Sampling and compression artifacts; an **Accelerator Settings** card holds Sol Attention and TeaCache (H3). The result is an HEVC **MP4 with its sound**, shown in the Results strip with a small badge and played in the Results window; dragging it or *Show in Finder* gives the MP4. The CU meter estimates H3 and LTX-2.3 with Draw Things' own formula, and Enhance Prompt has a family prompt for each of the two. Support for video is still under development: some functions may not work as expected.
@@ -100,7 +101,7 @@ This is an independent community project, not affiliated with or endorsed by Dra
 
 ## Install
 
-1. Download **`DT-Hub-1.5.0-macOS-arm64.zip`** from the [latest release](https://github.com/EXistenz-78/dt-hub/releases/latest).
+1. Download **`DT-Hub-1.6.0-macOS-arm64.zip`** from the [latest release](https://github.com/EXistenz-78/dt-hub/releases/latest).
 2. Unzip it and drag **DT Hub.app** into `/Applications`.
 3. Read **First launch** below before you open it.
 4. Optional: add the plug-ins (they are in the same release, see [`Plugins/`](Plugins/README.md#install)).
@@ -256,7 +257,7 @@ The interface of the app and of the plug-ins is available in **English and Itali
 
 > **Video (in development).** Support for video models (MiniMax H3, LTX-2.3) is still under development: some functions may not work as expected.
 
-Version 1.5.0, used daily by its author. Feedback, bug reports and ideas are welcome: open an [Issue](../../issues).
+Version 1.6.0, used daily by its author. Feedback, bug reports and ideas are welcome: open an [Issue](../../issues).
 
 ## License
 
