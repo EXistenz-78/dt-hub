@@ -35,11 +35,14 @@ public enum JobComposer {
     }
     // Video models have no inpainting: a mask on the Control tab never reaches their jobs.
     let maskSettings = videoInfo == nil ? maskSettings : nil
+    let editFiles = Set(catalog.loras.filter { $0.category == "edit" }.map(\.file))
+    let editLoRAs = sent.loras.map(\.file).filter { editFiles.contains($0) }
     let negative = traits.usesNegativePrompt ? negativePrompt : ""
     return sent.batchesForRun(randomSeed: draw).map {
       GenerationJob(
         prompt: prompt, negativePrompt: negative, model: model, parameters: $0, imageStrength: imageStrength,
-        moodboardCount: moodboardCount, maskSettings: maskSettings, videoFPS: videoInfo?.framesPerSecond)
+        moodboardCount: moodboardCount, maskSettings: maskSettings, videoFPS: videoInfo?.framesPerSecond,
+        editLoRAFiles: editLoRAs.isEmpty ? nil : editLoRAs)
     }
   }
 

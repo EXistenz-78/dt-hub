@@ -39,9 +39,24 @@ enum CustomModelFiles {
   /// The client library takes only the models of the server's echo, so for an imported LoRA it invents a thin
   /// specification with no `modifier`, and the server uses what comes with the request instead of its own file: the
   /// LoRA would lose what its file says, such as being an edit LoRA that takes reference images.
-  static func loraSpecs(for files: [String], besides customModels: URL) -> [String: Data] {
+  static func loraSpecs(for files: [String], besides customModels: URL, edit: Set<String> = []) -> [String: Data] {
     let all = read(customModels.deletingLastPathComponent().appendingPathComponent("custom_lora.json")) ?? [:]
-    return all.filter { files.contains($0.key) }
+    var result = all.filter { files.contains($0.key) }
+    for file in edit where result[file] != nil {
+      if let marked = markedAsEdit(result[file]!) { result[file] = marked }
+    }
+    return result
+  }
+
+  /// The LoRA's specification with `modifier: kontext` when it has none (or `none`): the user's category "edit" says
+  /// the LoRA takes reference images, which for the engine is that modifier. Another modifier is the file's own choice
+  /// and stays. Nil when nothing changes or the specification cannot be read.
+  static func markedAsEdit(_ spec: Data) -> Data? {
+    guard var json = (try? JSONSerialization.jsonObject(with: spec)) as? [String: Any] else { return nil }
+    let current = (json["modifier"] as? String) ?? ""
+    guard current.isEmpty || current == "none" else { return nil }
+    json["modifier"] = "kontext"
+    return try? JSONSerialization.data(withJSONObject: json)
   }
 
   /// The specification of each model of the files, by its file name; the first file that has a model wins. A file that

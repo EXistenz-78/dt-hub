@@ -34,6 +34,22 @@ struct CustomModelFilesTests {
     #expect(CustomModelFiles.loraSpecs(for: ["edit_lora_f16.ckpt"], besides: folder.appendingPathComponent("nowhere/custom.json")).isEmpty)
   }
 
+  @Test func anEditCategoryAddsTheKontextModifierOnlyWhereThereIsNone() throws {
+    _ = try write(
+      "custom_lora.json",
+      #"[{"file":"plain_lora_f16.ckpt","name":"Plain","version":"krea_2"},{"file":"moss_lora_f16.ckpt","name":"Moss","version":"moss_image","modifier":"qwenimage_edit_plus"},{"file":"other_lora_f16.ckpt","name":"Other","version":"v1"}]"#)
+    let customModels = folder.appendingPathComponent("custom.json")
+    let files = ["plain_lora_f16.ckpt", "moss_lora_f16.ckpt", "other_lora_f16.ckpt"]
+    let specs = CustomModelFiles.loraSpecs(
+      for: files, besides: customModels, edit: ["plain_lora_f16.ckpt", "moss_lora_f16.ckpt"])
+    func modifier(_ file: String) -> String? {
+      (specs[file].flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] })?["modifier"] as? String
+    }
+    #expect(modifier("plain_lora_f16.ckpt") == "kontext")
+    #expect(modifier("moss_lora_f16.ckpt") == "qwenimage_edit_plus")
+    #expect(modifier("other_lora_f16.ckpt") == nil)
+  }
+
   @Test func theFirstFileWinsAndAMissingOrBrokenOneIsSkipped() throws {
     let first = try write("first.json", #"[{"file":"m.ckpt","name":"first"}]"#)
     let second = try write("second.json", #"[{"file":"m.ckpt","name":"second"},{"file":"n.ckpt","name":"n"}]"#)

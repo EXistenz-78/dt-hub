@@ -130,11 +130,16 @@ public actor DrawThingsBackend: GenerationBackend {
 
   /// The imported LoRAs of the job that nothing describes (the gRPCServerCLI does not send them): their entry of the
   /// models folder's `custom_lora.json`, so the request carries it whole, with its `modifier`.
-  private func registerCustomLoRASpecs(_ files: [String], on service: DrawThingsService) async {
+  /// The LoRAs the user marked as edit (`edit`) are always registered again, with `modifier: kontext` when their entry has
+  /// none: the category can change between two jobs, and a spec registered before would otherwise stay.
+  private func registerCustomLoRASpecs(_ files: [String], edit: Set<String> = [], on service: DrawThingsService) async {
     guard let customModels, let folderFile = customModels.folderFile, !files.isEmpty else { return }
     var undescribed: [String] = []
-    for file in files where await service.modelSpecs.spec(for: file) == nil { undescribed.append(file) }
-    let specs = CustomModelFiles.loraSpecs(for: undescribed, besides: folderFile).values.compactMap { ModelSpec(json: $0) }
+    for file in files where edit.contains(file) { undescribed.append(file) }
+    for file in files where !edit.contains(file) {
+      if await service.modelSpecs.spec(for: file) == nil { undescribed.append(file) }
+    }
+    let specs = CustomModelFiles.loraSpecs(for: undescribed, besides: folderFile, edit: edit).values.compactMap { ModelSpec(json: $0) }
     if !specs.isEmpty { await service.modelSpecs.register(specs) }
   }
 
@@ -181,7 +186,8 @@ public actor DrawThingsBackend: GenerationBackend {
         do {
           let service = await self.currentService()
           await self.registerRemoteSpec(for: job.model, loras: job.parameters.loras.map(\.file), on: service)
-          await self.registerCustomLoRASpecs(job.parameters.loras.map(\.file), on: service)
+          await self.registerCustomLoRASpecs(
+            job.parameters.loras.map(\.file), edit: Set(job.editLoRAFiles ?? []), on: service)
           // The actor's state, read before the events come in.
           let runsLocally = await self.runsLocally(job.model)
           let hires = job.parameters.advanced.hiresFix ? job.parameters.advanced.hiresFixStrength : nil

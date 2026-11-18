@@ -16,11 +16,14 @@ public struct GenerationJob: Equatable, Codable, Sendable {
   public var maskSettings: MaskSettings?
   /// The frame rate of the family when the RUN makes a video; nil for images.
   public var videoFPS: Double?
+  /// The files of the job's LoRAs the user marked as edit LoRAs (category `edit`): the server must treat them as taking
+  /// reference images even when their own specification says nothing. Nil when there are none.
+  public var editLoRAFiles: [String]?
 
   public init(
     prompt: String, negativePrompt: String = "", model: String, parameters: GenerationParameters,
     imageStrength: Double? = nil, moodboardCount: Int = 0, maskSettings: MaskSettings? = nil,
-    videoFPS: Double? = nil
+    videoFPS: Double? = nil, editLoRAFiles: [String]? = nil
   ) {
     self.prompt = prompt
     self.negativePrompt = negativePrompt
@@ -30,6 +33,7 @@ public struct GenerationJob: Equatable, Codable, Sendable {
     self.moodboardCount = moodboardCount
     self.maskSettings = maskSettings
     self.videoFPS = videoFPS
+    self.editLoRAFiles = editLoRAFiles
   }
 
   public var isVideo: Bool { videoFPS != nil }
