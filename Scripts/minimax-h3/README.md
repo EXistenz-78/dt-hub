@@ -60,7 +60,8 @@ cd quant4 && swift build -c release
 - To use it, add an entry to the `custom.json` of your models folder that is a copy of the model's entry with
   `"text_encoder": "qwen_3_vl_32b_50_i4x.ckpt"` and a `file` and `name` of its own (the `file` can be a copy or an APFS
   clone of the model's file).
-- MiniMax H3 Image needs a server that knows the family `minimax_h3_image`. At the time of writing that is the fork
-  [`ianiv/draw-things-community`](https://github.com/ianiv/draw-things-community); the official Draw Things server does
+- MiniMax H3 Image needs a server that knows the family `minimax_h3_image`. The `Custom-gRPCServerCLI.zip` of the
+  [DT Hub releases](https://github.com/EXistenz-78/dt-hub/releases/latest) has it (built from the fork
+  [`ianiv/draw-things-community`](https://github.com/ianiv/draw-things-community)); the official Draw Things server does
   not have it yet.
 - The quality of the 4-bit encoder against the 8-bit one has not been measured.

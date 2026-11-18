@@ -97,7 +97,7 @@ This is an independent community project, not affiliated with or endorsed by Dra
 ## Requirements
 
 - macOS 26 and an Apple Silicon Mac.
-- A Draw Things gRPC server: the Draw Things app with its API server enabled, or the `gRPCServerCLI` binary, which DT Hub can start itself.
+- A Draw Things gRPC server: the Draw Things app with its API server enabled, or the `gRPCServerCLI` binary, which DT Hub can start itself. Use the **custom gRPCServerCLI** of the [latest release](https://github.com/EXistenz-78/dt-hub/releases/latest) (`Custom-gRPCServerCLI.zip`): it is Draw Things' server plus what DT Hub's newer features need (Krea 2 / MOSS Image Edit LoRAs, MiniMax H3 Image).
 - To build: Xcode 27.
 
 ## Install
@@ -136,7 +136,7 @@ You only need to do this once per download. If you would rather not trust a bina
 
 When DT Hub starts the server for you, it runs the `gRPCServerCLI` binary you chose in **Preferences › Draw Things**; the same pane shows which release it is and tells you when a newer one exists. DT Hub does not update it by itself:
 
-1. Download `gRPCServerCLI-macOS` from the [Draw Things releases](https://github.com/drawthingsai/draw-things-community/releases) and put it in place of the old one (same folder, same name, so the path in Preferences stays valid).
+1. Download **`Custom-gRPCServerCLI.zip`** from the [latest DT Hub release](https://github.com/EXistenz-78/dt-hub/releases/latest), unzip it and put `gRPCServerCLI-macOS` and the four `*.bundle` folders in place of the old ones (same folder, same names, so the path in Preferences stays valid).
 2. A file downloaded with a browser is not executable and is marked as quarantined by macOS, so the server will not start. In Terminal, with the path of your file:
 
 ```bash
@@ -149,7 +149,7 @@ xattr -d com.apple.quarantine "/path/to/gRPCServerCLI-macOS"
 
 3. Start the server again from DT Hub (Connect, or restart the app).
 
-The second command tells macOS to skip its check on a downloaded program: run it only on a file you downloaded yourself from the official releases page.
+The second command tells macOS to skip its check on a downloaded program: run it only on a file you downloaded yourself from this project's releases page.
 
 ## Build from source
 
