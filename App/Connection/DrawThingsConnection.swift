@@ -71,11 +71,40 @@ final class DrawThingsConnection {
     }
     Task { await refreshServerVersion() }
     loop = Task {
-      // Managed mode: the server starts with the app (spec §5).
-      if managed.mode == .managed { await managedServer.start(managed) }
+      // Managed mode: the server starts with the app (spec §5), after DT Hub has looked into the models folder itself:
+      // that is when macOS asks for the permission, and the server DT Hub starts works under it.
+      if managed.mode == .managed {
+        await checkModelsFolderAccess()
+        await managedServer.start(managed)
+      }
       await monitor.replaceBackend(makeBackend())
       await monitor.run()
     }
+  }
+
+  /// True when macOS refused DT Hub the models folder (or a file in it): without it the server lists no LoRA name and
+  /// no trigger word, or no model at all.
+  private(set) var modelsFolderDenied = false
+  @ObservationIgnored private var deniedAlertShown = false
+
+  /// Reads the models folder and its `custom.json` / `custom_lora.json` from DT Hub, off the main thread (macOS may be
+  /// waiting for the user's answer). On a refusal, says so once and offers System Settings.
+  func checkModelsFolderAccess() async {
+    let folder = managed.modelsFolder.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard managed.mode == .managed, !folder.isEmpty else {
+      modelsFolderDenied = false
+      return
+    }
+    let access = await Task.detached { FolderAccess.accessIncludingModelFiles(of: folder) }.value
+    modelsFolderDenied = access == .denied
+    guard modelsFolderDenied, !deniedAlertShown else { return }
+    deniedAlertShown = true
+    let alert = NSAlert()
+    alert.messageText = String(localized: "alert.modelsFolderDenied.title")
+    alert.informativeText = String(localized: "alert.modelsFolderDenied.text")
+    alert.addButton(withTitle: String(localized: "prefs.privacy.open"))
+    alert.addButton(withTitle: String(localized: "alert.modelsFolderDenied.later"))
+    if alert.runModal() == .alertFirstButtonReturn { PrivacySettingsLink.open() }
   }
 
   /// Looks at the program of the managed server (its sha256 against the releases on GitHub): one request, at launch,
@@ -197,6 +226,7 @@ final class DrawThingsConnection {
     managed = newManaged
     managedStore.save(newManaged)
     if newManaged.mode == .managed {
+      await checkModelsFolderAccess()
       await managedServer.start(newManaged)
     } else {
       await managedServer.stopAndWait()

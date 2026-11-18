@@ -34,6 +34,25 @@ struct CustomModelFilesTests {
     #expect(CustomModelFiles.loraSpecs(for: ["edit_lora_f16.ckpt"], besides: folder.appendingPathComponent("nowhere/custom.json")).isEmpty)
   }
 
+  @Test func aLoRAThatTheServerDidNotDescribeGetsItsNameAndTriggerFromCustomLoRAJSON() throws {
+    _ = try write(
+      "custom_lora.json",
+      #"[{"file":"mine_lora_f16.ckpt","name":"Mine","prefix":"mn style","version":"krea_2"},{"file":"sent_lora_f16.ckpt","name":"Wrong","version":"krea_2"}]"#)
+    let source = CustomModelSource(
+      folderFile: folder.appendingPathComponent("custom.json"),
+      appFile: folder.appendingPathComponent("app/custom.json"),
+      cacheFile: folder.appendingPathComponent("cache/custom-models.json")).loras
+    let echo = Data(#"[{"file":"sent_lora_f16.ckpt","name":"Sent","version":"krea_2","prefix":"sent"}]"#.utf8)
+    let merged = CustomModelFiles.loraMetadata(
+      merging: echo, candidates: ["mine_lora_f16.ckpt", "sent_lora_f16.ckpt", "none_lora_f16.ckpt"], source: source)
+    let catalog = CatalogBuilder.build(
+      files: ["mine_lora_f16.ckpt", "sent_lora_f16.ckpt", "none_lora_f16.ckpt"], modelSpecs: [:], loraMetadata: merged)
+    let byFile = Dictionary(uniqueKeysWithValues: catalog.loras.map { ($0.file, $0) })
+    #expect(byFile["mine_lora_f16.ckpt"]?.name == "Mine" && byFile["mine_lora_f16.ckpt"]?.trigger == "mn style")
+    #expect(byFile["sent_lora_f16.ckpt"]?.name == "Sent")
+    #expect(byFile["none_lora_f16.ckpt"]?.name == "none_lora_f16.ckpt")
+  }
+
   @Test func anEditCategoryAddsTheKontextModifierOnlyWhereThereIsNone() throws {
     _ = try write(
       "custom_lora.json",

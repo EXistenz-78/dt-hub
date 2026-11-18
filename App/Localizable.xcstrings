@@ -13209,6 +13209,57 @@
           }
         }
       }
+    },
+    "alert.modelsFolderDenied.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DT Hub cannot read the models folder"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DT Hub non può leggere la cartella dei modelli"
+          }
+        }
+      }
+    },
+    "alert.modelsFolderDenied.text": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS has not given DT Hub access to the models folder or to its custom.json / custom_lora.json files. Without it the LoRAs show their file names, with no trigger words, and models may be missing. Allow DT Hub in System Settings › Privacy & Security (Files & Folders, or Full Disk Access), then restart DT Hub."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS non ha dato a DT Hub l'accesso alla cartella dei modelli o ai suoi file custom.json / custom_lora.json. Senza, i LoRA mostrano il nome del file, senza trigger, e alcuni modelli possono mancare. Consenti DT Hub in Impostazioni di Sistema › Privacy e sicurezza (Cartelle e file, oppure Accesso completo al disco), poi riavvia DT Hub."
+          }
+        }
+      }
+    },
+    "alert.modelsFolderDenied.later": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not now"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non ora"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -109,7 +109,12 @@ public actor DrawThingsBackend: GenerationBackend {
         specs[file] = CatalogBuilder.specInfo(json: spec.json, file: file)
       }
     }
-    let catalog = CatalogBuilder.build(files: reply.files, modelSpecs: specs, loraMetadata: reply.override.loras)
+    var loraMetadata = reply.override.loras
+    if let customModels {
+      loraMetadata = CustomModelFiles.loraMetadata(
+        merging: loraMetadata, candidates: reply.files.filter { $0.contains("_lora_") }, source: customModels.loras)
+    }
+    let catalog = CatalogBuilder.build(files: reply.files, modelSpecs: specs, loraMetadata: loraMetadata)
     guard includeRemoteModels else { return catalog }
     // Official first, then Community (`live`), then Uncurated: a file in two lists keeps the description of the first.
     let official: [String: Data] = await officialModels?.specs() ?? [:]

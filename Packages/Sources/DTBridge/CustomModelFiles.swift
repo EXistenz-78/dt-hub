@@ -15,6 +15,14 @@ public struct CustomModelSource: Sendable {
     self.appFile = appFile
     self.cacheFile = cacheFile
   }
+
+  /// The same places for the imported LoRAs: the `custom_lora.json` next to each `custom.json`, and a copy of its own.
+  var loras: CustomModelSource {
+    func sibling(_ url: URL) -> URL { url.deletingLastPathComponent().appendingPathComponent("custom_lora.json") }
+    return CustomModelSource(
+      folderFile: folderFile.map(sibling), appFile: sibling(appFile),
+      cacheFile: cacheFile.deletingLastPathComponent().appendingPathComponent("custom-loras.json"))
+  }
 }
 
 /// The `custom.json` of Draw Things: the models the user imported, one specification each. The Draw Things app sends
@@ -57,6 +65,29 @@ enum CustomModelFiles {
     guard current.isEmpty || current == "none" else { return nil }
     json["modifier"] = "kontext"
     return try? JSONSerialization.data(withJSONObject: json)
+  }
+
+  /// The server's LoRA metadata with the LoRAs it did not describe added from their `custom_lora.json` (the models
+  /// folder's, then the Draw Things app's): the server DT Hub starts reads only the folder it is given, while the
+  /// Draw Things app knows its own imports. `candidates` are the files worth looking up; an entry the server sent is
+  /// never replaced.
+  static func loraMetadata(
+    merging echo: Data, candidates: [String], source: CustomModelSource
+  ) -> Data {
+    var entries = (try? JSONSerialization.jsonObject(with: echo)) as? [[String: Any]] ?? []
+    let described = Set(entries.compactMap { $0["file"] as? String })
+    let missing = candidates.filter { !described.contains($0) }
+    guard !missing.isEmpty else { return echo }
+    let found = specs(for: missing, described: [], source: source)
+    var added = false
+    for file in missing {
+      if let json = found[file], let entry = (try? JSONSerialization.jsonObject(with: json)) as? [String: Any] {
+        entries.append(entry)
+        added = true
+      }
+    }
+    guard added, let data = try? JSONSerialization.data(withJSONObject: entries) else { return echo }
+    return data
   }
 
   /// The specification of each model of the files, by its file name; the first file that has a model wins. A file that
