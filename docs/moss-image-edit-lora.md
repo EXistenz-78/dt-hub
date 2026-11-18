@@ -13,7 +13,7 @@ A LoRA from the **MOSS Image Edit** trainer turns MOSS Image into an edit model:
 1. **MOSS Image SFT** (or Base) installed in Draw Things' models folder.
 2. **The LoRA file:** `adapter_model.safetensors` and `adapter_config.json` from [chinoll/Moss-Image-Edit](https://huggingface.co/chinoll/Moss-Image-Edit) (about 300 MB). Keep the two files in the same folder.
 3. **Atelier 0.12 or later** ([releases](https://github.com/ianiv/Atelier/releases)), to import the LoRA.
-4. **The engine server of this release:** `DrawThings-engine-Atelier-9599c5ff-macOS-arm64.zip` (see its own README inside).
+4. **The engine server of this release:** `DrawThings-engine-Atelier-8f89941-Krea2Edit-macOS-arm64.zip` (see its own README inside; it also adds Krea 2 Edit LoRAs).
 
 ## Steps
 
