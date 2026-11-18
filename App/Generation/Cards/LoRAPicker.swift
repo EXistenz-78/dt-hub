@@ -12,6 +12,7 @@ struct LoRAPicker: View {
   let current: String?
   let onPick: (CatalogLoRA) -> Void
 
+  @Environment(\.dismiss) private var dismiss
   @State private var query = ""
   @FocusState private var searchFocused: Bool
 
@@ -24,7 +25,9 @@ struct LoRAPicker: View {
       TextField(String(localized: "card.lora.search"), text: $query)
         .textFieldStyle(.roundedBorder)
         .focused($searchFocused)
+        .onExitCommand { dismiss() }
         .onSubmit {
+          guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
           if let first = sections.lazy.flatMap(\.loras).first(where: { !chosen.contains($0.file) }) {
             onPick(first)
           }

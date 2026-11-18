@@ -12,6 +12,10 @@ struct LoRAPickerSectionsTests {
 
   private func names(_ section: LoRAPickerSections.Section) -> [String] { section.loras.map(\.name) }
 
+  @Test func theOrderMatchesTheKnownCategories() {
+    #expect(Set(LoRAPickerSections.order) == LoRAOverrides.categories)
+  }
+
   @Test func sectionsFollowTheFixedOrder() {
     let loras = [
       lora("a", category: "turbo"), lora("b", category: "edit"), lora("c"),
@@ -21,17 +25,19 @@ struct LoRAPickerSectionsTests {
     #expect(sections.map(\.category) == ["character", "style", "slider", "edit", "turbo", nil])
   }
 
-  @Test func loRAsInASectionAreSortedByName() {
+  @Test func loRAsInASectionAreSortedByName() throws {
     let loras = [lora("Item 10", category: "style"), lora("item 2", category: "style"), lora("Alpha", category: "style")]
     let sections = LoRAPickerSections.make(loras: loras, query: "")
-    #expect(names(sections[0]) == ["Alpha", "item 2", "Item 10"])
+    let first = try #require(sections.first)
+    #expect(names(first) == ["Alpha", "item 2", "Item 10"])
   }
 
-  @Test func aMissingOrUnknownCategoryGoesToNoCategory() {
+  @Test func aMissingOrUnknownCategoryGoesToNoCategory() throws {
     let loras = [lora("a"), lora("b", category: "weird"), lora("c", category: "style")]
     let sections = LoRAPickerSections.make(loras: loras, query: "")
     #expect(sections.map(\.category) == ["style", nil])
-    #expect(names(sections[1]) == ["a", "b"])
+    let last = try #require(sections.last)
+    #expect(names(last) == ["a", "b"])
   }
 
   @Test func emptySectionsAreOmitted() {
@@ -41,8 +47,8 @@ struct LoRAPickerSectionsTests {
 
   @Test func queryMatchesNameAndTriggerIgnoringCaseAccentsAndEdgeSpaces() {
     let loras = [lora("Café Look", trigger: "zzz"), lora("Plain", trigger: "Éclair")]
-    #expect(names(LoRAPickerSections.make(loras: loras, query: "  CAFE ")[0]) == ["Café Look"])
-    #expect(names(LoRAPickerSections.make(loras: loras, query: "\neclair\n")[0]) == ["Plain"])
+    #expect(LoRAPickerSections.make(loras: loras, query: "  CAFE ").flatMap(\.loras).map(\.name) == ["Café Look"])
+    #expect(LoRAPickerSections.make(loras: loras, query: "\neclair\n").flatMap(\.loras).map(\.name) == ["Plain"])
   }
 
   @Test func queryFiltersEverySection() {
