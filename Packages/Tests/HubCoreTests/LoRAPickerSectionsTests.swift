@@ -67,4 +67,52 @@ struct LoRAPickerSectionsTests {
     #expect(LoRAPickerSections.make(loras: loras, query: "").flatMap(\.loras).count == 2)
     #expect(LoRAPickerSections.make(loras: loras, query: "  \n ").flatMap(\.loras).count == 2)
   }
+
+  // MARK: Collapsing
+
+  private var sample: [LoRAPickerSections.Section] {
+    LoRAPickerSections.make(
+      loras: [lora("a", category: "style"), lora("b", category: "turbo"), lora("c")], query: "")
+  }
+
+  @Test func everySectionStartsExpanded() {
+    for section in sample {
+      #expect(LoRAPickerSections.isExpanded(section, collapsed: [], query: ""))
+    }
+  }
+
+  @Test func aCollapsedSectionHidesItsLoRAsAndKeepsTheOthers() {
+    let visible = LoRAPickerSections.visibleLoRAs(sample, collapsed: ["style"], query: "")
+    #expect(visible.map(\.name) == ["b", "c"])
+  }
+
+  @Test func theNoCategorySectionHasItsOwnKey() throws {
+    let none = try #require(sample.last)
+    #expect(none.key == "none")
+    let visible = LoRAPickerSections.visibleLoRAs(sample, collapsed: ["none"], query: "")
+    #expect(visible.map(\.name) == ["a", "b"])
+  }
+
+  @Test func aSearchOpensCollapsedSections() {
+    let sections = LoRAPickerSections.make(loras: [lora("a", category: "style")], query: "a")
+    let collapsed: Set<String> = ["style"]
+    #expect(LoRAPickerSections.visibleLoRAs(sections, collapsed: collapsed, query: "a").count == 1)
+    #expect(LoRAPickerSections.visibleLoRAs(sections, collapsed: collapsed, query: "  ").isEmpty)
+  }
+
+  @Test func togglingFlipsTheSectionAndIgnoresSearches() throws {
+    let style = try #require(sample.first)
+    let collapsed = LoRAPickerSections.toggled(style, in: [], query: "")
+    #expect(collapsed == ["style"])
+    #expect(LoRAPickerSections.toggled(style, in: collapsed, query: "").isEmpty)
+    #expect(LoRAPickerSections.toggled(style, in: collapsed, query: "x") == collapsed)
+  }
+
+  @Test func theCollapsedSetSurvivesStorage() {
+    let set: Set<String> = ["turbo", "style"]
+    let stored = LoRAPickerSections.encode(collapsed: set)
+    #expect(stored == "style,turbo")
+    #expect(LoRAPickerSections.decode(collapsed: stored) == set)
+    #expect(LoRAPickerSections.decode(collapsed: "").isEmpty)
+  }
 }

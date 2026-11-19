@@ -14,11 +14,15 @@ struct LoRAPicker: View {
 
   @Environment(\.dismiss) private var dismiss
   @State private var query = ""
+  /// The collapsed sections, remembered between openings (`LoRAPickerSections.encode`).
+  @AppStorage("loraPickerCollapsedSections") private var collapsedStored = ""
   @FocusState private var searchFocused: Bool
 
   private var sections: [LoRAPickerSections.Section] {
     LoRAPickerSections.make(loras: loras, query: query)
   }
+
+  private var collapsed: Set<String> { LoRAPickerSections.decode(collapsed: collapsedStored) }
 
   var body: some View {
     VStack(spacing: 8) {
@@ -41,11 +45,11 @@ struct LoRAPicker: View {
               .padding(.vertical, 12)
           }
           ForEach(sections, id: \.category) { section in
-            Text(Self.title(of: section.category))
-              .font(.caption.weight(.semibold))
-              .foregroundStyle(.secondary)
-              .padding(.top, 6)
-            ForEach(section.loras) { lora in row(lora) }
+            let expanded = LoRAPickerSections.isExpanded(section, collapsed: collapsed, query: query)
+            header(section, expanded: expanded)
+            if expanded {
+              ForEach(section.loras) { lora in row(lora) }
+            }
           }
         }
       }
@@ -54,6 +58,31 @@ struct LoRAPicker: View {
     .frame(width: 320)
     .frame(maxHeight: 360)
     .onAppear { searchFocused = true }
+  }
+
+  private func header(_ section: LoRAPickerSections.Section, expanded: Bool) -> some View {
+    Button {
+      collapsedStored = LoRAPickerSections.encode(
+        collapsed: LoRAPickerSections.toggled(section, in: collapsed, query: query))
+    } label: {
+      HStack(spacing: 4) {
+        Image(systemName: expanded ? "chevron.down" : "chevron.right")
+          .font(.caption2.weight(.semibold))
+          .frame(width: 10)
+        Text(Self.title(of: section.category))
+        Text(verbatim: "(\(section.loras.count))")
+        Spacer(minLength: 0)
+      }
+      .font(.caption.weight(.semibold))
+      .foregroundStyle(.secondary)
+      .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+    .padding(.top, 6)
+    .accessibilityValue(Text(expanded ? "card.lora.section.expanded" : "card.lora.section.collapsed"))
+    .accessibilityHint(
+      Text(expanded ? "card.lora.section.collapseHint" : "card.lora.section.expandHint"))
+    .accessibilityAddTraits(.isHeader)
   }
 
   private static func title(of category: String?) -> LocalizedStringKey {
