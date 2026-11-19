@@ -2,7 +2,10 @@
 """Writes dthub-release.json for a release: the version, the sha256 and the size of the app zip and of each
 plug-in zip in a folder. Upload the result as an asset of the release (the app reads it to offer updates).
 
-    python3 Scripts/make_release_manifest.py v1.0.0 <folder with the zips> > dthub-release.json
+    python3 Scripts/make_release_manifest.py v1.0.0 <folder with the zips> [notice.json] > dthub-release.json
+
+The optional notice.json ({"en": "...", "it": "..."}) is shown in the app's update dialog; the app picks the
+user's language and falls back to "en".
 """
 import glob
 import hashlib
@@ -41,7 +44,7 @@ def entry(path, info):
             "sha256": sha256_of(path), "size": os.path.getsize(path)}
 
 
-def build(tag, folder):
+def build(tag, folder, notice_path=None):
     apps = sorted(glob.glob(os.path.join(folder, "DT-Hub-*-macOS-arm64.zip")))
     if len(apps) != 1:
         raise ManifestError(f"expected one DT-Hub-*-macOS-arm64.zip in {folder}, found {len(apps)}")
@@ -52,13 +55,19 @@ def build(tag, folder):
         item.update({"id": info["CFBundleIdentifier"], "name": info["CFBundleName"],
                      "contract": int(info.get("DTHubContract", 1))})
         manifest["plugins"].append(item)
+    if notice_path:
+        with open(notice_path, encoding="utf-8") as handle:
+            notice = json.load(handle)
+        if not isinstance(notice, dict) or not all(isinstance(k, str) and isinstance(v, str) for k, v in notice.items()):
+            raise ManifestError("notice file must be a JSON object of language -> text")
+        manifest["notice"] = notice
     return json.dumps(manifest, indent=2, ensure_ascii=False)
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        sys.exit("usage: make_release_manifest.py <tag> <folder with the zips>")
+    if len(sys.argv) not in (3, 4):
+        sys.exit("usage: make_release_manifest.py <tag> <folder with the zips> [notice.json]")
     try:
-        print(build(sys.argv[1], sys.argv[2]))
-    except (ManifestError, KeyError) as error:
+        print(build(sys.argv[1], sys.argv[2], sys.argv[3] if len(sys.argv) == 4 else None))
+    except (ManifestError, KeyError, OSError, ValueError) as error:
         sys.exit(f"error: {error}")

@@ -48,6 +48,17 @@ struct UpdateDetailsSheet: View {
         }
         .disabled(isInstalling)
       }
+      if let notice = ReleaseManifest.notice(in: controller.notices, languages: Locale.preferredLanguages) {
+        Label {
+          Text(verbatim: notice).fixedSize(horizontal: false, vertical: true)
+        } icon: {
+          Image(systemName: "info.circle.fill").accessibilityHidden(true)
+        }
+        .font(.callout)
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+      }
       Text("updates.source").font(.caption).foregroundStyle(.secondary)
       Text(verbatim: String(format: String(localized: "updates.total"), UpdateText.size(total)))
         .font(.caption).foregroundStyle(.secondary)

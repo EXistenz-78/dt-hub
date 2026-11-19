@@ -35,11 +35,24 @@ public struct ReleaseManifest: Equatable, Sendable {
   public let tag: String
   public let app: ReleaseItem
   public let plugins: [ReleaseItem]
+  /// An optional notice for the update dialog, by language code (`"en"`, `"it"`).
+  public let notices: [String: String]
 
-  public init(tag: String, app: ReleaseItem, plugins: [ReleaseItem]) {
+  public init(tag: String, app: ReleaseItem, plugins: [ReleaseItem], notices: [String: String] = [:]) {
     self.tag = tag
     self.app = app
     self.plugins = plugins
+    self.notices = notices
+  }
+
+  /// The notice in the first of `languages` (preferred first, like `Locale.preferredLanguages`: "it-IT" matches
+  /// "it") that has one, else the English one; nil when there is none.
+  public static func notice(in notices: [String: String], languages: [String]) -> String? {
+    for language in languages {
+      let code = language.lowercased().split(whereSeparator: { $0 == "-" || $0 == "_" }).first.map(String.init)
+      if let code, let text = notices[code], !text.isEmpty { return text }
+    }
+    return notices["en"].flatMap { $0.isEmpty ? nil : $0 }
   }
 
   /// Reads and checks the file; nil when it is not a manifest this app understands (other schema, a missing or
@@ -59,6 +72,7 @@ public struct ReleaseManifest: Equatable, Sendable {
       let tag: String
       let app: Entry
       let plugins: [Entry]
+      let notice: [String: String]?
     }
     guard let file = try? JSONDecoder().decode(File.self, from: data), file.schema == supportedSchema,
       !file.tag.isEmpty
@@ -81,7 +95,12 @@ public struct ReleaseManifest: Equatable, Sendable {
       else { return nil }
       plugins.append(plugin)
     }
-    return ReleaseManifest(tag: file.tag, app: app, plugins: plugins)
+    var notices: [String: String] = [:]
+    for (language, text) in file.notice ?? [:] {
+      let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
+      if !text.isEmpty { notices[language.lowercased()] = text }
+    }
+    return ReleaseManifest(tag: file.tag, app: app, plugins: plugins, notices: notices)
   }
 
   /// Where the zip of an item is: `<base>/download/<tag>/<asset>`.

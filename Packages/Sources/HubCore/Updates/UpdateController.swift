@@ -34,6 +34,8 @@ public final class UpdateController {
   public private(set) var state: State = .idle
   public private(set) var offers: [UpdateOffer] = []
   public private(set) var tag: String?
+  /// The release's notice by language (see `ReleaseManifest.notice`), empty when it has none.
+  public private(set) var notices: [String: String] = [:]
   public private(set) var message: UpdateMessage?
   /// The app was replaced: it is the new one at the next launch.
   public private(set) var needsRelaunch = false
@@ -112,6 +114,7 @@ public final class UpdateController {
     case .manifest(let manifest):
       self.manifest = manifest
       tag = manifest.tag
+      notices = manifest.notices
       remember()
       // The app replaced in this run is the new one at the next launch: it is not offered again.
       offers = UpdatePlan.make(
@@ -121,6 +124,7 @@ public final class UpdateController {
       message = silent || !offers.isEmpty ? nil : .upToDate
     case .noInformation:
       manifest = nil
+      notices = [:]
       remember()
       offers = []
       message = silent ? nil : .noInformation

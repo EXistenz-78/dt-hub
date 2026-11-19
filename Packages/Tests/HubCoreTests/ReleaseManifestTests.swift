@@ -75,4 +75,30 @@ struct ReleaseManifestTests {
       UpdateEndpoint.manifestURL(base: Self.base).absoluteString
         == "https://github.com/EXistenz-78/dt-hub/releases/latest/download/dthub-release.json")
   }
+
+  // MARK: Notice
+
+  private func manifestJSON(notice: String) -> Data {
+    let text = String(decoding: Self.json(), as: UTF8.self)
+    return Data(text.replacingOccurrences(of: "{\"schema\": 1,", with: "{\"schema\": 1, \"notice\": \(notice),").utf8)
+  }
+
+  @Test func aManifestWithoutNoticeHasNone() throws {
+    #expect(try #require(ReleaseManifest.parse(Self.json())).notices.isEmpty)
+  }
+
+  @Test func theNoticeIsReadByLanguageAndBlanksAreDropped() throws {
+    let data = manifestJSON(notice: "{\"en\": \" Hello \", \"IT\": \"Ciao\", \"fr\": \"  \"}")
+    let manifest = try #require(ReleaseManifest.parse(data))
+    #expect(manifest.notices == ["en": "Hello", "it": "Ciao"])
+  }
+
+  @Test func theNoticePicksThePreferredLanguageThenEnglish() {
+    let notices = ["en": "Hello", "it": "Ciao"]
+    #expect(ReleaseManifest.notice(in: notices, languages: ["it-IT", "en-US"]) == "Ciao")
+    #expect(ReleaseManifest.notice(in: notices, languages: ["de-DE", "fr"]) == "Hello")
+    #expect(ReleaseManifest.notice(in: notices, languages: []) == "Hello")
+    #expect(ReleaseManifest.notice(in: ["it": "Ciao"], languages: ["de"]) == nil)
+    #expect(ReleaseManifest.notice(in: [:], languages: ["it"]) == nil)
+  }
 }

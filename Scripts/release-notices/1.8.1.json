@@ -1,0 +1,4 @@
+{
+  "en": "Custom gRPC Server is now part of the DT Hub app. If you previously downloaded it separately, you can delete that folder, and in Preferences > Draw Things select \"Use the server included in DT Hub\".",
+  "it": "Il Custom gRPC Server ora fa parte dell'app DT Hub. Se lo avevi scaricato a parte, puoi eliminare quella cartella e, in Preferenze > Draw Things, scegliere «Usa il server incluso in DT Hub»."
+}
