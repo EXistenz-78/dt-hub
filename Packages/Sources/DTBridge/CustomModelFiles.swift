@@ -100,10 +100,11 @@ enum CustomModelFiles {
     return result
   }
 
-  /// How long a model file must have been in the models folder before "the app's file does not describe it" is
-  /// remembered. The Draw Things app writes a model's entry only when its import ends, after the file is already in the
-  /// folder (a big model takes minutes), so a lookup in that window must be repeated.
-  static let settleTime: TimeInterval = 6 * 3600
+  /// How long after its last write a file of the models folder keeps being looked up again. The Draw Things app writes a
+  /// model's entry when its import ends, right after the file stops growing, so half an hour covers it. A longer wait
+  /// only makes DT Hub open the Draw Things app's folder at every launch for the files nobody will ever describe (a LoRA
+  /// copied by hand), and macOS asks for the permission each time.
+  static let settleTime: TimeInterval = 30 * 60
 
   private struct Cache: Codable {
     /// 2: a file is "checked" only after it settled (older caches may hold a premature "nothing" and are not trusted).
