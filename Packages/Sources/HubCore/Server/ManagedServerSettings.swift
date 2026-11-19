@@ -61,6 +61,24 @@ public struct ManagedServerSettings: Equatable, Codable, Sendable {
   /// 7860, next to the Draw Things app's own API server on 7859.
   public static let defaultPort = 7860
 
+  /// The gRPCServerCLI that comes inside the app (`Contents/Helpers`), when this build has one (a release does; a build
+  /// from the sources does not). It is what an empty `binaryPath` means.
+  public static let bundledBinaryPath: String? = {
+    let path = Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/\(CLILocator.fileName)").path
+    return FileManager.default.isExecutableFile(atPath: path) ? path : nil
+  }()
+
+  /// The program to run: the one chosen in Preferences, or, when none is chosen, the one inside the app.
+  public func effectiveBinaryPath(bundled: String? = ManagedServerSettings.bundledBinaryPath) -> String {
+    let chosen = binaryPath.trimmingCharacters(in: .whitespacesAndNewlines)
+    return chosen.isEmpty ? (bundled ?? "") : chosen
+  }
+
+  /// True when no program is chosen and the one inside the app is used.
+  public func usesBundledServer(bundled: String? = ManagedServerSettings.bundledBinaryPath) -> Bool {
+    binaryPath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && bundled != nil
+  }
+
   public init(
     mode: ServerMode = .attach, binaryPath: String = "", modelsFolder: String = "", port: Int = defaultPort,
     weightsCacheGB: Int = automaticWeightsCacheGB(), flashAttention: Bool = true, cpuOffload: Bool = false,
@@ -93,8 +111,10 @@ public struct ManagedServerSettings: Equatable, Codable, Sendable {
   }
 
   /// Why the server cannot be started with these settings, or nil when it can.
-  public func validationError(_ files: FileSystemProbe = .live) -> ValidationError? {
-    let binary = binaryPath.trimmingCharacters(in: .whitespacesAndNewlines)
+  public func validationError(
+    _ files: FileSystemProbe = .live, bundled: String? = ManagedServerSettings.bundledBinaryPath
+  ) -> ValidationError? {
+    let binary = effectiveBinaryPath(bundled: bundled)
     let folder = modelsFolder.trimmingCharacters(in: .whitespacesAndNewlines)
     if binary.isEmpty { return .noBinary }
     if !files.isExecutableFile(binary) { return .binaryNotExecutable }

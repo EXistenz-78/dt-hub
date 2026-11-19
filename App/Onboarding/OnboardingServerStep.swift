@@ -31,7 +31,9 @@ final class OnboardingServerDraft {
     attach = connection.settings
     var managed = connection.managed
     // A program found in the usual places is offered; nothing is looked for elsewhere.
-    if managed.binaryPath.isEmpty, let found = CLILocator.find() { managed.binaryPath = found }
+    if managed.binaryPath.isEmpty, ManagedServerSettings.bundledBinaryPath == nil, let found = CLILocator.find() {
+      managed.binaryPath = found
+    }
     self.managed = managed
     secret = connection.savedSecret()
     portText = String(connection.settings.port)
@@ -112,8 +114,12 @@ struct OnboardingServerStep: View {
           TextField("prefs.server.binary", text: $draft.managed.binaryPath)
           Button("prefs.server.choose") { choose(directories: false) { draft.managed.binaryPath = $0 } }
         }
-        // Always there: the program is a separate download from Draw Things' releases.
-        Link("prefs.server.get", destination: Self.releasesURL)
+        if ManagedServerSettings.bundledBinaryPath != nil, draft.managed.usesBundledServer() {
+          Text("prefs.server.bundled").font(.caption).foregroundStyle(.secondary)
+        } else {
+          // The program is a separate download when this build does not carry one.
+          Link("prefs.server.get", destination: Self.releasesURL)
+        }
         HStack(spacing: DS.controlGap) {
           TextField("prefs.server.models", text: $draft.managed.modelsFolder)
           Button("prefs.server.choose") { choose(directories: true) { draft.managed.modelsFolder = $0 } }

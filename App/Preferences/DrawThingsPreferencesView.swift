@@ -80,7 +80,9 @@ struct DrawThingsPreferencesView: View {
       managedCacheText = String(connection.managed.weightsCacheGB)
       secret = connection.savedSecret()
       // A program found in the usual places is offered; nothing is looked for elsewhere.
-      if managedDraft.binaryPath.isEmpty, let found = CLILocator.find() { managedDraft.binaryPath = found }
+      if managedDraft.binaryPath.isEmpty, ManagedServerSettings.bundledBinaryPath == nil, let found = CLILocator.find() {
+        managedDraft.binaryPath = found
+      }
     }
   }
 
@@ -113,6 +115,13 @@ struct DrawThingsPreferencesView: View {
       HStack(spacing: DS.controlGap) {
         TextField("prefs.server.binary", text: $managedDraft.binaryPath)
         Button("prefs.server.choose") { choose(directories: false) { managedDraft.binaryPath = $0 } }
+      }
+      if ManagedServerSettings.bundledBinaryPath != nil {
+        if managedDraft.usesBundledServer() {
+          Text("prefs.server.bundled").font(.caption).foregroundStyle(.secondary)
+        } else {
+          Button("prefs.server.useBundled") { managedDraft.binaryPath = "" }
+        }
       }
       HStack(spacing: DS.controlGap) {
         TextField("prefs.server.models", text: $managedDraft.modelsFolder)
@@ -151,7 +160,9 @@ struct DrawThingsPreferencesView: View {
           .foregroundStyle(.secondary)
         Text("prefs.server.cache.note")
           .foregroundStyle(.secondary)
-        if managedDraft.binaryPath.isEmpty || managedDraft.validationError() == .binaryNotExecutable {
+        if (managedDraft.binaryPath.isEmpty && ManagedServerSettings.bundledBinaryPath == nil)
+          || managedDraft.validationError() == .binaryNotExecutable
+        {
           Link("prefs.server.get", destination: Self.releasesURL)
         }
       }
@@ -188,7 +199,18 @@ struct DrawThingsPreferencesView: View {
 
   /// The version of the gRPCServerCLI, recognized by its sha256 among the Draw Things releases, and whether a newer
   /// one is out: checked at launch and here on demand.
-  private var versionSection: some View {
+  @ViewBuilder private var versionSection: some View {
+    if managedDraft.usesBundledServer() {
+      // The server inside the app comes with the app: nothing to compare with the official releases.
+      Section {
+        Text("prefs.server.bundled.version").foregroundStyle(.secondary)
+      }
+    } else {
+      chosenServerVersionSection
+    }
+  }
+
+  private var chosenServerVersionSection: some View {
     let info = connection.serverVersion
     return Section {
       HStack(spacing: DS.controlGap) {

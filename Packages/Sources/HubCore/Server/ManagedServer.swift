@@ -84,7 +84,7 @@ public final class ManagedServer {
       state = .failedToStart(.settings(problem))
       return
     }
-    let binary = settings.binaryPath.trimmingCharacters(in: .whitespacesAndNewlines)
+    let binary = settings.effectiveBinaryPath()
     await closeServerLeftByAPreviousRun(binary: binary)
     guard request == requestID, process == nil else { return }
     guard isPortFree(settings.port) else {

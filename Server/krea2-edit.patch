@@ -1,0 +1,318 @@
+diff --git a/Libraries/LocalImageGenerator/Sources/LocalImageGenerator.swift b/Libraries/LocalImageGenerator/Sources/LocalImageGenerator.swift
+index cb42469..6b69b96 100644
+--- a/Libraries/LocalImageGenerator/Sources/LocalImageGenerator.swift
++++ b/Libraries/LocalImageGenerator/Sources/LocalImageGenerator.swift
+@@ -3655,8 +3655,62 @@ extension LocalImageGenerator {
+         .ssd1b, .svdI2v, .wurstchenStageB, .wurstchenStageC, .hunyuanVideo, .wan21_1_3b, .wan21_14b,
+         .hiDreamI1, .hiDreamO1, .wan22_5b, .zImage, .ernieImage, .cosmos2_5_2b,
+         .cosmos2_5_2_9b, .seedvr2_3b,
+-        .seedvr2_7b, .ideogram4, .krea2, .minimaxH3:
++        .seedvr2_7b, .ideogram4, .minimaxH3:
+         return (nil, [])
++      case .krea2:
++        // Krea 2 edit LoRAs read the source image(s) as clean latents with the target's grid: the
++        // canvas when there is one, then each moodboard image. Each is center-cropped to the
++        // target's aspect ratio and resized to its pixel size before the VAE.
++        guard modifier == .kontext || modifier == .kontextKv else { return (nil, []) }
++        let targetHeight = startHeight * 8
++        let targetWidth = startWidth * 8
++        var sources = [DynamicGraph.Tensor<FloatType>]()
++        if let image = image {
++          sources.append(image)
++        }
++        for shuffle in shuffles where shuffle.1 > 0 {
++          sources.append(graph.variable(shuffle.0.toGPU(0)))
++        }
++        var encoded = [DynamicGraph.Tensor<FloatType>]()
++        for source in sources {
++          let shape = source.shape
++          guard shape.count == 4, shape[1] > 0, shape[2] > 0, shape[3] >= 3 else { continue }
++          var cropHeight = shape[1]
++          var cropWidth = shape[2]
++          if Double(shape[2]) * Double(targetHeight) > Double(shape[1]) * Double(targetWidth) {
++            cropWidth = max(
++              1, Int((Double(shape[1]) * Double(targetWidth) / Double(targetHeight)).rounded()))
++          } else {
++            cropHeight = max(
++              1, Int((Double(shape[2]) * Double(targetHeight) / Double(targetWidth)).rounded()))
++          }
++          let top = (shape[1] - cropHeight) / 2
++          let left = (shape[2] - cropWidth) / 2
++          var fitted = source[0..<1, top..<(top + cropHeight), left..<(left + cropWidth), 0..<3]
++            .copied()
++          // Box-filter by whole factors first so large images don't alias when shrunk.
++          let reduction = min(cropHeight / targetHeight, cropWidth / targetWidth)
++          if reduction >= 2 {
++            fitted = Functional.averagePool(
++              fitted, filterSize: [reduction, reduction],
++              hint: Hint(stride: [reduction, reduction]))
++          }
++          let fittedShape = fitted.shape
++          if fittedShape[1] != targetHeight || fittedShape[2] != targetWidth {
++            fitted = Upsample(
++              .bilinear, widthScale: Float(targetWidth) / Float(fittedShape[2]),
++              heightScale: Float(targetHeight) / Float(fittedShape[1]))(fitted)
++          }
++          let latent = firstStage.encode(fitted, encoder: nil, cancellation: { _ in }).0
++          let latentShape = latent.shape
++          guard latentShape[1] == startHeight, latentShape[2] == startWidth,
++            latentShape[3] >= 16
++          else { continue }
++          encoded.append(
++            firstStage.scale(
++              latent[0..<1, 0..<latentShape[1], 0..<latentShape[2], 0..<16].copied()))
++        }
++        return (nil, encoded)
+       case .minimaxH3Image:
+         // Every picture (the canvas first, then the moodboard) is a reference latent. The VAE
+         // sees each with its short edge within 1,024 to 2,048 pixels (ComfyUI's
+diff --git a/Libraries/SwiftDiffusion/Sources/Models/Krea2.swift b/Libraries/SwiftDiffusion/Sources/Models/Krea2.swift
+index e5f8c1d..3b5d677 100644
+--- a/Libraries/SwiftDiffusion/Sources/Models/Krea2.swift
++++ b/Libraries/SwiftDiffusion/Sources/Models/Krea2.swift
+@@ -2,20 +2,24 @@ import Foundation
+ import NNC
+ 
+ public func Krea2RotaryPositionEmbedding<FloatType: TensorNumeric & BinaryFloatingPoint>(
+-  textLength: Int, gridHeight: Int, gridWidth: Int, of dataType: FloatType.Type = FloatType.self
++  textLength: Int, gridHeight: Int, gridWidth: Int, referenceCount: Int = 0,
++  of dataType: FloatType.Type = FloatType.self
+ ) -> Tensor<FloatType> {
+   let ropeTheta: Double = 1_000
+   let imageLength = gridHeight * gridWidth
+-  let tokenLength = imageLength + textLength
++  // Layout is [image | references | text]. Each reference has the same grid as the image and sits
++  // at the same (y, x); only its first axis (frame) differs: 0 for the image, i + 1 for reference i.
++  let tokenLength = imageLength * (1 + referenceCount) + textLength
+   var rotary = Tensor<FloatType>(.CPU, .NHWC(1, tokenLength, 1, 128))
+   let dim0 = 32
+   let dim1 = 48
+   let dim2 = 48
+-  for y in 0..<gridHeight {
++  for frame in 0...referenceCount {
++   for y in 0..<gridHeight {
+     for x in 0..<gridWidth {
+-      let i = y * gridWidth + x
++      let i = frame * imageLength + y * gridWidth + x
+       for k in 0..<(dim0 / 2) {
+-        let theta = 0 * 1.0 / pow(ropeTheta, Double(k) * 2 / Double(dim0))
++        let theta = Double(frame) * 1.0 / pow(ropeTheta, Double(k) * 2 / Double(dim0))
+         let sintheta = sin(theta)
+         let costheta = cos(theta)
+         rotary[0, i, 0, k * 2] = FloatType(costheta)
+@@ -36,8 +40,9 @@ public func Krea2RotaryPositionEmbedding<FloatType: TensorNumeric & BinaryFloati
+         rotary[0, i, 0, (k + (dim0 / 2) + (dim1 / 2)) * 2 + 1] = FloatType(sintheta)
+       }
+     }
++   }
+   }
+-  let tokenOffset = imageLength
++  let tokenOffset = imageLength * (1 + referenceCount)
+   for i in 0..<textLength {
+     for k in 0..<(dim0 / 2) {
+       let theta = 0 * 1.0 / pow(ropeTheta, Double(k) * 2 / Double(dim0))
+@@ -567,13 +572,13 @@ public func Krea2Fixed(timesteps: Int) -> (ModelWeightMapper, Model) {
+ 
+ public func Krea2(
+   batchSize: Int, height: Int, width: Int, textLength: Int,
+-  usesFlashAttention: FlashAttentionLevel
++  usesFlashAttention: FlashAttentionLevel, referenceCount: Int = 0
+ ) -> (ModelWeightMapper, Model) {
+   precondition(height % 2 == 0 && width % 2 == 0)
+   let h = height / 2
+   let w = width / 2
+   let imageLength = h * w
+-  let tokenLength = textLength + imageLength
++  let tokenLength = textLength + imageLength * (1 + referenceCount)
+   let x = Input()
+   let text = Input()
+   let rot = Input()
+@@ -582,7 +587,22 @@ public func Krea2(
+     .contiguous().reshaped([batchSize, imageLength, 64])
+   let imgIn = Dense(count: 6_144, name: "img_in")
+   let imageOut = imgIn(packedImage)
+-  var out = Functional.concat(axis: 1, imageOut, text).to(.Float32)
++  // Reference latents (appended after temb, so a model without them is unchanged) take the same
++  // packing and the same img_in as the target, and sit between the image and the text.
++  var referenceInputs = [Input]()
++  var referenceOuts = [Model.IO]()
++  for _ in 0..<referenceCount {
++    let reference = Input()
++    referenceInputs.append(reference)
++    referenceOuts.append(
++      imgIn(
++        reference.reshaped([batchSize, h, 2, w, 2, 16]).permuted(0, 1, 3, 5, 2, 4)
++          .contiguous().reshaped([batchSize, imageLength, 64])))
++  }
++  var out =
++    (referenceOuts.isEmpty
++    ? Functional.concat(axis: 1, imageOut, text)
++    : Concat(axis: 1)([imageOut] + referenceOuts + [text])).to(.Float32)
+   let rotResized = rot.reshaped([1, tokenLength, 1, 128])
+   let prescaleMod = Input()
+   let preshiftMod = Input()
+@@ -607,6 +627,7 @@ public func Krea2(
+   out = out.reshaped([batchSize, imageLength, 6_144]).contiguous()
+   let temb = Input()
+   inputs.append(temb)
++  inputs.append(contentsOf: referenceInputs)
+   let finalScaleTable = Parameter<FloatType>(
+     .GPU(0), .CHW(1, 1, 6_144), name: "final_scale_shift_table_0")
+   let finalShiftTable = Parameter<FloatType>(
+@@ -1170,13 +1191,14 @@ private func LoRAKrea2TransformerBlock(
+ 
+ public func LoRAKrea2(
+   batchSize: Int, height: Int, width: Int, textLength: Int,
+-  usesFlashAttention: FlashAttentionLevel, LoRAConfiguration: LoRANetworkConfiguration
++  usesFlashAttention: FlashAttentionLevel, LoRAConfiguration: LoRANetworkConfiguration,
++  referenceCount: Int = 0
+ ) -> (ModelWeightMapper, Model) {
+   precondition(height % 2 == 0 && width % 2 == 0)
+   let h = height / 2
+   let w = width / 2
+   let imageLength = h * w
+-  let tokenLength = textLength + imageLength
++  let tokenLength = textLength + imageLength * (1 + referenceCount)
+   let x = Input()
+   let text = Input()
+   let rot = Input()
+@@ -1185,7 +1207,22 @@ public func LoRAKrea2(
+     .contiguous().reshaped([batchSize, imageLength, 64])
+   let imgIn = LoRADense(count: 6_144, configuration: LoRAConfiguration, index: 0, name: "img_in")
+   let imageOut = imgIn(packedImage)
+-  var out = Functional.concat(axis: 1, imageOut, text).to(.Float32)
++  // Reference latents (appended after temb, so a model without them is unchanged) take the same
++  // packing and the same img_in as the target, and sit between the image and the text.
++  var referenceInputs = [Input]()
++  var referenceOuts = [Model.IO]()
++  for _ in 0..<referenceCount {
++    let reference = Input()
++    referenceInputs.append(reference)
++    referenceOuts.append(
++      imgIn(
++        reference.reshaped([batchSize, h, 2, w, 2, 16]).permuted(0, 1, 3, 5, 2, 4)
++          .contiguous().reshaped([batchSize, imageLength, 64])))
++  }
++  var out =
++    (referenceOuts.isEmpty
++    ? Functional.concat(axis: 1, imageOut, text)
++    : Concat(axis: 1)([imageOut] + referenceOuts + [text])).to(.Float32)
+   let rotaryHeads = LoRAConfiguration.testing ? 1 : 48
+   let rotResized = rot.reshaped([1, tokenLength, rotaryHeads, 128])
+   let prescaleMod = Input()
+@@ -1212,6 +1249,7 @@ public func LoRAKrea2(
+   out = out.reshaped([batchSize, imageLength, 6_144]).contiguous()
+   let temb = Input()
+   inputs.append(temb)
++  inputs.append(contentsOf: referenceInputs)
+   let finalScaleTable = Parameter<FloatType>(
+     .GPU(0), .CHW(1, 1, 6_144), name: "final_scale_shift_table_0")
+   let finalShiftTable = Parameter<FloatType>(
+diff --git a/Libraries/SwiftDiffusion/Sources/Models/UNetProtocol.swift b/Libraries/SwiftDiffusion/Sources/Models/UNetProtocol.swift
+index 0fcc470..dad5eb9 100644
+--- a/Libraries/SwiftDiffusion/Sources/Models/UNetProtocol.swift
++++ b/Libraries/SwiftDiffusion/Sources/Models/UNetProtocol.swift
+@@ -230,8 +230,11 @@ public func UNetExtractConditions<FloatType: TensorNumeric & BinaryFloatingPoint
+     }
+     return extracted
+   case .krea2:
++    // When editing, the reference latents come last. They don't depend on the timestep, so they
++    // are passed through as they are.
++    let referenceStart = max(2, conditions.count - referenceImageCount)
+     return Array(conditions[0..<2])
+-      + conditions[2..<conditions.count].map {
++      + conditions[2..<referenceStart].map {
+         let shape = $0.shape
+         if shape.count == 2 {
+           return DynamicGraph.Tensor<FloatType>($0)[
+@@ -241,7 +244,7 @@ public func UNetExtractConditions<FloatType: TensorNumeric & BinaryFloatingPoint
+         return DynamicGraph.Tensor<FloatType>($0)[
+           index..<(index + 1), 0..<shape[1], 0..<shape[2]
+         ].copied()
+-      }
++      } + Array(conditions[referenceStart...])
+   case .sd3, .auraflow, .sd3Large:
+     return [conditions[0]]
+       + conditions[1..<conditions.count].map {
+@@ -1917,16 +1920,20 @@ extension UNetFromNNC {
+           })
+       }
+     case .krea2:
++      // Editing with reference images isn't tiled: every reference has the full latent grid.
++      let isTiled = tiledDiffusion.isEnabled && referenceImageCount == 0
+       tiledWidth =
+-        tiledDiffusion.isEnabled ? min(tiledDiffusion.tileSize.width * 8, startWidth) : startWidth
++        isTiled ? min(tiledDiffusion.tileSize.width * 8, startWidth) : startWidth
+       tiledHeight =
+-        tiledDiffusion.isEnabled
++        isTiled
+         ? min(tiledDiffusion.tileSize.height * 8, startHeight) : startHeight
+       tiledAudioHeight = 0
+       tileScaleFactor = 8
+       didRunLoRASeparately =
+         !lora.isEmpty && rankOfLoRA > 0 && !isLoHa && runLoRASeparatelyIsPreferred
+         && canRunLoRASeparately
++      // The inputs are x, text, rotary, 6 modulations and temb, then one latent per reference.
++      let krea2FixedInputCount = 10
+       if didRunLoRASeparately {
+         let keys = LoRALoader.keys(graph, of: lora.map { $0.file }, modelFile: filePath)
+         configuration.keys = keys
+@@ -1936,7 +1943,8 @@ extension UNetFromNNC {
+             return LoRAKrea2(
+               batchSize: inputs[0].shape[0], height: tiledHeight, width: tiledWidth,
+               textLength: textShape[1], usesFlashAttention: valueOr(useFlashAttention, .scale1),
+-              LoRAConfiguration: configuration
++              LoRAConfiguration: configuration,
++              referenceCount: max(0, inputs.count - krea2FixedInputCount)
+             ).1
+           })
+       } else {
+@@ -1945,7 +1953,8 @@ extension UNetFromNNC {
+             let textShape = inputs[1].shape
+             return Krea2(
+               batchSize: inputs[0].shape[0], height: tiledHeight, width: tiledWidth,
+-              textLength: textShape[1], usesFlashAttention: valueOr(useFlashAttention, .scale1)
++              textLength: textShape[1], usesFlashAttention: valueOr(useFlashAttention, .scale1),
++              referenceCount: max(0, inputs.count - krea2FixedInputCount)
+             ).1
+           })
+       }
+diff --git a/Libraries/SwiftDiffusion/Sources/UNetFixedEncoder.swift b/Libraries/SwiftDiffusion/Sources/UNetFixedEncoder.swift
+index d89891f..577f4d0 100644
+--- a/Libraries/SwiftDiffusion/Sources/UNetFixedEncoder.swift
++++ b/Libraries/SwiftDiffusion/Sources/UNetFixedEncoder.swift
+@@ -863,12 +863,32 @@ extension UNetFixedEncoder {
+         weightsCache.attach("\(filePath):[fixed]", from: unetFixed.parameters)
+       }
+       let maxTextLength = isCfgEnabled ? max(tokenLengthUncond, tokenLengthCond) : tokenLengthCond
++      // Reference latents (edit LoRAs) share the target's grid; one copy per batch item, after the
++      // timestep conditions. They don't change with the timestep.
++      let krea2References: [DynamicGraph.AnyTensor] = referenceImages.compactMap { reference in
++        let shape = reference.shape
++        guard shape.count == 4, shape[1] == startHeight, shape[2] == startWidth, shape[3] == 16
++        else { return nil }
++        guard batchSize > 1 else { return reference }
++        var repeated = graph.variable(
++          .GPU(0), .NHWC(batchSize, shape[1], shape[2], shape[3]), of: FloatType.self)
++        for i in 0..<batchSize {
++          repeated[i..<(i + 1), 0..<shape[1], 0..<shape[2], 0..<shape[3]] =
++            reference[0..<1, 0..<shape[1], 0..<shape[2], 0..<shape[3]]
++        }
++        return repeated
++      }
++      // The sampler counts every reference it was given, so they all have to fit.
++      precondition(krea2References.count == referenceImages.count)
+       let rotary = graph.variable(
+         Krea2RotaryPositionEmbedding(
+-          textLength: maxTextLength, gridHeight: h, gridWidth: w, of: FloatType.self
++          textLength: maxTextLength, gridHeight: h, gridWidth: w,
++          referenceCount: krea2References.count, of: FloatType.self
+         ).toGPU(0))
+       precondition(fixedConditions.count == 1 + 6 + 1)
+-      return ([fixedConditions[0], rotary] + Array(fixedConditions[1...]), nil)
++      let conditions: [DynamicGraph.AnyTensor] =
++        [fixedConditions[0], rotary] + Array(fixedConditions[1...]) + krea2References
++      return (conditions, nil)
+     case .sdxlBase, .ssd1b:
+       let batchSize = textEncoding[0].shape[0]
+       let maxTokenLength = textEncoding[0].shape[1]

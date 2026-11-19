@@ -13260,6 +13260,57 @@
           }
         }
       }
+    },
+    "prefs.server.bundled": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empty: DT Hub uses the gRPCServerCLI that comes inside the app."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vuoto: DT Hub usa il gRPCServerCLI incluso nell'app."
+          }
+        }
+      }
+    },
+    "prefs.server.useBundled": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use the server included in DT Hub"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa il server incluso in DT Hub"
+          }
+        }
+      }
+    },
+    "prefs.server.bundled.version": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The server is the one included in DT Hub: it is updated together with the app."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il server è quello incluso in DT Hub: si aggiorna insieme all'app."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

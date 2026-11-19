@@ -110,7 +110,7 @@ final class DrawThingsConnection {
   /// Looks at the program of the managed server (its sha256 against the releases on GitHub): one request, at launch,
   /// after Apply and when asked. Another mode has nothing to look at.
   func refreshServerVersion() async {
-    guard managed.mode == .managed else {
+    guard managed.mode == .managed, !managed.usesBundledServer() else {
       serverVersion = .idle
       return
     }
@@ -119,7 +119,7 @@ final class DrawThingsConnection {
     let remembered = defaults.string(forKey: "drawThings.serverVersion.hash").flatMap { hash in
       defaults.string(forKey: "drawThings.serverVersion.tag").map { (hash: hash, tag: $0) }
     }
-    let result = await ServerVersionChecker.live.check(programAt: managed.binaryPath, remembered: remembered)
+    let result = await ServerVersionChecker.live.check(programAt: managed.effectiveBinaryPath(), remembered: remembered)
     guard managed.mode == .managed else { return }
     serverVersion = result.info
     if let hash = result.hash, let tag = result.info.installed {

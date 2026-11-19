@@ -12,6 +12,22 @@ struct ManagedServerSettingsTests {
     #expect(ManagedServerSettings.default.port == 7860)
   }
 
+  @Test func noChosenProgramMeansTheOneInsideTheApp() {
+    let probe = FileSystemProbe(isExecutableFile: { $0 == "/App/Helpers/cli" }, isDirectory: { $0 == "/models" })
+    var settings = ManagedServerSettings(mode: .managed, modelsFolder: "/models")
+    #expect(settings.validationError(probe, bundled: nil) == .noBinary)
+    #expect(settings.validationError(probe, bundled: "/App/Helpers/cli") == nil)
+    #expect(settings.effectiveBinaryPath(bundled: "/App/Helpers/cli") == "/App/Helpers/cli")
+    #expect(settings.usesBundledServer(bundled: "/App/Helpers/cli"))
+    // A chosen program wins, even with one inside the app; blanks count as none.
+    settings.binaryPath = "  /bin/cli "
+    #expect(settings.effectiveBinaryPath(bundled: "/App/Helpers/cli") == "/bin/cli")
+    #expect(!settings.usesBundledServer(bundled: "/App/Helpers/cli"))
+    settings.binaryPath = "   "
+    #expect(settings.usesBundledServer(bundled: "/App/Helpers/cli"))
+    #expect(!settings.usesBundledServer(bundled: nil))
+  }
+
   @Test func reportsWhatIsMissingInOrder() {
     var settings = ManagedServerSettings(mode: .managed)
     #expect(settings.validationError(files) == .noBinary)

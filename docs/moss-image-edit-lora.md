@@ -13,13 +13,13 @@ A LoRA from the **MOSS Image Edit** trainer turns MOSS Image into an edit model:
 1. **MOSS Image SFT** (or Base) installed in Draw Things' models folder.
 2. **The LoRA file:** `adapter_model.safetensors` and `adapter_config.json` from [chinoll/Moss-Image-Edit](https://huggingface.co/chinoll/Moss-Image-Edit) (about 300 MB). Keep the two files in the same folder.
 3. **Atelier 0.12 or later** ([releases](https://github.com/ianiv/Atelier/releases)), to import the LoRA.
-4. **The engine server of this release:** `Custom-gRPCServerCLI.zip` (see its own README inside; it also adds Krea 2 Edit LoRAs).
+4. **The custom gRPCServerCLI.** DT Hub 1.8.0 and later carry it inside the app. With an older DT Hub, use the release's `Custom-gRPCServerCLI.zip` (see its own README; it also adds Krea 2 Edit LoRAs).
 
 ## Steps
 
 1. **Import the LoRA with Atelier**, not with the Draw Things app. In Atelier, use **Import LoRAs** and pick `adapter_model.safetensors`. Atelier renames its tensors so the engine can read them and registers it as an *edit* LoRA (`modifier: kontext` in the models folder's `custom_lora.json`). Make sure Atelier writes into the **same models folder** your DT Hub server uses. The imported file is named `adapter_model_lora_f16.ckpt` unless you rename it.
-2. **Unzip the server** and put the folder somewhere stable, for example `~/Applications/DrawThings-CLI/`. If macOS blocks it, run `xattr -dr com.apple.quarantine <folder>` and `chmod +x <folder>/gRPCServerCLI-macOS`.
-3. **In DT Hub:** Preferences › Draw Things, mode **Start gRPCServerCLI**, set the **gRPCServerCLI program** to `gRPCServerCLI-macOS` of that folder, then restart the server. Keep the `*.bundle` folders next to it.
+2. **Only with an older DT Hub: unzip the server** and put the folder somewhere stable, for example `~/Applications/DrawThings-CLI/`. If macOS blocks it, run `xattr -dr com.apple.quarantine <folder>` and `chmod +x <folder>/gRPCServerCLI-macOS`.
+3. **In DT Hub:** Preferences › Draw Things, mode **Start gRPCServerCLI**; with DT Hub 1.8.0 or later leave the **gRPCServerCLI program** empty, otherwise set it to `gRPCServerCLI-macOS` of that folder; then restart the server. Keep the `*.bundle` folders next to it.
 4. **Generate:** choose **MOSS Image SFT**, add the LoRA at weight 1, put the picture you want to edit as the **start image** with **strength 100 %**, and write the change as a plain instruction. Settings that worked: 50 steps, text guidance 3, shift 5 (about 7 minutes for 1152×768 on an M-series Mac).
 5. **Faster (draft quality):** add the 8-step DMD LoRA `MI 8-steps-dmd2` at weight 1 and set **8 steps** and **guidance 1**. In the author's tests the 8-step result is a little softer than the 50-step one.
 

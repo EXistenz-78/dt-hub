@@ -63,6 +63,8 @@ struct HeaderBar: View {
     // Which server is in use: "CLI" (the one DT Hub starts) or "DT" (Draw Things already running).
     let active = connection.managed.mode == .managed ? "CLI" : "DT"
     return Button {
+      // Going to the Draw Things app: open it (its server is still started by hand there).
+      if connection.otherServerMode == .attach { DrawThingsApp.open() }
       Task { await connection.switchServer() }
     } label: {
       // The dot alone is centered with the other buttons; the label hangs below it without moving it.
