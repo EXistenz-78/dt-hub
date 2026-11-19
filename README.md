@@ -102,7 +102,7 @@ This is an independent community project, not affiliated with or endorsed by Dra
 
 ## Install
 
-1. Download **`DT-Hub-1.8.0-macOS-arm64.dmg`** from the [latest release](https://github.com/EXistenz-78/dt-hub/releases/latest).
+1. Download **`DT-Hub-1.8.1-macOS-arm64.dmg`** from the [latest release](https://github.com/EXistenz-78/dt-hub/releases/latest).
 2. Open it and drag **DT Hub.app** into `/Applications`. The disk image also holds the licence and notes of the server (the `Docs` folder).
 3. Read **First launch** below before you open it.
 4. Optional: add the plug-ins (they are in the same release, see [`Plugins/`](Plugins/README.md#install)).
@@ -118,7 +118,7 @@ When something is newer, a banner under the header says so: DT Hub itself, and t
 
 Each file is checked against the sha256 in the release before it is unpacked. A plug-in is installed the same way as with **Add…** (it takes effect at the next launch). The app replaces itself in place after `codesign` accepts the new copy, keeps the old one in the Trash, and offers **Restart now**; if its folder cannot be written, the new app is left in your Downloads folder and shown in Finder. A release made without the manifest (0.9.0 and older) is simply not offered.
 
-*Publishing a release:* build the app, run `Scripts/package-release.sh` (it puts the server inside, signs again and writes the `.zip` and the `.dmg`), then `python3 Scripts/make_release_manifest.py <tag> <folder with the zips> > dthub-release.json` and upload that file as one more asset of the release. To try the whole flow on your Mac without publishing anything, serve a folder shaped like `latest/download/dthub-release.json` and `download/<tag>/<zip>` and start the app with `-debug.updateBaseURL http://127.0.0.1:8765`; `DTHUB_LIVE_UPDATE=<folder> swift test --filter LiveUpdateTests` runs the same flow as a test (see the comment in `LiveUpdateTests.swift`).
+*Publishing a release:* build the app, run `Scripts/package-release.sh` (it puts the server inside, signs again and writes the `.zip` and the `.dmg`), then `python3 Scripts/make_release_manifest.py <tag> <folder with the zips> [notice.json] > dthub-release.json` (the optional `notice.json`, `{"en": "…", "it": "…"}`, is shown in the update dialog of apps 1.8.1 and newer) and upload that file as one more asset of the release. To try the whole flow on your Mac without publishing anything, serve a folder shaped like `latest/download/dthub-release.json` and `download/<tag>/<zip>` and start the app with `-debug.updateBaseURL http://127.0.0.1:8765`; `DTHUB_LIVE_UPDATE=<folder> swift test --filter LiveUpdateTests` runs the same flow as a test (see the comment in `LiveUpdateTests.swift`).
 
 ## First launch (important)
 
@@ -255,7 +255,7 @@ The interface of the app and of the plug-ins is available in **English and Itali
 
 > **Video (in development).** Support for video models (MiniMax H3, LTX-2.3) is still under development: some functions may not work as expected.
 
-Version 1.8.0, used daily by its author. Feedback, bug reports and ideas are welcome: open an [Issue](../../issues).
+Version 1.8.1, used daily by its author. Feedback, bug reports and ideas are welcome: open an [Issue](../../issues).
 
 ## License
 
