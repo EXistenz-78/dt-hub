@@ -12,6 +12,9 @@ public struct DTHubManifest: Codable, Sendable {
   public var symbol: String
   /// Model families it works with; nil = all.
   public var families: [String]?
+  /// Model families it must NOT be on (it works with all the others): for a plug-in that has dedicated twins for some
+  /// families. Only read when `families` is nil or empty. An app older than the release that added it ignores it.
+  public var excludedFamilies: [String]?
   /// True when the plug-in only makes sense with an edit or in-context model (one that takes pictures as references,
   /// like FLUX.2 [klein], Qwen Image Edit or Kontext): DT Hub switches it off with any other model. nil = any model.
   /// An app older than 0.3.0 ignores it and keeps the plug-in on.
@@ -23,9 +26,10 @@ public struct DTHubManifest: Codable, Sendable {
 
   public init(
     id: String, name: String, version: String = "1.0", contract: Int = DTHubContract.current,
-    symbol: String = "puzzlepiece.extension", families: [String]? = nil, requiresEditModel: Bool? = nil,
-    tools: [DTHubTool]? = nil
+    symbol: String = "puzzlepiece.extension", families: [String]? = nil, excludedFamilies: [String]? = nil,
+    requiresEditModel: Bool? = nil, tools: [DTHubTool]? = nil
   ) {
+    self.excludedFamilies = excludedFamilies
     self.tools = tools
     self.id = id
     self.name = name

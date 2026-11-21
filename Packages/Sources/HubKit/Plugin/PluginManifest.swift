@@ -22,6 +22,9 @@ public struct PluginManifest: Codable, Equatable, Sendable {
   public var symbol: String
   /// Model families it works with; nil or empty = all.
   public var families: [String]?
+  /// Families it must not be on (it works with all the others); only read when `families` is nil or empty. An addition
+  /// to contract 1: an app that does not know it keeps the plug-in on everywhere.
+  public var excludedFamilies: [String]?
   /// True for a plug-in that only makes sense with an edit or in-context model (the ones that take pictures as
   /// references: Kontext, Qwen Edit, FLUX.2, Qwen Image 2.1...). The app switches it off with any other model. nil or
   /// false = any model. An addition to contract 1: an app that does not know it keeps the plug-in on.
@@ -32,9 +35,10 @@ public struct PluginManifest: Codable, Equatable, Sendable {
 
   public init(
     id: String, name: String, version: String = "0", contract: Int = PluginContract.current,
-    symbol: String = "puzzlepiece.extension", families: [String]? = nil, requiresEditModel: Bool? = nil,
-    tools: [PluginToolDeclaration]? = nil
+    symbol: String = "puzzlepiece.extension", families: [String]? = nil,
+    excludedFamilies: [String]? = nil, requiresEditModel: Bool? = nil, tools: [PluginToolDeclaration]? = nil
   ) {
+    self.excludedFamilies = excludedFamilies
     self.id = id
     self.name = name
     self.version = version
@@ -54,6 +58,7 @@ public struct PluginManifest: Codable, Equatable, Sendable {
     version = (try? container.decodeIfPresent(String.self, forKey: .version)) ?? "0"
     symbol = (try? container.decodeIfPresent(String.self, forKey: .symbol)) ?? "puzzlepiece.extension"
     families = try? container.decodeIfPresent([String].self, forKey: .families)
+    excludedFamilies = try? container.decodeIfPresent([String].self, forKey: .excludedFamilies)
     requiresEditModel = try? container.decodeIfPresent(Bool.self, forKey: .requiresEditModel)
     // A declaration that cannot be read is dropped; the others stay.
     tools = ((try? container.decodeIfPresent([Lenient<PluginToolDeclaration>].self, forKey: .tools)) ?? nil)?
@@ -64,8 +69,9 @@ public struct PluginManifest: Codable, Equatable, Sendable {
   /// an edit model, with this model (`isEditModel`: nil = unknown model: everything applies).
   public func supports(family: String?, isEditModel: Bool? = nil) -> Bool {
     if requiresEditModel == true, isEditModel == false { return false }
-    guard let family, let families, !families.isEmpty else { return true }
-    return families.contains(family)
+    guard let family else { return true }
+    if let families, !families.isEmpty { return families.contains(family) }
+    return !(excludedFamilies ?? []).contains(family)
   }
 }
 

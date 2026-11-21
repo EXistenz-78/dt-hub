@@ -120,4 +120,15 @@ struct PMToolsTests {
     let answer = await PMTools.handle(call, state: state, actions: .init(write: { nil }, applyRatio: { nil }))
     #expect(String(decoding: answer, as: UTF8.self).contains("unsupported"))
   }
+
+  @Test func promptMasterWorksOnEveryFamilyButTheOnesWithADedicatedTwin() {
+    let manifest = PromptMasterPlugin().manifest
+    #expect(manifest.families == nil)
+    for family in ["fibo2", "minimax_h3_image", "flux2_9b", "qwen_image_2.1"] {
+      #expect(!(manifest.excludedFamilies ?? []).contains(family), Comment(rawValue: family))
+    }
+    for family in ["flux3_5b", "ideogram_4", "moss_image"] {
+      #expect((manifest.excludedFamilies ?? []).contains(family), Comment(rawValue: family))
+    }
+  }
 }

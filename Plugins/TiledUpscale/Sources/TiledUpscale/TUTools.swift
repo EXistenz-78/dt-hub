@@ -13,8 +13,8 @@ import Foundation
 /// follows the job with `wait_for_job`. A big job (over 100 megapixels or 100 tiles) needs `confirm_large`, the argument form
 /// of the second press of Prepare.
 enum TUTools {
-  /// The families the plug-in has a preset for (`TUPresetTable`).
-  static let families = ["flux2_9b", "flux3_5b", "qwen_image_2.1"]
+  /// The families the plug-in has a preset of its own for (`TUPresetTable`); the others use a `TUP…` preset of DT Hub.
+  static let families = ["flux2_9b", "flux3_5b", "minimax_h3_image", "qwen_image_2.1"]
 
   private static let setupParameters: [DTHubToolParameter] = [
     DTHubToolParameter(
@@ -31,7 +31,15 @@ enum TUTools {
     DTHubToolParameter(
       name: "tile_size", type: "integer",
       description:
-        "The longest side of a tile, a multiple of 64 from 1024 to 2048. By default the plug-in picks the smallest that needs at most three tiles along the shorter side; a bigger tile means fewer tiles and joins and a longer pass."),
+        "The longest side of a tile, a multiple of 64 from 1024 to 4096. By default the plug-in picks the smallest that needs at most three tiles along the shorter side (never over 2048); a bigger tile means fewer tiles and joins and a longer pass."),
+    DTHubToolParameter(
+      name: "preset",
+      description:
+        "The preset to use: the name of a DT Hub preset that starts with TUP (see get_options, availablePresets), or an empty text for the plug-in's own preset of the model. Default: the tab's."),
+    DTHubToolParameter(
+      name: "tile_goes_to",
+      description:
+        "Where each tile goes in a pass: 'canvas' (the start image with a mask, the default) or 'moodboard' (as <Picture 1>, no start image and no mask: for MiniMax H3 Image; the preset's prompt must name the tile as <Picture 1>). Default: the tab's."),
     DTHubToolParameter(
       name: "lora_weight", type: "number",
       description: "The strength of the preset's LoRA, -4 to 4 (default: the preset's own, see get_options)."),
@@ -62,22 +70,22 @@ enum TUTools {
       name: "get_status",
       description:
         "The plug-in's tab as it is now: the picture (name and size), the enlargement and the choices, what the job will be (final size, tile grid, number of tiles = passes, megapixels the model will make, a rough measure of the time), the preset of the model in the header, whether the job is prepared, and the plug-in's last notice.",
-      level: .read, families: families),
+      level: .read, families: nil),
     DTHubTool(
       name: "get_options",
       description:
         "What can be chosen: the enlargements, overlaps, tile sizes, LoRA strengths and the advanced values with their ranges, defaults and current values, and the plug-in's presets by model family (steps, guidance, sampler, shift, LoRA). The saved preset the user may have edited in DT Hub's Preset menu wins over this table when a tile is made.",
-      level: .read, families: families),
+      level: .read, families: nil),
     DTHubTool(
       name: "prepare_upscale",
       description:
         "Sets the picture and the choices on the plug-in's tab (arguments you leave out stay as they are) and proposes the guided pipeline to the app, as the Prepare button does, WITHOUT generating: it answers the final size and the number of tiles, so you can judge the job before paying for it. Then upscale (no arguments) runs it. Changes the tab (the user sees the choices), so it needs «Modify the tab» or more.",
-      level: .edit, parameters: setupParameters, families: families, timeout: 120),
+      level: .edit, parameters: setupParameters, families: nil, timeout: 120),
     DTHubTool(
       name: "upscale",
       description:
         "Enlarges a picture 2× or 4× tile by tile with the model in the header and starts the job: it does what prepare_upscale does and then presses RUN. Returns at once with a job_id (and the tile count): follow it with wait_for_job; the enlarged picture becomes a result of the session (get_results / get_image). Every tile counts as one image against the session budget; a job over the user's threshold may wait for the user's yes in DT Hub. Without arguments it runs what prepare_upscale prepared. One job at a time. Takes minutes to hours (about 9 tiles of 1536 px took 360 s on a fast Mac); the user can stop it.",
-      level: .generate, parameters: setupParameters, families: families, timeout: 120),
+      level: .generate, parameters: setupParameters, families: nil, timeout: 120),
   ]
 
   /// What the tools need from the plug-in beyond the tab: the two messages to the app (a test gives its own).
@@ -143,7 +151,7 @@ enum TUTools {
       entry("tone_radius", current.toneRadius, defaults.toneRadius, range(TUSettings.toneRadiusRange), "radius of the brightness correction, px"),
     ]
     let presets: [[String: Any]] = [
-      ("flux2_9b", nil), ("flux3_5b", nil), ("qwen_image_2.1", "turbo"), ("qwen_image_2.1", "standard"),
+      ("flux2_9b", nil), ("flux3_5b", nil), ("minimax_h3_image", nil), ("qwen_image_2.1", "turbo"), ("qwen_image_2.1", "standard"),
     ].compactMap { family, model in
       guard let preset = TUPresetTable.preset(forFamily: family, model: model) else { return nil }
       return [
@@ -156,7 +164,8 @@ enum TUTools {
       "factors": TUSettings.factors, "overlaps": TileOverlap.allCases.map(\.rawValue),
       "tileSize": ["min": TUSettings.tileRange.lowerBound, "max": TUSettings.tileRange.upperBound, "step": 64],
       "loraWeight": range(TUPresetTable.loraWeightRange), "advanced": advanced, "presets": presets,
-      "currentPreset": null(state.preset?.name),
+      "currentPreset": null(state.preset?.name), "tileGoesTo": state.tileInMoodboard ? "moodboard" : "canvas", "availablePresets": state.availablePresets,
+      "pickedPreset": null(state.presetName),
       "limits": [
         "refuseOverSide": TileLimits.maxSide, "refuseOverMegapixels": TileLimits.maxPixels / 1_000_000,
         "confirmLargeOverMegapixels": TileLimits.warnPixels / 1_000_000, "confirmLargeOverTiles": TileLimits.warnPasses,
@@ -171,11 +180,29 @@ enum TUTools {
   @MainActor
   private static func prepareJob(_ call: DTHubToolCall, _ state: TUState, _ connection: Connection) async throws -> String {
     try ready(state)
-    guard state.preset != nil else {
-      throw Failure(text: "The model in the header has no Tiled Upscale preset: use FLUX.2 [klein] 9B, FLUX.3 [klein] or Qwen Image 2.1.")
+    // The preset named by the call decides whether there is one to use: it is checked first, applied with the other choices.
+    state.refreshPresets()
+    var pickedPreset: String??
+    if let named = call.string("preset") {
+      let name = named.trimmingCharacters(in: .whitespacesAndNewlines)
+      if name.isEmpty {
+        guard state.automaticPreset != nil else {
+          throw Failure(text: "The model in the header has no preset of its own: pass 'preset' with a DT Hub preset that starts with TUP (see get_options, availablePresets).")
+        }
+        pickedPreset = .some(nil)
+      } else {
+        guard state.availablePresets.contains(name) else {
+          throw Failure(text: "'preset' must be the name of a DT Hub preset that starts with TUP: \(state.availablePresets).")
+        }
+        pickedPreset = .some(name)
+      }
+    }
+    guard pickedPreset != nil || state.preset != nil else {
+      throw Failure(
+        text: "The model in the header has no Tiled Upscale preset: pass 'preset' with a DT Hub preset that starts with TUP (see get_options, availablePresets), or use FLUX.2 [klein] 9B, FLUX.3 [klein] or Qwen Image 2.1.")
     }
     let setup = try parse(call, state)
-    let givesNothing = setup.isEmpty && call.string("image") == nil
+    let givesNothing = setup.isEmpty && call.string("image") == nil && pickedPreset == nil
     if givesNothing, state.isPrepared, call.tool == "upscale", state.summary != nil {
       // `prepare_upscale` already did the work: only the run is left.
       return try json(["prepared": true, "job": job(state.summary!, state), "picture": pictureInfo(state)])
@@ -191,6 +218,7 @@ enum TUTools {
     }
     // Everything is checked: now the tab changes. The order matters: the picture and the enlargement set the tile size by
     // themselves, the overlap sets the free part, and a value the call names wins over what was set by itself.
+    if let pickedPreset { state.presetName = pickedPreset }
     if let loaded { state.setImage(loaded.image, name: loaded.name) }
     if let factor = setup.factor, factor != state.factor { state.factor = factor }
     if let overlap = setup.overlap, overlap != state.overlap { state.overlap = overlap }
@@ -202,6 +230,7 @@ enum TUTools {
     if let value = setup.toneStrength { state.toneStrength = value }
     if let value = setup.toneRadius { state.toneRadius = value }
     if let tile = setup.tileSize { state.tileSize = tile }
+    if let moodboard = setup.tileInMoodboard { state.tileInMoodboard = moodboard }
     if let weight = setup.loraWeight { state.loraWeight = weight }
     if let text = setup.extraPrompt { state.extraPrompt = text }
 
@@ -237,6 +266,7 @@ enum TUTools {
     var overlap: TileOverlap?
     var tileSize: Int?
     var loraWeight: Double?
+    var tileInMoodboard: Bool?
     var extraPrompt: String?
     var resetAdvanced = false
     var free: Int?
@@ -247,7 +277,7 @@ enum TUTools {
     var toneRadius: Int?
 
     var isEmpty: Bool {
-      factor == nil && overlap == nil && tileSize == nil && loraWeight == nil && extraPrompt == nil && !resetAdvanced
+      factor == nil && overlap == nil && tileSize == nil && loraWeight == nil && tileInMoodboard == nil && extraPrompt == nil && !resetAdvanced
         && free == nil && blur == nil && outset == nil && fade == nil && toneStrength == nil && toneRadius == nil
     }
   }
@@ -275,6 +305,13 @@ enum TUTools {
     if let value = try whole("tile_size", TUSettings.tileRange) {
       guard value % 64 == 0 else { throw Failure(text: "'tile_size' must be a multiple of 64.") }
       setup.tileSize = value
+    }
+    if let target = call.string("tile_goes_to") {
+      switch target.lowercased() {
+      case "canvas": setup.tileInMoodboard = false
+      case "moodboard": setup.tileInMoodboard = true
+      default: throw Failure(text: "'tile_goes_to' must be 'canvas' or 'moodboard'.")
+      }
     }
     if call.arguments["lora_weight"] != nil {
       guard let value = call.number("lora_weight"), TUPresetTable.loraWeightRange.contains(value) else {

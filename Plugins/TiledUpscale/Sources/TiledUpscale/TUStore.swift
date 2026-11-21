@@ -9,7 +9,7 @@ struct TUSettings: Codable, Equatable, Sendable {
   var blur: Double
   var outset: Int
   var fade: Int
-  /// The longest side of a tile, in pixels: a multiple of 64 from 1024 to 2048. A bigger tile means fewer tiles and more of
+  /// The longest side of a tile, in pixels: a multiple of 64 from 1024 to 4096. A bigger tile means fewer tiles and more of
   /// the picture in each, so the model has more to go on (a 4× enlargement goes from 25 passes at 1024 to 9 at 2048).
   var tile: Int
   /// How much of the correction of the tone is applied (0–100 %) and the radius, in pixels, of the blur that tells the slow drift
@@ -54,13 +54,15 @@ struct TUSettings: Codable, Equatable, Sendable {
   static func autoTile(shortestSide: Int, overlap: TileOverlap) -> Int {
     let wanted = (shortestSide + 2 * overlap.rawValue + 2) / 3
     let rounded = (wanted + 63) / 64 * 64
-    return min(max(rounded, tileRange.lowerBound), tileRange.upperBound)
+    return min(max(rounded, tileRange.lowerBound), autoTileLimit)
   }
   static let toneStrengthRange = 0...100
   static let toneRadiusRange = 16...256
   /// The enlargements the tab offers (8× went: too ambitious).
   static let factors = [2, 4]
-  static let tileRange = 1024...2048
+  static let tileRange = 1024...4096
+  /// The most the plug-in picks by itself (as before 4096 was allowed): a bigger tile is the user's choice, for a model that takes it.
+  static let autoTileLimit = 2048
   static let blurRange = 0.0...30.0
   static let outsetRange = 0...100
 
@@ -91,11 +93,18 @@ struct TUChoice: Codable, Equatable, Sendable {
   var loraWeights: [String: Double]
   /// The user's instructions added to the prompt of every tile.
   var extraPrompt: String
+  /// The preset the user picked from the menu (a `TUP…` preset of DT Hub); nil = the plug-in's own for the model.
+  var presetName: String?
+  /// Where each tile goes in the pass: false = the canvas (start image, with a mask), true = the Moodboard (as <Picture 1>, for
+  /// a model like MiniMax H3 Image that regenerates freely from a reference).
+  var tileInMoodboard: Bool
 
   init(
     factor: Int, overlap: Int, loraWeight: Double, settings: TUSettings = .standard, loraWeights: [String: Double] = [:],
-    extraPrompt: String = ""
+    extraPrompt: String = "", presetName: String? = nil, tileInMoodboard: Bool = false
   ) {
+    self.tileInMoodboard = tileInMoodboard
+    self.presetName = presetName
     self.extraPrompt = extraPrompt
     self.loraWeights = loraWeights
     self.factor = factor
@@ -112,6 +121,8 @@ struct TUChoice: Codable, Equatable, Sendable {
     loraWeight = try container.decode(Double.self, forKey: .loraWeight)
     loraWeights = (try? container.decodeIfPresent([String: Double].self, forKey: .loraWeights)) ?? [:]
     extraPrompt = (try? container.decodeIfPresent(String.self, forKey: .extraPrompt)) ?? ""
+    presetName = (try? container.decodeIfPresent(String.self, forKey: .presetName)) ?? nil
+    tileInMoodboard = (try? container.decodeIfPresent(Bool.self, forKey: .tileInMoodboard)) ?? false
     settings = (try? container.decodeIfPresent(TUSettings.self, forKey: .settings))
       ?? TUSettings.defaults(for: TileOverlap(rawValue: overlap) ?? .standard)
   }

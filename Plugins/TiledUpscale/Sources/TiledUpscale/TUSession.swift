@@ -39,11 +39,15 @@ final class TUSession: @unchecked Sendable {
   private var regenerating: Int?
   /// True once a run finished with no problem: the canvas is whole and a tile can be made again.
   private(set) var isComplete = false
+  /// The tile goes to the Moodboard of the pass instead of the canvas: the model regenerates it freely, so there is no mask and
+  /// the plug-in itself puts back only the part the mask would have left to the model.
+  let tileInMoodboard: Bool
 
   init(
     source: CGImage, factor: Int, overlap: TileOverlap, settings: TUSettings, loraWeight: Double, trigger: String,
-    extraPrompt: String = "", preset: TUPreset, presetFolder: URL? = nil, tempFolder: URL
+    extraPrompt: String = "", preset: TUPreset, presetFolder: URL? = nil, tempFolder: URL, tileInMoodboard: Bool = false
   ) {
+    self.tileInMoodboard = tileInMoodboard
     self.extraPrompt = extraPrompt
     self.overlap = overlap
     self.settings = settings.clamped(overlap: overlap)
@@ -124,15 +128,21 @@ final class TUSession: @unchecked Sendable {
     let tileURL = tempFolder.appendingPathComponent("tile-\(tile.index).png")
     let file = presetFile
     var answer: [String: Any] = [
-      "title": "Tile \(Self.name(of: tile))", "startImage": ["path": tileURL.path, "name": "tile-\(tile.index)"],
+      "title": "Tile \(Self.name(of: tile))",
       "size": ["width": tile.rect.width, "height": tile.rect.height], "preset": preset.name,
       "fields": preset.passFields(extra: extraPrompt, file: file), "loras": preset.passLoras(weight: loraWeight, file: file),
-      "strength": preset.strength,
     ]
+    let tileImage: [String: Any] = ["path": tileURL.path, "name": "tile-\(tile.index)"]
+    if tileInMoodboard {
+      answer["moodboard"] = [tileImage]
+    } else {
+      answer["startImage"] = tileImage
+      answer["strength"] = preset.strength
+    }
     do {
       try FileManager.default.createDirectory(at: tempFolder, withIntermediateDirectories: true)
       try png.write(to: tileURL)
-      if let masked = tile.maskRect {
+      if !tileInMoodboard, let masked = tile.maskRect {
         let maskURL = tempFolder.appendingPathComponent("mask-\(tile.index).png")
         guard let maskPNG = TUImage.maskPNG(width: tile.rect.width, height: tile.rect.height, masked: masked) else {
           throw CocoaError(.fileWriteUnknown)
@@ -173,11 +183,26 @@ final class TUSession: @unchecked Sendable {
     {
       composed = corrected
     }
-    canvas.paste(composed, at: tile.rect)
-    previewCanvas?.draw(composed, in: TUPreview.rect(of: tile.rect, scale: previewScale))
+    // Without a mask (Moodboard) the model made the whole tile: only the part the mask would have left to it is kept, the strips
+    // shared with the neighbours stay as they were.
+    var placed = composed
+    var place = tile.rect
+    if tileInMoodboard, let masked = tile.maskRect, let part = Self.part(of: composed, in: masked) {
+      placed = part
+      place = TileRect(x: tile.rect.x + masked.x, y: tile.rect.y + masked.y, width: masked.width, height: masked.height)
+    }
+    canvas.paste(placed, at: place)
+    previewCanvas?.draw(placed, in: TUPreview.rect(of: place, scale: previewScale))
     if regenerating == nil { completedTiles += 1 }
     current = nil
     return true
+  }
+
+  /// The part of a tile's picture inside `rect` (relative to the tile).
+  private static func part(of image: CGImage, in rect: TileRect) -> CGImage? {
+    guard let work = TUCanvas(width: image.width, height: image.height) else { return nil }
+    work.paste(image, at: TileRect(x: 0, y: 0, width: image.width, height: image.height))
+    return work.crop(rect)
   }
 
   /// The input of a tile made again: the original there, but the strips it shares with the tiles above and to the left are what

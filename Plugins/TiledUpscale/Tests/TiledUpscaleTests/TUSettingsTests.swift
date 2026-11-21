@@ -20,9 +20,9 @@ struct TUSettingsTests {
     #expect(TUSettings(free: -5, blur: -1, outset: -1, fade: -3).clamped(overlap: .standard) == TUSettings(free: 0, blur: 0, outset: 0, fade: 0))
   }
 
-  @Test func theTileSizeIsAMultipleOf64Between1024And2048() {
+  @Test func theTileSizeIsAMultipleOf64Between1024And4096() {
     func tile(_ value: Int) -> Int { TUSettings(free: 200, blur: 30, outset: 30, fade: 48, tile: value).clamped(overlap: .standard).tile }
-    #expect(tile(3000) == 2048 && tile(900) == 1024 && tile(1100) == 1088 && tile(1536) == 1536 && tile(2048) == 2048)
+    #expect(tile(9000) == 4096 && tile(3000) == 2944 && tile(900) == 1024 && tile(1100) == 1088 && tile(1536) == 1536 && tile(4096) == 4096)
   }
 
   @Test func aSettingsFileWithoutTheTileKeepsItsOtherValues() throws {

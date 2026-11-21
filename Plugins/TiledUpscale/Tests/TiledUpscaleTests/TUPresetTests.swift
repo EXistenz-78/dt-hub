@@ -25,6 +25,16 @@ struct TUPresetTests {
     #expect(preset.fields(prompt: "p")["shift"] as? Double == 16)
   }
 
+  @Test func h3ImageHasTheMoodboardPresetWithItsModel() throws {
+    let preset = try #require(TUPresetTable.preset(forFamily: "minimax_h3_image"))
+    #expect(preset.name == "TUP · Minimax H3 Image")
+    #expect(preset.steps == 6 && preset.guidanceScale == 1 && preset.sampler == 10 && preset.shift == 3)
+    #expect(preset.loraFile.isEmpty && preset.loras(weight: 1).isEmpty)
+    #expect(preset.prompt(trigger: "").contains("<Picture 1>"))
+    #expect(preset.modelEntry["model"] as? String == "minimax_h3_image_pruned_bf16_i8x.ckpt")
+    #expect(TUPresetTable.preset(forFamily: "flux2_9b")?.modelEntry.isEmpty == true)
+  }
+
   @Test func unknownFamiliesHaveNoPreset() {
     #expect(TUPresetTable.preset(forFamily: "flux2") == nil)
     #expect(TUPresetTable.preset(forFamily: nil) == nil)

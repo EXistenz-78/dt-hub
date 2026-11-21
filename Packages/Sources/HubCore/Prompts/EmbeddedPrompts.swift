@@ -34,6 +34,25 @@ Model notes:
 - Text in the image: double quotes, the font style stated next to the text, an explicit position, short segments (8-10 words each).
 - A negative prompt is supported but must stay targeted by kind of defect (deformed hands, blurred text), never a generic list of low-quality words.
 """#,
+    "fibo2": #"""
+---
+label: FIBO 2.0
+maxWords: 700
+negative: false
+version: 1
+words: 200-450
+---
+The final prompt must be written exclusively in English, whatever the language of the input. Reply with one JSON object only, on a single line: no title, no explanation, no comments, no markdown fence, no alternatives.
+
+Model notes:
+- FIBO was trained on long structured captions, not on free text: a plain sentence gives weaker results, so always answer with the structured JSON caption described here.
+- Length: aim for {words} words in all the values together. When the description and the terms need more room, go on, but never beyond {maxWords} words.
+- Keys, in this order: "short_description" (2-4 sentences covering subject, setting, mood, style), "objects" (a list; one object per important subject), "background_setting", "lighting" ("conditions", "direction", "shadows"), "aesthetics" ("composition", "color_scheme", "mood_atmosphere"), "photographic_characteristics" ("depth_of_field", "focus", "camera_angle", "lens_focal_length"), "style_medium" (for example "photograph", "digital illustration", "3D render"), "artistic_style", "context" (what the picture is for, one sentence), and "text_render" (a list, empty when the picture has no text).
+- Each object has "description", "location", "relationship" (to the other objects), "relative_size", "shape_and_color", "texture", "appearance_details", "number_of_objects", and, for people and animals, "pose", "expression", "action", "orientation". Leave out a key that does not apply instead of writing "none".
+- Be concrete and visible: name materials, colors, lens, light direction and placement ("lower left", "center foreground"). No numeric weights, no tag lists, no quality tags, no negative phrasing: say in positive words what is there.
+- Text to render goes in "text_render" as {"text": "...", "location": "...", "size": "...", "color": "...", "font": "..."} entries, exactly as it must read and in the language it must appear in; also mention it in "short_description".
+- The JSON must be valid: straight double quotes, no trailing commas, no line breaks inside strings. A quotation mark inside a value is escaped with a backslash.
+"""#,
     "flux1": #"""
 ---
 label: FLUX.1
@@ -198,6 +217,27 @@ Model notes:
 - Always describe the sound: effects tied to the actions, the ambience (and where a sound grows louder), and the music that comments on the scene or, when none is wanted, the words "no music".
 - Dialogue is written out in full inside straight double quotes, in short lines, with physical delivery cues, never emotional labels; do not imply it. Dialogue stays in its own language, with the language named when it is not English. Dialogue already inside <d>...</d> tags stays unchanged.
 - No negative prompt: say in positive words what the clip shows; turn "avoid" terms into positive description. No markdown.
+"""#,
+    "minimax_h3_image": #"""
+---
+label: MiniMax H3 Image
+maxWords: 1500
+negative: false
+version: 1
+words: 150-400
+---
+The final prompt must be written exclusively in English, whatever the language of the input. Reply with the prompt only: no title, no quotation marks around it, no explanation, no comments, no markdown, no alternatives.
+
+Model notes:
+- Length: aim for {words} words. When the description and the terms need more room (posters, charts, product boards, scenes with a lot of text), go on, but never beyond {maxWords} words: the text encoder reads 4096 tokens and drops the rest.
+- Write one detailed English description of the whole image as flowing prose, like a visual designer's brief: no tag lists, no headings, no numeric weights, no quality tags. Text to render keeps the language it must appear in.
+- There is no negative prompt: say what is there, not what is absent. Turn "avoid" terms into positive description.
+- Order: subject (identity, count, pose, action, contact), setting, composition and framing, medium or lens, light and color, materials and surface detail. Every important part should show something concrete and visible; a few precise details beat many adjectives.
+- Keep every hard fact of the request (exact text, names, counts, left/right and top/bottom order). Text in the image is written in straight double quotes, exactly as it must read, and the sentence says on which surface it sits (for example: The title reads "NORTHERN LIGHTS" in white capitals across the top).
+- Keep the number of main figures as asked; crowds and passers-by are small, soft silhouettes.
+- For a poster, chart, interface or other designed artifact, describe a finished layout: the blocks, their order and hierarchy, the labels and the data, not only the objects.
+- With reference pictures, call them <Picture 1>, <Picture 2>, in the order they are attached (the start image first, then the Moodboard pictures that are on); if the input says "image 1" meaning a reference, write <Picture 1>. Give each one an explicit role (identity, outfit, setting, style), say what stays unchanged and what changes, and never invent a reference that is not attached.
+- Do not describe the aspect ratio or the size in the prompt: they are set in the Generation tab.
 """#,
     "moss_image": #"""
 ---

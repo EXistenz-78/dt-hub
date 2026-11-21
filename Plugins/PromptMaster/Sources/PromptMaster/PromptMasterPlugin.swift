@@ -4,10 +4,10 @@ import SwiftUI
 
 @MainActor
 final class PromptMasterPlugin: DTHubPlugin {
-  /// On the other families the plug-in is switched off and its tab is hidden: those are the ones Prompt Master has a master prompt for.
+  /// It works on every family except the ones that have a Prompt Master of their own (there it is switched off and its tab hidden).
   let manifest = DTHubManifest(
-    id: "com.exiztenz.dthub.promptmaster", name: "Prompt Master", version: "1.6", symbol: "wand.and.stars",
-    families: PMFamilies.all, tools: PMTools.declarations)
+    id: "com.exiztenz.dthub.promptmaster", name: "Prompt Master", version: "1.7", symbol: "wand.and.stars",
+    excludedFamilies: PMFamilies.withDedicatedPlugin, tools: PMTools.declarations)
   private let state = PMState()
   private var host: DTHubHost?
 

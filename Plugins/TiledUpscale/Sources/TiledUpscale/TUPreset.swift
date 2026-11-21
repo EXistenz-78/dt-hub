@@ -10,12 +10,15 @@ struct TUPreset: Equatable, Sendable {
   let shift: Double
   /// How much the tile is changed (0…1): 1, the mask and the overlap keep the join.
   let strength: Double
+  /// The LoRA of the preset; empty when it has none.
   let loraFile: String
   let defaultLoRAWeight: Double
   /// Whether the shift is worked out from the size of the tile (FLUX.2 klein and Qwen Turbo: no, the shift stays the preset's).
   let resolutionDependentShift: Bool
   /// The prompt of every tile when the preset has its own; nil: the trigger word of the LoRA and `TUPrompt.sentence`.
   let fixedPrompt: String?
+  /// The model file the preset loads when it is picked in DT Hub (empty: the preset leaves the model as it is).
+  var modelFile = ""
 
   /// The prompt of a tile.
   func prompt(trigger: String) -> String { fixedPrompt ?? TUPrompt.text(trigger: trigger) }
@@ -30,8 +33,18 @@ struct TUPreset: Equatable, Sendable {
     ]
   }
 
+  /// `["model": file]` for the `presets` message when the preset names a model, else nothing.
+  var modelEntry: [String: Any] { modelFile.isEmpty ? [:] : ["model": modelFile] }
+
+  /// The entry of the `presets` message: name, fields, LoRA and, when the preset names one, its model.
+  func registration(loraWeight: Double) -> [String: Any] {
+    var entry: [String: Any] = ["name": name, "fields": fields(prompt: prompt(trigger: "")), "loras": loras(weight: loraWeight)]
+    if !modelFile.isEmpty { entry["model"] = modelFile }
+    return entry
+  }
+
   func loras(weight: Double) -> [[String: Any]] {
-    [["file": loraFile, "weight": weight]]
+    loraFile.isEmpty ? [] : [["file": loraFile, "weight": weight]]
   }
 
   /// The `fields` of a pass: nothing, so the app runs the preset as the user saved it; only when the user wrote instructions,
@@ -44,7 +57,20 @@ struct TUPreset: Equatable, Sendable {
 
   /// The LoRA of a pass: the preset's own (the first of the file, else the table's) with the strength of the slider.
   func passLoras(weight: Double, file: TUPresetFile?) -> [[String: Any]] {
-    [["file": file?.loraFile ?? loraFile, "weight": weight]]
+    let name = file?.loraFile ?? loraFile
+    return name.isEmpty ? [] : [["file": name, "weight": weight]]
+  }
+}
+
+extension TUPreset {
+  /// A preset the user made in DT Hub (its name starts with `TUP`): what the plug-in needs comes from its file. Without a LoRA
+  /// in the file the pass has none (`loraFile` empty) and the strength slider has nothing to act on.
+  init(name: String, file: TUPresetFile) {
+    self.init(
+      name: name, steps: file.steps ?? 20, guidanceScale: file.guidanceScale ?? 1, sampler: file.sampler ?? 16,
+      shift: file.shift ?? 1, strength: 1, loraFile: file.loraFile ?? "", defaultLoRAWeight: file.loraWeight ?? 1,
+      resolutionDependentShift: file.resolutionDependentShift ?? false,
+      fixedPrompt: file.prompt.flatMap { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : $0 })
   }
 }
 
@@ -58,6 +84,13 @@ enum TUPresetTable {
 
   static let fluxKlein9BName = "TUP · FLUX.2 klein 9B"
   static let flux3KleinName = "TUP · FLUX.3 klein"
+  static let h3ImageName = "TUP · Minimax H3 Image"
+
+  /// MiniMax H3 Image has no LoRA: it regenerates from a reference, so the tile goes to the Moodboard (the switch *Each tile
+  /// goes to*) and the prompt names it `<Picture 1>`.
+  static let h3ImageModel = "minimax_h3_image_pruned_bf16_i8x.ckpt"
+  static let h3ImagePrompt =
+    "The entire photograph in <Picture 1>, including its subject, composition, framing, pose, expression, colors, lighting, and background, is <Subject 1>. The target image is a high-resolution, finely detailed rendering of <Subject 1> at a larger size, in the same vertical framing as <Picture 1>."
 
   /// The restore LoRA of FLUX.3 klein and the prompt of its preset (the trigger phrase of the LoRA, fixed here like the others).
   static let flux3LoRA = "f3_image_klein_restore_lora_f16.ckpt"
@@ -88,6 +121,10 @@ enum TUPresetTable {
       return TUPreset(
         name: flux3KleinName, steps: 16, guidanceScale: 1, sampler: 16, shift: 16, strength: 1,
         loraFile: flux3LoRA, defaultLoRAWeight: 1, resolutionDependentShift: false, fixedPrompt: flux3Prompt)
+    case "minimax_h3_image":
+      return TUPreset(
+        name: h3ImageName, steps: 6, guidanceScale: 1, sampler: 10, shift: 3, strength: 1, loraFile: "",
+        defaultLoRAWeight: 1, resolutionDependentShift: false, fixedPrompt: h3ImagePrompt, modelFile: h3ImageModel)
     case "qwen_image_2.1":
       guard let model else { return nil }
       if model.lowercased().contains("turbo") {

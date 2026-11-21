@@ -70,17 +70,17 @@ struct TUToolsTests {
     for tool in TUTools.declarations {
       #expect(tool.name.range(of: "^[a-z][a-z0-9_]{0,39}$", options: .regularExpression) != nil)
       #expect(tool.description.count > 20)
-      #expect(tool.families == TUTools.families)
+      #expect(tool.families == nil, "the tools follow the plug-in: any model with a preset")
     }
     #expect(TUTools.declarations.map(\.name) == ["get_status", "get_options", "prepare_upscale", "upscale"])
     #expect(TUTools.declarations.map(\.level) == [.read, .read, .edit, .generate])
-    #expect(TUTools.families == ["flux2_9b", "flux3_5b", "qwen_image_2.1"])
+    #expect(TUTools.families == ["flux2_9b", "flux3_5b", "minimax_h3_image", "qwen_image_2.1"])
     let upscale = try #require(TUTools.declarations.last)
     #expect(upscale.parameters.first { $0.name == "image" }?.format == "image")
     #expect(upscale.parameters.first { $0.name == "confirm_large" }?.type == "boolean")
     #expect(try JSONSerialization.jsonObject(with: JSONEncoder().encode(TUTools.declarations)) is [[String: Any]])
     #expect(TiledUpscalePlugin().manifest.tools?.count == 4)
-    #expect(TiledUpscalePlugin().manifest.version == "1.5")
+    #expect(TiledUpscalePlugin().manifest.version == "1.6")
   }
 
   @Test func everyFamilyOfTheToolsHasAPreset() {
@@ -197,7 +197,7 @@ struct TUToolsTests {
     start()
     state.setImage(TestImages.solid(1000, 1000, (1, 2, 3)), name: "a")
     for bad: [String: Any] in [
-      ["factor": 3], ["factor": 8], ["overlap": 300], ["tile_size": 1000], ["tile_size": 4096], ["lora_weight": 9], ["blur": 99],
+      ["factor": 3], ["factor": 8], ["overlap": 300], ["tile_size": 1000], ["tile_size": 4160], ["tile_goes_to": "wall"], ["lora_weight": 9], ["blur": 99],
       ["free": 300], ["fade": 200], ["tone_radius": 5], ["outset": -1], ["extra_prompt": String(repeating: "x", count: 1001)],
     ] {
       let answer = await call("upscale", bad)

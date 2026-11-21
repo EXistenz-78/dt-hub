@@ -25,6 +25,18 @@ struct PluginContractTests {
     #expect(manifest.supports(family: "flux2_9b"), "an empty list means all")
   }
 
+  @Test func aPluginWorksWithAllTheFamiliesButTheExcludedOnes() throws {
+    var manifest = PluginManifest(id: "a", name: "A", excludedFamilies: ["flux3_5b"])
+    #expect(!manifest.supports(family: "flux3_5b"))
+    #expect(manifest.supports(family: "fibo2") && manifest.supports(family: "minimax_h3_image"))
+    #expect(manifest.supports(family: nil), "an unknown family: everything applies")
+    manifest.families = ["flux3_5b", "qwen21"]
+    #expect(manifest.supports(family: "flux3_5b"), "a list of families wins over the exclusions")
+    let decoded = try JSONDecoder().decode(
+      PluginManifest.self, from: Data(#"{"id":"a","name":"A","contract":1,"excludedFamilies":["v1"]}"#.utf8))
+    #expect(!decoded.supports(family: "v1") && decoded.supports(family: "flux1"))
+  }
+
   @Test func aPluginThatNeedsAnEditModelWorksOnlyWithOne() {
     var manifest = PluginManifest(id: "a", name: "A", requiresEditModel: true)
     #expect(manifest.supports(family: "flux2_9b", isEditModel: true))

@@ -10,6 +10,8 @@ enum L {
     case resetAdvanced, toneStrength, toneRadius, tileSize, noRoomForFade, megapixels, maskSection, maskFree, maskBlur, maskOutset, junctionFade, addedToResults, resultNotAdded, resultDescription, useAsStart, stopped, failed, closed, resultPlaceholder, tileRegenerated, tilesDone
     case extraPrompt, extraPromptHint, tileExtraHint, regenerateTile, regenerateHint, regenerationPrepared, tileSelected
     case queueNothingPrepared, queueBadState
+    case tileGoesTo, canvasChoice, moodboardChoice, moodboardHint
+    case preset, presetAutomatic, presetNoneForModel, presetMissing
   }
 
   static var systemIsItalian: Bool {
@@ -32,10 +34,14 @@ enum L {
   private static let en: [Key: String] = [
     .dropHere: "Drop an image here", .open: "Open…", .image: "Image", .enlargement: "Enlargement",
     .overlap: "Overlap between tiles", .loraStrength: "LoRA strength",
+    .tileGoesTo: "Each tile goes to", .canvasChoice: "Canvas", .moodboardChoice: "Moodboard",
+    .moodboardHint: "Moodboard: the prompt of the preset must name the tile as <Picture 1>.",
+    .preset: "Preset", .presetAutomatic: "Automatic: %@", .presetNoneForModel: "Automatic: none for this model",
+    .presetMissing: "%@ (file not found)",
     .prepare: "Prepare", .prepared: "Ready: press RUN in DT Hub.",
     .finalSize: "Final size: %d × %d px", .tiles: "%d × %d tiles", .passes: "%d passes",
     .croppedNote: "The picture is cut by a few pixels so its sides are multiples of 64.",
-    .unsupportedModel: "This model has no preset in the plug-in yet: choose FLUX.2 [klein] 9B, FLUX.3 [klein] or Qwen Image 2.1.",
+    .unsupportedModel: "This model has no preset in the plug-in: choose one from the Preset menu (a DT Hub preset whose name starts with TUP; make your own with Save preset).",
     .tooBig: "Too big: the result would pass 16 384 px on a side or 268 megapixels.",
     .bigJob: "A big job: it takes many passes. Press Prepare again to confirm.",
     .notAnswered: "No answer from the app.", .unreadableImage: "This image could not be read.",
@@ -60,10 +66,14 @@ enum L {
   private static let it: [Key: String] = [
     .dropHere: "Trascina qui un'immagine", .open: "Apri…", .image: "Immagine", .enlargement: "Ingrandimento",
     .overlap: "Sovrapposizione dei tile", .loraStrength: "Forza del LoRA",
+    .tileGoesTo: "Ogni tile va in", .canvasChoice: "Canvas", .moodboardChoice: "Moodboard",
+    .moodboardHint: "Moodboard: il prompt del preset deve chiamare il tile <Picture 1>.",
+    .preset: "Preset", .presetAutomatic: "Automatico: %@", .presetNoneForModel: "Automatico: nessuno per questo modello",
+    .presetMissing: "%@ (file non trovato)",
     .prepare: "Prepara", .prepared: "Pronto: premi RUN in DT Hub.",
     .finalSize: "Dimensione finale: %d × %d px", .tiles: "%d × %d tile", .passes: "%d passi",
     .croppedNote: "L'immagine viene ritagliata di pochi pixel perché i lati siano multipli di 64.",
-    .unsupportedModel: "Questo modello non ha ancora un preset nel plug-in: scegli FLUX.2 [klein] 9B, FLUX.3 [klein] o Qwen Image 2.1.",
+    .unsupportedModel: "Questo modello non ha un preset nel plug-in: scegline uno dal menu Preset (un preset di DT Hub il cui nome inizia con TUP; crealo con Salva preset).",
     .tooBig: "Troppo grande: il risultato supererebbe 16 384 px per lato o 268 megapixel.",
     .bigJob: "Un lavoro grande: richiede molti passi. Premi di nuovo Prepara per confermare.",
     .notAnswered: "Nessuna risposta dall'app.", .unreadableImage: "Impossibile leggere questa immagine.",

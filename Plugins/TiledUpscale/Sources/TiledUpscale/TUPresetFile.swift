@@ -7,6 +7,23 @@ import Foundation
 struct TUPresetFile: Equatable, Sendable {
   var prompt: String?
   var loraFile: String?
+  var loraWeight: Double?
+  var steps: Int?
+  var guidanceScale: Double?
+  var sampler: Int?
+  var shift: Double?
+  var resolutionDependentShift: Bool?
+
+  /// The tag of the presets this plug-in can use: the ones whose name starts with it (`TUP · FLUX.3 klein`, `TUP my model`…).
+  static let namePrefix = "TUP"
+
+  /// The names (without `.json`) of the presets in the folder whose name starts with `TUP`, in alphabetical order.
+  static func names(in folder: URL?) -> [String] {
+    guard let folder, let files = try? FileManager.default.contentsOfDirectory(atPath: folder.path) else { return [] }
+    return files.filter { $0.hasPrefix(namePrefix) && $0.hasSuffix(".json") }
+      .map { String($0.dropLast(".json".count)) }
+      .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+  }
 
   /// ~/Library/Application Support/DT Hub/Presets (the app's folder).
   static var appFolder: URL {
@@ -19,7 +36,13 @@ struct TUPresetFile: Equatable, Sendable {
     guard let folder, let data = try? Data(contentsOf: folder.appendingPathComponent("\(name).json")),
       let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
     else { return nil }
-    let loras = (root["parameters"] as? [String: Any])?["loras"] as? [[String: Any]]
-    return TUPresetFile(prompt: root["prompt"] as? String, loraFile: loras?.first?["file"] as? String)
+    let parameters = root["parameters"] as? [String: Any]
+    let loras = parameters?["loras"] as? [[String: Any]]
+    return TUPresetFile(
+      prompt: root["prompt"] as? String, loraFile: loras?.first?["file"] as? String,
+      loraWeight: (loras?.first?["weight"] as? NSNumber)?.doubleValue, steps: (parameters?["steps"] as? NSNumber)?.intValue,
+      guidanceScale: (parameters?["guidanceScale"] as? NSNumber)?.doubleValue,
+      sampler: (parameters?["sampler"] as? NSNumber)?.intValue, shift: (parameters?["shift"] as? NSNumber)?.doubleValue,
+      resolutionDependentShift: parameters?["resolutionDependentShift"] as? Bool)
   }
 }

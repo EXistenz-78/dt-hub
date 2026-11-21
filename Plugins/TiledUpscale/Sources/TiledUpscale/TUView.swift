@@ -70,10 +70,30 @@ struct TUView: View {
       } label: {
         DSGroupHeader(title: state.text(.maskSection))
       }
-      DSGroupHeader(title: state.text(.loraStrength))
-      HStack {
-        Slider(value: $state.loraWeight, in: TUPresetTable.loraWeightRange, step: 0.05)
-        Text(verbatim: String(format: "%.2f", state.loraWeight)).font(.callout.monospacedDigit()).frame(width: 44)
+      DSGroupHeader(title: state.text(.preset))
+      Picker(state.text(.preset), selection: $state.presetName) {
+        Text(verbatim: state.automaticPresetLabel).tag(String?.none)
+        ForEach(state.presetMenuNames, id: \.self) { name in
+          Text(verbatim: state.availablePresets.contains(name) ? name : state.format(.presetMissing, name)).tag(String?.some(name))
+        }
+      }
+      .labelsHidden()
+      .onAppear { state.refreshPresets() }
+      DSGroupHeader(title: state.text(.tileGoesTo))
+      Picker(state.text(.tileGoesTo), selection: $state.tileInMoodboard) {
+        Text(state.text(.canvasChoice)).tag(false)
+        Text(state.text(.moodboardChoice)).tag(true)
+      }
+      .pickerStyle(.segmented).labelsHidden()
+      if state.tileInMoodboard {
+        Text(state.text(.moodboardHint)).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+      }
+      if state.preset?.loraFile.isEmpty != true {
+        DSGroupHeader(title: state.text(.loraStrength))
+        HStack {
+          Slider(value: $state.loraWeight, in: TUPresetTable.loraWeightRange, step: 0.05)
+          Text(verbatim: String(format: "%.2f", state.loraWeight)).font(.callout.monospacedDigit()).frame(width: 44)
+        }
       }
       DSGroupHeader(title: state.text(.extraPrompt))
       TextField(state.text(.extraPromptHint), text: $state.extraPrompt, axis: .vertical)

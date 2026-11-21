@@ -194,7 +194,53 @@ final class TUState: ObservableObject {
 
   // MARK: What the tab says
 
-  var preset: TUPreset? { TUPresetTable.preset(forFamily: family, model: model) }
+  /// The `TUP…` presets of DT Hub the menu offers (read again when the tab shows and when a context arrives).
+  @Published private(set) var availablePresets: [String] = []
+  /// The preset the user picked from the menu; nil = the plug-in's own for the model (`TUPresetTable`).
+  @Published var presetName: String? {
+    didSet {
+      guard !loadingChoice, presetName != oldValue else { return }
+      choiceChanged(changesPicture: false)
+      dropSession()
+    }
+  }
+
+  /// Where each tile goes: false = the canvas as the start image (with a mask), true = the Moodboard (no start image, no mask).
+  @Published var tileInMoodboard = false {
+    didSet {
+      guard !loadingChoice, tileInMoodboard != oldValue else { return }
+      choiceChanged(changesPicture: false)
+      dropSession()
+    }
+  }
+
+  /// The plug-in's own preset for the model in the header, if it has one.
+  var automaticPreset: TUPreset? { TUPresetTable.preset(forFamily: family, model: model) }
+
+  /// The preset in use: the one picked from the menu when its file is still there, else the plug-in's own.
+  var preset: TUPreset? {
+    if let presetName, let file = TUPresetFile.read(named: presetName, in: presetFolder) {
+      return TUPreset(name: presetName, file: file)
+    }
+    return automaticPreset
+  }
+
+  /// The menu's entries: the presets of the folder, plus the picked one when its file is gone.
+  var presetMenuNames: [String] {
+    guard let presetName, !availablePresets.contains(presetName) else { return availablePresets }
+    return availablePresets + [presetName]
+  }
+
+  /// The first entry of the menu: the plug-in's own preset for the model, or why there is none.
+  var automaticPresetLabel: String {
+    automaticPreset.map { format(.presetAutomatic, $0.name) } ?? text(.presetNoneForModel)
+  }
+
+  /// Reads the presets folder again; a pick whose file is gone stays in the menu (marked as missing) until another is chosen.
+  func refreshPresets() {
+    let names = TUPresetFile.names(in: presetFolder)
+    if names != availablePresets { availablePresets = names }
+  }
 
   var summary: TUSummary? {
     guard let image else { return nil }
@@ -280,7 +326,7 @@ final class TUState: ObservableObject {
   var currentChoice: TUChoice {
     TUChoice(
       factor: factor, overlap: overlap.rawValue, loraWeight: loraWeights[""] ?? 1, settings: settings, loraWeights: loraWeights,
-      extraPrompt: extraPrompt)
+      extraPrompt: extraPrompt, presetName: presetName, tileInMoodboard: tileInMoodboard)
   }
 
   private func persist() {
@@ -297,6 +343,8 @@ final class TUState: ObservableObject {
     loraWeights = choice.loraWeights
     settings = choice.settings
     extraPrompt = choice.extraPrompt
+    presetName = choice.presetName
+    tileInMoodboard = choice.tileInMoodboard
     loadingChoice = false
     isPrepared = false
     awaitingConfirmation = false
@@ -340,6 +388,7 @@ final class TUState: ObservableObject {
     tempFolder = context.tempFolder
     family = context.family
     model = context.model
+    refreshPresets()
     loraTriggers = Dictionary(
       (context.loraCatalog ?? []).filter { !$0.trigger.isEmpty }.map { ($0.file, $0.trigger) }, uniquingKeysWith: { first, _ in first })
   }
@@ -354,7 +403,7 @@ final class TUState: ObservableObject {
     return TUSession(
       source: image, factor: factor, overlap: overlap, settings: settings, loraWeight: loraWeight,
       trigger: loraTriggers[preset.loraFile] ?? "", extraPrompt: extraPrompt, preset: preset, presetFolder: presetFolder,
-      tempFolder: folder)
+      tempFolder: folder, tileInMoodboard: tileInMoodboard)
   }
 
   /// Registers the preset and proposes the guided pipeline to the app; the user then presses RUN. `contribute` and
@@ -372,9 +421,7 @@ final class TUState: ObservableObject {
     guard let session = makeSession() else { return }
     // The app adds the preset only if it is not there yet (a saved one is the user's); a pass names it and changes only the
     // LoRA strength and the user's instructions.
-    _ = await registerPreset([
-      "name": preset.name, "fields": preset.fields(prompt: preset.prompt(trigger: "")), "loras": preset.loras(weight: loraWeight),
-    ])
+    _ = await registerPreset(preset.registration(loraWeight: loraWeight))
     let estimate: [String: Any] = [
       "preset": preset.name, "fields": preset.passFields(extra: extraPrompt, file: session.presetFile),
       "loras": preset.passLoras(weight: loraWeight, file: session.presetFile),
@@ -480,9 +527,7 @@ final class TUState: ObservableObject {
       regeneratingTile = nil
       return
     }
-    _ = await registerPreset([
-      "name": preset.name, "fields": preset.fields(prompt: preset.prompt(trigger: "")), "loras": preset.loras(weight: weight),
-    ])
+    _ = await registerPreset(preset.registration(loraWeight: weight))
     let estimate: [String: Any] = [
       "preset": preset.name, "fields": preset.passFields(extra: promptExtra, file: session.presetFile),
       "loras": preset.passLoras(weight: weight, file: session.presetFile),
