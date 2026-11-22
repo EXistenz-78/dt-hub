@@ -1837,6 +1837,40 @@
         }
       }
     },
+    "card.sampling.scheduler": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scheduler"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scheduler"
+          }
+        }
+      }
+    },
+    "card.sampling.schedulerOwn": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Own"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Del sampler"
+          }
+        }
+      }
+    },
     "card.sampling.shift": {
       "extractionState": "manual",
       "localizations": {

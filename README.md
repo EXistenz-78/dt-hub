@@ -38,6 +38,7 @@ This is an independent community project, not affiliated with or endorsed by Dra
 - **Memory meter.** Without DT+, under the progress of a run the Results window shows a segmented bar of the Mac's unified memory: the image server, DT Hub itself, the rest of the system and what is still available, shown as «X GB free»; a click opens the details (total, each part in GB, the system's memory pressure and the swap in use). If it cannot find the server's process it shows the system figures only. The same reading is the `memory` field of `get_app_state` for MCP agents (it is also there with DT+).
 - **A model picker for DT+.** The cloud has hundreds of models, so with DT+ on the model button opens a panel with a search field and the models grouped as Draw Things groups them: **Official**, **Community** and **Uncurated**, and inside each by family; every group opens and closes (only Official is open at first). It lists the Official models too, downloaded or not, and hides the models of your server that Draw Things does not list. With DT+ off the menu is the one of the models installed on your server.
 - **MOSS Image Edit LoRAs.** With the custom gRPCServerCLI that comes inside the app and a LoRA imported by Atelier, MOSS Image edits a picture from an instruction. See [`docs/moss-image-edit-lora.md`](docs/moss-image-edit-lora.md). Since 1.4.1 an imported LoRA keeps its own entry of `custom_lora.json` (its `modifier`) when DT Hub generates over the managed server, and **Strategic Stochastic Sampling** sits in the Sampling card, under the sampler, for the TCD samplers.
+- **Scheduler menu.** Under the Sampler, a **Scheduler** menu (Own, Simple, SGM Uniform, Normal, Karras, Exponential, Linear Quadratic, Beta) spaces the steps independently of the sampler, as ComfyUI does. It needs the custom server that comes inside the app (the field travels in the configuration; a stock Draw Things server ignores it). The Substep samplers keep their own schedule. The library DT Hub uses to talk to the server is a copy of DrawThings-Swift 2.2.0 with that one field added (`ThirdParty/DrawThings-Swift/PATCH.md`).
 - **Krea 2 Edit LoRAs.** With the custom gRPCServerCLI that comes inside the app, Krea 2 takes the canvas and the Moodboard pictures as references, so an Edit LoRA such as [Krea 2 General Edit V2](https://huggingface.co/conradlocke/krea2-identity-edit) edits a picture from an instruction ("make the cat black"). Set the LoRA's category to **Edit** in LoRA Advisor and DT Hub sends it as an edit LoRA (`"modifier": "kontext"`) by itself; no need to edit `custom_lora.json` (a modifier already in that file is kept). Without an Edit LoRA, Krea 2 gives the same images as before.
 - **New models without waiting for an update.** When it connects, DT Hub downloads the lists of official models and of their recommended settings that Draw Things publishes (`models.drawthings.ai`, the same lists the Draw Things app reads) and keeps a copy, so a model released after this version of DT Hub is recognised, with its own steps, guidance, sampler and shift, as soon as its file is in your models folder. Offline, the saved copy is used. Nothing of yours is sent.
 
@@ -102,7 +103,7 @@ This is an independent community project, not affiliated with or endorsed by Dra
 
 ## Install
 
-1. Download **`DT-Hub-1.8.2-macOS-arm64.dmg`** from the [latest release](https://github.com/EXistenz-78/dt-hub/releases/latest).
+1. Download **`DT-Hub-1.8.3-macOS-arm64.dmg`** from the [latest release](https://github.com/EXistenz-78/dt-hub/releases/latest).
 2. Open it and drag **DT Hub.app** into `/Applications`. The disk image also holds the licence and notes of the server (the `Docs` folder).
 3. Read **First launch** below before you open it.
 4. Optional: add the plug-ins (they are in the same release, see [`Plugins/`](Plugins/README.md#install)).
@@ -134,7 +135,7 @@ You only need to do this once per download. If you would rather not trust a bina
 
 ## The image server (`gRPCServerCLI`)
 
-DT Hub carries a **custom `gRPCServerCLI`** (Draw Things' image server plus Krea 2 and MOSS Image edit LoRAs and MiniMax H3 Image; credits, source and licence are in `DT Hub.app/Contents/Resources/Server` and in the `Docs` folder of the disk image) and starts it by itself. It is updated together with the app. In **Preferences › Draw Things › gRPCServerCLI program**, leave the field empty to use it, or **Choose…** another program (for example the official one); **Use the server included in DT Hub** puts it back.
+DT Hub carries a **custom `gRPCServerCLI`** (Draw Things' image server from the Atelier fork plus Krea 2 and MOSS Image edit LoRAs, MiniMax H3 Image and schedulers; credits, source and licence are in `DT Hub.app/Contents/Resources/Server` and in the `Docs` folder of the disk image) and starts it by itself. It is updated together with the app. In **Preferences › Draw Things › gRPCServerCLI program**, leave the field empty to use it, or **Choose…** another program (for example the official one); **Use the server included in DT Hub** puts it back.
 
 If you choose another program, the same pane shows which release it is and tells you when a newer one exists. DT Hub does not update it by itself: download it, put it in place of the old one (same folder, same name, so the path stays valid), and, because a file downloaded with a browser is not executable and is marked as quarantined by macOS, run in Terminal, with the path of your file:
 
@@ -255,7 +256,7 @@ The interface of the app and of the plug-ins is available in **English and Itali
 
 > **Video (in development).** Support for video models (MiniMax H3, LTX-2.3) is still under development: some functions may not work as expected.
 
-Version 1.8.2, used daily by its author. Feedback, bug reports and ideas are welcome: open an [Issue](../../issues).
+Version 1.8.3, used daily by its author. Feedback, bug reports and ideas are welcome: open an [Issue](../../issues).
 
 ## License
 

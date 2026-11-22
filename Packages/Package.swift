@@ -17,9 +17,9 @@ let package = Package(
   ],
   dependencies: [
     // Single maintainer, frequent releases: accept patch updates only (spec §5, §16).
-    .package(
-      url: "https://github.com/euphoriacyberware-ai/DrawThings-Swift.git",
-      .upToNextMinor(from: "2.2.0")),
+    // DrawThings-Swift 2.2.0 (MIT) with one field added to the configuration: `scheduler`, which the Atelier fork of the
+    // engine reads (ThirdParty/DrawThings-Swift/PATCH.md). The rest is the upstream code.
+    .package(name: "DrawThings-Swift", path: "../ThirdParty/DrawThings-Swift"),
     // The language-model engine (spec §9). 3.x asks for a downloader and a tokenizer package.
     .package(url: "https://github.com/ml-explore/mlx-swift-lm", .upToNextMajor(from: "3.31.3")),
     .package(url: "https://github.com/ml-explore/mlx-swift", .upToNextMinor(from: "0.32.3")),

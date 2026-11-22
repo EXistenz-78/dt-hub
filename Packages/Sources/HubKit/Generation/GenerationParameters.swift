@@ -10,6 +10,8 @@ public struct GenerationParameters: Equatable, Codable, Sendable {
   public var cfgZeroStar: Bool
   public var cfgZeroInitSteps: Int
   public var sampler: Sampler
+  /// How the steps are spaced, apart from the sampler's own schedule (needs the Atelier fork server).
+  public var scheduler: Scheduler
   public var shift: Double
   /// When on, Draw Things computes the shift from the resolution and `shift` is ignored.
   public var resolutionDependentShift: Bool
@@ -34,7 +36,7 @@ public struct GenerationParameters: Equatable, Codable, Sendable {
   public init(
     width: Int = 1024, height: Int = 1024, steps: Int = 8, guidanceScale: Double = 1,
     cfgZeroStar: Bool = false, cfgZeroInitSteps: Int = 0,
-    sampler: Sampler = .uniPCTrailing, shift: Double = 3, resolutionDependentShift: Bool = true,
+    sampler: Sampler = .uniPCTrailing, scheduler: Scheduler = .samplerDefault, shift: Double = 3, resolutionDependentShift: Bool = true,
     seed: UInt32 = 0, randomSeed: Bool = true, highRes: Bool = false, batchSize: Int = 1, batchCount: Int = 1,
     loras: [LoRASelection] = [], advanced: AdvancedParameters = .default,
     video: VideoParameters = .default, extra: [String: JSONValue] = [:]
@@ -46,6 +48,7 @@ public struct GenerationParameters: Equatable, Codable, Sendable {
     self.cfgZeroStar = cfgZeroStar
     self.cfgZeroInitSteps = cfgZeroInitSteps
     self.sampler = sampler
+    self.scheduler = scheduler
     self.shift = shift
     self.resolutionDependentShift = resolutionDependentShift
     self.seed = seed
@@ -74,6 +77,7 @@ public struct GenerationParameters: Equatable, Codable, Sendable {
     cfgZeroStar = value(.cfgZeroStar, fallback.cfgZeroStar)
     cfgZeroInitSteps = value(.cfgZeroInitSteps, fallback.cfgZeroInitSteps)
     sampler = value(.sampler, fallback.sampler)
+    scheduler = value(.scheduler, fallback.scheduler)
     shift = value(.shift, fallback.shift)
     resolutionDependentShift = value(.resolutionDependentShift, fallback.resolutionDependentShift)
     seed = value(.seed, fallback.seed)

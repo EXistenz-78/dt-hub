@@ -66,6 +66,7 @@ enum JobMapper {
         file: $0.file, weight: Float($0.weight),
         mode: DrawThingsClient.LoRAMode(rawValue: Int8($0.mode.rawValue)) ?? .all)
     }
+    configuration.scheduler = Int32(parameters.scheduler.rawValue)
     apply(parameters.advanced, to: &configuration)
     // The extra settings are keys of the configuration JSON the cards do not cover; a text
     // the library cannot take is left out rather than stopping the RUN.

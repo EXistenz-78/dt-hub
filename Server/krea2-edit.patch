@@ -1,8 +1,243 @@
+diff --git a/Libraries/DataModels/PreGeneratedSPM/config_data_model_generated.swift b/Libraries/DataModels/PreGeneratedSPM/config_data_model_generated.swift
+index 727bd6b..c85d977 100755
+--- a/Libraries/DataModels/PreGeneratedSPM/config_data_model_generated.swift
++++ b/Libraries/DataModels/PreGeneratedSPM/config_data_model_generated.swift
+@@ -301,6 +301,7 @@ public final class GenerationConfiguration: Dflat.Atom, SQLiteDflat.SQLiteAtom,
+     guard lhs.usesSolAttention == rhs.usesSolAttention else { return false }
+     guard lhs.solAttentionStart == rhs.solAttentionStart else { return false }
+     guard lhs.solAttentionTau == rhs.solAttentionTau else { return false }
++    guard lhs.scheduler == rhs.scheduler else { return false }
+     return true
+   }
+   public var _rowid: Int64 = -1
+@@ -395,6 +396,7 @@ public final class GenerationConfiguration: Dflat.Atom, SQLiteDflat.SQLiteAtom,
+   public let usesSolAttention: Bool
+   public let solAttentionStart: Int32
+   public let solAttentionTau: Float32
++  public let scheduler: Int32
+   public init(
+     id: Int64, startWidth: UInt16? = 0, startHeight: UInt16? = 0, seed: UInt32? = 0,
+     steps: UInt32? = 0, guidanceScale: Float32? = 0.0, strength: Float32? = 0.0,
+@@ -429,7 +431,8 @@ public final class GenerationConfiguration: Dflat.Atom, SQLiteDflat.SQLiteAtom,
+     cfgZeroInitSteps: Int32? = 0, compressionArtifacts: CompressionMethod? = .disabled,
+     compressionArtifactsQuality: Float32? = 43.1, colorCalibration: ColorCalibration? = .disabled,
+     expandPromptToJson: Bool? = false, shiftForAudio: Float32? = 3.0,
+-    usesSolAttention: Bool? = false, solAttentionStart: Int32? = 2, solAttentionTau: Float32? = 0.5
++    usesSolAttention: Bool? = false, solAttentionStart: Int32? = 2, solAttentionTau: Float32? = 0.5,
++    scheduler: Int32? = 0
+   ) {
+     self.id = id
+     self.startWidth = startWidth ?? 0
+@@ -521,6 +524,7 @@ public final class GenerationConfiguration: Dflat.Atom, SQLiteDflat.SQLiteAtom,
+     self.usesSolAttention = usesSolAttention ?? false
+     self.solAttentionStart = solAttentionStart ?? 2
+     self.solAttentionTau = solAttentionTau ?? 0.5
++    self.scheduler = scheduler ?? 0
+   }
+   public init(_ obj: zzz_DflatGen_GenerationConfiguration) {
+     self.id = obj.id
+@@ -624,6 +628,7 @@ public final class GenerationConfiguration: Dflat.Atom, SQLiteDflat.SQLiteAtom,
+     self.usesSolAttention = obj.usesSolAttention
+     self.solAttentionStart = obj.solAttentionStart
+     self.solAttentionTau = obj.solAttentionTau
++    self.scheduler = obj.scheduler
+   }
+   public static func from(data: Data) -> Self {
+     return data.withUnsafeBytes { buffer in
+@@ -787,6 +792,7 @@ public struct GenerationConfigurationBuilder {
+   public var usesSolAttention: Bool
+   public var solAttentionStart: Int32
+   public var solAttentionTau: Float32
++  public var scheduler: Int32
+   public init(from object: GenerationConfiguration) {
+     id = object.id
+     startWidth = object.startWidth
+@@ -878,6 +884,7 @@ public struct GenerationConfigurationBuilder {
+     usesSolAttention = object.usesSolAttention
+     solAttentionStart = object.solAttentionStart
+     solAttentionTau = object.solAttentionTau
++    scheduler = object.scheduler
+   }
+   public func build() -> GenerationConfiguration {
+     GenerationConfiguration(
+@@ -917,7 +924,7 @@ public struct GenerationConfigurationBuilder {
+       compressionArtifactsQuality: compressionArtifactsQuality, colorCalibration: colorCalibration,
+       expandPromptToJson: expandPromptToJson, shiftForAudio: shiftForAudio,
+       usesSolAttention: usesSolAttention, solAttentionStart: solAttentionStart,
+-      solAttentionTau: solAttentionTau)
++      solAttentionTau: solAttentionTau, scheduler: scheduler)
+   }
+ }
+ 
+diff --git a/Libraries/DataModels/PreGeneratedSPM/config_generated.swift b/Libraries/DataModels/PreGeneratedSPM/config_generated.swift
+index 95561bc..9d21480 100755
+--- a/Libraries/DataModels/PreGeneratedSPM/config_generated.swift
++++ b/Libraries/DataModels/PreGeneratedSPM/config_generated.swift
+@@ -499,6 +499,7 @@ public struct zzz_DflatGen_GenerationConfiguration: FlatBufferObject, Verifiable
+     case usesSolAttention = 182
+     case solAttentionStart = 184
+     case solAttentionTau = 186
++    case scheduler = 188
+     var v: Int32 { Int32(self.rawValue) }
+     var p: VOffset { self.rawValue }
+   }
+@@ -911,8 +912,12 @@ public struct zzz_DflatGen_GenerationConfiguration: FlatBufferObject, Verifiable
+     let o = _accessor.offset(VTOFFSET.solAttentionTau.v)
+     return o == 0 ? 0.5 : _accessor.readBuffer(of: Float32.self, at: o)
+   }
++  public var scheduler: Int32 {
++    let o = _accessor.offset(VTOFFSET.scheduler.v)
++    return o == 0 ? 0 : _accessor.readBuffer(of: Int32.self, at: o)
++  }
+   public static func startGenerationConfiguration(_ fbb: inout FlatBufferBuilder) -> UOffset {
+-    fbb.startTable(with: 92)
++    fbb.startTable(with: 93)
+   }
+   public static func add(id: Int64, _ fbb: inout FlatBufferBuilder) {
+     fbb.add(element: id, def: 0, at: VTOFFSET.id.p)
+@@ -1220,6 +1225,9 @@ public struct zzz_DflatGen_GenerationConfiguration: FlatBufferObject, Verifiable
+   public static func add(solAttentionTau: Float32, _ fbb: inout FlatBufferBuilder) {
+     fbb.add(element: solAttentionTau, def: 0.5, at: VTOFFSET.solAttentionTau.p)
+   }
++  public static func add(scheduler: Int32, _ fbb: inout FlatBufferBuilder) {
++    fbb.add(element: scheduler, def: 0, at: VTOFFSET.scheduler.p)
++  }
+   public static func endGenerationConfiguration(_ fbb: inout FlatBufferBuilder, start: UOffset)
+     -> Offset
+   {
+@@ -1317,7 +1325,8 @@ public struct zzz_DflatGen_GenerationConfiguration: FlatBufferObject, Verifiable
+     shiftForAudio: Float32 = 3.0,
+     usesSolAttention: Bool = false,
+     solAttentionStart: Int32 = 2,
+-    solAttentionTau: Float32 = 0.5
++    solAttentionTau: Float32 = 0.5,
++    scheduler: Int32 = 0
+   ) -> Offset {
+     let __start = zzz_DflatGen_GenerationConfiguration.startGenerationConfiguration(&fbb)
+     zzz_DflatGen_GenerationConfiguration.add(id: id, &fbb)
+@@ -1417,6 +1426,7 @@ public struct zzz_DflatGen_GenerationConfiguration: FlatBufferObject, Verifiable
+     zzz_DflatGen_GenerationConfiguration.add(usesSolAttention: usesSolAttention, &fbb)
+     zzz_DflatGen_GenerationConfiguration.add(solAttentionStart: solAttentionStart, &fbb)
+     zzz_DflatGen_GenerationConfiguration.add(solAttentionTau: solAttentionTau, &fbb)
++    zzz_DflatGen_GenerationConfiguration.add(scheduler: scheduler, &fbb)
+     return zzz_DflatGen_GenerationConfiguration.endGenerationConfiguration(&fbb, start: __start)
+   }
+ 
+@@ -1657,6 +1667,9 @@ public struct zzz_DflatGen_GenerationConfiguration: FlatBufferObject, Verifiable
+     try _v.visit(
+       field: VTOFFSET.solAttentionTau.p, fieldName: "solAttentionTau", required: false,
+       type: Float32.self)
++    try _v.visit(
++      field: VTOFFSET.scheduler.p, fieldName: "scheduler", required: false,
++      type: Int32.self)
+     _v.finish()
+   }
+ }
+diff --git a/Libraries/DataModels/PreGeneratedSPM/config_mutating_generated.swift b/Libraries/DataModels/PreGeneratedSPM/config_mutating_generated.swift
+index 7904ed9..7899926 100755
+--- a/Libraries/DataModels/PreGeneratedSPM/config_mutating_generated.swift
++++ b/Libraries/DataModels/PreGeneratedSPM/config_mutating_generated.swift
+@@ -264,6 +264,7 @@ extension GenerationConfiguration: FlatBuffersEncodable {
+       solAttentionStart: self.solAttentionStart, &flatBufferBuilder)
+     zzz_DflatGen_GenerationConfiguration.add(
+       solAttentionTau: self.solAttentionTau, &flatBufferBuilder)
++    zzz_DflatGen_GenerationConfiguration.add(scheduler: self.scheduler, &flatBufferBuilder)
+     return zzz_DflatGen_GenerationConfiguration.endGenerationConfiguration(
+       &flatBufferBuilder, start: start)
+   }
+@@ -381,6 +382,7 @@ public final class GenerationConfigurationChangeRequest: Dflat.ChangeRequest {
+   public var usesSolAttention: Bool
+   public var solAttentionStart: Int32
+   public var solAttentionTau: Float32
++  public var scheduler: Int32
+   private init(type _type: ChangeRequestType) {
+     _o = nil
+     self._type = _type
+@@ -475,6 +477,7 @@ public final class GenerationConfigurationChangeRequest: Dflat.ChangeRequest {
+     usesSolAttention = false
+     solAttentionStart = 2
+     solAttentionTau = 0.5
++    scheduler = 0
+   }
+   private init(type _type: ChangeRequestType, _ _o: GenerationConfiguration) {
+     self._o = _o
+@@ -570,6 +573,7 @@ public final class GenerationConfigurationChangeRequest: Dflat.ChangeRequest {
+     usesSolAttention = _o.usesSolAttention
+     solAttentionStart = _o.solAttentionStart
+     solAttentionTau = _o.solAttentionTau
++    scheduler = _o.scheduler
+   }
+   public static func changeRequest(_ o: GenerationConfiguration)
+     -> GenerationConfigurationChangeRequest?
+@@ -653,7 +657,7 @@ public final class GenerationConfigurationChangeRequest: Dflat.ChangeRequest {
+       compressionArtifactsQuality: compressionArtifactsQuality, colorCalibration: colorCalibration,
+       expandPromptToJson: expandPromptToJson, shiftForAudio: shiftForAudio,
+       usesSolAttention: usesSolAttention, solAttentionStart: solAttentionStart,
+-      solAttentionTau: solAttentionTau)
++      solAttentionTau: solAttentionTau, scheduler: scheduler)
+     atom._rowid = _rowid
+     return atom
+   }
+diff --git a/Libraries/DataModels/PreGeneratedSPM/config_query_generated.swift b/Libraries/DataModels/PreGeneratedSPM/config_query_generated.swift
+index 4e8fa9a..912028d 100755
+--- a/Libraries/DataModels/PreGeneratedSPM/config_query_generated.swift
++++ b/Libraries/DataModels/PreGeneratedSPM/config_query_generated.swift
+@@ -953,4 +953,15 @@ extension GenerationConfiguration {
+   public static let solAttentionTau: FieldExpr<Float32, GenerationConfiguration> = FieldExpr(
+     name: "f186", primaryKey: false, hasIndex: false, tableReader: _tr__f186,
+     objectReader: _or__f186)
++
++  private static func _tr__f188(_ table: ByteBuffer) -> Int32? {
++    let tr0 = zzz_DflatGen_GenerationConfiguration.getRootAsGenerationConfiguration(bb: table)
++    return tr0.scheduler
++  }
++  private static func _or__f188(_ or0: GenerationConfiguration) -> Int32? {
++    return or0.scheduler
++  }
++  public static let scheduler: FieldExpr<Int32, GenerationConfiguration> = FieldExpr(
++    name: "f188", primaryKey: false, hasIndex: false, tableReader: _tr__f188,
++    objectReader: _or__f188)
+ }
+diff --git a/Libraries/DataModels/Sources/config.fbs b/Libraries/DataModels/Sources/config.fbs
+index 302da91..7f32596 100644
+--- a/Libraries/DataModels/Sources/config.fbs
++++ b/Libraries/DataModels/Sources/config.fbs
+@@ -193,6 +193,9 @@ table GenerationConfiguration {
+   uses_sol_attention: bool = false;
+   sol_attention_start: int = 2;
+   sol_attention_tau: float = 0.5;
++  // Atelier's ComfyUI scheduler, appended so readers that don't know it see 0 (the sampler's own).
++  // 0 default, 1 simple, 2 sgm_uniform, 3 normal, 4 karras, 5 exponential, 6 linear_quadratic, 7 beta.
++  scheduler: int = 0;
+ }
+ 
+ root_type GenerationConfiguration;
 diff --git a/Libraries/LocalImageGenerator/Sources/LocalImageGenerator.swift b/Libraries/LocalImageGenerator/Sources/LocalImageGenerator.swift
-index cb42469..6b69b96 100644
+index 5e774de..0b7fb9f 100644
 --- a/Libraries/LocalImageGenerator/Sources/LocalImageGenerator.swift
 +++ b/Libraries/LocalImageGenerator/Sources/LocalImageGenerator.swift
-@@ -3655,8 +3655,62 @@ extension LocalImageGenerator {
+@@ -1507,6 +1507,20 @@ extension LocalImageGenerator {
+     feedback:
+       @escaping (ImageGeneratorSignpost, Set<ImageGeneratorSignpost>, Tensor<FloatType>?) -> Bool
+   ) -> ([Tensor<FloatType>]?, [Tensor<Float>]?, Int) {
++    // A scheduler the request carries (`GenerationConfiguration.scheduler`, Atelier's field after
++    // `solAttentionTau`) wins over the generator's own. Run on a copy that has it, once: the copy's
++    // scheduler already matches, so the second call goes on.
++    if let requested = Denoiser.Scheduler(configurationValue: configuration.scheduler),
++      requested != scheduler
++    {
++      var generator = self
++      generator.scheduler = requested
++      return generator.generate(
++        trace: trace, image: image, scaleFactor: scaleFactor, mask: mask, hints: hints,
++        text: text, negativeText: negativeText, configuration: configuration,
++        fileMapping: fileMapping, keywords: keywords, audioContext: audioContext,
++        cancellation: cancellation, feedback: feedback)
++    }
+ 
+     let depth =
+       (hints.first {
+@@ -3981,8 +3995,62 @@ extension LocalImageGenerator {
          .ssd1b, .svdI2v, .wurstchenStageB, .wurstchenStageC, .hunyuanVideo, .wan21_1_3b, .wan21_14b,
          .hiDreamI1, .hiDreamO1, .wan22_5b, .zImage, .ernieImage, .cosmos2_5_2b,
          .cosmos2_5_2_9b, .seedvr2_3b,
@@ -209,7 +444,7 @@ index e5f8c1d..3b5d677 100644
      .GPU(0), .CHW(1, 1, 6_144), name: "final_scale_shift_table_0")
    let finalShiftTable = Parameter<FloatType>(
 diff --git a/Libraries/SwiftDiffusion/Sources/Models/UNetProtocol.swift b/Libraries/SwiftDiffusion/Sources/Models/UNetProtocol.swift
-index 0fcc470..dad5eb9 100644
+index 0e75799..9cac314 100644
 --- a/Libraries/SwiftDiffusion/Sources/Models/UNetProtocol.swift
 +++ b/Libraries/SwiftDiffusion/Sources/Models/UNetProtocol.swift
 @@ -230,8 +230,11 @@ public func UNetExtractConditions<FloatType: TensorNumeric & BinaryFloatingPoint
@@ -277,11 +512,52 @@ index 0fcc470..dad5eb9 100644
              ).1
            })
        }
+diff --git a/Libraries/SwiftDiffusion/Sources/ScheduledDiscretization.swift b/Libraries/SwiftDiffusion/Sources/ScheduledDiscretization.swift
+index 64d6d10..59d62b1 100644
+--- a/Libraries/SwiftDiffusion/Sources/ScheduledDiscretization.swift
++++ b/Libraries/SwiftDiffusion/Sources/ScheduledDiscretization.swift
+@@ -15,6 +15,36 @@ extension Denoiser {
+     case linearQuadratic = "linear_quadratic"
+     case beta
+ 
++    /// The number `GenerationConfiguration.scheduler` carries: 0 is no scheduler in the request
++    /// (nil, so the generator keeps its own), then the cases in order. A number this build doesn't
++    /// know is also nil.
++    public init?(configurationValue: Int32) {
++      switch configurationValue {
++      case 1: self = .simple
++      case 2: self = .sgmUniform
++      case 3: self = .normal
++      case 4: self = .karras
++      case 5: self = .exponential
++      case 6: self = .linearQuadratic
++      case 7: self = .beta
++      default: return nil
++      }
++    }
++
++    /// The inverse of `init(configurationValue:)`; the sampler's own is 0.
++    public var configurationValue: Int32 {
++      switch self {
++      case .samplerDefault: return 0
++      case .simple: return 1
++      case .sgmUniform: return 2
++      case .normal: return 3
++      case .karras: return 4
++      case .exponential: return 5
++      case .linearQuadratic: return 6
++      case .beta: return 7
++      }
++    }
++
+     /// EDM models have no timestep table for the t-space schedulers to walk; ComfyUI only offers
+     /// them the sigma-space ones in practice, so the others fall back to the sampler's own.
+     public func isSupported(by parameterization: Parameterization) -> Bool {
 diff --git a/Libraries/SwiftDiffusion/Sources/UNetFixedEncoder.swift b/Libraries/SwiftDiffusion/Sources/UNetFixedEncoder.swift
-index d89891f..577f4d0 100644
+index b364789..eef2415 100644
 --- a/Libraries/SwiftDiffusion/Sources/UNetFixedEncoder.swift
 +++ b/Libraries/SwiftDiffusion/Sources/UNetFixedEncoder.swift
-@@ -863,12 +863,32 @@ extension UNetFixedEncoder {
+@@ -869,12 +869,32 @@ extension UNetFixedEncoder {
          weightsCache.attach("\(filePath):[fixed]", from: unetFixed.parameters)
        }
        let maxTextLength = isCfgEnabled ? max(tokenLengthUncond, tokenLengthCond) : tokenLengthCond

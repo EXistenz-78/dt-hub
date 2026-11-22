@@ -1,0 +1,1276 @@
+{
+  "checkpoints": [
+    {
+      "name": "AuraFlow v0.1",
+      "file": "auraflow_v0.1_q8p.ckpt",
+      "version": "auraflow",
+      "prefix": "",
+      "default_scale": 16,
+      "autoencoder": "sdxl_vae_v1.0_f16.ckpt",
+      "text_encoder": "pile_t5_xl_encoder_q8p.ckpt"
+    },
+    {
+      "name": "AuraFlow v0.1 (8-bit)",
+      "file": "auraflow_v0.1_q5p.ckpt",
+      "version": "auraflow",
+      "prefix": "",
+      "default_scale": 16,
+      "autoencoder": "sdxl_vae_v1.0_f16.ckpt",
+      "text_encoder": "pile_t5_xl_encoder_q8p.ckpt"
+    },
+    {
+      "name": "AuraFlow v0.2",
+      "file": "auraflow_v0.2_q8p.ckpt",
+      "version": "auraflow",
+      "prefix": "",
+      "default_scale": 16,
+      "autoencoder": "sdxl_vae_v1.0_f16.ckpt",
+      "text_encoder": "pile_t5_xl_encoder_q8p.ckpt"
+    },
+    {
+      "name": "AuraFlow v0.2 (8-bit)",
+      "file": "auraflow_v0.2_q5p.ckpt",
+      "version": "auraflow",
+      "prefix": "",
+      "default_scale": 16,
+      "autoencoder": "sdxl_vae_v1.0_f16.ckpt",
+      "text_encoder": "pile_t5_xl_encoder_q8p.ckpt"
+    },
+    {
+      "name": "FLUX.1 [schnell]",
+      "file": "flux_1_schnell_q8p.ckpt",
+      "version": "flux1",
+      "prefix": "",
+      "default_scale": 16,
+      "autoencoder": "flux_1_vae_f16.ckpt",
+      "text_encoder": "t5_xxl_encoder_q6p.ckpt",
+      "clip_encoder": "clip_vit_l14_f16.ckpt"
+    },
+    {
+      "name": "FLUX.1 [schnell] (5-bit)",
+      "file": "flux_1_schnell_q5p.ckpt",
+      "version": "flux1",
+      "prefix": "",
+      "default_scale": 16,
+      "autoencoder": "flux_1_vae_f16.ckpt",
+      "text_encoder": "t5_xxl_encoder_q6p.ckpt",
+      "clip_encoder": "clip_vit_l14_f16.ckpt"
+    },
+    {
+      "name": "FLUX.2 [klein] 4B",
+      "file": "flux_2_klein_4b_q8p.ckpt",
+      "version": "flux2_4b",
+      "prefix": "",
+      "modifier": "kontext",
+      "note": "[FLUX.2 [klein] 4B](https://huggingface.co/black-forest-labs/FLUX.2-klein-4B) is a 4 billion parameter rectified flow transformer capable of generating, editing and combining images based on text instructions.",
+      "default_scale": 16,
+      "autoencoder": "flux_2_vae_f16.ckpt",
+      "text_encoder": "qwen_3_4b_q8p.ckpt"
+    },
+    {
+      "name": "FLUX.2 [klein] 4B (6-bit)",
+      "file": "flux_2_klein_4b_q6p.ckpt",
+      "version": "flux2_4b",
+      "prefix": "",
+      "modifier": "kontext",
+      "note": "[FLUX.2 [klein] 4B](https://huggingface.co/black-forest-labs/FLUX.2-klein-4B) is a 4 billion parameter rectified flow transformer capable of generating, editing and combining images based on text instructions.",
+      "default_scale": 16,
+      "autoencoder": "flux_2_vae_f16.ckpt",
+      "text_encoder": "qwen_3_4b_q8p.ckpt"
+    },
+    {
+      "name": "FLUX.2 [klein] 4B Base",
+      "file": "flux_2_klein_base_4b_q8p.ckpt",
+      "version": "flux2_4b",
+      "prefix": "",
+      "modifier": "kontext",
+      "note": "[FLUX.2 [klein] 4B Base](https://huggingface.co/black-forest-labs/FLUX.2-klein-base-4B) is a 4 billion parameter rectified flow transformer capable of generating, editing and combining images based on text instructions.",
+      "default_scale": 16,
+      "autoencoder": "flux_2_vae_f16.ckpt",
+      "text_encoder": "qwen_3_4b_q8p.ckpt"
+    },
+    {
+      "name": "FLUX.2 [klein] 4B Base (6-bit)",
+      "file": "flux_2_klein_base_4b_q6p.ckpt",
+      "version": "flux2_4b",
+      "prefix": "",
+      "modifier": "kontext",
+      "note": "[FLUX.2 [klein] 4B Base](https://huggingface.co/black-forest-labs/FLUX.2-klein-base-4B) is a 4 billion parameter rectified flow transformer capable of generating, editing and combining images based on text instructions.",
+      "default_scale": 16,
+      "autoencoder": "flux_2_vae_f16.ckpt",
+      "text_encoder": "qwen_3_4b_q8p.ckpt"
+    },
+    {
+      "name": "Fooocus Inpaint SDXL v2.6",
+      "file": "fooocus_inpaint_sd_xl_v2.6_f16.ckpt",
+      "version": "sdxl_base_v0.9",
+      "prefix": "",
+      "modifier": "inpainting",
+      "default_scale": 16,
+      "autoencoder": "sdxl_vae_v1.0_f16.ckpt",
+      "text_encoder": "open_clip_vit_bigg14_f16.ckpt",
+      "clip_encoder": "clip_vit_l14_f16.ckpt"
+    },
+    {
+      "name": "Fooocus Inpaint SDXL v2.6 (8-bit)",
+      "file": "fooocus_inpaint_sd_xl_v2.6_q6p_q8p.ckpt",
+      "version": "sdxl_base_v0.9",
+      "prefix": "",
+      "modifier": "inpainting",
+      "default_scale": 16,
+      "autoencoder": "sdxl_vae_v1.0_f16.ckpt",
+      "text_encoder": "open_clip_vit_bigg14_f16.ckpt",
+      "clip_encoder": "clip_vit_l14_f16.ckpt"
+    },
+    {
+      "name": "HiDream E1 [full]",
+      "file": "hidream_e1_full_q8p.ckpt",
+      "version": "hidream_i1",
+      "prefix": "",
+      "modifier": "editing",
+      "note": "[HiDream-E1 [full]](https://huggingface.co/HiDream-ai/HiDream-E1-Full) is an image editing model built on HiDream-I1. It is MIT-licensed and commercially friendly. Trained at 768×768 resolution using a Flow Matching objective, the model performs best with trailing samplers and 30–50 sampling steps. For optimal results, ensure the width is set to 768 and use the following prompt format: Editing Instruction: {}. Target Image Description: {}.",
+      "default_scale": 12,
+      "autoencoder": "flux_1_vae_f16.ckpt",
+      "text_encoder": "llama_3.1_8b_instruct_q8p.ckpt",
+      "clip_encoder": "long_clip_vit_l14_f16.ckpt"
+    },
+    {
+      "name": "HiDream E1 [full] (5-bit)",
+      "file": "hidream_e1_full_q5p.ckpt",
+      "version": "hidream_i1",
+      "prefix": "",
+      "modifier": "editing",
+      "note": "[HiDream-E1 [full]](https://huggingface.co/HiDream-ai/HiDream-E1-Full) is an image editing model built on HiDream-I1. It is MIT-licensed and commercially friendly. Trained at 768×768 resolution using a Flow Matching objective, the model performs best with trailing samplers and 30–50 sampling steps. For optimal results, ensure the width is set to 768 and use the following prompt format: Editing Instruction: {}. Target Image Description: {}.",
+      "default_scale": 12,
+      "autoencoder": "flux_1_vae_f16.ckpt",
+      "text_encoder": "llama_3.1_8b_instruct_q8p.ckpt",
+      "clip_encoder": "long_clip_vit_l14_f16.ckpt"
+    },
+    {
+      "name": "HiDream E1-1",
+      "file": "hidream_e1_1_q8p.ckpt",
+      "version": "hidream_i1",
+      "prefix": "",
+      "modifier": "editing",
+      "note": "[HiDream-E1-1](https://huggingface.co/HiDream-ai/HiDream-E1-1) is an image editing model built on HiDream-I1. It is MIT-licensed and commercially friendly. Trained with dynamic resolutions (around 1MP) using a Flow Matching objective, the model performs best with trailing samplers and 30–50 sampling steps.",
+      "default_scale": 16,
+      "autoencoder": "flux_1_vae_f16.ckpt",
+      "text_encoder": "llama_3.1_8b_instruct_q8p.ckpt",
+      "clip_encoder": "long_clip_vit_l14_f16.ckpt"
+    },
+    {
+      "name": "HiDream E1-1 (5-bit)",
+      "file": "hidream_e1_1_q5p.ckpt",
+      "version": "hidream_i1",
+      "prefix": "",
+      "modifier": "editing",
+      "note": "[HiDream-E1-1](https://huggingface.co/HiDream-ai/HiDream-E1-1) is an image editing model built on HiDream-I1. It is MIT-licensed and commercially friendly. Trained with dynamic resolutions (around 1MP) using a Flow Matching objective, the model performs best with trailing samplers and 30–50 sampling steps.",
+      "default_scale": 16,
+      "autoencoder": "flux_1_vae_f16.ckpt",
+      "text_encoder": "llama_3.1_8b_instruct_q8p.ckpt",
+      "clip_encoder": "long_clip_vit_l14_f16.ckpt"
+    },
+    {
+      "name": "HiDream I1 [dev]",
+      "file": "hidream_i1_dev_q8p.ckpt",
+      "version": "hidream_i1",
+      "prefix": "",
+      "note": "[HiDream-I1 [dev]](https://huggingface.co/HiDream-ai/HiDream-I1-Dev) is a state-of-the-art open-source image generation model known for its strong prompt adherence across diverse styles, including photorealistic, cartoon, and artistic. It is MIT-licensed and commercially friendly. The model is trained at multiple resolutions using a Flow Matching objective; trailing samplers yield the best results, with 20–30 sampling steps recommended. Text guidance is not effective for this model.",
+      "default_scale": 16,
+      "autoencoder": "flux_1_vae_f16.ckpt",
+      "text_encoder": "llama_3.1_8b_instruct_q8p.ckpt",
+      "clip_encoder": "long_clip_vit_l14_f16.ckpt"
+    },
+    {
+      "name": "HiDream I1 [dev] (5-bit)",
+      "file": "hidream_i1_dev_q5p.ckpt",
+      "version": "hidream_i1",
+      "prefix": "",
+      "note": "[HiDream-I1 [dev]](https://huggingface.co/HiDream-ai/HiDream-I1-Dev) is a state-of-the-art open-source image generation model known for its strong prompt adherence across diverse styles, including photorealistic, cartoon, and artistic. It is MIT-licensed and commercially friendly. The model is trained at multiple resolutions using a Flow Matching objective; trailing samplers yield the best results, with 20–30 sampling steps recommended. Text guidance is not effective for this model.",
+      "default_scale": 16,
+      "autoencoder": "flux_1_vae_f16.ckpt",
+      "text_encoder": "llama_3.1_8b_instruct_q8p.ckpt",
+      "clip_encoder": "long_clip_vit_l14_f16.ckpt"
+    },
+    {
+      "name": "HiDream I1 [fast]",
+      "file": "hidream_i1_fast_q8p.ckpt",
+      "version": "hidream_i1",
+      "prefix": "",
+      "note": "[HiDream-I1 [fast]](https://huggingface.co/HiDream-ai/HiDream-I1-Fast) is a state-of-the-art open-source image generation model known for its strong prompt adherence across diverse styles, including photorealistic, cartoon, and artistic. It is MIT-licensed and commercially friendly. The model is trained at multiple resolutions using a Flow Matching objective; trailing samplers yield the best results, with 10–20 sampling steps recommended. Text guidance is not effective for this model.",
+      "default_scale": 16,
+      "autoencoder": "flux_1_vae_f16.ckpt",
+      "text_encoder": "llama_3.1_8b_instruct_q8p.ckpt",
+      "clip_encoder": "long_clip_vit_l14_f16.ckpt"
+    },
+    {
+      "name": "HiDream I1 [fast] (5-bit)",
+      "file": "hidream_i1_fast_q5p.ckpt",
+      "version": "hidream_i1",
+      "prefix": "",
+      "note": "[HiDream-I1 [fast]](https://huggingface.co/HiDream-ai/HiDream-I1-Fast) is a state-of-the-art open-source image generation model known for its strong prompt adherence across diverse styles, including photorealistic, cartoon, and artistic. It is MIT-licensed and commercially friendly. The model is trained at multiple resolutions using a Flow Matching objective; trailing samplers yield the best results, with 10–20 sampling steps recommended. Text guidance is not effective for this model.",
+      "default_scale": 16,
+      "autoencoder": "flux_1_vae_f16.ckpt",
+      "text_encoder": "llama_3.1_8b_instruct_q8p.ckpt",
+      "clip_encoder": "long_clip_vit_l14_f16.ckpt"
+    },
+    {
+      "name": "HiDream I1 [full]",
+      "file": "hidream_i1_full_q8p.ckpt",
+      "version": "hidream_i1",
+      "prefix": "",
+      "note": "[HiDream-I1 [full]](https://huggingface.co/HiDream-ai/HiDream-I1-Full) is a state-of-the-art open-source image generation model known for its exceptional prompt adherence across a wide range of styles, including photorealistic, cartoon, and artistic. It is MIT-licensed and commercially friendly. The model is trained at multiple resolutions using a Flow Matching objective; trailing samplers yield the best results, with 30–50 sampling steps recommended.",
+      "default_scale": 16,
+      "autoencoder": "flux_1_vae_f16.ckpt",
+      "text_encoder": "llama_3.1_8b_instruct_q8p.ckpt",
+      "clip_encoder": "long_clip_vit_l14_f16.ckpt"
+    },
+    {
+      "name": "HiDream I1 [full] (5-bit)",
+      "file": "hidream_i1_full_q5p.ckpt",
+      "version": "hidream_i1",
+      "prefix": "",
+      "note": "[HiDream-I1 [full]](https://huggingface.co/HiDream-ai/HiDream-I1-Full) is a state-of-the-art open-source image generation model known for its exceptional prompt adherence across a wide range of styles, including photorealistic, cartoon, and artistic. It is MIT-licensed and commercially friendly. The model is trained at multiple resolutions using a Flow Matching objective; trailing samplers yield the best results, with 30–50 sampling steps recommended.",
+      "default_scale": 16,
+      "autoencoder": "flux_1_vae_f16.ckpt",
+      "text_encoder": "llama_3.1_8b_instruct_q8p.ckpt",
+      "clip_encoder": "long_clip_vit_l14_f16.ckpt"
+    },
+    {
+      "name": "Instruct Pix2Pix",
+      "file": "instruct_pix2pix_22000_f16.ckpt",
+      "version": "v1",
+      "prefix": "",
+      "modifier": "editing",
+      "default_scale": 8
+    },
+    {
+      "name": "Kandinsky v2.1",
+      "file": "kandinsky_f16.ckpt",
+      "version": "kandinsky2.1",
+      "prefix": "",
+      "default_scale": 12,
+      "autoencoder": "kandinsky_movq_f16.ckpt",
+      "text_encoder": "xlm_roberta_f16.ckpt",
+      "clip_encoder": "clip_vit_l14_f16.ckpt"
+    },
+    {
+      "name": "LTX-2 19B [dev]",
+      "file": "ltx_2_19b_dev_q8p.ckpt",
+      "version": "ltx2",
+      "prefix": "",
+      "modifier": "kontext",
+      "note": "[LTX-2](https://huggingface.co/Lightricks/LTX-2) is a state-of-the-art open-source audio-video foundation model developed by Lightricks. It can generate synchronized video and audio within a single model. The [dev] checkpoint is the full model variant. For best results, set Text Guidance to 3.5 and use 20–30 sampling steps.",
+      "default_scale": 12,
+      "autoencoder": "ltx_2_audio_video_vae_f16.ckpt",
+      "text_encoder": "gemma_3_12b_it_qat_q8p.ckpt",
+      "clip_encoder": "ltx_2_19b_dev_q8p.ckpt"
+    },
+    {
+      "name": "LTX-2 19B [dev] (6-bit)",
+      "file": "ltx_2_19b_dev_q6p.ckpt",
+      "version": "ltx2",
+      "prefix": "",
+      "modifier": "kontext",
+      "note": "[LTX-2](https://huggingface.co/Lightricks/LTX-2) is a state-of-the-art open-source audio-video foundation model developed by Lightricks. It can generate synchronized video and audio within a single model. The [dev] checkpoint is the full model variant. For best results, set Text Guidance to 3.5 and use 20–30 sampling steps.",
+      "default_scale": 12,
+      "autoencoder": "ltx_2_audio_video_vae_f16.ckpt",
+      "text_encoder": "gemma_3_12b_it_qat_q8p.ckpt",
+      "clip_encoder": "ltx_2_19b_dev_q6p.ckpt"
+    },
+    {
+      "name": "LTX-2 19B [distilled]",
+      "file": "ltx_2_19b_distilled_q8p.ckpt",
+      "version": "ltx2",
+      "prefix": "",
+      "modifier": "kontext",
+      "note": "[LTX-2](https://huggingface.co/Lightricks/LTX-2) is a state-of-the-art open-source audio-video foundation model developed by Lightricks. It can generate synchronized video and audio within a single model. The [distilled] checkpoint is optimized for fast inference; for best results, use 8 sampling steps and set Text Guidance to 1.0.",
+      "default_scale": 12,
+      "autoencoder": "ltx_2_audio_video_vae_f16.ckpt",
+      "text_encoder": "gemma_3_12b_it_qat_q8p.ckpt",
+      "clip_encoder": "ltx_2_19b_distilled_q8p.ckpt"
+    },
+    {
+      "name": "LTX-2 19B [distilled] (6-bit)",
+      "file": "ltx_2_19b_distilled_q6p.ckpt",
+      "version": "ltx2",
+      "prefix": "",
+      "modifier": "kontext",
+      "note": "[LTX-2](https://huggingface.co/Lightricks/LTX-2) is a state-of-the-art open-source audio-video foundation model developed by Lightricks. It can generate synchronized video and audio within a single model. The [distilled] checkpoint is optimized for fast inference; for best results, use 8 sampling steps and set Text Guidance to 1.0.",
+      "default_scale": 12,
+      "autoencoder": "ltx_2_audio_video_vae_f16.ckpt",
+      "text_encoder": "gemma_3_12b_it_qat_q8p.ckpt",
+      "clip_encoder": "ltx_2_19b_distilled_q6p.ckpt"
+    },
+    {
+      "name": "LTX-2.3 22B [dev]",
+      "file": "ltx_2.3_22b_dev_q8p.ckpt",
+      "version": "ltx2_3",
+      "prefix": "",
+      "modifier": "kontext",
+      "note": "[LTX-2.3](https://huggingface.co/Lightricks/LTX-2.3) is a significant update to LTX-2 with improved audio and visual quality and enhanced prompt adherence. It is a state-of-the-art open-source audio-video foundation model developed by Lightricks and can generate synchronized video and audio within a single model. The [dev] checkpoint is the full model variant and is fully trainable. For best results, set Text Guidance to 3.5 and use 20–30 sampling steps.",
+      "default_scale": 12,
+      "autoencoder": "ltx_2.3_audio_video_vae_f16.ckpt",
+      "text_encoder": "gemma_3_12b_it_qat_q8p.ckpt",
+      "clip_encoder": "ltx_2.3_22b_dev_q8p.ckpt"
+    },
+    {
+      "name": "LTX-2.3 22B [dev] (6-bit)",
+      "file": "ltx_2.3_22b_dev_q6p.ckpt",
+      "version": "ltx2_3",
+      "prefix": "",
+      "modifier": "kontext",
+      "note": "[LTX-2.3](https://huggingface.co/Lightricks/LTX-2.3) is a significant update to LTX-2 with improved audio and visual quality and enhanced prompt adherence. It is a state-of-the-art open-source audio-video foundation model developed by Lightricks and can generate synchronized video and audio within a single model. The [dev] checkpoint is the full model variant and is fully trainable. For best results, set Text Guidance to 3.5 and use 20–30 sampling steps.",
+      "default_scale": 12,
+      "autoencoder": "ltx_2.3_audio_video_vae_f16.ckpt",
+      "text_encoder": "gemma_3_12b_it_qat_q8p.ckpt",
+      "clip_encoder": "ltx_2.3_22b_dev_q6p.ckpt"
+    },
+    {
+      "name": "LTX-2.3 22B [distilled]",
+      "file": "ltx_2.3_22b_distilled_q8p.ckpt",
+      "version": "ltx2_3",
+      "prefix": "",
+      "modifier": "kontext",
+      "note": "[LTX-2.3](https://huggingface.co/Lightricks/LTX-2.3) is a significant update to LTX-2 with improved audio and visual quality and enhanced prompt adherence. It is a state-of-the-art open-source audio-video foundation model developed by Lightricks and can generate synchronized video and audio within a single model. The [distilled] checkpoint is the distilled version of the full model and is optimized for fast inference; for best results, use 8 sampling steps and set Text Guidance to 1.0.",
+      "default_scale": 12,
+      "autoencoder": "ltx_2.3_audio_video_vae_f16.ckpt",
+      "text_encoder": "gemma_3_12b_it_qat_q8p.ckpt",
+      "clip_encoder": "ltx_2.3_22b_distilled_q8p.ckpt"
+    },
+    {
+      "name": "LTX-2.3 22B [distilled] (6-bit)",
+      "file": "ltx_2.3_22b_distilled_q6p.ckpt",
+      "version": "ltx2_3",
+      "prefix": "",
+      "modifier": "kontext",
+      "note": "[LTX-2.3](https://huggingface.co/Lightricks/LTX-2.3) is a significant update to LTX-2 with improved audio and visual quality and enhanced prompt adherence. It is a state-of-the-art open-source audio-video foundation model developed by Lightricks and can generate synchronized video and audio within a single model. The [distilled] checkpoint is the distilled version of the full model and is optimized for fast inference; for best results, use 8 sampling steps and set Text Guidance to 1.0.",
+      "default_scale": 12,
+      "autoencoder": "ltx_2.3_audio_video_vae_f16.ckpt",
+      "text_encoder": "gemma_3_12b_it_qat_q8p.ckpt",
+      "clip_encoder": "ltx_2.3_22b_distilled_q6p.ckpt"
+    },
+    {
+      "name": "MiniSD v1.4",
+      "file": "minisd_v1.4_f16.ckpt",
+      "version": "v1",
+      "prefix": "",
+      "default_scale": 4
+    },
+    {
+      "name": "PixArt Sigma XL 1K",
+      "file": "pixart_sigma_xl_2_1024_ms_f16.ckpt",
+      "version": "pixart",
+      "prefix": "",
+      "default_scale": 16,
+      "autoencoder": "sdxl_vae_v1.0_f16.ckpt",
+      "text_encoder": "t5_xxl_encoder_q6p.ckpt"
+    },
+    {
+      "name": "PixArt Sigma XL 1K (8-bit)",
+      "file": "pixart_sigma_xl_2_1024_ms_q8p.ckpt",
+      "version": "pixart",
+      "prefix": "",
+      "default_scale": 16,
+      "autoencoder": "sdxl_vae_v1.0_f16.ckpt",
+      "text_encoder": "t5_xxl_encoder_q6p.ckpt"
+    },
+    {
+      "name": "PixArt Sigma XL 512",
+      "file": "pixart_sigma_xl_2_512_ms_f16.ckpt",
+      "version": "pixart",
+      "prefix": "",
+      "default_scale": 8,
+      "autoencoder": "sdxl_vae_v1.0_f16.ckpt",
+      "text_encoder": "t5_xxl_encoder_q6p.ckpt"
+    },
+    {
+      "name": "PixArt Sigma XL 512 (8-bit)",
+      "file": "pixart_sigma_xl_2_512_ms_q8p.ckpt",
+      "version": "pixart",
+      "prefix": "",
+      "default_scale": 8,
+      "autoencoder": "sdxl_vae_v1.0_f16.ckpt",
+      "text_encoder": "t5_xxl_encoder_q6p.ckpt"
+    },
+    {
+      "name": "Qwen Image 1.0",
+      "file": "qwen_image_1.0_q8p.ckpt",
+      "version": "qwen_image",
+      "prefix": "",
+      "note": "[Qwen Image](https://huggingface.co/Qwen/Qwen-Image) is a state-of-the-art open-source image generation model known for its exceptional text layout and prompt adherence across a wide range of styles, including photorealistic, cartoon, and artistic. It is Apache 2.0-licensed and commercially friendly. The model is trained at multiple resolutions using a Flow Matching objective; trailing samplers yield the best results, with 30–50 sampling steps recommended.",
+      "default_scale": 16,
+      "autoencoder": "qwen_image_vae_f16.ckpt",
+      "text_encoder": "qwen_2.5_vl_7b_q8p.ckpt"
+    },
+    {
+      "name": "Qwen Image 1.0 (6-bit)",
+      "file": "qwen_image_1.0_q6p.ckpt",
+      "version": "qwen_image",
+      "prefix": "",
+      "note": "[Qwen Image](https://huggingface.co/Qwen/Qwen-Image) is a state-of-the-art open-source image generation model known for its exceptional text layout and prompt adherence across a wide range of styles, including photorealistic, cartoon, and artistic. It is Apache 2.0-licensed and commercially friendly. The model is trained at multiple resolutions using a Flow Matching objective; trailing samplers yield the best results, with 30–50 sampling steps recommended.",
+      "default_scale": 16,
+      "autoencoder": "qwen_image_vae_f16.ckpt",
+      "text_encoder": "qwen_2.5_vl_7b_q8p.ckpt"
+    },
+    {
+      "name": "Qwen Image 1.0 (BF16, 6-bit)",
+      "file": "qwen_image_1.0_bf16_q6p.ckpt",
+      "version": "qwen_image",
+      "prefix": "",
+      "note": "[Qwen Image](https://huggingface.co/Qwen/Qwen-Image) is a state-of-the-art open-source image generation model known for its exceptional text layout and prompt adherence across a wide range of styles, including photorealistic, cartoon, and artistic. It is Apache 2.0-licensed and commercially friendly. The model is trained at multiple resolutions using a Flow Matching objective; trailing samplers yield the best results, with 30–50 sampling steps recommended. The BF16 version is only compatible with macOS 15, iOS 18 and above.",
+      "default_scale": 16,
+      "autoencoder": "qwen_image_vae_f16.ckpt",
+      "text_encoder": "qwen_2.5_vl_7b_q8p.ckpt"
+    },
+    {
+      "name": "Qwen Image 1.0 (BF16)",
+      "file": "qwen_image_1.0_bf16_q8p.ckpt",
+      "version": "qwen_image",
+      "prefix": "",
+      "note": "[Qwen Image](https://huggingface.co/Qwen/Qwen-Image) is a state-of-the-art open-source image generation model known for its exceptional text layout and prompt adherence across a wide range of styles, including photorealistic, cartoon, and artistic. It is Apache 2.0-licensed and commercially friendly. The model is trained at multiple resolutions using a Flow Matching objective; trailing samplers yield the best results, with 30–50 sampling steps recommended. The BF16 version is only compatible with macOS 15, iOS 18 and above.",
+      "default_scale": 16,
+      "autoencoder": "qwen_image_vae_f16.ckpt",
+      "text_encoder": "qwen_2.5_vl_7b_q8p.ckpt"
+    },
+    {
+      "name": "Qwen Image 2512",
+      "file": "qwen_image_2512_q8p.ckpt",
+      "version": "qwen_image",
+      "prefix": "",
+      "note": "[Qwen Image 2512](https://huggingface.co/Qwen/Qwen-Image-2512) is the december update of Qwen Image model with improvements on enhanced human realism, finer natural detail and improved text rendering. It is Apache 2.0-licensed and commercially friendly. The model is trained at multiple resolutions using a Flow Matching objective; trailing samplers yield the best results, with 30–50 sampling steps recommended.",
+      "default_scale": 16,
+      "autoencoder": "qwen_image_vae_f16.ckpt",
+      "text_encoder": "qwen_2.5_vl_7b_q8p.ckpt"
+    },
+    {
+      "name": "Qwen Image 2512 (6-bit)",
+      "file": "qwen_image_2512_q6p.ckpt",
+      "version": "qwen_image",
+      "prefix": "",
+      "note": "[Qwen Image 2512](https://huggingface.co/Qwen/Qwen-Image-2512) is the december update of Qwen Image model with improvements on enhanced human realism, finer natural detail and improved text rendering. It is Apache 2.0-licensed and commercially friendly. The model is trained at multiple resolutions using a Flow Matching objective; trailing samplers yield the best results, with 30–50 sampling steps recommended.",
+      "default_scale": 16,
+      "autoencoder": "qwen_image_vae_f16.ckpt",
+      "text_encoder": "qwen_2.5_vl_7b_q8p.ckpt"
+    },
+    {
+      "name": "Qwen Image 2512 (BF16, 6-bit)",
+      "file": "qwen_image_2512_bf16_q6p.ckpt",
+      "version": "qwen_image",
+      "prefix": "",
+      "note": "[Qwen Image 2512](https://huggingface.co/Qwen/Qwen-Image-2512) is the december update of Qwen Image model with improvements on enhanced human realism, finer natural detail and improved text rendering. It is Apache 2.0-licensed and commercially friendly. The model is trained at multiple resolutions using a Flow Matching objective; trailing samplers yield the best results, with 30–50 sampling steps recommended. The BF16 version is only compatible with macOS 15, iOS 18 and above.",
+      "default_scale": 16,
+      "autoencoder": "qwen_image_vae_f16.ckpt",
+      "text_encoder": "qwen_2.5_vl_7b_q8p.ckpt"
+    },
+    {
+      "name": "Qwen Image 2512 (BF16)",
+      "file": "qwen_image_2512_bf16_q8p.ckpt",
+      "version": "qwen_image",
+      "prefix": "",
+      "note": "[Qwen Image 2512](https://huggingface.co/Qwen/Qwen-Image-2512) is the december update of Qwen Image model with improvements on enhanced human realism, finer natural detail and improved text rendering. It is Apache 2.0-licensed and commercially friendly. The model is trained at multiple resolutions using a Flow Matching objective; trailing samplers yield the best results, with 30–50 sampling steps recommended. The BF16 version is only compatible with macOS 15, iOS 18 and above.",
+      "default_scale": 16,
+      "autoencoder": "qwen_image_vae_f16.ckpt",
+      "text_encoder": "qwen_2.5_vl_7b_q8p.ckpt"
+    },
+    {
+      "name": "Qwen Image Edit 1.0",
+      "file": "qwen_image_edit_1.0_q8p.ckpt",
+      "version": "qwen_image",
+      "prefix": "",
+      "modifier": "kontext",
+      "note": "[Qwen Image Edit](https://huggingface.co/Qwen/Qwen-Image-Edit) is a state-of-the-art open-source image edit model excels at image edit tasks such as background alternation, style transfer, object removal etc. It is Apache 2.0-licensed and commercially friendly. The model is trained at multiple resolutions using a Flow Matching objective; trailing samplers yield the best results, with 30–50 sampling steps recommended.",
+      "default_scale": 16,
+      "autoencoder": "qwen_image_vae_f16.ckpt",
+      "text_encoder": "qwen_2.5_vl_7b_q8p.ckpt",
+      "clip_encoder": "qwen_2.5_vl_7b_vit_f16.ckpt"
+    },
+    {
+      "name": "Qwen Image Edit 1.0 (6-bit)",
+      "file": "qwen_image_edit_1.0_q6p.ckpt",
+      "version": "qwen_image",
+      "prefix": "",
+      "modifier": "kontext",
+      "note": "[Qwen Image Edit](https://huggingface.co/Qwen/Qwen-Image-Edit) is a state-of-the-art open-source image edit model excels at image edit tasks such as background alternation, style transfer, object removal etc. It is Apache 2.0-licensed and commercially friendly. The model is trained at multiple resolutions using a Flow Matching objective; trailing samplers yield the best results, with 30–50 sampling steps recommended.",
+      "default_scale": 16,
+      "autoencoder": "qwen_image_vae_f16.ckpt",
+      "text_encoder": "qwen_2.5_vl_7b_q8p.ckpt",
+      "clip_encoder": "qwen_2.5_vl_7b_vit_f16.ckpt"
+    },
+    {
+      "name": "Qwen Image Edit 2509",
+      "file": "qwen_image_edit_2509_q8p.ckpt",
+      "version": "qwen_image",
+      "prefix": "",
+      "modifier": "qwenimageEditPlus",
+      "note": "[Qwen Image Edit 2509](https://huggingface.co/Qwen/Qwen-Image-Edit-2509) is a state-of-the-art open-source image edit model excels at image edit tasks such as background alternation, style transfer, object removal etc. It is Apache 2.0-licensed and commercially friendly. The model is trained at multiple resolutions using a Flow Matching objective; trailing samplers yield the best results, with 30–50 sampling steps recommended. This is an update in Sep, 2025.",
+      "default_scale": 16,
+      "autoencoder": "qwen_image_vae_f16.ckpt",
+      "text_encoder": "qwen_2.5_vl_7b_q8p.ckpt",
+      "clip_encoder": "qwen_2.5_vl_7b_vit_f16.ckpt"
+    },
+    {
+      "name": "Qwen Image Edit 2509 (6-bit)",
+      "file": "qwen_image_edit_2509_q6p.ckpt",
+      "version": "qwen_image",
+      "prefix": "",
+      "modifier": "qwenimageEditPlus",
+      "note": "[Qwen Image Edit 2509](https://huggingface.co/Qwen/Qwen-Image-2509) is a state-of-the-art open-source image edit model excels at image edit tasks such as background alternation, style transfer, object removal etc. It is Apache 2.0-licensed and commercially friendly. The model is trained at multiple resolutions using a Flow Matching objective; trailing samplers yield the best results, with 30–50 sampling steps recommended. This is an update in Sep, 2025.",
+      "default_scale": 16,
+      "autoencoder": "qwen_image_vae_f16.ckpt",
+      "text_encoder": "qwen_2.5_vl_7b_q8p.ckpt",
+      "clip_encoder": "qwen_2.5_vl_7b_vit_f16.ckpt"
+    },
+    {
+      "name": "Qwen Image Edit 2509 (BF16, 6-bit)",
+      "file": "qwen_image_edit_2509_bf16_q6p.ckpt",
+      "version": "qwen_image",
+      "prefix": "",
+      "modifier": "qwenimageEditPlus",
+      "note": "[Qwen Image Edit 2509](https://huggingface.co/Qwen/Qwen-Image-2509) is a state-of-the-art open-source image edit model excels at image edit tasks such as background alternation, style transfer, object removal etc. It is Apache 2.0-licensed and commercially friendly. The model is trained at multiple resolutions using a Flow Matching objective; trailing samplers yield the best results, with 30–50 sampling steps recommended. This is an update in Sep, 2025. The BF16 version is only compatible with macOS 15, iOS 18 and above.",
+      "default_scale": 16,
+      "autoencoder": "qwen_image_vae_f16.ckpt",
+      "text_encoder": "qwen_2.5_vl_7b_q8p.ckpt",
+      "clip_encoder": "qwen_2.5_vl_7b_vit_f16.ckpt"
+    },
+    {
+      "name": "Qwen Image Edit 2509 (BF16)",
+      "file": "qwen_image_edit_2509_bf16_q8p.ckpt",
+      "version": "qwen_image",
+      "prefix": "",
+      "modifier": "qwenimageEditPlus",
+      "note": "[Qwen Image Edit 2509](https://huggingface.co/Qwen/Qwen-Image-Edit-2509) is a state-of-the-art open-source image edit model excels at image edit tasks such as background alternation, style transfer, object removal etc. It is Apache 2.0-licensed and commercially friendly. The model is trained at multiple resolutions using a Flow Matching objective; trailing samplers yield the best results, with 30–50 sampling steps recommended. This is an update in Sep, 2025. The BF16 version is only compatible with macOS 15, iOS 18 and above.",
+      "default_scale": 16,
+      "autoencoder": "qwen_image_vae_f16.ckpt",
+      "text_encoder": "qwen_2.5_vl_7b_q8p.ckpt",
+      "clip_encoder": "qwen_2.5_vl_7b_vit_f16.ckpt"
+    },
+    {
+      "name": "Qwen Image Edit 2511",
+      "file": "qwen_image_edit_2511_q8p.ckpt",
+      "version": "qwen_image",
+      "prefix": "",
+      "modifier": "qwenimageEdit2511",
+      "note": "[Qwen Image Edit 2511](https://huggingface.co/Qwen/Qwen-Image-Edit-2511) is an enhanced image editing model that significantly improves character consistency, mitigates image drift, and strengthens multi-person fusion capabilities compared to its predecessor (2509). It integrates popular LoRA features natively, enabling advanced lighting control and viewpoint generation without extra tuning, alongside specialized industrial design and geometric reasoning capabilities. It is Apache 2.0-licensed, with 40 inference steps recommended for optimal results.",
+      "default_scale": 16,
+      "autoencoder": "qwen_image_vae_f16.ckpt",
+      "text_encoder": "qwen_2.5_vl_7b_q8p.ckpt",
+      "clip_encoder": "qwen_2.5_vl_7b_vit_f16.ckpt"
+    },
+    {
+      "name": "Qwen Image Edit 2511 (6-bit)",
+      "file": "qwen_image_edit_2511_q6p.ckpt",
+      "version": "qwen_image",
+      "prefix": "",
+      "modifier": "qwenimageEdit2511",
+      "note": "[Qwen Image Edit 2511](https://huggingface.co/Qwen/Qwen-Image-Edit-2511) is an enhanced image editing model that significantly improves character consistency, mitigates image drift, and strengthens multi-person fusion capabilities compared to its predecessor (2509). It integrates popular LoRA features natively, enabling advanced lighting control and viewpoint generation without extra tuning, alongside specialized industrial design and geometric reasoning capabilities. It is Apache 2.0-licensed, with 40 inference steps recommended for optimal results.",
+      "default_scale": 16,
+      "autoencoder": "qwen_image_vae_f16.ckpt",
+      "text_encoder": "qwen_2.5_vl_7b_q8p.ckpt",
+      "clip_encoder": "qwen_2.5_vl_7b_vit_f16.ckpt"
+    },
+    {
+      "name": "Qwen Image Edit 2511 (BF16, 6-bit)",
+      "file": "qwen_image_edit_2511_bf16_q6p.ckpt",
+      "version": "qwen_image",
+      "prefix": "",
+      "modifier": "qwenimageEdit2511",
+      "note": "[Qwen Image Edit 2511](https://huggingface.co/Qwen/Qwen-Image-Edit-2511) is an enhanced image editing model that significantly improves character consistency, mitigates image drift, and strengthens multi-person fusion capabilities compared to its predecessor (2509). It integrates popular LoRA features natively, enabling advanced lighting control and viewpoint generation without extra tuning, alongside specialized industrial design and geometric reasoning capabilities. It is Apache 2.0-licensed, with 40 inference steps recommended for optimal results. The BF16 version is only compatible with macOS 15, iOS 18 and above.",
+      "default_scale": 16,
+      "autoencoder": "qwen_image_vae_f16.ckpt",
+      "text_encoder": "qwen_2.5_vl_7b_q8p.ckpt",
+      "clip_encoder": "qwen_2.5_vl_7b_vit_f16.ckpt"
+    },
+    {
+      "name": "Qwen Image Edit 2511 (BF16)",
+      "file": "qwen_image_edit_2511_bf16_q8p.ckpt",
+      "version": "qwen_image",
+      "prefix": "",
+      "modifier": "qwenimageEdit2511",
+      "note": "[Qwen Image Edit 2511](https://huggingface.co/Qwen/Qwen-Image-Edit-2511) is an enhanced image editing model that significantly improves character consistency, mitigates image drift, and strengthens multi-person fusion capabilities compared to its predecessor (2509). It integrates popular LoRA features natively, enabling advanced lighting control and viewpoint generation without extra tuning, alongside specialized industrial design and geometric reasoning capabilities. It is Apache 2.0-licensed, with 40 inference steps recommended for optimal results. The BF16 version is only compatible with macOS 15, iOS 18 and above.",
+      "default_scale": 16,
+      "autoencoder": "qwen_image_vae_f16.ckpt",
+      "text_encoder": "qwen_2.5_vl_7b_q8p.ckpt",
+      "clip_encoder": "qwen_2.5_vl_7b_vit_f16.ckpt"
+    },
+    {
+      "name": "Qwen Image Layered 1.0 (BF16, 6-bit)",
+      "file": "qwen_image_layered_1.0_bf16_q6p.ckpt",
+      "version": "qwen_image",
+      "prefix": "",
+      "modifier": "qwenimageLayered",
+      "note": "[Qwen Image Layered](https://huggingface.co/Qwen/Qwen-Image-Layered) is a specialized model capable of decomposing an image into multiple transparent RGBA layers to unlock inherent editability. By physically isolating semantic components, it enables high-fidelity operations such as resizing, repositioning, and recoloring without affecting the rest of the image. It is Apache 2.0-licensed and commercially friendly. The model supports flexible and recursive decomposition, allowing users to define specific layer counts (Batch Size), with a recommended resolution of 640px and 50 inference steps. The BF16 version is only compatible with macOS 15, iOS 18 and above.",
+      "default_scale": 16,
+      "autoencoder": "qwen_image_layered_vae_f16.ckpt",
+      "text_encoder": "qwen_2.5_vl_7b_q8p.ckpt"
+    },
+    {
+      "name": "Qwen Image Layered 1.0 (BF16)",
+      "file": "qwen_image_layered_1.0_bf16_q8p.ckpt",
+      "version": "qwen_image",
+      "prefix": "",
+      "modifier": "qwenimageLayered",
+      "note": "[Qwen Image Layered](https://huggingface.co/Qwen/Qwen-Image-Layered) is a specialized model capable of decomposing an image into multiple transparent RGBA layers to unlock inherent editability. By physically isolating semantic components, it enables high-fidelity operations such as resizing, repositioning, and recoloring without affecting the rest of the image. It is Apache 2.0-licensed and commercially friendly. The model supports flexible and recursive decomposition, allowing users to define specific layer counts (Batch Size), with a recommended resolution of 640px and 50 inference steps. The BF16 version is only compatible with macOS 15, iOS 18 and above.",
+      "default_scale": 16,
+      "autoencoder": "qwen_image_layered_vae_f16.ckpt",
+      "text_encoder": "qwen_2.5_vl_7b_q8p.ckpt"
+    },
+    {
+      "name": "SDXL Base (v0.9)",
+      "file": "sd_xl_base_0.9_f16.ckpt",
+      "version": "sdxl_base_v0.9",
+      "prefix": "",
+      "default_scale": 16,
+      "autoencoder": "sdxl_vae_f16.ckpt",
+      "text_encoder": "open_clip_vit_bigg14_f16.ckpt",
+      "clip_encoder": "clip_vit_l14_f16.ckpt"
+    },
+    {
+      "name": "SDXL Base (v1.0)",
+      "file": "sd_xl_base_1.0_f16.ckpt",
+      "version": "sdxl_base_v0.9",
+      "prefix": "",
+      "default_scale": 16,
+      "autoencoder": "sdxl_vae_v1.0_f16.ckpt",
+      "text_encoder": "open_clip_vit_bigg14_f16.ckpt",
+      "clip_encoder": "clip_vit_l14_f16.ckpt"
+    },
+    {
+      "name": "SDXL Base v1.0 (8-bit)",
+      "file": "sd_xl_base_1.0_q6p_q8p.ckpt",
+      "version": "sdxl_base_v0.9",
+      "prefix": "",
+      "default_scale": 16,
+      "autoencoder": "sdxl_vae_v1.0_f16.ckpt",
+      "text_encoder": "open_clip_vit_bigg14_f16.ckpt",
+      "clip_encoder": "clip_vit_l14_f16.ckpt"
+    },
+    {
+      "name": "SDXL Refiner (v0.9)",
+      "file": "sd_xl_refiner_0.9_f16.ckpt",
+      "version": "sdxl_refiner_v0.9",
+      "prefix": "",
+      "default_scale": 16,
+      "autoencoder": "sdxl_vae_f16.ckpt",
+      "text_encoder": "open_clip_vit_bigg14_f16.ckpt",
+      "clip_encoder": "clip_vit_l14_f16.ckpt"
+    },
+    {
+      "name": "SDXL Refiner (v1.0)",
+      "file": "sd_xl_refiner_1.0_f16.ckpt",
+      "version": "sdxl_refiner_v0.9",
+      "prefix": "",
+      "default_scale": 16,
+      "autoencoder": "sdxl_vae_v1.0_f16.ckpt",
+      "text_encoder": "open_clip_vit_bigg14_f16.ckpt",
+      "clip_encoder": "clip_vit_l14_f16.ckpt"
+    },
+    {
+      "name": "SDXL Refiner v1.0 (8-bit)",
+      "file": "sd_xl_refiner_1.0_q6p_q8p.ckpt",
+      "version": "sdxl_refiner_v0.9",
+      "prefix": "",
+      "default_scale": 16,
+      "autoencoder": "sdxl_vae_v1.0_f16.ckpt",
+      "text_encoder": "open_clip_vit_bigg14_f16.ckpt",
+      "clip_encoder": "clip_vit_l14_f16.ckpt"
+    },
+    {
+      "name": "Stable Diffusion v1.4",
+      "file": "sd_v1.4_f16.ckpt",
+      "version": "v1",
+      "prefix": ""
+    },
+    {
+      "name": "Stable Diffusion v1.5",
+      "file": "sd_v1.5_f16.ckpt",
+      "version": "v1",
+      "prefix": ""
+    },
+    {
+      "name": "Stable Diffusion v1.5 Inpainting",
+      "file": "sd_v1.5_inpainting_f16.ckpt",
+      "version": "v1",
+      "prefix": "",
+      "modifier": "inpainting"
+    },
+    {
+      "name": "Stable Diffusion v2.0",
+      "file": "sd_v2.0_f16.ckpt",
+      "version": "v2",
+      "prefix": "",
+      "text_encoder": "open_clip_vit_h14_f16.ckpt"
+    },
+    {
+      "name": "Stable Diffusion v2.0 768-v",
+      "file": "sd_v2.0_768_v_f16.ckpt",
+      "version": "v2",
+      "prefix": "",
+      "default_scale": 12,
+      "text_encoder": "open_clip_vit_h14_f16.ckpt"
+    },
+    {
+      "name": "Stable Diffusion v2.0 Depth",
+      "file": "sd_v2.0_depth_f16.ckpt",
+      "version": "v2",
+      "prefix": "",
+      "modifier": "depth",
+      "text_encoder": "open_clip_vit_h14_f16.ckpt"
+    },
+    {
+      "name": "Stable Diffusion v2.0 Inpainting",
+      "file": "sd_v2.0_inpainting_f16.ckpt",
+      "version": "v2",
+      "prefix": "",
+      "modifier": "inpainting",
+      "text_encoder": "open_clip_vit_h14_f16.ckpt"
+    },
+    {
+      "name": "Stable Diffusion v2.1",
+      "file": "sd_v2.1_f16.ckpt",
+      "version": "v2",
+      "prefix": "",
+      "text_encoder": "open_clip_vit_h14_f16.ckpt"
+    },
+    {
+      "name": "Stable Diffusion v2.1 768-v",
+      "file": "sd_v2.1_768_v_f16.ckpt",
+      "version": "v2",
+      "prefix": "",
+      "default_scale": 12,
+      "text_encoder": "open_clip_vit_h14_f16.ckpt"
+    },
+    {
+      "name": "Stable Video Diffusion I2V XT 1.0 (8-bit)",
+      "file": "svd_i2v_xt_1.0_q6p_q8p.ckpt",
+      "version": "svd_i2v",
+      "prefix": "",
+      "default_scale": 8,
+      "text_encoder": "open_clip_vit_h14_vision_model_f16.ckpt",
+      "clip_encoder": "svd_i2v_xt_1.0_q6p_q8p.ckpt"
+    },
+    {
+      "name": "Stable Video Diffusion I2V XT v1.0",
+      "file": "svd_i2v_xt_1.0_f16.ckpt",
+      "version": "svd_i2v",
+      "prefix": "",
+      "default_scale": 8,
+      "text_encoder": "open_clip_vit_h14_vision_model_f16.ckpt",
+      "clip_encoder": "svd_i2v_xt_1.0_f16.ckpt"
+    },
+    {
+      "name": "Wan 2.1 I2V 14B 480p",
+      "file": "wan_v2.1_14b_i2v_480p_q8p.ckpt",
+      "version": "wan_v2.1_14b",
+      "prefix": "",
+      "modifier": "inpainting",
+      "note": "[Wan2.1 I2V 14B 480P](https://huggingface.co/Wan-AI/Wan2.1-I2V-14B-480P) is a state-of-the-art image-to-video model developed by Alibaba. It can generate video clips of up to 4 seconds in length from a given start frame. The recommended resolutions are 832×480. The model supports up to 81 frames, with a recommended shift value of 5.0.",
+      "default_scale": 8,
+      "autoencoder": "wan_v2.1_video_vae_f16.ckpt",
+      "text_encoder": "umt5_xxl_encoder_q8p.ckpt",
+      "clip_encoder": "open_clip_xlm_roberta_large_vit_h14_f16.ckpt"
+    },
+    {
+      "name": "Wan 2.1 I2V 14B 480p (6-bit, SVDQuant)",
+      "file": "wan_v2.1_14b_i2v_480p_q6p_svd.ckpt",
+      "version": "wan_v2.1_14b",
+      "prefix": "",
+      "modifier": "inpainting",
+      "note": "[Wan2.1 I2V 14B 480P](https://huggingface.co/Wan-AI/Wan2.1-I2V-14B-480P) is a state-of-the-art image-to-video model developed by Alibaba. It can generate video clips of up to 4 seconds in length from a given start frame. The recommended resolutions are 832×480. The model supports up to 81 frames, with a recommended shift value of 5.0.",
+      "default_scale": 8,
+      "autoencoder": "wan_v2.1_video_vae_f16.ckpt",
+      "text_encoder": "umt5_xxl_encoder_q8p.ckpt",
+      "clip_encoder": "open_clip_xlm_roberta_large_vit_h14_f16.ckpt"
+    },
+    {
+      "name": "Wan 2.1 I2V 14B 720p",
+      "file": "wan_v2.1_14b_i2v_720p_q8p.ckpt",
+      "version": "wan_v2.1_14b",
+      "prefix": "",
+      "modifier": "inpainting",
+      "note": "[Wan2.1 I2V 14B 720P](https://huggingface.co/Wan-AI/Wan2.1-I2V-14B-720P) is a state-of-the-art image-to-video model developed by Alibaba. It can generate video clips of up to 4 seconds in length from a given start frame. The recommended resolutions are 1280×720. The model supports up to 81 frames, with a recommended shift value of 5.0.",
+      "default_scale": 12,
+      "autoencoder": "wan_v2.1_video_vae_f16.ckpt",
+      "text_encoder": "umt5_xxl_encoder_q8p.ckpt",
+      "clip_encoder": "open_clip_xlm_roberta_large_vit_h14_f16.ckpt"
+    },
+    {
+      "name": "Wan 2.1 I2V 14B 720p (6-bit, SVDQuant)",
+      "file": "wan_v2.1_14b_i2v_720p_q6p_svd.ckpt",
+      "version": "wan_v2.1_14b",
+      "prefix": "",
+      "modifier": "inpainting",
+      "note": "[Wan2.1 I2V 14B 720P](https://huggingface.co/Wan-AI/Wan2.1-I2V-14B-720P) is a state-of-the-art image-to-video model developed by Alibaba. It can generate video clips of up to 4 seconds in length from a given start frame. The recommended resolutions are 1280×720. The model supports up to 81 frames, with a recommended shift value of 5.0.",
+      "default_scale": 12,
+      "autoencoder": "wan_v2.1_video_vae_f16.ckpt",
+      "text_encoder": "umt5_xxl_encoder_q8p.ckpt",
+      "clip_encoder": "open_clip_xlm_roberta_large_vit_h14_f16.ckpt"
+    },
+    {
+      "name": "Wan 2.1 T2V 1.3B",
+      "file": "wan_v2.1_1.3b_480p_f16.ckpt",
+      "version": "wan_v2.1_1.3b",
+      "prefix": "",
+      "note": "[Wan2.1 T2V 1.3B](https://huggingface.co/Wan-AI/Wan2.1-T2V-1.3B) is a state-of-the-art text-to-video model developed by Alibaba. It can generate video clips of up to 4 seconds in length. The recommended resolutions are 832×480. The model supports up to 81 frames, with a recommended shift value of 6.0. For best results, set Text Guidance above 5.0. Wan2.1 is trained with a Flow Matching objective, and trailing samplers will produce the best outputs.",
+      "default_scale": 8,
+      "autoencoder": "wan_v2.1_video_vae_f16.ckpt",
+      "text_encoder": "umt5_xxl_encoder_q8p.ckpt"
+    },
+    {
+      "name": "Wan 2.1 T2V 1.3B (8-bit)",
+      "file": "wan_v2.1_1.3b_480p_q8p.ckpt",
+      "version": "wan_v2.1_1.3b",
+      "prefix": "",
+      "note": "[Wan2.1 T2V 1.3B](https://huggingface.co/Wan-AI/Wan2.1-T2V-1.3B) is a state-of-the-art text-to-video model developed by Alibaba. It can generate video clips of up to 4 seconds in length. The recommended resolutions are 832×480. The model supports up to 81 frames, with a recommended shift value of 6.0. For best results, set Text Guidance above 5.0. Wan2.1 is trained with a Flow Matching objective, and trailing samplers will produce the best outputs.",
+      "default_scale": 8,
+      "autoencoder": "wan_v2.1_video_vae_f16.ckpt",
+      "text_encoder": "umt5_xxl_encoder_q8p.ckpt"
+    },
+    {
+      "name": "Wan 2.1 T2V 14B",
+      "file": "wan_v2.1_14b_720p_q8p.ckpt",
+      "version": "wan_v2.1_14b",
+      "prefix": "",
+      "note": "[Wan2.1 T2V 14B](https://huggingface.co/Wan-AI/Wan2.1-T2V-14B) is a state-of-the-art text-to-video model developed by Alibaba. It can generate video clips of up to 4 seconds in length. The recommended resolutions are 1280×720. The recommended resolutions are 832×480. The model supports up to 81 frames, with a recommended shift value of 5.0. For best results, set Text Guidance above 5.0. Wan2.1 is trained with a Flow Matching objective, and trailing samplers will produce the best outputs.",
+      "default_scale": 12,
+      "autoencoder": "wan_v2.1_video_vae_f16.ckpt",
+      "text_encoder": "umt5_xxl_encoder_q8p.ckpt"
+    },
+    {
+      "name": "Wan 2.1 T2V 14B (5-bit, SVDQuant)",
+      "file": "wan_v2.1_14b_720p_q5p_svd.ckpt",
+      "version": "wan_v2.1_14b",
+      "prefix": "",
+      "note": "[Wan2.1 T2V 14B](https://huggingface.co/Wan-AI/Wan2.1-T2V-14B) is a state-of-the-art text-to-video model developed by Alibaba. It can generate video clips of up to 4 seconds in length. The recommended resolutions are 1280×720. The model supports up to 81 frames, with a recommended shift value of 5.0.",
+      "default_scale": 12,
+      "autoencoder": "wan_v2.1_video_vae_f16.ckpt",
+      "text_encoder": "umt5_xxl_encoder_q8p.ckpt"
+    },
+    {
+      "name": "Wan 2.1 T2V 14B (6-bit, SVDQuant)",
+      "file": "wan_v2.1_14b_720p_q6p_svd.ckpt",
+      "version": "wan_v2.1_14b",
+      "prefix": "",
+      "note": "[Wan2.1 T2V 14B](https://huggingface.co/Wan-AI/Wan2.1-T2V-14B) is a state-of-the-art text-to-video model developed by Alibaba. It can generate video clips of up to 4 seconds in length. The recommended resolutions are 1280×720. The model supports up to 81 frames, with a recommended shift value of 5.0.",
+      "default_scale": 12,
+      "autoencoder": "wan_v2.1_video_vae_f16.ckpt",
+      "text_encoder": "umt5_xxl_encoder_q8p.ckpt"
+    },
+    {
+      "name": "Wan 2.2 High Noise Expert I2V A14B",
+      "file": "wan_v2.2_a14b_hne_i2v_q8p.ckpt",
+      "version": "wan_v2.1_14b",
+      "prefix": "",
+      "modifier": "inpainting",
+      "note": "[Wan2.2 I2V A14B](https://huggingface.co/Wan-AI/Wan2.2-I2V-A14B) is a state-of-the-art image-to-video model developed by Alibaba. It can generate video clips of up to 4 seconds in length from a given start frame. The recommended resolutions are 1280×720. The model supports up to 81 frames, with a recommended shift value of 5.0.",
+      "default_scale": 12,
+      "autoencoder": "wan_v2.1_video_vae_f16.ckpt",
+      "text_encoder": "umt5_xxl_encoder_q8p.ckpt"
+    },
+    {
+      "name": "Wan 2.2 High Noise Expert I2V A14B (6-bit, SVDQuant)",
+      "file": "wan_v2.2_a14b_hne_i2v_q6p_svd.ckpt",
+      "version": "wan_v2.1_14b",
+      "prefix": "",
+      "modifier": "inpainting",
+      "note": "[Wan2.2 I2V A14B](https://huggingface.co/Wan-AI/Wan2.2-I2V-A14B) is a state-of-the-art image-to-video model developed by Alibaba. It can generate video clips of up to 4 seconds in length from a given start frame. The recommended resolutions are 1280×720. The model supports up to 81 frames, with a recommended shift value of 5.0.",
+      "default_scale": 12,
+      "autoencoder": "wan_v2.1_video_vae_f16.ckpt",
+      "text_encoder": "umt5_xxl_encoder_q8p.ckpt"
+    },
+    {
+      "name": "Wan 2.2 High Noise Expert T2V A14B",
+      "file": "wan_v2.2_a14b_hne_t2v_q8p.ckpt",
+      "version": "wan_v2.1_14b",
+      "prefix": "",
+      "note": "[Wan2.2 T2V A14B](https://huggingface.co/Wan-AI/Wan2.2-T2V-A14B) is a state-of-the-art text-to-video model developed by Alibaba. It can generate video clips of up to 4 seconds in length. The recommended resolutions are 1280×720. The model supports up to 81 frames, with a recommended shift value of 5.0.",
+      "default_scale": 12,
+      "autoencoder": "wan_v2.1_video_vae_f16.ckpt",
+      "text_encoder": "umt5_xxl_encoder_q8p.ckpt"
+    },
+    {
+      "name": "Wan 2.2 High Noise Expert T2V A14B (6-bit, SVDQuant)",
+      "file": "wan_v2.2_a14b_hne_t2v_q6p_svd.ckpt",
+      "version": "wan_v2.1_14b",
+      "prefix": "",
+      "note": "[Wan2.2 T2V A14B](https://huggingface.co/Wan-AI/Wan2.2-T2V-A14B) is a state-of-the-art text-to-video model developed by Alibaba. It can generate video clips of up to 4 seconds in length. The recommended resolutions are 1280×720. The model supports up to 81 frames, with a recommended shift value of 5.0.",
+      "default_scale": 12,
+      "autoencoder": "wan_v2.1_video_vae_f16.ckpt",
+      "text_encoder": "umt5_xxl_encoder_q8p.ckpt"
+    },
+    {
+      "name": "Wan 2.2 Low Noise Expert I2V A14B",
+      "file": "wan_v2.2_a14b_lne_i2v_q8p.ckpt",
+      "version": "wan_v2.1_14b",
+      "prefix": "",
+      "modifier": "inpainting",
+      "note": "[Wan2.2 I2V A14B](https://huggingface.co/Wan-AI/Wan2.2-I2V-A14B) is a state-of-the-art image-to-video model developed by Alibaba. It can generate video clips of up to 4 seconds in length from a given start frame. The recommended resolutions are 1280×720. The model supports up to 81 frames, with a recommended shift value of 5.0.",
+      "default_scale": 12,
+      "autoencoder": "wan_v2.1_video_vae_f16.ckpt",
+      "text_encoder": "umt5_xxl_encoder_q8p.ckpt"
+    },
+    {
+      "name": "Wan 2.2 Low Noise Expert I2V A14B (6-bit, SVDQuant)",
+      "file": "wan_v2.2_a14b_lne_i2v_q6p_svd.ckpt",
+      "version": "wan_v2.1_14b",
+      "prefix": "",
+      "modifier": "inpainting",
+      "note": "[Wan2.2 I2V A14B](https://huggingface.co/Wan-AI/Wan2.2-I2V-A14B) is a state-of-the-art image-to-video model developed by Alibaba. It can generate video clips of up to 4 seconds in length from a given start frame. The recommended resolutions are 1280×720. The model supports up to 81 frames, with a recommended shift value of 5.0.",
+      "default_scale": 12,
+      "autoencoder": "wan_v2.1_video_vae_f16.ckpt",
+      "text_encoder": "umt5_xxl_encoder_q8p.ckpt"
+    },
+    {
+      "name": "Wan 2.2 Low Noise Expert T2V A14B",
+      "file": "wan_v2.2_a14b_lne_t2v_q8p.ckpt",
+      "version": "wan_v2.1_14b",
+      "prefix": "",
+      "note": "[Wan2.2 T2V A14B](https://huggingface.co/Wan-AI/Wan2.2-T2V-A14B) is a state-of-the-art text-to-video model developed by Alibaba. It can generate video clips of up to 4 seconds in length. The recommended resolutions are 1280×720. The model supports up to 81 frames, with a recommended shift value of 5.0.",
+      "default_scale": 12,
+      "autoencoder": "wan_v2.1_video_vae_f16.ckpt",
+      "text_encoder": "umt5_xxl_encoder_q8p.ckpt"
+    },
+    {
+      "name": "Wan 2.2 Low Noise Expert T2V A14B (6-bit, SVDQuant)",
+      "file": "wan_v2.2_a14b_lne_t2v_q6p_svd.ckpt",
+      "version": "wan_v2.1_14b",
+      "prefix": "",
+      "note": "[Wan2.2 T2V A14B](https://huggingface.co/Wan-AI/Wan2.2-T2V-A14B) is a state-of-the-art text-to-video model developed by Alibaba. It can generate video clips of up to 4 seconds in length. The recommended resolutions are 1280×720. The model supports up to 81 frames, with a recommended shift value of 5.0.",
+      "default_scale": 12,
+      "autoencoder": "wan_v2.1_video_vae_f16.ckpt",
+      "text_encoder": "umt5_xxl_encoder_q8p.ckpt"
+    },
+    {
+      "name": "Wan 2.2 TI2V 5B",
+      "file": "wan_v2.2_5b_ti2v_f16.ckpt",
+      "version": "wan_v2.2_5b",
+      "prefix": "",
+      "note": "[Wan2.2 TI2V 5B](https://huggingface.co/Wan-AI/Wan2.2-TI2V-5B) is a state-of-the-art text-image-to-video model developed by Alibaba. It can generate video clips of up to 4 seconds in length. The recommended resolutions are 1280×720. The model supports up to 121 frames, with a recommended shift value of 5.0.",
+      "default_scale": 12,
+      "autoencoder": "wan_v2.2_video_vae_f16.ckpt",
+      "text_encoder": "umt5_xxl_encoder_q8p.ckpt"
+    },
+    {
+      "name": "Wan 2.2 TI2V 5B (8-bit)",
+      "file": "wan_v2.2_5b_ti2v_q8p.ckpt",
+      "version": "wan_v2.2_5b",
+      "prefix": "",
+      "note": "[Wan2.2 TI2V 5B](https://huggingface.co/Wan-AI/Wan2.2-TI2V-5B) is a state-of-the-art text-image-to-video model developed by Alibaba. It can generate video clips of up to 4 seconds in length. The recommended resolutions are 1280×720. The model supports up to 121 frames, with a recommended shift value of 5.0.",
+      "default_scale": 12,
+      "autoencoder": "wan_v2.2_video_vae_f16.ckpt",
+      "text_encoder": "umt5_xxl_encoder_q8p.ckpt"
+    },
+    {
+      "name": "Z Image Base 1.0",
+      "file": "z_image_1.0_q8p.ckpt",
+      "version": "z_image",
+      "prefix": "",
+      "note": "[Z Image](https://huggingface.co/Tongyi-MAI/Z-Image) is a powerful and highly efficient image generation model with 6B parameters. It is Apache 2.0-licensed and commercially friendly. The model is trained at multiple resolutions using a Flow Matching objective; trailing samplers yield the best results, with 28 to 50 sampling steps recommended.",
+      "default_scale": 16,
+      "autoencoder": "flux_1_vae_f16.ckpt",
+      "text_encoder": "qwen_3_vl_4b_instruct_q8p.ckpt"
+    },
+    {
+      "name": "Z Image Base 1.0 (6-bit)",
+      "file": "z_image_1.0_q6p.ckpt",
+      "version": "z_image",
+      "prefix": "",
+      "note": "[Z Image](https://huggingface.co/Tongyi-MAI/Z-Image) is a powerful and highly efficient image generation model with 6B parameters. It is Apache 2.0-licensed and commercially friendly. The model is trained at multiple resolutions using a Flow Matching objective; trailing samplers yield the best results, with 28 to 50 sampling steps recommended.",
+      "default_scale": 16,
+      "autoencoder": "flux_1_vae_f16.ckpt",
+      "text_encoder": "qwen_3_vl_4b_instruct_q8p.ckpt"
+    },
+    {
+      "name": "Z Image Turbo 1.0",
+      "file": "z_image_turbo_1.0_q8p.ckpt",
+      "version": "z_image",
+      "prefix": "",
+      "note": "[Z Image Turbo](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo) is a powerful and highly efficient image generation model with 6B parameters. It is Apache 2.0-licensed and commercially friendly. The model is trained at multiple resolutions using a Flow Matching objective; trailing samplers yield the best results, with 8 sampling steps recommended.",
+      "default_scale": 16,
+      "autoencoder": "flux_1_vae_f16.ckpt",
+      "text_encoder": "qwen_3_vl_4b_instruct_q8p.ckpt"
+    },
+    {
+      "name": "Z Image Turbo 1.0 (6-bit)",
+      "file": "z_image_turbo_1.0_q6p.ckpt",
+      "version": "z_image",
+      "prefix": "",
+      "note": "[Z Image Turbo](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo) is a powerful and highly efficient image generation model with 6B parameters. It is Apache 2.0-licensed and commercially friendly. The model is trained at multiple resolutions using a Flow Matching objective; trailing samplers yield the best results, with 8 sampling steps recommended.",
+      "default_scale": 16,
+      "autoencoder": "flux_1_vae_f16.ckpt",
+      "text_encoder": "qwen_3_vl_4b_instruct_q8p.ckpt"
+    }
+  ],
+  "loras": [
+    {
+      "name": "Fooocus Inpaint v2.6",
+      "file": "fooocus_inpaint_v2.6_lora_f16.ckpt",
+      "version": "sdxl_base_v0.9",
+      "prefix": ""
+    },
+    {
+      "name": "Fooocus Inpaint v2.6 (8-bit)",
+      "file": "fooocus_inpaint_v2.6_lora_q8p.ckpt",
+      "version": "sdxl_base_v0.9",
+      "prefix": ""
+    },
+    {
+      "name": "Foreground to Blending",
+      "file": "layer_xl_fg2ble_v1.0_lora_f16.ckpt",
+      "version": "sdxl_base_v0.9",
+      "prefix": ""
+    },
+    {
+      "name": "LCM SDXL Base (1.0)",
+      "file": "lcm_sd_xl_base_1.0_lora_f16.ckpt",
+      "version": "sdxl_base_v0.9",
+      "prefix": "",
+      "is_consistency_model": true
+    },
+    {
+      "name": "LCM SDXL Refiner (1.0)",
+      "file": "lcm_sd_xl_refiner_1.0_lora_f16.ckpt",
+      "version": "sdxl_refiner_v0.9",
+      "prefix": "",
+      "is_consistency_model": true
+    },
+    {
+      "name": "LCM Stable Diffusion v1.5",
+      "file": "lcm_sd_v1.5_lora_f16.ckpt",
+      "version": "v1",
+      "prefix": "",
+      "is_consistency_model": true
+    },
+    {
+      "name": "SDXL Offset (1.0)",
+      "file": "sdxl_offset_v1.0_lora_f16.ckpt",
+      "version": "sdxl_base_v0.9",
+      "prefix": ""
+    },
+    {
+      "name": "TCD SDXL Base (1.0)",
+      "file": "tcd_sd_xl_base_1.0_lora_f16.ckpt",
+      "version": "sdxl_base_v0.9",
+      "prefix": "",
+      "is_consistency_model": true
+    },
+    {
+      "name": "TCD Stable Diffusion v1.5",
+      "file": "tcd_sd_v1.5_lora_f16.ckpt",
+      "version": "v1",
+      "prefix": "",
+      "is_consistency_model": true
+    },
+    {
+      "name": "Transparent Image",
+      "file": "layer_flux_1_transparent_lora_f16.ckpt",
+      "version": "flux1",
+      "prefix": ""
+    },
+    {
+      "name": "Transparent Image (Attention Injection)",
+      "file": "layer_xl_transparent_attn_v1.0_lora_f16.ckpt",
+      "version": "sdxl_base_v0.9",
+      "prefix": ""
+    }
+  ],
+  "controlNets": [
+    {
+      "name": "Canny Edge Map (SD v1.x, ControlNet 1.0)",
+      "file": "controlnet_canny_1.x_f16.ckpt",
+      "version": "v1"
+    },
+    {
+      "name": "Canny Edge Map (SD v1.x, ControlNet 1.1)",
+      "file": "controlnet_canny_1.x_v1.1_f16.ckpt",
+      "version": "v1"
+    },
+    {
+      "name": "Canny Edge Map (SD v1.x, T2I Adapter)",
+      "file": "t2iadapter_canny_1.x_f16.ckpt",
+      "version": "v1"
+    },
+    {
+      "name": "Canny Edge Map (SD v2.x, ControlNet)",
+      "file": "controlnet_canny_2.x_f16.ckpt",
+      "version": "v2"
+    },
+    {
+      "name": "Canny Edge Map (SDXL, ControlNet, Diffusers 1.0 Mid)",
+      "file": "controlnet_canny_sdxl_v1.0_mid_f16.ckpt",
+      "version": "sdxl_base_v0.9"
+    },
+    {
+      "name": "Color Palette (SD v1.x, T2I Adapter)",
+      "file": "t2iadapter_color_1.x_f16.ckpt",
+      "version": "v1"
+    },
+    {
+      "name": "Depth Map (SD v1.x, ControlNet 1.0)",
+      "file": "controlnet_depth_1.x_f16.ckpt",
+      "version": "v1"
+    },
+    {
+      "name": "Depth Map (SD v1.x, ControlNet 1.1)",
+      "file": "controlnet_depth_1.x_v1.1_f16.ckpt",
+      "version": "v1"
+    },
+    {
+      "name": "Depth Map (SD v1.x, T2I Adapter)",
+      "file": "t2iadapter_depth_1.x_f16.ckpt",
+      "version": "v1"
+    },
+    {
+      "name": "Depth Map (SD v2.x, ControlNet)",
+      "file": "controlnet_depth_2.x_f16.ckpt",
+      "version": "v2"
+    },
+    {
+      "name": "Depth Map (SDXL, ControlNet, Diffusers 1.0 Mid)",
+      "file": "controlnet_depth_sdxl_v1.0_mid_f16.ckpt",
+      "version": "sdxl_base_v0.9"
+    },
+    {
+      "name": "Inpainting (SD v1.x, ControlNet 1.1)",
+      "file": "controlnet_inpaint_1.x_v1.1_f16.ckpt",
+      "version": "v1"
+    },
+    {
+      "name": "Instruct Pix2Pix (SD v1.x, ControlNet 1.1)",
+      "file": "controlnet_ip2p_1.x_v1.1_f16.ckpt",
+      "version": "v1"
+    },
+    {
+      "name": "IP Adapter Full Face (SD v1.x)",
+      "file": "ip_adapter_full_face_sd_v1.x_open_clip_h14_f16.ckpt",
+      "version": "v1"
+    },
+    {
+      "name": "IP Adapter Plus (SD v1.x)",
+      "file": "ip_adapter_plus_sd_v1.x_open_clip_h14_f16.ckpt",
+      "version": "v1"
+    },
+    {
+      "name": "IP Adapter Plus (SDXL Base)",
+      "file": "ip_adapter_plus_xl_base_open_clip_h14_f16.ckpt",
+      "version": "sdxl_base_v0.9"
+    },
+    {
+      "name": "IP Adapter Plus Face (SD v1.x)",
+      "file": "ip_adapter_plus_face_sd_v1.x_open_clip_h14_f16.ckpt",
+      "version": "v1"
+    },
+    {
+      "name": "IP Adapter Plus Face (SDXL Base)",
+      "file": "ip_adapter_plus_face_xl_base_open_clip_h14_f16.ckpt",
+      "version": "sdxl_base_v0.9"
+    },
+    {
+      "name": "LineArt (SD v1.x, ControlNet 1.1)",
+      "file": "controlnet_lineart_1.x_v1.1_f16.ckpt",
+      "version": "v1"
+    },
+    {
+      "name": "LineArt Anime (SD v1.x, ControlNet 1.1)",
+      "file": "controlnet_lineart_anime_1.x_v1.1_f16.ckpt",
+      "version": "v1"
+    },
+    {
+      "name": "MLSD Hough Map (SD v1.x, ControlNet 1.1)",
+      "file": "controlnet_mlsd_1.x_v1.1_f16.ckpt",
+      "version": "v1"
+    },
+    {
+      "name": "Normal Map (SD v1.x, ControlNet 1.1)",
+      "file": "controlnet_normalbae_1.x_v1.1_f16.ckpt",
+      "version": "v1"
+    },
+    {
+      "name": "Pose (SD v1.x, ControlNet 1.0)",
+      "file": "controlnet_openpose_1.x_f16.ckpt",
+      "version": "v1"
+    },
+    {
+      "name": "Pose (SD v1.x, ControlNet 1.1)",
+      "file": "controlnet_openpose_1.x_v1.1_f16.ckpt",
+      "version": "v1"
+    },
+    {
+      "name": "Pose (SD v1.x, T2I Adapter)",
+      "file": "t2iadapter_openpose_1.x_f16.ckpt",
+      "version": "v1"
+    },
+    {
+      "name": "Pose (SD v2.x, ControlNet)",
+      "file": "controlnet_openpose_2.x_f16.ckpt",
+      "version": "v2"
+    },
+    {
+      "name": "QR Code (SD v1.x, ControlNet Monster 2.0)",
+      "file": "controlnet_qr_code_monster_1.x_v2.0_f16.ckpt",
+      "version": "v1"
+    },
+    {
+      "name": "Scribble (SD v1.x, ControlNet 1.0)",
+      "file": "controlnet_scribble_1.x_f16.ckpt",
+      "version": "v1"
+    },
+    {
+      "name": "Scribble (SD v1.x, ControlNet 1.1)",
+      "file": "controlnet_scribble_1.x_v1.1_f16.ckpt",
+      "version": "v1"
+    },
+    {
+      "name": "Scribble (SD v1.x, T2I Adapter)",
+      "file": "t2iadapter_sketch_1.x_f16.ckpt",
+      "version": "v1"
+    },
+    {
+      "name": "Scribble (SD v2.x, ControlNet)",
+      "file": "controlnet_scribble_2.x_f16.ckpt",
+      "version": "v2"
+    },
+    {
+      "name": "Segmentation (SD v1.x, ControlNet 1.1)",
+      "file": "controlnet_seg_1.x_v1.1_f16.ckpt",
+      "version": "v1"
+    },
+    {
+      "name": "Shuffle (SD v1.x, ControlNet 1.1)",
+      "file": "controlnet_shuffle_1.x_v1.1_f16.ckpt",
+      "version": "v1"
+    },
+    {
+      "name": "Soft Edge (SD v1.x, ControlNet 1.1)",
+      "file": "controlnet_softedge_1.x_v1.1_f16.ckpt",
+      "version": "v1"
+    },
+    {
+      "name": "Tile (SD v1.x, ControlNet 1.1)",
+      "file": "controlnet_tile_1.x_v1.1_f16.ckpt",
+      "version": "v1"
+    },
+    {
+      "name": "VACE (Wan 2.1, 1.3B)",
+      "file": "wan_v2.1_1.3b_vace_480p_f16.ckpt",
+      "version": "wan_v2.1_1.3b"
+    },
+    {
+      "name": "VACE (Wan 2.1, 1.3B) (8-bit)",
+      "file": "wan_v2.1_1.3b_vace_480p_q8p.ckpt",
+      "version": "wan_v2.1_1.3b"
+    },
+    {
+      "name": "VACE (Wan 2.1, 14B)",
+      "file": "wan_v2.1_14b_vace_720p_f16.ckpt",
+      "version": "wan_v2.1_14b"
+    },
+    {
+      "name": "VACE (Wan 2.1, 14B) (8-bit)",
+      "file": "wan_v2.1_14b_vace_720p_q8p.ckpt",
+      "version": "wan_v2.1_14b"
+    }
+  ],
+  "textualInversions": [],
+  "upscalers": []
+}

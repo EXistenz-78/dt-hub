@@ -196,6 +196,7 @@ public struct DrawThingsConfigurationCodec: ConfigurationCodec {
     p.cfgZeroStar = c.cfgZeroStar
     p.cfgZeroInitSteps = Int(c.cfgZeroInitSteps)
     p.sampler = Sampler(rawValue: Int(c.sampler.rawValue)) ?? base.sampler
+    p.scheduler = Scheduler(rawValue: Int(c.scheduler)) ?? base.scheduler
     p.shift = d(c.shift)
     p.resolutionDependentShift = c.resolutionDependentShift
     p.randomSeed = c.seed == nil

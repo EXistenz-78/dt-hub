@@ -54,6 +54,22 @@ struct SamplingCard: View {
           .accessibilityLabel(String(localized: "card.sampling.sampler"))
         }
 
+        // Under the sampler: it spaces the steps the sampler takes. The Substep samplers keep their own schedule.
+        if Scheduler.isUsed(by: controller.parameters.sampler) {
+          CardRow(label: String(localized: "card.sampling.scheduler")) {
+            Picker(selection: $controller.parameters.scheduler) {
+              ForEach(Scheduler.allCases) { scheduler in
+                Text(verbatim: scheduler.displayName ?? String(localized: "card.sampling.schedulerOwn")).tag(scheduler)
+              }
+            } label: {
+              EmptyView()
+            }
+            .labelsHidden()
+            .fixedSize()
+            .accessibilityLabel(String(localized: "card.sampling.scheduler"))
+          }
+        }
+
         // Only TCD samplers use it, so it sits right under the sampler instead of in the Advanced cards.
         if AdvancedField.stochasticSamplingGamma.isShown(for: controller.selectedModel(), sampler: controller.parameters.sampler) {
           CardRow(label: String(localized: "advanced.field.stochasticSamplingGamma")) {
