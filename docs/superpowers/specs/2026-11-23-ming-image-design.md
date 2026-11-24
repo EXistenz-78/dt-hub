@@ -186,3 +186,14 @@ Percorso (letto dal codice ufficiale `pipeline.py`/`transformer.py`/`modeling_ba
 ## 6e. Trasparenza (RGBA): causa trovata (24 novembre)
 
 Non era il decoder né la pipeline: a **512 px** l'alfa resta opaco (min 191-244), a **1024 px** con «RGBA, 4-channel, transparent background. A red apple with a green leaf» esce un ritaglio pulito (alfa 0-255, 74 % dei pixel sotto 128; mela e foglia su sfondo trasparente). Il modello è addestrato su 1024/2048 (i bucket di `infer.py`). Il Family prompt `ming_image` lo dice. Il percorso di decodifica (`FirstStage`: alfa = (a+1)/2) era già giusto.
+
+## 6f. Immagine nera sopra 1216 px: overflow FP16 (24 novembre)
+
+**Sintomo:** in DT Hub, da 1280×1280 in su, l'anteprima resta nera e la generazione finisce senza immagini; fino a 1216 funziona.
+**Causa:** overflow FP16 nel DiT (NaN dal primo passo; `LocalImageGenerator` scarta il risultato con `isNaN`). Dipende dalla lunghezza
+totale della sequenza (token dell'immagine + testo), non solo dalla risoluzione: a 1280 un prompt corto passa, il JSON del Family prompt v2
+(~740 token, ~1050 con modello di chat e 256 query) no. La voce di `custom.json` aveva `mmdit` senza scale delle attivazioni.
+**Correzione:** in `custom.json` la voce Ming usa le stesse scale di Z-Image Base in ModelZoo (34 blocchi: i primi 2, i refiner, `qk` 1 e
+`proj` 2, `ffn_proj_up` 1 e `ffn` 2; gli altri `qk` 32, `proj` 1, `ffn_proj_up` 32, `ffn` 1). Provata col server Release dell'app:
+prompt lungo a 1280 ok, poster a 2048 ok. Aggiornati `/Volumes/LLM-VLM 1/Models/custom.json` (copia `custom.json.bak-ming-scaling`)
+e la cartella di prova; `/Volumes/LLM-VLM/Models` non era montato. Chi converte Ming (Fibo Converter) deve scrivere queste scale.
