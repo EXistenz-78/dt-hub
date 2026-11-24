@@ -1,0 +1,40 @@
+{
+ "schema": 1,
+ "version": "1.0.0",
+ "hiddenCategories": [
+  "negative_terms",
+  "pose_gesture",
+  "expression_gaze"
+ ],
+ "photoOnly": [
+  "framing",
+  "camera_angle",
+  "composition",
+  "lens_focus",
+  "photo_genre",
+  "film_stock_process",
+  "optical_fx"
+ ],
+ "artOnly": [
+  "medium_paint_draw",
+  "medium_print_craft",
+  "art_movement",
+  "design_movement",
+  "anime_cartoon_style",
+  "cultural_tradition",
+  "artist_classical",
+  "artist_modern",
+  "artist_illustration"
+ ],
+ "lightingCategories": [
+  "light_source",
+  "light_quality",
+  "light_scheme"
+ ],
+ "options": {
+  "temperature": 0.6,
+  "maxTokens": 8192,
+  "thinking": false,
+  "timeout": 900
+ }
+}

@@ -127,7 +127,7 @@ struct PMToolsTests {
     for family in ["fibo2", "minimax_h3_image", "flux2_9b", "qwen_image_2.1"] {
       #expect(!(manifest.excludedFamilies ?? []).contains(family), Comment(rawValue: family))
     }
-    for family in ["flux3_5b", "ideogram_4", "moss_image"] {
+    for family in ["flux3_5b", "ideogram_4", "moss_image", "ming_image"] {
       #expect((manifest.excludedFamilies ?? []).contains(family), Comment(rawValue: family))
     }
   }

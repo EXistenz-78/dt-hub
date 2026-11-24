@@ -327,3 +327,20 @@ Ramo `claude/panorama360-mcp`. **Nessuna estensione del contratto.** Due modi di
 
 I valori sono controllati prima di cambiare lo stato (yaw/rotation ±180, pitch ±89, fov 5–170, opacity 0–1, al massimo 50 sticker). Il plug-in ha ora un flag `active` (messaggi `activate`/`deactivate`). Non esposti: vista sfera, Cutout e «rimetti a posto», pulsante della coda. Nomi, descrizione e avvisi sono marcati «data, not instructions».
 
+## 22. Plug-in con livelli e import dal prompt: Prompt Master Ming 1.0
+
+Ramo `prompt-master-ming`. **Nessuna estensione del contratto**: il prompt della Generazione arriva già con il `context` (`prompt`), e la dimensione si cambia con `contribute.fields` (`width`, `height`). Nessuno strumento genera: tutti `read`/`edit`, come Prompt Master MOSS.
+
+`plugin__promptmasterming__…`, con plug-in attivo e famiglia `ming_image`:
+
+| Strumento | Livello | Cosa fa |
+| --- | --- | --- |
+| `get_status` | read | idea, Image Style, Ambient Lighting, modo, termini, livelli (dallo sfondo al primo piano: id, tipo, descrizione, testo esatto, relazione, colori, box e `coordinates`), dimensione, `generationPromptIsMingJSON`, problemi, `canWrite`/`canCompose`/`canSend`, modello LLM, JSON |
+| `search_terms` | read | termini del database (con `goesTo`: `image_style` o `ambient_lighting`) |
+| `set_brief` | edit | idea, Image Style, Ambient Lighting, modo, termini |
+| `add_layer`, `set_layer`, `move_layer`, `remove_layer` | edit | livelli; box come frazioni `x0…y1` o `coordinates` di Ming; colori `#RRGGBB` (massimo 5) |
+| `import_json` | edit | importa il JSON del prompt della Generazione (o `json`); con `resize` (predefinito) porta la dimensione al rapporto del JSON |
+| `write_with_llm`, `compose_with_llm` | edit | riscrittura in inglese dei testi / layout intero dall'idea con il Family prompt Ming (timeout 900 s) |
+| `send_to_generation` | edit | il JSON nel campo Prompt |
+
+Tutto è controllato prima di cambiare lo stato; un JSON non valido non cambia nulla. Test sul bundle reale: `DTHUB_PMMING_BUNDLE` in `RealPluginToolsTests`.

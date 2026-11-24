@@ -1,6 +1,6 @@
 # DT Hub plug-ins
 
-Fifteen plug-ins ship in this repository. Each is a Swift package of its own, with its own tests and its own README. Prompt Master, Prompt Master I4, Sphere Light, Batch plus, AI Assistant, Qwen 2.1 Inpainting, Depth & Pose, Tiled Upscale, Prompt Master F3, Panorama 360, Flux3 Editing and Prompt Master MOSS keep their state per project.
+Sixteen plug-ins ship in this repository. Each is a Swift package of its own, with its own tests and its own README. Prompt Master, Prompt Master I4, Sphere Light, Batch plus, AI Assistant, Qwen 2.1 Inpainting, Depth & Pose, Tiled Upscale, Prompt Master F3, Panorama 360, Flux3 Editing, Prompt Master MOSS and Prompt Master Ming keep their state per project.
 A plug-in only works with the model families it was made for (Depth & Pose, with edit and in-context models): on any other model it is **switched off and its tab is hidden**,
 so the tab bar only ever shows what can be used with the model you picked.
 
@@ -21,6 +21,7 @@ so the tab bar only ever shows what can be used with the model you picked.
 | **[Pano 360 F3](Panorama360F3/README.md)** | **FLUX.3 [klein] 5.6B**; needs DT Hub 0.7.1 or later | Makes 360° panoramas with FLUX.3 and denrakeiw's *360* and *Seamfix* LoRAs: put reference pictures in the Moodboard, write a few words, press **Send to Generation** and RUN: the panorama pass and the seam-fixing pass run as one guided pipeline. A spherical viewer shows the result and **Fix the seam** redoes the join. Since 1.1 an MCP agent can manage the plug-in's pictures and description and make a panorama or fix a seam with the plug-in's tools (every pass counts against the session budget). |
 | **[Flux3 Editing](Flux3Editing/README.md)** | **FLUX.3 [klein] 5.6B**; needs DT Hub 0.4.0 or later (0.9.0 for the picture as framed in Canvas: zoom and rotation) | Builds the editing prompt of FLUX.3 with reference pictures: draw a box on an object of a Moodboard picture and its pair on the start image, or draw boxes on the start image to add, keep, move or remove something. The start image is shown as the output canvas, placed as in the Control tab; the pairs have their own colours, the LLM can write the texts without touching the placeholders. Since 1.3 an MCP agent can draw the boxes (as numbers on the 0–1000 grid), write and improve the text and send the prompt with the plug-in's tools; the app's own run generates. |
 | **[Prompt Master MOSS](PromptMasterMOSS/README.md)** | **MOSS Image** (Base and SFT) | Builds the JSON layout prompt of MOSS Image: a summary (description, `meta`, `canvas`, palette) and a list of items with a type (object, character, text, panel, subject), a caption and a box, in pixels from the centre of the picture. Draw the boxes on a canvas, pick terms from the database, and let the LLM write the texts in English; the negative terms go to the negative field. The boxes are stored as fractions of the canvas and converted with the Generation size when you press Send. Since 1.1 an MCP agent can set the brief, write and send with the plug-in's tools, and the language model follows the assignment in Preferences › LLM. |
+| **[Prompt Master Ming](PromptMasterMing/README.md)** | **Ming-Image 0.1 Design** | Builds the structured JSON design prompt of Ming-Image: `canvas_settings` (aspect ratio, ambient lighting, image style) and the layers from the background to the front, each with a description, a box (`cx, cy, w, h` as fractions), its hierarchy and relation and its colours; text layers keep their exact words. Draw the boxes on a canvas, pick terms, let the LLM compose the whole layout from an idea (with DT Hub's Ming Family prompt) or rewrite the texts in English. It **imports the Ming JSON already in the Generation prompt** as boxes and cards, texts included, and sets the Generation size to its aspect ratio. The syntax follows NidAll's [Ming Image Prompt Builder](https://github.com/NidAll/comfyui-ming-image-prompt-builder) for ComfyUI. An MCP agent can set the brief, edit the layers, import, compose, write and send with the plug-in's tools. |
 
 <p align="center">
   <img src="../docs/images/prompt-master.png" alt="Prompt Master" width="24%">
@@ -51,7 +52,7 @@ so the tab bar only ever shows what can be used with the model you picked.
 
 ## Install
 
-Every [release](https://github.com/EXistenz-78/dt-hub/releases/latest) carries the fifteen plug-ins. Download the one you want, unzip it (you get a `.dthubplugin` bundle):
+Every [release](https://github.com/EXistenz-78/dt-hub/releases/latest) carries the plug-ins. Download the one you want, unzip it (you get a `.dthubplugin` bundle):
 
 - [Prompt Master](https://github.com/EXistenz-78/dt-hub/releases/latest/download/PromptMaster.dthubplugin.zip)
 - [Prompt Master I4](https://github.com/EXistenz-78/dt-hub/releases/latest/download/PromptMasterI4.dthubplugin.zip)
@@ -66,6 +67,7 @@ Every [release](https://github.com/EXistenz-78/dt-hub/releases/latest) carries t
 - [Prompt Master F3](https://github.com/EXistenz-78/dt-hub/releases/latest/download/PromptMasterF3.dthubplugin.zip)
 - [Flux3 Editing](https://github.com/EXistenz-78/dt-hub/releases/latest/download/Flux3Editing.dthubplugin.zip)
 - [Prompt Master MOSS](https://github.com/EXistenz-78/dt-hub/releases/latest/download/PromptMasterMOSS.dthubplugin.zip)
+- [Prompt Master Ming](https://github.com/EXistenz-78/dt-hub/releases/latest/download/PromptMasterMing.dthubplugin.zip)
 - [Pano 360 F3](https://github.com/EXistenz-78/dt-hub/releases/latest/download/Panorama360F3.dthubplugin.zip)
 
 Then, in DT Hub, open **Preferences › Plug-ins**, press **Add…**, pick the `.dthubplugin` bundle and restart the app (turning a

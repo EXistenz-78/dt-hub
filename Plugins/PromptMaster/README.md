@@ -1,6 +1,6 @@
 # Prompt Master
 
-> **Works with:** FLUX.1 · FLUX.2 [dev] · FLUX.2 [klein] 9B · FLUX.2 [klein] 4B · Krea 2 · Qwen Image · Qwen Image 2.1 · Z Image · Stable Diffusion XL (and Pony / Illustrious) · Stable Diffusion 1.5 · ERNIE-Image · HiDream-I1 · Anima (Cosmos 2.5) — every family except the ones that have a Prompt Master of their own (FLUX.3 [klein], Ideogram 4, MOSS Image) — since 1.7, including **MiniMax H3 Image** and **Fibo 2**, which have a family prompt.
+> **Works with:** FLUX.1 · FLUX.2 [dev] · FLUX.2 [klein] 9B · FLUX.2 [klein] 4B · Krea 2 · Qwen Image · Qwen Image 2.1 · Z Image · Stable Diffusion XL (and Pony / Illustrious) · Stable Diffusion 1.5 · ERNIE-Image · HiDream-I1 · Anima (Cosmos 2.5) — every family except the ones that have a Prompt Master of their own (FLUX.3 [klein], Ideogram 4, MOSS Image and, since 1.8, Ming-Image) — since 1.7, including **MiniMax H3 Image** and **Fibo 2**, which have a family prompt.
 > On any other family (Ideogram 4 has its own plug-in, [Prompt Master I4](../PromptMasterI4/README.md)) the plug-in is switched off and its tab is hidden.
 
 A DT Hub plug-in: a list of terms (8 groups → 40 categories → 875 terms of photography, light, colour, style and matter) that you

@@ -327,4 +327,45 @@ struct RealPluginToolsTests {
       #expect(refused["isError"] as? Bool == true, Comment(rawValue: "\(tool): \(refused)"))
     }
   }
+
+  nonisolated static let promptMasterMingBundlePath = ProcessInfo.processInfo.environment["DTHUB_PMMING_BUNDLE"]
+
+  /// `DTHUB_PMMING_BUNDLE=/path/PromptMasterMing.dthubplugin swift test --filter RealPluginToolsTests` (from
+  /// `Plugins/PromptMasterMing/Scripts/build.sh`). The prompt of the Generation is a test JSON given in the context; no project is
+  /// opened, so the tab's state goes to the test process's own defaults.
+  @Test(.enabled(if: RealPluginToolsTests.promptMasterMingBundlePath != nil))
+  func theRealPromptMasterMingBundleImportsTheGenerationPrompt() async throws {
+    let bundle = URL(fileURLWithPath: try #require(Self.promptMasterMingBundlePath))
+    let host = RecordingHost()
+    let plugin = try BundlePluginLoader().load(bundle, info: try PluginBundleReader.read(bundle), host: host)
+    #expect(plugin.manifest.id == "com.exiztenz.dthub.promptmasterming")
+    let tools = try #require(plugin.manifest.tools)
+    #expect(tools.map(\.name) == [
+      "get_status", "search_terms", "set_brief", "add_layer", "set_layer", "move_layer", "remove_layer", "import_json",
+      "write_with_llm", "compose_with_llm", "send_to_generation",
+    ])
+    #expect(tools.allSatisfy { $0.level.rawValue != "generate" })
+    #expect(plugin.manifest.families?.contains("ming_image") == true)
+
+    let json = ##"{"canvas_settings": {"aspect_ratio": "1:1", "ambient_lighting": "soft light", "image_style": "flat poster"}, "layers": [{"description": "A blue background.", "coordinates": "cx: 0.500, cy: 0.500, w: 1.000, h: 1.000", "hierarchy_and_relation": "", "color_specs": ["#0000FF"]}, {"description": "A text element reading exactly \"HELLO\" in white letters.", "coordinates": "cx: 0.500, cy: 0.200, w: 0.600, h: 0.150", "hierarchy_and_relation": "At the top.", "color_specs": []}]}"##
+    let context = try JSONSerialization.data(withJSONObject: [
+      "type": "context", "model": "ming.ckpt", "family": "ming_image", "tempFolder": NSTemporaryDirectory(),
+      "parameters": ["width": 1024, "height": 1024], "prompt": json,
+    ])
+    _ = await plugin.send(context)
+    _ = await plugin.send(PluginMessageType.bare("activate"))
+
+    let status = try await call(plugin, "get_status")
+    #expect(status["type"] as? String == "tool.result" && status["isError"] == nil, Comment(rawValue: "\(status)"))
+    #expect((status["text"] as? String)?.contains("\"generationPromptIsMingJSON\" : true") == true)
+    let imported = try await call(plugin, "import_json")
+    #expect(imported["isError"] == nil, Comment(rawValue: "\(imported)"))
+    let text = imported["text"] as? String ?? ""
+    #expect(text.contains("HELLO") && text.contains("\"kind\" : \"text\""))
+    let sent = try await call(plugin, "send_to_generation")
+    #expect(sent["isError"] == nil && sent["startsRun"] == nil, Comment(rawValue: "\(sent)"))
+    #expect(!host.received.isEmpty)
+    let refused = try await call(plugin, "import_json", ["json": "not a layout"])
+    #expect(refused["isError"] as? Bool == true)
+  }
 }
