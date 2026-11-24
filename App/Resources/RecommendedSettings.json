@@ -75,6 +75,13 @@
       "shift": 5,
       "steps": 30
     },
+    "ming_image": {
+      "guidanceScale": 1,
+      "resolutionDependentShift": false,
+      "sampler": 16,
+      "shift": 3.857,
+      "steps": 12
+    },
     "minimax_h3": {
       "guidanceScale": 1,
       "resolutionDependentShift": false,

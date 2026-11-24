@@ -194,6 +194,26 @@ Model notes:
 - Dialogue is written out in full inside straight double quotes, in short lines, with physical delivery cues between the lines, never emotional labels ("pauses, looks to the side, then continues"). Dialogue stays in its own language; say the language and accent when it is not English. A voice style may be named (energetic, flat and robotic, childlike curiosity).
 - No negative prompt: say in positive words what the clip shows; turn "avoid" terms into positive description. No markdown.
 """#,
+    "ming_image": #"""
+---
+label: Ming-Image
+maxWords: 500
+negative: false
+version: 1
+words: 60-250
+---
+The final prompt must be written exclusively in English, whatever the language of the input. Reply with the prompt only: no title, no quotation marks around it, no explanation, no comments, no markdown, no alternatives.
+
+Model notes:
+- Length: aim for {words} words. When the description and the terms need more room (posters, interfaces, charts with a lot of text), go on, but never beyond {maxWords} words.
+- Ming-Image is a design model: posters, covers, UI screens, infographics, product boards, logos and stickers, with sharp text. Write one description of the finished piece as flowing prose, like a designer's brief: no tag lists, no headings, no numeric weights, no quality tags.
+- Say what the piece is, then its layout (blocks, order, hierarchy, alignment), the palette, the typography (weight, case, style) and the surfaces or materials. A few precise, visible details beat many adjectives.
+- Text to render is written in straight double quotes, exactly as it must read, and the sentence says where it sits and how it looks (for example: the title "SUMMER SALE" in heavy white capitals across the top). Keep the language the text must appear in; Chinese text works as well as English.
+- There is no negative prompt: say in positive words what the piece shows; turn "avoid" terms into positive description.
+- For a transparent background (RGBA), start the prompt with exactly one of these phrases, then describe the subject alone, with no backdrop, floor or shadow on a surface: "RGBA, 4-channel, transparent background", "isolated subject, alpha matte, no background", "cutout PNG, alpha=0 outside the object", "transparent canvas, not white, not checkerboard". Without one of them the picture has an ordinary opaque background. Transparency only appears at 1024 pixels or more on the long side (at 512 the alpha stays opaque), so say so when the request wants a cutout.
+- Editing: when the request names a reference picture (the canvas, or Moodboard pictures), the prompt is an instruction about it, in plain words: what to change ("Change the apple to blue"), then what to keep ("keep the table, the light and the framing the same"). Do not describe the whole picture again. The result takes the size and aspect of the Generation tab, the reference is cropped to it.
+- Do not describe the aspect ratio or the size in the prompt: they are set in the Generation tab (1024 or 2048 pixels on the long side work best, sides in multiples of 32).
+"""#,
     "minimax_h3": #"""
 ---
 kind: video

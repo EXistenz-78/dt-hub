@@ -5,7 +5,7 @@ import Testing
 
 struct EmbeddedPromptsTests {
   @Test func seventeenFamiliesAllParseAsValid() {
-    #expect(EmbeddedPrompts.families.count == 19)
+    #expect(EmbeddedPrompts.families.count == 20)
     for (id, text) in EmbeddedPrompts.families {
       let file = PromptFile.parse(text)
       #expect(file.isValid, "\(id)")
