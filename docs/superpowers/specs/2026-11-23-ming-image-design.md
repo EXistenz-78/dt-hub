@@ -197,3 +197,17 @@ totale della sequenza (token dell'immagine + testo), non solo dalla risoluzione:
 `proj` 2, `ffn_proj_up` 1 e `ffn` 2; gli altri `qk` 32, `proj` 1, `ffn_proj_up` 32, `ffn` 1). Provata col server Release dell'app:
 prompt lungo a 1280 ok, poster a 2048 ok. Aggiornati `/Volumes/LLM-VLM 1/Models/custom.json` (copia `custom.json.bak-ming-scaling`)
 e la cartella di prova; `/Volumes/LLM-VLM/Models` non era montato. Chi converte Ming (Fibo Converter) deve scrivere queste scale.
+
+## 6g. LoRA di Z-Image su Ming (24 novembre)
+
+Il DiT di Ming è il grafo di Z-Image con gli stessi nomi dei pesi, quindi i LoRA di Z-Image si applicano così come sono. La regola
+«un LoRA va solo con la sua famiglia» resta; si aggiunge una tabella di famiglie che girano i LoRA di un'altra famiglia.
+- **Server (fork):** `LoRAZoo.versionForModel(_:runningWith:)` restituisce `.mingImage` per un LoRA `z_image` con un modello Ming;
+  la usano tutti i filtri dei LoRA (`LocalImageGenerator`, `ImageConverter`, `ModelPreloader`, `ImageGeneratorUtils`). La parte del
+  LoRA per il text encoder (Qwen3) non si usa: l'encoder di Ming non prende LoRA. Nemmeno il blocco fisso (`MingImageFixed`: refiner
+  del contesto) prende LoRA. `LoRAZImage` ha `referenceCount` come `ZImage`, perché con il DiT i8x i LoRA girano a parte anche in edit.
+- **DT Hub:** `HubKit/Catalog/LoRAFamilies.swift` (`ming_image` → `z_image`) usato da `ModelCatalog.loras(for:)` e `status(of:family:)`
+  (scheda LoRA, invio con RUN, `EditModel`) e dall'agente MCP (`list_loras`/`set_model` vedono le famiglie su cui un LoRA gira).
+  Per famiglia, non per file: un LoRA Z-Image aggiunto dopo vale subito anche per Ming. Test: `LoRAFamiliesTests`.
+- **Prova:** «A lighthouse on a rocky cliff at dusk» a 1024, seed 11, con e senza «ZIT Darkness-Dream» (peso 1): stessa scena, stile
+  del LoRA applicato. Edit con LoRA: vedi sotto.

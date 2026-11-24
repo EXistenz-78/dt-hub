@@ -141,7 +141,8 @@ final class AppAgentHost: AgentHost {
   }
 
   func loras() -> [AgentLoRA] {
-    connection.monitor.catalog.loras.map { AgentLoRA(file: $0.file, name: $0.name, families: $0.family.map { [$0] } ?? []) }
+    connection.monitor.catalog.loras.map { AgentLoRA(
+        file: $0.file, name: $0.name, families: $0.family.map { LoRAFamilies.modelFamilies(runningLoRAsOf: $0) } ?? []) }
   }
 
   func presetNames() -> [String] { generation.presets.names }
