@@ -77,6 +77,9 @@ public enum ModelFamily: String, Sendable, CaseIterable {
             return .qwen
         case "zimage", "z_image":
             return .zImage
+        case "mingimage", "ming_image":
+            // Ming-Image's final images are 4-channel ARGB from its transparent decoder (DT Hub patch).
+            return .zImage
         case "flux2", "flux2_9b", "flux2_4b":
             return .flux2
         case "ernieimage", "ernie_image":
@@ -156,6 +159,9 @@ public enum ModelFamily: String, Sendable, CaseIterable {
         }
         if lowercased.contains("flux") || lowercased.contains("hidream") {
             return .flux
+        }
+        if lowercased.contains("ming_image") {
+            return .zImage
         }
         if lowercased.contains("zimage") || lowercased.contains("z_image") || lowercased.contains("z-image") {
             return .zImage

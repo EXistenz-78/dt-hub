@@ -10,3 +10,9 @@ Examples, Assets and skills are left out; the library code is as it was except f
 
 Changed files: `Generated/config_generated.swift`, `Configuration/DrawThingsConfiguration.swift`,
 `Configuration/DrawThingsConfiguration+FlatBuffer.swift`. Not added to the JSON coding.
+
+## Ming-Image family (24 November 2026)
+
+`ModelFamily.detect` maps `ming_image` (version string and file names) to `.zImage`. Ming-Image's final images are
+4-channel ARGB tensors (its decoder is the transparent one); without a known family whose latent is not 4-channel the
+client took them for an SDXL latent and drew them in wrong colours. Changed file: `Models/ModelFamily.swift`.
