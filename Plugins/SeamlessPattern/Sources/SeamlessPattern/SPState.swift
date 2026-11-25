@@ -55,6 +55,12 @@ final class SPState: ObservableObject {
   /// Shown instead of the whole tab when the server is not the custom one.
   var warning: String? { customServer == true ? nil : Self.customServerWarning }
 
+  /// Why the pipeline cannot be proposed now (what the tab shows, and what an agent is told); nil when it can.
+  var prepareRefusal: String? {
+    if customServer != true { return Self.customServerWarning }
+    return familySupported ? nil : L.unsupportedFamily
+  }
+
   // MARK: Pipeline
 
   func prepare() async {

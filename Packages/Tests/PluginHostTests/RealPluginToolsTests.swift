@@ -368,4 +368,57 @@ struct RealPluginToolsTests {
     let refused = try await call(plugin, "import_json", ["json": "not a layout"])
     #expect(refused["isError"] as? Bool == true)
   }
+
+  nonisolated static let seamlessPatternBundlePath = ProcessInfo.processInfo.environment["DTHUB_SP_BUNDLE"]
+
+  /// `DTHUB_SP_BUNDLE=/path/SeamlessPattern.dthubplugin swift test --filter RealPluginToolsTests` (from
+  /// `Plugins/SeamlessPattern/Scripts/build.sh`). No project is opened, so nothing of the user's is read or written; the picture
+  /// it checks is a test file in the temporary folder.
+  @Test(.enabled(if: RealPluginToolsTests.seamlessPatternBundlePath != nil))
+  func theRealSeamlessPatternBundleAnswersItsTools() async throws {
+    let bundle = URL(fileURLWithPath: try #require(Self.seamlessPatternBundlePath))
+    let host = RecordingHost()
+    let plugin = try BundlePluginLoader().load(bundle, info: try PluginBundleReader.read(bundle), host: host)
+    #expect(plugin.manifest.id == "com.exiztenz.dthub.seamlesspattern")
+    let tools = try #require(plugin.manifest.tools)
+    #expect(tools.map(\.name) == ["get_status", "set_mode", "prepare_run", "stop", "check_seam"])
+    #expect(tools.map(\.level.rawValue) == ["read", "edit", "edit", "edit", "read"])
+    #expect(tools.allSatisfy { $0.level.rawValue != "generate" })
+    #expect(plugin.manifest.families == ["krea_2", "z_image", "flux2_9b", "flux2_4b", "flux3_5b"])
+
+    // The app's context says the server is not the custom one: the pipeline is refused and nothing is sent.
+    let context = try JSONSerialization.data(withJSONObject: [
+      "type": "context", "model": "flux_2_klein_base_9b_i8x.ckpt", "family": "flux2_9b", "customServer": false,
+      "tempFolder": NSTemporaryDirectory(),
+    ])
+    _ = await plugin.send(context)
+    _ = await plugin.send(PluginMessageType.bare("activate"))
+
+    let status = try await call(plugin, "get_status")
+    #expect(status["type"] as? String == "tool.result" && status["isError"] == nil, Comment(rawValue: "\(status)"))
+    #expect((status["text"] as? String)?.contains("\"customServer\" : false") == true)
+    let refused = try await call(plugin, "prepare_run")
+    #expect(refused["isError"] as? Bool == true && refused["startsRun"] == nil)
+    #expect((refused["text"] as? String)?.contains("DT Hub's own server") == true)
+    #expect(host.received.isEmpty)
+    let badMode = try await call(plugin, "set_mode", ["mode": "diagonal"])
+    #expect(badMode["isError"] as? Bool == true)
+    let missing = try await call(plugin, "check_seam", ["result_id": NSTemporaryDirectory() + "no-such-picture-\(UUID().uuidString).png"])
+    #expect(missing["isError"] as? Bool == true)
+
+    let picture = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("sp-real-\(UUID().uuidString).png")
+    defer { try? FileManager.default.removeItem(at: picture) }
+    let space = CGColorSpaceCreateDeviceRGB()
+    let context2D = try #require(
+      CGContext(data: nil, width: 128, height: 128, bitsPerComponent: 8, bytesPerRow: 0, space: space, bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue))
+    context2D.setFillColor(CGColor(red: 0.2, green: 0.5, blue: 0.8, alpha: 1))
+    context2D.fill(CGRect(x: 0, y: 0, width: 128, height: 128))
+    let image = try #require(context2D.makeImage())
+    let destination = try #require(CGImageDestinationCreateWithURL(picture as CFURL, UTType.png.identifier as CFString, 1, nil))
+    CGImageDestinationAddImage(destination, image, nil)
+    #expect(CGImageDestinationFinalize(destination))
+    let checked = try await call(plugin, "check_seam", ["result_id": picture.path])
+    #expect(checked["isError"] == nil, Comment(rawValue: "\(checked)"))
+    #expect((checked["text"] as? String)?.contains("leftRight") == true)
+  }
 }

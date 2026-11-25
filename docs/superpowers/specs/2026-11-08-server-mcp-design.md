@@ -344,3 +344,19 @@ Ramo `prompt-master-ming`. **Nessuna estensione del contratto**: il prompt della
 | `send_to_generation` | edit | il JSON nel campo Prompt |
 
 Tutto è controllato prima di cambiare lo stato; un JSON non valido non cambia nulla. Test sul bundle reale: `DTHUB_PMMING_BUNDLE` in `RealPluginToolsTests`.
+
+## 23. Plug-in con pipeline di un passo e controllo della giunzione: Seamless Pattern 1.0
+
+Ramo `seamless-pattern`. **Nessuna estensione del contratto oltre a quella del plug-in** (passo `seamless` della pipeline, ritiro della pipeline con `"pipeline": null`, `customServer` nel `context`). Nessuno strumento genera: la pipeline proposta da `prepare_run` si avvia con `run_pipeline` dell'app (un'immagine per il budget).
+
+`plugin__seamlesspattern__…`, con plug-in attivo e una delle famiglie `krea_2`, `z_image`, `flux2_9b`, `flux2_4b`, `flux3_5b`:
+
+| Strumento | Livello | Cosa fa |
+| --- | --- | --- |
+| `get_status` | read | `mode` (`both`, `leftRight`, `upDown`), `prepared`, `customServer` (`null` se l'app non lo dice), `family`, `lastResult` (nome del file mostrato), `seam` (`leftRight` e `upDown`: `status`, `ratio`, `rank`, `vsWorst`), `canPrepare`, `notice` |
+| `set_mode` | edit | cambia le direzioni che devono ripetersi; un valore diverso è un errore e non cambia nulla; se la pipeline è preparata la ripropone con il modo nuovo |
+| `prepare_run` | edit | propone la pipeline «Seamless» (come il bottone della tab). Senza server custom risponde errore con il testo dell'avviso («Seamless Pattern needs DT Hub's own server …») e non manda niente; stesso rifiuto per una famiglia non supportata. La risposta porta `startsRun`, ma l'app lo rispetta solo per gli strumenti `generate`: lo strumento è `edit`, quindi l'agente avvia con `run_pipeline` |
+| `stop` | edit | ritira la pipeline |
+| `check_seam` | read | `result_id` (parametro `format: image`: un `result_id` o un file in una cartella consentita; senza, l'immagine della tab) → `leftRight` e `upDown` come `SPSeamResult`; sotto 64 px `notApplicable`; id o file inesistente o illeggibile = errore |
+
+Tutto è controllato prima di cambiare lo stato. Test sul bundle reale: `DTHUB_SP_BUNDLE` in `RealPluginToolsTests` (nessun progetto aperto, immagine di prova nella cartella temporanea).

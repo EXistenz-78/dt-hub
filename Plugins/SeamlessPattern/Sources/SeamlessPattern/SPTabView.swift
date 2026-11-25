@@ -48,7 +48,7 @@ struct SPTabView: View {
         } else if state.isPrepared {
           Text(L.prepared).font(.caption).foregroundStyle(.secondary)
         } else if !state.familySupported {
-          Text("This model family is not supported.").font(.caption).foregroundStyle(.secondary)
+          Text(L.unsupportedFamily).font(.caption).foregroundStyle(.secondary)
         }
       }
       .padding(DS.panelPadding)

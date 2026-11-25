@@ -19,6 +19,7 @@ enum L {
   static let showInFinder = "Show in Finder"
   static let saved = "Saved."
   static let saveFailed = "Could not save the PNG."
+  static let unsupportedFamily = "This model family is not supported."
   static let notAnswered = "No answer from the app."
 
   static func mode(_ mode: SPMode) -> String {
