@@ -1552,90 +1552,1266 @@ index 0000000..eaa00f2
 +    }
 +  }
 +}
+diff --git a/Apps/SeamlessTileTest/baseline.sha256 b/Apps/SeamlessTileTest/baseline.sha256
+new file mode 100644
+index 0000000..95c861b
+--- /dev/null
++++ b/Apps/SeamlessTileTest/baseline.sha256
+@@ -0,0 +1,4 @@
++82df78d6dfbb8400fbd4e8d877bac025b70a038df0b187647231c06c62f99bfb  krea2.png
++309e41069bb7cac57b086261a1d041bc5f112dc9587312f90ae8bcce1eb23b41  zimage.png
++20e06f4b606e8641a6a3e2399f7c99ed5ba4afbe153277c7c1b8586ae044f37c  flux2.png
++e8abde9036486fa35d45567582197d703e3f7f0cc9409da82727962cffb9bc36  flux3.png
+diff --git a/Apps/SeamlessTileTest/check-call-sites.sh b/Apps/SeamlessTileTest/check-call-sites.sh
+new file mode 100755
+index 0000000..8047ffe
+--- /dev/null
++++ b/Apps/SeamlessTileTest/check-call-sites.sh
+@@ -0,0 +1,58 @@
++#!/bin/bash
++# Static check: the seamless flag reaches the image-grid RoPE calls of the four families
++# in UNetFixedEncoder.swift, and never the Ming-Image branch (it shares ZImageRotaryPositionEmbedding).
++set -u
++root="$(cd "$(dirname "$0")/../.." && pwd)"
++src="$root/Libraries/SwiftDiffusion/Sources/UNetFixedEncoder.swift"
++fail=0
++bad() { echo "FAIL: $1"; fail=1; }
++
++[ -f "$src" ] || { echo "FAIL: missing $src"; exit 1; }
++
++grep -q 'public var seamless: SeamlessTile? = nil' "$src" || bad "UNetFixedEncoder.seamless property missing"
++
++total=$(grep -c 'seamless: seamless' "$src")
++[ "$total" -eq 6 ] || bad "expected 6 occurrences of 'seamless: seamless', found $total"
++
++# Extent of a top-level `case` branch: from its line to the next 4-space-indented `case`/`default`.
++branch() {
++  awk -v pat="$1" '
++    $0 ~ "^    case " pat { on = 1; print; next }
++    on && /^    (case |default)/ { exit }
++    on { print }' "$src"
++}
++
++ming=$(branch '\\.mingImage:')
++[ -n "$ming" ] || bad "case .mingImage branch not found"
++echo "$ming" | grep -q 'ZImageRotaryPositionEmbedding(' || bad "mingImage branch lost its ZImage RoPE call (check script out of date)"
++echo "$ming" | grep -q 'seamless:' && bad "seamless: appears in the .mingImage branch"
++
++# Count calls whose argument list (up to the closing paren line) contains `seamless: seamless`.
++count_calls() { # $1 = text, $2 = type name, $3 = required marker (grep -E)
++  echo "$1" | awk -v t="$2" -v m="$3" '
++    index($0, t "(") { buf = $0; open = 1; next_line = 0 }
++    open && !index($0, t "(") { buf = buf "\n" $0 }
++    open && /\)[ ]*$|\)\)[ ]*$|\)\.toGPU/ { if (buf ~ m) good++; else other++; open = 0 }
++    END { print good + 0 }'
++}
++
++krea=$(count_calls "$(grep -n '' "$src" | sed 's/^[0-9]*://')" 'Krea2RotaryPositionEmbedding' 'seamless: seamless')
++[ "$krea" -eq 1 ] || bad "Krea 2: expected 1 call with seamless: seamless, found $krea"
++
++zi=$(branch '\\.zImage:')
++zcalls=$(count_calls "$zi" 'ZImageRotaryPositionEmbedding' 'height: h, width: w(.|\n)*seamless: seamless')
++[ "$zcalls" -eq 3 ] || bad "Z-Image: expected 3 image-grid calls with seamless: seamless, found $zcalls"
++# The text-only calls (height: 0) must not carry the flag.
++echo "$zi" | grep -A2 'height: 0, width: 0' | grep -q 'seamless:' && bad "Z-Image text-only call (height: 0) carries seamless:"
++
++f3=$(branch '\\.flux3_5b:')
++f3calls=$(count_calls "$f3" 'Flux3RotaryPositionEmbedding' 'height: h, width: w(.|\n)*seamless: seamless')
++[ "$f3calls" -eq 1 ] || bad "FLUX.3: expected 1 call with seamless: seamless, found $f3calls"
++
++f2=$(branch '\\.flux2, \\.flux2_9b, \\.flux2_4b:')
++f2calls=$(count_calls "$f2" 'Flux2RotaryPositionEmbedding' 'height: h, width: w(.|\n)*seamless: seamless')
++[ "$f2calls" -eq 1 ] || bad "FLUX.2: expected 1 call with seamless: seamless, found $f2calls"
++echo "$f2" | grep -A2 'height: 0, width: 0' | grep -q 'seamless:' && bad "FLUX.2 text-only call (height: 0) carries seamless:"
++
++if [ "$fail" -eq 0 ]; then echo "OK: seamless reaches Krea2 x1, Z-Image x3, FLUX.3 x1, FLUX.2 x1; never Ming"; fi
++exit $fail
+diff --git a/Apps/SeamlessTileTest/e2e.sh b/Apps/SeamlessTileTest/e2e.sh
+new file mode 100755
+index 0000000..c42d7a8
+--- /dev/null
++++ b/Apps/SeamlessTileTest/e2e.sh
+@@ -0,0 +1,109 @@
++#!/bin/bash
++# Seamless tile, end to end: one generation per family with draw-things-cli, then the seam check of the
++# ComfyUI node (comfyui-pixaroma/nodes/_seamless_helpers.py, seam_check) on each picture.
++#
++# Usage:
++#   e2e.sh                      generate with seamlessTile = 3 (both) and check; exit 1 if a direction is not PASS
++#   e2e.sh --baseline           generate WITHOUT seamlessTile and print "sha256  family.png" lines
++#   e2e.sh --seam <png>...      only run the seam check on existing pictures (exit 1 if a direction is not PASS)
++#
++# baseline.sha256 next to this script: e2e.sh --baseline with the defaults below, made with a Release
++# draw-things-cli built from bcdc18f (before the generator read the flag). With the flag off, a newer build
++# must give the same bytes:
++#   OUT=/tmp/x e2e.sh --baseline && (cd /tmp/x && shasum -a 256 -c "$HERE/baseline.sha256")
++# Ming-Image (FAMILIES=ming) is not in it: two runs of the same binary already differ (max 22/255, mean
++# ~0.5), so Ming is compared by pixel difference against that run-to-run spread, not by sha256.
++#
++# Environment (all optional):
++#   DTCLI    draw-things-cli binary            (default: .build/out/Products/Release/draw-things-cli)
++#   MODELS   models folder of DT Hub's managed server (default: /Volumes/LLM-VLM/Models)
++#   OUT      output folder                     (default: ./seamless-e2e-out)
++#   FAMILIES families to run, space separated  (default: "krea2 zimage flux2 flux3")
++#   PROMPT   prompt                            (default: a stone texture)
++#   SIZE     width and height in px            (default: 1024)
++#   STEPS    sampling steps                    (default: 8)
++#   SEED     seed                              (default: 7)
++#   EXTRA    extra JSON keys merged into --config-json, e.g. '"hiresFix":true'
++#   TAG      suffix for the output file names
++set -euo pipefail
++
++HERE="$(cd "$(dirname "$0")" && pwd)"
++ROOT="$(cd "$HERE/../.." && pwd)"
++DTCLI="${DTCLI:-$ROOT/.build/out/Products/Release/draw-things-cli}"
++MODELS="${MODELS:-/Volumes/LLM-VLM/Models}"
++OUT="${OUT:-$PWD/seamless-e2e-out}"
++FAMILIES="${FAMILIES:-krea2 zimage flux2 flux3}"
++PROMPT="${PROMPT:-seamless texture of rough grey stone, top-down, even lighting}"
++SIZE="${SIZE:-1024}"
++STEPS="${STEPS:-8}"
++SEED="${SEED:-7}"
++EXTRA="${EXTRA:-}"
++TAG="${TAG:-}"
++COMFY="/Users/existenz/ComfyUI-Installs/eXistenZ/ComfyUI"
++PY="${PY:-$COMFY/.venv/bin/python3}"
++HELPERS="$COMFY/custom_nodes/comfyui-pixaroma/nodes/_seamless_helpers.py"
++
++model_for() {
++  case "$1" in
++    krea2) echo krea_2_turbo_i8x.ckpt ;;
++    zimage) echo z_image_1.0_i8x.ckpt ;;
++    flux2) echo flux_2_klein_9b_i8x.ckpt ;;
++    flux3) echo flux_3_klein_i8x.ckpt ;;
++    ming) echo ming_image_0.1_design_i8x.ckpt ;;
++    *) echo "unknown family $1" >&2; exit 2 ;;
++  esac
++}
++
++seam() {
++  # Prints one line per picture and exits 1 if a direction is not PASS.
++  "$PY" -I - "$HELPERS" "$@" <<'EOF'
++import importlib.util, sys
++import numpy as np, torch
++from PIL import Image
++spec = importlib.util.spec_from_file_location("seamless_helpers", sys.argv[1])
++h = importlib.util.module_from_spec(spec); spec.loader.exec_module(h)
++bad = 0
++for path in sys.argv[2:]:
++    img = torch.from_numpy(np.asarray(Image.open(path).convert("RGB"), dtype=np.float32) / 255.0)
++    r = h.seam_check(img)
++    lr, ud = r["left_right"], r["up_down"]
++    print(f"{path}: LR {lr['status']} ratio={lr['ratio']} vs_worst={lr.get('vs_worst')}  "
++          f"UD {ud['status']} ratio={ud['ratio']} vs_worst={ud.get('vs_worst')}")
++    bad += lr["status"] != "PASS" or ud["status"] != "PASS"
++sys.exit(1 if bad else 0)
++EOF
++}
++
++generate() { # family json output
++  "$DTCLI" generate --local --offline --disable-preview --models-dir "$MODELS" --model "$(model_for "$1")" \
++    --prompt "$PROMPT" --width "$SIZE" --height "$SIZE" --steps "$STEPS" --seed "$SEED" \
++    --config-json "$2" --output "$3"
++}
++
++json() { # seamless(0/1)
++  local keys=()
++  [ "$1" = 1 ] && keys+=('"seamlessTile":3')
++  [ -n "$EXTRA" ] && keys+=("$EXTRA")
++  local IFS=,
++  echo "{${keys[*]-}}"
++}
++
++if [ "${1:-}" = "--seam" ]; then
++  shift; seam "$@"; exit $?
++fi
++
++mkdir -p "$OUT"
++if [ "${1:-}" = "--baseline" ]; then
++  for f in $FAMILIES; do
++    generate "$f" "$(json 0)" "$OUT/$f$TAG.png" >"$OUT/$f$TAG.log" 2>&1
++    (cd "$OUT" && shasum -a 256 "$f$TAG.png")
++  done
++  exit 0
++fi
++
++pngs=()
++for f in $FAMILIES; do
++  generate "$f" "$(json 1)" "$OUT/$f-seamless$TAG.png" >"$OUT/$f-seamless$TAG.log" 2>&1
++  pngs+=("$OUT/$f-seamless$TAG.png")
++done
++seam "${pngs[@]}"
+diff --git a/Apps/SeamlessTileTest/main.swift b/Apps/SeamlessTileTest/main.swift
+new file mode 100644
+index 0000000..2e54bf8
+--- /dev/null
++++ b/Apps/SeamlessTileTest/main.swift
+@@ -0,0 +1,973 @@
++import Diffusion
++import Foundation
++import NNC
++
++func check(_ condition: Bool, _ message: String) {
++  if !condition {
++    print("FAIL: \(message)")
++    exit(1)
++  }
++}
++
++// Configuration values.
++check(SeamlessTile(configurationValue: 0) == nil, "0 is off")
++check(
++  SeamlessTile(configurationValue: 1) == SeamlessTile(wrapsHeight: false, wrapsWidth: true),
++  "1 wraps the width only")
++check(
++  SeamlessTile(configurationValue: 2) == SeamlessTile(wrapsHeight: true, wrapsWidth: false),
++  "2 wraps the height only")
++check(
++  SeamlessTile(configurationValue: 3) == SeamlessTile(wrapsHeight: true, wrapsWidth: true),
++  "3 wraps both")
++check(SeamlessTile(configurationValue: 9) == nil, "an unknown value is off")
++check(SeamlessTile(configurationValue: -1) == nil, "a negative value is off")
++
++// Minimum turns per version.
++check(SeamlessTile.minTurns(for: .zImage) == 1.0, "Z-Image 1.0")
++check(SeamlessTile.minTurns(for: .krea2) == 1.0, "Krea 2 1.0")
++check(SeamlessTile.minTurns(for: .flux2) == 0.5, "FLUX.2 0.5")
++check(SeamlessTile.minTurns(for: .flux2_9b) == 0.5, "FLUX.2 9B 0.5")
++check(SeamlessTile.minTurns(for: .flux2_4b) == 0.5, "FLUX.2 4B 0.5")
++check(SeamlessTile.minTurns(for: .flux3_5b) == 0.5, "FLUX.3 0.5")
++check(SeamlessTile.minTurns(for: .mingImage) == nil, "Ming-Image is not supported")
++check(SeamlessTile.minTurns(for: .flux1) == nil, "FLUX.1 is not supported")
++
++// The angle at one period equals the angle at zero, for every theta and axis size.
++let period = 64.0
++for theta in [256.0, 1000.0, 2000.0, 10000.0] {
++  for dim in [48, 32] {
++    let half = dim / 2
++    for i in 0..<half {
++      let omega = 1.0 / pow(theta, Double(i) / Double(half))
++      for minTurns in [0.5, 1.0] {
++        let end = torusAngle(position: period, omega: omega, period: period, minTurns: minTurns)
++        let start = torusAngle(position: 0, omega: omega, period: period, minTurns: minTurns)
++        check(abs(cos(end) - cos(start)) < 1e-9, "cos wraps (theta \(theta), dim \(dim), i \(i))")
++        check(abs(sin(end) - sin(start)) < 1e-9, "sin wraps (theta \(theta), dim \(dim), i \(i))")
++        // Any position repeats one period later.
++        let a = torusAngle(position: 17, omega: omega, period: period, minTurns: minTurns)
++        let b = torusAngle(position: 17 + period, omega: omega, period: period, minTurns: minTurns)
++        check(abs(cos(a) - cos(b)) < 1e-9 && abs(sin(a) - sin(b)) < 1e-9, "periodic at 17")
++      }
++    }
++  }
++}
++
++// A slow frequency (about 0.10 turns over the period) becomes constant.
++check(
++  torusFrequency(omega: 0.01, period: 64, minTurns: 0.5) == 0, "a slow frequency is zeroed")
++// 2.6 turns over the period snaps to 3 whole turns.
++let omega26 = 2.6 * 2 * Double.pi / 64
++check(
++  abs(torusFrequency(omega: omega26, period: 64, minTurns: 0.5) - 3 * 2 * Double.pi / 64) < 1e-12,
++  "2.6 turns snap to 3")
++
++// MARK: RoPE on the torus.
++
++let gridH = 8
++let gridW = 12
++let textLen = 7
++
++func sameFloats<T: TensorNumeric & BinaryFloatingPoint>(
++  _ a: Tensor<T>, _ b: Tensor<T>, _ message: String
++) {
++  check(a.shape[0] == b.shape[0] && a.shape[1] == b.shape[1], "\(message): same token count")
++  check(a.shape[2] == b.shape[2] && a.shape[3] == b.shape[3], "\(message): same shape")
++  for t in 0..<a.shape[1] {
++    for h in 0..<a.shape[2] {
++      for c in 0..<a.shape[3] {
++        if a[0, t, h, c] != b[0, t, h, c] {
++          print("FAIL: \(message) differs at token \(t) head \(h) channel \(c)")
++          exit(1)
++        }
++      }
++    }
++  }
++}
++
++/// Layout of one function's output: where the height and width pairs sit and how many leading
++/// tokens are image tokens (laid out as y * gridW + x).
++struct RopeLayout {
++  var name: String
++  var heads: Int
++  var heightPairs: Range<Int>
++  var widthPairs: Range<Int>
++  var imageTokens: Int
++}
++
++func angle(_ t: Tensor<Float>, _ token: Int, _ head: Int, _ pair: Int) -> Double {
++  return atan2(Double(t[0, token, head, pair * 2 + 1]), Double(t[0, token, head, pair * 2]))
++}
++
++/// The step between two neighbours times the period is a whole number of turns.
++func checkPeriodic(
++  _ t: Tensor<Float>, _ layout: RopeLayout, axisIsWidth: Bool
++) {
++  let pairs = axisIsWidth ? layout.widthPairs : layout.heightPairs
++  let period = Double(axisIsWidth ? gridW : gridH)
++  var movingChannels = 0
++  for head in 0..<layout.heads {
++    for pair in pairs {
++      // Several rows (columns) to be sure it is the same for every one of them.
++      for line in 0..<(axisIsWidth ? gridH : gridW) {
++        let t0 = axisIsWidth ? line * gridW : line
++        let t1 = axisIsWidth ? line * gridW + 1 : gridW + line
++        var step = angle(t, t1, head, pair) - angle(t, t0, head, pair)
++        step -= (step / (2 * Double.pi)).rounded() * 2 * Double.pi
++        let total = step * period
++        let turns = (total / (2 * Double.pi)).rounded()
++        check(
++          abs(total - turns * 2 * Double.pi) < 1e-5,
++          "\(layout.name): \(axisIsWidth ? "width" : "height") pair \(pair) is not periodic")
++        if line == 0 && head == 0 && abs(step) > 1e-9 { movingChannels += 1 }
++      }
++    }
++  }
++  check(movingChannels > 0, "\(layout.name): some channel of the axis still turns")
++}
++
++func checkTorus(
++  _ layout: RopeLayout, off: Tensor<Float>, both: Tensor<Float>, widthOnly: Tensor<Float>
++) {
++  check(off.shape[1] == both.shape[1], "\(layout.name): same token count")
++  checkPeriodic(both, layout, axisIsWidth: true)
++  checkPeriodic(both, layout, axisIsWidth: false)
++  // Everything but the height and width channels of the image tokens is the same as without.
++  for t in 0..<off.shape[1] {
++    for h in 0..<off.shape[2] {
++      for c in 0..<off.shape[3] {
++        let pair = c / 2
++        let isAxis =
++          t < layout.imageTokens
++          && (layout.heightPairs.contains(pair) || layout.widthPairs.contains(pair))
++        if !isAxis {
++          check(
++            both[0, t, h, c] == off[0, t, h, c] && widthOnly[0, t, h, c] == off[0, t, h, c],
++            "\(layout.name): token \(t) channel \(c) is unchanged")
++        }
++        // Width only: the height channels are the same as without.
++        if t < layout.imageTokens && layout.heightPairs.contains(pair) {
++          check(
++            widthOnly[0, t, h, c] == off[0, t, h, c],
++            "\(layout.name): width only leaves the height channel \(c) alone")
++        }
++      }
++    }
++  }
++  // The torus really changed something.
++  var changed = false
++  for t in 0..<layout.imageTokens {
++    for c in 0..<off.shape[3] where both[0, t, 0, c] != off[0, t, 0, c] { changed = true }
++  }
++  check(changed, "\(layout.name): the torus changes the image tokens")
++}
++
++let both = SeamlessTile(configurationValue: 3)
++let widthOnly = SeamlessTile(configurationValue: 1)
++let heightOnly = SeamlessTile(configurationValue: 2)
++
++// Krea 2 (Float16 and Float, as the call sites use FloatType).
++for references in [0, 1] {
++  sameFloats(
++    Krea2RotaryPositionEmbedding(
++      textLength: textLen, gridHeight: gridH, gridWidth: gridW, referenceCount: references,
++      of: Float.self, seamless: nil),
++    referenceKrea2Rope(
++      textLength: textLen, gridHeight: gridH, gridWidth: gridW, referenceCount: references,
++      of: Float.self),
++    "Krea 2 nil (Float, \(references) references)")
++  sameFloats(
++    Krea2RotaryPositionEmbedding(
++      textLength: textLen, gridHeight: gridH, gridWidth: gridW, referenceCount: references,
++      of: Float16.self, seamless: nil),
++    referenceKrea2Rope(
++      textLength: textLen, gridHeight: gridH, gridWidth: gridW, referenceCount: references,
++      of: Float16.self),
++    "Krea 2 nil (Float16, \(references) references)")
++}
++do {
++  func krea(_ s: SeamlessTile?, _ references: Int) -> Tensor<Float> {
++    return Krea2RotaryPositionEmbedding(
++      textLength: textLen, gridHeight: gridH, gridWidth: gridW, referenceCount: references,
++      of: Float.self, seamless: s)
++  }
++  let layout = RopeLayout(
++    name: "Krea 2", heads: 1, heightPairs: 16..<40, widthPairs: 40..<64,
++    imageTokens: gridH * gridW)
++  checkTorus(
++    layout, off: krea(nil, 0), both: krea(both, 0), widthOnly: krea(widthOnly, 0))
++  let heightTensor = krea(heightOnly, 0)
++  let offTensor = krea(nil, 0)
++  for t in 0..<(gridH * gridW) {
++    for c in (40 * 2)..<(64 * 2) {
++      check(heightTensor[0, t, 0, c] == offTensor[0, t, 0, c], "Krea 2 height only keeps width")
++    }
++  }
++  // One reference: its tokens carry the same y / x angles as the image tokens.
++  let withReference = krea(both, 1)
++  let imageCount = gridH * gridW
++  for t in 0..<imageCount {
++    for c in (16 * 2)..<(64 * 2) {
++      check(
++        withReference[0, t, 0, c] == withReference[0, t + imageCount, 0, c],
++        "Krea 2 reference token \(t) channel \(c) has the image angles")
++    }
++  }
++  // The frame axis and the text are as without.
++  let withReferenceOff = krea(nil, 1)
++  for t in 0..<withReference.shape[1] {
++    for c in 0..<(16 * 2) {
++      check(withReference[0, t, 0, c] == withReferenceOff[0, t, 0, c], "Krea 2 frame axis")
++    }
++    if t >= 2 * imageCount {
++      for c in 0..<(64 * 2) {
++        check(withReference[0, t, 0, c] == withReferenceOff[0, t, 0, c], "Krea 2 text row")
++      }
++    }
++  }
++}
++
++// Z-Image.
++for references in [0, 1] {
++  sameFloats(
++    ZImageRotaryPositionEmbedding(
++      height: gridH, width: gridW, tokenLength: textLen, imagePaddedLength: 3, heads: 2,
++      referenceFrames: references, seamless: nil),
++    referenceZImageRope(
++      height: gridH, width: gridW, tokenLength: textLen, imagePaddedLength: 3, heads: 2,
++      referenceFrames: references),
++    "Z-Image nil (\(references) reference frames)")
++}
++sameFloats(
++  ZImageRotaryPositionEmbedding(
++    height: 0, width: 0, tokenLength: 32, imagePaddedLength: 0, seamless: nil),
++  referenceZImageRope(height: 0, width: 0, tokenLength: 32, imagePaddedLength: 0),
++  "Z-Image nil (text only)")
++do {
++  func z(_ s: SeamlessTile?) -> Tensor<Float> {
++    return ZImageRotaryPositionEmbedding(
++      height: gridH, width: gridW, tokenLength: textLen, imagePaddedLength: 3, heads: 2,
++      seamless: s)
++  }
++  let layout = RopeLayout(
++    name: "Z-Image", heads: 2, heightPairs: 16..<40, widthPairs: 40..<64,
++    imageTokens: gridH * gridW)
++  checkTorus(layout, off: z(nil), both: z(both), widthOnly: z(widthOnly))
++}
++
++// FLUX.2.
++let flux2References = [(height: 4, width: 6)]
++sameFloats(
++  Flux2RotaryPositionEmbedding(
++    height: gridH, width: gridW, tokenLength: textLen, referenceSizes: flux2References,
++    channels: 128, heads: 2, seamless: nil),
++  referenceFlux2Rope(
++    height: gridH, width: gridW, tokenLength: textLen, referenceSizes: flux2References,
++    channels: 128, heads: 2),
++  "FLUX.2 nil")
++do {
++  func f2(_ s: SeamlessTile?) -> Tensor<Float> {
++    return Flux2RotaryPositionEmbedding(
++      height: gridH, width: gridW, tokenLength: textLen, referenceSizes: flux2References,
++      channels: 128, heads: 2, seamless: s)
++  }
++  let layout = RopeLayout(
++    name: "FLUX.2", heads: 2, heightPairs: 16..<32, widthPairs: 32..<48,
++    imageTokens: gridH * gridW)
++  checkTorus(layout, off: f2(nil), both: f2(both), widthOnly: f2(widthOnly))
++}
++
++// FLUX.3 (positions are y * 0.5 and x * 0.5, so the period is the grid * 0.5).
++sameFloats(
++  Flux3RotaryPositionEmbedding(
++    height: gridH, width: gridW, tokenLength: textLen, referenceSizes: flux2References,
++    channels: 128, heads: 2, seamless: nil),
++  referenceFlux3Rope(
++    height: gridH, width: gridW, tokenLength: textLen, referenceSizes: flux2References,
++    channels: 128, heads: 2),
++  "FLUX.3 nil")
++do {
++  func f3(_ s: SeamlessTile?) -> Tensor<Float> {
++    return Flux3RotaryPositionEmbedding(
++      height: gridH, width: gridW, tokenLength: textLen, referenceSizes: flux2References,
++      channels: 128, heads: 2, seamless: s)
++  }
++  let layout = RopeLayout(
++    name: "FLUX.3", heads: 2, heightPairs: 16..<32, widthPairs: 32..<48,
++    imageTokens: gridH * gridW)
++  checkTorus(layout, off: f3(nil), both: f3(both), widthOnly: f3(widthOnly))
++}
++
++// MARK: Wrap padding in the VAE decoder.
++
++let wrapGraph = DynamicGraph()
++
++// The graphs run on the GPU: the CPU reference convolution does not take OIHW weights with NHWC
++// inputs, which is what the decoder uses.
++func runModel(_ model: Model, _ input: Tensor<Float>) -> Tensor<Float> {
++  return wrapGraph.withNoGrad {
++    let x = wrapGraph.variable(input.toGPU(0))
++    return model(inputs: x)[0].as(of: Float.self).rawValue.toCPU()
++  }
++}
++
++func randomTensor(_ shape: [Int]) -> Tensor<Float> {
++  var t = Tensor<Float>(.CPU, .NHWC(shape[0], shape[1], shape[2], shape[3]))
++  for n in 0..<shape[0] {
++    for y in 0..<shape[1] {
++      for x in 0..<shape[2] {
++        for c in 0..<shape[3] { t[n, y, x, c] = Float.random(in: -1...1) }
++      }
++    }
++  }
++  return t
++}
++
++/// The input repeated `rows` times down and `columns` times across (NHWC).
++func tiled(_ t: Tensor<Float>, rows: Int, columns: Int) -> Tensor<Float> {
++  let (n, h, w, c) = (t.shape[0], t.shape[1], t.shape[2], t.shape[3])
++  var out = Tensor<Float>(.CPU, .NHWC(n, h * rows, w * columns, c))
++  for b in 0..<n {
++    for y in 0..<(h * rows) {
++      for x in 0..<(w * columns) {
++        for k in 0..<c { out[b, y, x, k] = t[b, y % h, x % w, k] }
++      }
++    }
++  }
++  return out
++}
++
++/// The largest absolute difference between `a` and the window of `b` at (`top`, `left`).
++func maxDifference(_ a: Tensor<Float>, _ b: Tensor<Float>, top: Int, left: Int) -> Float {
++  var worst: Float = 0
++  for n in 0..<a.shape[0] {
++    for y in 0..<a.shape[1] {
++      for x in 0..<a.shape[2] {
++        for c in 0..<a.shape[3] {
++          worst = max(worst, abs(a[n, y, x, c] - b[n, y + top, x + left, c]))
++        }
++      }
++    }
++  }
++  return worst
++}
++
++// WrapPad on a known 1x4x5x1 tensor: the opposite edges come around.
++do {
++  var known = Tensor<Float>(.CPU, .NHWC(1, 4, 5, 1))
++  for y in 0..<4 {
++    for x in 0..<5 { known[0, y, x, 0] = Float(y * 10 + x) }
++  }
++  let both = runModel(
++    WrapPad(
++      batchSize: 1, height: 4, width: 5, channels: 1, top: 1, left: 1, wrapsHeight: true,
++      wrapsWidth: true), known)
++  check(both.shape[1] == 6 && both.shape[2] == 7, "WrapPad both gives 1x6x7x1")
++  for y in 0..<6 {
++    for x in 0..<7 {
++      let expected = Float(((y + 3) % 4) * 10 + (x + 4) % 5)
++      check(both[0, y, x, 0] == expected, "WrapPad both at \(y), \(x)")
++    }
++  }
++  let heightOnly = runModel(
++    WrapPad(
++      batchSize: 1, height: 4, width: 5, channels: 1, top: 1, left: 1, wrapsHeight: true,
++      wrapsWidth: false), known)
++  check(heightOnly.shape[1] == 6 && heightOnly.shape[2] == 5, "WrapPad height gives 1x6x5x1")
++  for y in 0..<6 {
++    for x in 0..<5 {
++      check(
++        heightOnly[0, y, x, 0] == Float(((y + 3) % 4) * 10 + x), "WrapPad height at \(y), \(x)")
++    }
++  }
++}
++
++// A wrapping 3x3 convolution equals the same convolution on the 3x3 tile, cropped to the center.
++// The other axis keeps its zero border.
++do {
++  let input = randomTensor([1, 8, 8, 4])
++  var weight = Tensor<Float>(.CPU, .NCHW(3, 4, 3, 3))
++  for o in 0..<3 {
++    for i in 0..<4 {
++      for y in 0..<3 {
++        for x in 0..<3 { weight[o, i, y, x] = Float.random(in: -1...1) }
++      }
++    }
++  }
++  var bias = Tensor<Float>(.CPU, .C(3))
++  for o in 0..<3 { bias[o] = Float.random(in: -1...1) }
++  let border = Hint.Border(begin: [1, 1], end: [1, 1])
++  for (value, rows, columns) in [(Int8(3), 3, 3), (Int8(2), 3, 1), (Int8(1), 1, 3)] {
++    let wrap = SeamlessTile(configurationValue: value)!
++    let (conv, apply) = WrappingConvolution(
++      groups: 1, filters: 3, filterSize: [3, 3], border: border, wrap: wrap,
++      inputShape: (batchSize: 1, height: 8, width: 8, channels: 4), format: .OIHW)
++    let x = Input()
++    let wrapping = Model([x], [apply(x)])
++    wrapGraph.withNoGrad {
++      wrapping.compile(inputs: wrapGraph.variable(input.toGPU(0)))
++    }
++    conv.weight.copy(from: weight)
++    conv.bias.copy(from: bias)
++    let reference = Convolution(
++      groups: 1, filters: 3, filterSize: [3, 3], hint: Hint(stride: [1, 1], border: border),
++      format: .OIHW)
++    let tile = tiled(input, rows: rows, columns: columns)
++    wrapGraph.withNoGrad {
++      reference.compile(inputs: wrapGraph.variable(tile.toGPU(0)))
++    }
++    reference.weight.copy(from: weight)
++    reference.bias.copy(from: bias)
++    let out = runModel(wrapping, input)
++    let expected = runModel(reference, tile)
++    check(out.shape[1] == 8 && out.shape[2] == 8, "wrapping conv \(value) keeps 8x8")
++    let difference = maxDifference(
++      out, expected, top: rows == 3 ? 8 : 0, left: columns == 3 ? 8 : 0)
++    check(difference < 1e-4, "wrapping conv \(value) matches the tile (\(difference))")
++  }
++}
++
++/// The input moved by `dy` rows and `dx` columns, wrapping around (NHWC).
++func rolled(_ t: Tensor<Float>, _ dy: Int, _ dx: Int) -> Tensor<Float> {
++  let (n, h, w, c) = (t.shape[0], t.shape[1], t.shape[2], t.shape[3])
++  var out = Tensor<Float>(.CPU, .NHWC(n, h, w, c))
++  for b in 0..<n {
++    for y in 0..<h {
++      for x in 0..<w {
++        for k in 0..<c { out[b, (y + dy) % h, (x + dx) % w, k] = t[b, y, x, k] }
++      }
++    }
++  }
++  return out
++}
++
++// The Decoder with wrap reads the same weights as without (same parameter names, the plain one
++// reads the wrapping one's file strictly). A wrapping decoder commutes with a circular shift on
++// its wrapped axes: group norm and attention don't see positions and every padded convolution
++// is circular, so moving the latent by (1, 1) moves the picture by (2, 2) with one upsampling.
++// The plain decoder does not (its zero borders break the shift), which shows the check bites.
++// (Comparing with the plain decoder on a tiled latent can't work: the mid attention is global
++// and the receptive field is wider than one tile.)
++func decoderKeys(_ model: Model, _ path: String) -> [String] {
++  var keys = [String]()
++  wrapGraph.openStore(path) { store in
++    store.write("decoder", model: model)
++    keys = store.keys.sorted()
++  }
++  return keys
++}
++for (specializingNames, value) in [(false, Int8(3)), (true, Int8(3)), (true, Int8(1))] {
++  let wrap = SeamlessTile(configurationValue: value)!
++  func makeDecoder(wrap: SeamlessTile?) -> Model {
++    return Decoder(
++      channels: [32, 32], numRepeat: 1, batchSize: 1, startWidth: 4, startHeight: 4,
++      inputChannels: 16, highPrecisionKeysAndValues: false, usesFlashAttention: false,
++      paddingFinalConvLayer: true, format: .NHWC, quantLayer: true,
++      specializingNames: specializingNames, wrap: wrap
++    ).0
++  }
++  let latent = randomTensor([1, 4, 4, 16])
++  let dy = wrap.wrapsHeight ? 1 : 0
++  let dx = wrap.wrapsWidth ? 1 : 0
++  let wrapping = makeDecoder(wrap: wrap)
++  let plain = makeDecoder(wrap: nil)
++  // The parameters exist once a model has run.
++  let out = runModel(wrapping, latent)
++  _ = runModel(plain, latent)
++  let directory = FileManager.default.temporaryDirectory
++  let wrapPath = directory.appendingPathComponent("seamless-\(UUID().uuidString).ckpt").path
++  let plainPath = directory.appendingPathComponent("seamless-\(UUID().uuidString).ckpt").path
++  defer {
++    try? FileManager.default.removeItem(atPath: wrapPath)
++    try? FileManager.default.removeItem(atPath: plainPath)
++  }
++  let wrapKeys = decoderKeys(wrapping, wrapPath)
++  let plainKeys = decoderKeys(plain, plainPath)
++  check(
++    !wrapKeys.isEmpty && wrapKeys == plainKeys,
++    "Decoder parameter names (specializingNames \(specializingNames)) are the same with wrap")
++  var readError: Error? = nil
++  wrapGraph.openStore(wrapPath, flags: .readOnly) { store in
++    do {
++      try store.read("decoder", model: plain, strict: true)
++    } catch {
++      readError = error
++    }
++  }
++  check(readError == nil, "the plain Decoder reads the wrapping Decoder's weights")
++  check(out.shape[1] == 8 && out.shape[2] == 8 && out.shape[3] == 4, "Decoder output 1x8x8x4")
++  let shifted = runModel(wrapping, rolled(latent, dy, dx))
++  let difference = maxDifference(rolled(out, 2 * dy, 2 * dx), shifted, top: 0, left: 0)
++  check(
++    difference < 1e-3,
++    "Decoder with wrap \(value) (specializingNames \(specializingNames)) commutes with the shift"
++      + " (\(difference))")
++  let plainOut = runModel(plain, latent)
++  let plainShifted = runModel(plain, rolled(latent, dy, dx))
++  let plainDifference = maxDifference(
++    rolled(plainOut, 2 * dy, 2 * dx), plainShifted, top: 0, left: 0)
++  check(
++    plainDifference > 1e-2,
++    "the plain Decoder does not commute with the shift (\(plainDifference))")
++}
++
++// MARK: Wrap padding in the Wan VAE decoder (Krea 2).
++
++// On one frame the causal 3x3x3 convolution is a 3x3 one: with wrap it equals the same convolution
++// on the 3x3 tile, cropped to the center; the other axis keeps its zero border. The input is not
++// square (4x6) so a swapped height and width would show.
++do {
++  let input = randomTensor([1, 4, 6, 4])
++  var weight = Tensor<Float>(.CPU, .NCHW(3, 4, 3, 3))
++  for o in 0..<3 {
++    for i in 0..<4 {
++      for y in 0..<3 {
++        for x in 0..<3 { weight[o, i, y, x] = Float.random(in: -1...1) }
++      }
++    }
++  }
++  var bias = Tensor<Float>(.CPU, .C(3))
++  for o in 0..<3 { bias[o] = Float.random(in: -1...1) }
++  for (value, rows, columns) in [(Int8(3), 3, 3), (Int8(2), 3, 1), (Int8(1), 1, 3)] {
++    let wrap = SeamlessTile(configurationValue: value)!
++    let (conv, apply) = WanFrameConvolution(filters: 3, wrap: wrap, name: "resnet_conv1")
++    let x = Input()
++    let wrapping = Model([x], [apply(x, (depth: 1, height: 4, width: 6, channels: 4))])
++    wrapGraph.withNoGrad {
++      wrapping.compile(inputs: wrapGraph.variable(input.toGPU(0)))
++    }
++    conv.weight.copy(from: weight)
++    conv.bias.copy(from: bias)
++    let (reference, applyReference) = WanFrameConvolution(filters: 3, wrap: nil, name: "")
++    let tile = tiled(input, rows: rows, columns: columns)
++    let y = Input()
++    let plain = Model([y], [applyReference(y, (depth: 1, height: 4 * rows, width: 6 * columns, channels: 4))])
++    wrapGraph.withNoGrad {
++      plain.compile(inputs: wrapGraph.variable(tile.toGPU(0)))
++    }
++    reference.weight.copy(from: weight)
++    reference.bias.copy(from: bias)
++    let out = runModel(wrapping, input)
++    let expected = runModel(plain, tile)
++    check(out.shape[1] == 4 && out.shape[2] == 6, "Wan frame conv \(value) keeps 4x6")
++    let difference = maxDifference(
++      out, expected, top: rows == 3 ? 4 : 0, left: columns == 3 ? 6 : 0)
++    check(difference < 1e-4, "Wan frame conv \(value) matches the tile (\(difference))")
++  }
++}
++
++// WanDecoderCausal3D on one frame: the same parameter names with and without wrap (the plain one
++// reads the wrapping one's file strictly), and the wrapping decoder commutes with a circular shift
++// on its wrapped axes (RMS norm and attention don't see positions, every padded convolution is
++// circular; two upsamplings make a 1-latent shift a 4-pixel one). The plain decoder does not.
++for value in [Int8(3), Int8(1), Int8(2)] {
++  let wrap = SeamlessTile(configurationValue: value)!
++  func makeWanDecoder(wrap: SeamlessTile?) -> Model {
++    return WanDecoderCausal3D(
++      channels: [8, 16, 16], numRepeat: 1, startWidth: 6, startHeight: 4, startDepth: 1,
++      paddingFinalConvLayer: true, wan22: false, outputChannels: 3,
++      highPrecisionFinalNorm: false, usesFlashAttention: false, format: .NHWC, wrap: wrap
++    ).1
++  }
++  let latent = randomTensor([1, 4, 6, 16])
++  let dy = wrap.wrapsHeight ? 1 : 0
++  let dx = wrap.wrapsWidth ? 1 : 0
++  let wrapping = makeWanDecoder(wrap: wrap)
++  let plain = makeWanDecoder(wrap: nil)
++  let out = runModel(wrapping, latent)
++  _ = runModel(plain, latent)
++  let directory = FileManager.default.temporaryDirectory
++  let wrapPath = directory.appendingPathComponent("seamless-\(UUID().uuidString).ckpt").path
++  let plainPath = directory.appendingPathComponent("seamless-\(UUID().uuidString).ckpt").path
++  defer {
++    try? FileManager.default.removeItem(atPath: wrapPath)
++    try? FileManager.default.removeItem(atPath: plainPath)
++  }
++  let wrapKeys = decoderKeys(wrapping, wrapPath)
++  let plainKeys = decoderKeys(plain, plainPath)
++  check(
++    !wrapKeys.isEmpty && wrapKeys == plainKeys,
++    "WanDecoderCausal3D parameter names are the same with wrap \(value)")
++  var readError: Error? = nil
++  wrapGraph.openStore(wrapPath, flags: .readOnly) { store in
++    do {
++      try store.read("decoder", model: plain, strict: true)
++    } catch {
++      readError = error
++    }
++  }
++  check(readError == nil, "the plain WanDecoderCausal3D reads the wrapping one's weights")
++  check(
++    out.shape[0] == 1 && out.shape[1] == 16 && out.shape[2] == 24 && out.shape[3] == 4,
++    "WanDecoderCausal3D output 1x16x24x4 (\(out.shape))")
++  let shifted = runModel(wrapping, rolled(latent, dy, dx))
++  let difference = maxDifference(rolled(out, 4 * dy, 4 * dx), shifted, top: 0, left: 0)
++  check(
++    difference < 1e-3,
++    "WanDecoderCausal3D with wrap \(value) commutes with the shift (\(difference))")
++  let plainOut = runModel(plain, latent)
++  let plainShifted = runModel(plain, rolled(latent, dy, dx))
++  let plainDifference = maxDifference(
++    rolled(plainOut, 4 * dy, 4 * dx), plainShifted, top: 0, left: 0)
++  check(
++    plainDifference > 1e-2,
++    "the plain WanDecoderCausal3D does not commute with the shift (\(plainDifference))")
++}
++
++print("SeamlessTileTest: all passed")
++
++// MARK: Frozen copies of the formulas as they were before the seamless parameter.
++
++func referenceKrea2Rope<FloatType: TensorNumeric & BinaryFloatingPoint>(
++  textLength: Int, gridHeight: Int, gridWidth: Int, referenceCount: Int = 0,
++  of dataType: FloatType.Type = FloatType.self
++) -> Tensor<FloatType> {
++  let ropeTheta: Double = 1_000
++  let imageLength = gridHeight * gridWidth
++  // Layout is [image | references | text]. Each reference has the same grid as the image and sits
++  // at the same (y, x); only its first axis (frame) differs: 0 for the image, i + 1 for reference i.
++  let tokenLength = imageLength * (1 + referenceCount) + textLength
++  var rotary = Tensor<FloatType>(.CPU, .NHWC(1, tokenLength, 1, 128))
++  let dim0 = 32
++  let dim1 = 48
++  let dim2 = 48
++  for frame in 0...referenceCount {
++   for y in 0..<gridHeight {
++    for x in 0..<gridWidth {
++      let i = frame * imageLength + y * gridWidth + x
++      for k in 0..<(dim0 / 2) {
++        let theta = Double(frame) * 1.0 / pow(ropeTheta, Double(k) * 2 / Double(dim0))
++        let sintheta = sin(theta)
++        let costheta = cos(theta)
++        rotary[0, i, 0, k * 2] = FloatType(costheta)
++        rotary[0, i, 0, k * 2 + 1] = FloatType(sintheta)
++      }
++      for k in 0..<(dim1 / 2) {
++        let theta = Double(y) * 1.0 / pow(ropeTheta, Double(k) * 2 / Double(dim1))
++        let sintheta = sin(theta)
++        let costheta = cos(theta)
++        rotary[0, i, 0, (k + (dim0 / 2)) * 2] = FloatType(costheta)
++        rotary[0, i, 0, (k + (dim0 / 2)) * 2 + 1] = FloatType(sintheta)
++      }
++      for k in 0..<(dim2 / 2) {
++        let theta = Double(x) * 1.0 / pow(ropeTheta, Double(k) * 2 / Double(dim2))
++        let sintheta = sin(theta)
++        let costheta = cos(theta)
++        rotary[0, i, 0, (k + (dim0 / 2) + (dim1 / 2)) * 2] = FloatType(costheta)
++        rotary[0, i, 0, (k + (dim0 / 2) + (dim1 / 2)) * 2 + 1] = FloatType(sintheta)
++      }
++    }
++   }
++  }
++  let tokenOffset = imageLength * (1 + referenceCount)
++  for i in 0..<textLength {
++    for k in 0..<(dim0 / 2) {
++      let theta = 0 * 1.0 / pow(ropeTheta, Double(k) * 2 / Double(dim0))
++      let sintheta = sin(theta)
++      let costheta = cos(theta)
++      rotary[0, i + tokenOffset, 0, k * 2] = FloatType(costheta)
++      rotary[0, i + tokenOffset, 0, k * 2 + 1] = FloatType(sintheta)
++    }
++    for k in 0..<(dim1 / 2) {
++      let theta = 0 * 1.0 / pow(ropeTheta, Double(k) * 2 / Double(dim1))
++      let sintheta = sin(theta)
++      let costheta = cos(theta)
++      rotary[0, i + tokenOffset, 0, (k + (dim0 / 2)) * 2] = FloatType(costheta)
++      rotary[0, i + tokenOffset, 0, (k + (dim0 / 2)) * 2 + 1] = FloatType(sintheta)
++    }
++    for k in 0..<(dim2 / 2) {
++      let theta = 0 * 1.0 / pow(ropeTheta, Double(k) * 2 / Double(dim2))
++      let sintheta = sin(theta)
++      let costheta = cos(theta)
++      rotary[0, i + tokenOffset, 0, (k + (dim0 / 2) + (dim1 / 2)) * 2] = FloatType(costheta)
++      rotary[0, i + tokenOffset, 0, (k + (dim0 / 2) + (dim1 / 2)) * 2 + 1] =
++        FloatType(sintheta)
++    }
++  }
++  return rotary
++}
++
++func referenceZImageRope(
++  height: Int, width: Int, tokenLength: Int, imagePaddedLength: Int, heads: Int = 1,
++  imageTimePosition: Int? = nil, referenceFrames: Int = 0
++) -> Tensor<Float> {
++  // The image's frame comes first, then one frame per reference (Ming-Image): the same (y, x), a
++  // time position one further for each.
++  var rotTensor = Tensor<Float>(
++    .CPU, .NHWC(1, height * width * (1 + referenceFrames) + imagePaddedLength + tokenLength, heads, 128))
++  let dim0 = 32
++  let dim1 = 48
++  let dim2 = 48
++  for frame in 0...referenceFrames {
++    for y in 0..<height {
++      for x in 0..<width {
++        let i = frame * height * width + y * width + x
++        for j in 0..<heads {
++          for k in 0..<(dim0 / 2) {
++            let theta =
++              Double((imageTimePosition ?? tokenLength) + 1 + frame) * 1.0
++              / pow(256, Double(k) * 2 / Double(dim0))
++          let sintheta = sin(theta)
++          let costheta = cos(theta)
++          rotTensor[0, i, j, k * 2] = Float(costheta)
++          rotTensor[0, i, j, k * 2 + 1] = Float(sintheta)
++        }
++        for k in 0..<(dim1 / 2) {
++          let theta =
++            Double(y) * 1.0 / pow(256, Double(k) * 2 / Double(dim1))
++          let sintheta = sin(theta)
++          let costheta = cos(theta)
++          rotTensor[0, i, j, (k + (dim0 / 2)) * 2] = Float(costheta)
++          rotTensor[0, i, j, (k + (dim0 / 2)) * 2 + 1] = Float(sintheta)
++        }
++        for k in 0..<(dim2 / 2) {
++          let theta =
++            Double(x) * 1.0 / pow(256, Double(k) * 2 / Double(dim2))
++          let sintheta = sin(theta)
++          let costheta = cos(theta)
++          rotTensor[0, i, j, (k + (dim0 / 2) + (dim1 / 2)) * 2] = Float(costheta)
++          rotTensor[0, i, j, (k + (dim0 / 2) + (dim1 / 2)) * 2 + 1] = Float(sintheta)
++        }
++      }
++      }
++    }
++  }
++  let imageTokenCount = height * width * (1 + referenceFrames)
++  if imagePaddedLength > 0 {
++    for i in imageTokenCount..<(imageTokenCount + imagePaddedLength) {
++      for j in 0..<heads {
++        for k in 0..<(dim0 / 2) {
++          let theta = Double(0) * 1.0 / pow(256, Double(k) * 2 / Double(dim0))
++          let sintheta = sin(theta)
++          let costheta = cos(theta)
++          rotTensor[0, i, j, k * 2] = Float(costheta)
++          rotTensor[0, i, j, k * 2 + 1] = Float(sintheta)
++        }
++        for k in 0..<(dim1 / 2) {
++          let theta =
++            Double(0) * 1.0 / pow(256, Double(k) * 2 / Double(dim1))
++          let sintheta = sin(theta)
++          let costheta = cos(theta)
++          rotTensor[0, i, j, (k + (dim0 / 2)) * 2] = Float(costheta)
++          rotTensor[0, i, j, (k + (dim0 / 2)) * 2 + 1] = Float(sintheta)
++        }
++        for k in 0..<(dim2 / 2) {
++          let theta =
++            Double(0) * 1.0 / pow(256, Double(k) * 2 / Double(dim2))
++          let sintheta = sin(theta)
++          let costheta = cos(theta)
++          rotTensor[0, i, j, (k + (dim0 / 2) + (dim1 / 2)) * 2] = Float(costheta)
++          rotTensor[0, i, j, (k + (dim0 / 2) + (dim1 / 2)) * 2 + 1] = Float(sintheta)
++        }
++      }
++    }
++  }
++  let offset = imageTokenCount + imagePaddedLength
++  for i in 0..<tokenLength {
++    for j in 0..<heads {
++      for k in 0..<(dim0 / 2) {
++        let theta = Double(i + 1) * 1.0 / pow(256, Double(k) * 2 / Double(dim0))
++        let sintheta = sin(theta)
++        let costheta = cos(theta)
++        rotTensor[0, offset + i, j, k * 2] = Float(costheta)
++        rotTensor[0, offset + i, j, k * 2 + 1] = Float(sintheta)
++      }
++      for k in 0..<(dim1 / 2) {
++        let theta = Double(0) * 1.0 / pow(256, Double(k) * 2 / Double(dim1))
++        let sintheta = sin(theta)
++        let costheta = cos(theta)
++        rotTensor[0, offset + i, j, (k + (dim0 / 2)) * 2] = Float(costheta)
++        rotTensor[0, offset + i, j, (k + (dim0 / 2)) * 2 + 1] = Float(sintheta)
++      }
++      for k in 0..<(dim2 / 2) {
++        let theta = Double(0) * 1.0 / pow(256, Double(k) * 2 / Double(dim2))
++        let sintheta = sin(theta)
++        let costheta = cos(theta)
++        rotTensor[0, offset + i, j, (k + (dim0 / 2) + (dim1 / 2)) * 2] = Float(costheta)
++        rotTensor[0, offset + i, j, (k + (dim0 / 2) + (dim1 / 2)) * 2 + 1] = Float(sintheta)
++      }
++    }
++  }
++  return rotTensor
++}
++
++func referenceFlux2Rope(
++  height: Int, width: Int, tokenLength: Int, referenceSizes: [(height: Int, width: Int)],
++  channels: Int, heads: Int = 1
++)
++  -> Tensor<Float>
++{
++  var rotTensor = Tensor<Float>(
++    .CPU,
++    .NHWC(
++      1, height * width + tokenLength + referenceSizes.reduce(0) { $0 + $1.height * $1.width },
++      heads, channels))
++  let dim0 = channels / 4
++  let dim1 = dim0
++  let dim2 = dim1
++  let dim3 = dim2
++  assert(channels % 16 == 0)
++  for y in 0..<height {
++    for x in 0..<width {
++      let i = y * width + x
++      for j in 0..<heads {
++        for k in 0..<(dim0 / 2) {
++          let theta = 0 * 1.0 / pow(2_000, Double(k) * 2 / Double(dim0))
++          let sintheta = sin(theta)
++          let costheta = cos(theta)
++          rotTensor[0, i, j, k * 2] = Float(costheta)
++          rotTensor[0, i, j, k * 2 + 1] = Float(sintheta)
++        }
++        for k in 0..<(dim1 / 2) {
++          let theta = Double(y) * 1.0 / pow(2_000, Double(k) * 2 / Double(dim1))
++          let sintheta = sin(theta)
++          let costheta = cos(theta)
++          rotTensor[0, i, j, (k + (dim0 / 2)) * 2] = Float(costheta)
++          rotTensor[0, i, j, (k + (dim0 / 2)) * 2 + 1] = Float(sintheta)
++        }
++        for k in 0..<(dim2 / 2) {
++          let theta = Double(x) * 1.0 / pow(2_000, Double(k) * 2 / Double(dim2))
++          let sintheta = sin(theta)
++          let costheta = cos(theta)
++          rotTensor[0, i, j, (k + (dim0 / 2) + (dim1 / 2)) * 2] = Float(costheta)
++          rotTensor[0, i, j, (k + (dim0 / 2) + (dim1 / 2)) * 2 + 1] = Float(sintheta)
++        }
++        for k in 0..<(dim3 / 2) {
++          let theta = 0 * 1.0 / pow(2_000, Double(k) * 2 / Double(dim3))
++          let sintheta = sin(theta)
++          let costheta = cos(theta)
++          rotTensor[0, i, j, (k + (dim0 / 2) + (dim1 / 2) + (dim2 / 2)) * 2] = Float(costheta)
++          rotTensor[0, i, j, (k + (dim0 / 2) + (dim1 / 2) + (dim2 / 2)) * 2 + 1] = Float(sintheta)
++        }
++      }
++    }
++  }
++  var index = width * height
++  for (n, referenceSize) in referenceSizes.enumerated() {
++    let height = referenceSize.height
++    let width = referenceSize.width
++    for y in 0..<height {
++      for x in 0..<width {
++        let i = y * width + x + index
++        for j in 0..<heads {
++          for k in 0..<(dim0 / 2) {
++            let theta = Double(10 + n * 10) * 1.0 / pow(2_000, Double(k) * 2 / Double(dim0))
++            let sintheta = sin(theta)
++            let costheta = cos(theta)
++            rotTensor[0, i, j, k * 2] = Float(costheta)
++            rotTensor[0, i, j, k * 2 + 1] = Float(sintheta)
++          }
++          for k in 0..<(dim1 / 2) {
++            let theta = Double(y) * 1.0 / pow(2_000, Double(k) * 2 / Double(dim1))
++            let sintheta = sin(theta)
++            let costheta = cos(theta)
++            rotTensor[0, i, j, (k + (dim0 / 2)) * 2] = Float(costheta)
++            rotTensor[0, i, j, (k + (dim0 / 2)) * 2 + 1] = Float(sintheta)
++          }
++          for k in 0..<(dim2 / 2) {
++            let theta = Double(x) * 1.0 / pow(2_000, Double(k) * 2 / Double(dim2))
++            let sintheta = sin(theta)
++            let costheta = cos(theta)
++            rotTensor[0, i, j, (k + (dim0 / 2) + (dim1 / 2)) * 2] = Float(costheta)
++            rotTensor[0, i, j, (k + (dim0 / 2) + (dim1 / 2)) * 2 + 1] = Float(sintheta)
++          }
++          for k in 0..<(dim3 / 2) {
++            let theta = 0 * 1.0 / pow(2_000, Double(k) * 2 / Double(dim3))
++            let sintheta = sin(theta)
++            let costheta = cos(theta)
++            rotTensor[0, i, j, (k + (dim0 / 2) + (dim1 / 2) + (dim2 / 2)) * 2] = Float(costheta)
++            rotTensor[0, i, j, (k + (dim0 / 2) + (dim1 / 2) + (dim2 / 2)) * 2 + 1] = Float(sintheta)
++          }
++        }
++      }
++    }
++    index += height * width
++  }
++  let tokenOffset = index
++  for i in 0..<tokenLength {
++    for j in 0..<heads {
++      for k in 0..<(dim0 / 2) {
++        let theta = 0 * 1.0 / pow(2_000, Double(k) * 2 / Double(dim0))
++        let sintheta = sin(theta)
++        let costheta = cos(theta)
++        rotTensor[0, i + tokenOffset, j, k * 2] = Float(costheta)
++        rotTensor[0, i + tokenOffset, j, k * 2 + 1] = Float(sintheta)
++      }
++      for k in 0..<(dim1 / 2) {
++        let theta = 0 * 1.0 / pow(2_000, Double(k) * 2 / Double(dim1))
++        let sintheta = sin(theta)
++        let costheta = cos(theta)
++        rotTensor[0, i + tokenOffset, j, (k + (dim0 / 2)) * 2] = Float(costheta)
++        rotTensor[0, i + tokenOffset, j, (k + (dim0 / 2)) * 2 + 1] = Float(sintheta)
++      }
++      for k in 0..<(dim2 / 2) {
++        let theta = 0 * 1.0 / pow(2_000, Double(k) * 2 / Double(dim2))
++        let sintheta = sin(theta)
++        let costheta = cos(theta)
++        rotTensor[0, i + tokenOffset, j, (k + (dim0 / 2) + (dim1 / 2)) * 2] = Float(costheta)
++        rotTensor[0, i + tokenOffset, j, (k + (dim0 / 2) + (dim1 / 2)) * 2 + 1] = Float(sintheta)
++      }
++      for k in 0..<(dim3 / 2) {
++        let theta = Double(i) * 1.0 / pow(2_000, Double(k) * 2 / Double(dim3))
++        let sintheta = sin(theta)
++        let costheta = cos(theta)
++        rotTensor[0, i + tokenOffset, j, (k + (dim0 / 2) + (dim1 / 2) + (dim2 / 2)) * 2] = Float(
++          costheta)
++        rotTensor[0, i + tokenOffset, j, (k + (dim0 / 2) + (dim1 / 2) + (dim2 / 2)) * 2 + 1] =
++          Float(sintheta)
++      }
++    }
++  }
++  return rotTensor
++}
++
++func referenceFlux3Rope(
++  height: Int, width: Int, tokenLength: Int, referenceSizes: [(height: Int, width: Int)],
++  channels: Int, heads: Int = 1
++)
++  -> Tensor<Float>
++{
++  var rotTensor = Tensor<Float>(
++    .CPU,
++    .NHWC(
++      1, height * width + referenceSizes.reduce(0) { $0 + $1.height * $1.width } + tokenLength,
++      heads, channels))
++  let dim = channels / 4
++  assert(channels % 16 == 0)
++  // Each token has 4 position axes (unused, y, x, text / reference index), each takes channels / 4.
++  func setPositions(_ i: Int, _ positions: [Double]) {
++    for j in 0..<heads {
++      for (axis, position) in positions.enumerated() {
++        for k in 0..<(dim / 2) {
++          let theta = position * 1.0 / pow(10_000, Double(k) * 2 / Double(dim))
++          let sintheta = sin(theta)
++          let costheta = cos(theta)
++          rotTensor[0, i, j, (k + axis * (dim / 2)) * 2] = Float(costheta)
++          rotTensor[0, i, j, (k + axis * (dim / 2)) * 2 + 1] = Float(sintheta)
++        }
++      }
++    }
++  }
++  for y in 0..<height {
++    for x in 0..<width {
++      setPositions(y * width + x, [0, Double(y) * 0.5, Double(x) * 0.5, 0])
++    }
++  }
++  var index = height * width
++  for (n, referenceSize) in referenceSizes.enumerated() {
++    let height = referenceSize.height
++    let width = referenceSize.width
++    for y in 0..<height {
++      for x in 0..<width {
++        setPositions(
++          y * width + x + index, [0, Double(y) * 0.5, Double(x) * 0.5, Double(-1 - n)])
++      }
++    }
++    index += height * width
++  }
++  for i in 0..<tokenLength {
++    setPositions(i + index, [0, 0, 0, Double(i)])
++  }
++  return rotTensor
++}
 diff --git a/Libraries/DataModels/PreGeneratedSPM/config_data_model_generated.swift b/Libraries/DataModels/PreGeneratedSPM/config_data_model_generated.swift
-index 727bd6b..c85d977 100755
+index 727bd6b..a718941 100755
 --- a/Libraries/DataModels/PreGeneratedSPM/config_data_model_generated.swift
 +++ b/Libraries/DataModels/PreGeneratedSPM/config_data_model_generated.swift
-@@ -301,6 +301,7 @@ public final class GenerationConfiguration: Dflat.Atom, SQLiteDflat.SQLiteAtom,
+@@ -301,6 +301,8 @@ public final class GenerationConfiguration: Dflat.Atom, SQLiteDflat.SQLiteAtom,
      guard lhs.usesSolAttention == rhs.usesSolAttention else { return false }
      guard lhs.solAttentionStart == rhs.solAttentionStart else { return false }
      guard lhs.solAttentionTau == rhs.solAttentionTau else { return false }
 +    guard lhs.scheduler == rhs.scheduler else { return false }
++    guard lhs.seamlessTile == rhs.seamlessTile else { return false }
      return true
    }
    public var _rowid: Int64 = -1
-@@ -395,6 +396,7 @@ public final class GenerationConfiguration: Dflat.Atom, SQLiteDflat.SQLiteAtom,
+@@ -395,6 +397,8 @@ public final class GenerationConfiguration: Dflat.Atom, SQLiteDflat.SQLiteAtom,
    public let usesSolAttention: Bool
    public let solAttentionStart: Int32
    public let solAttentionTau: Float32
 +  public let scheduler: Int32
++  public let seamlessTile: Int8
    public init(
      id: Int64, startWidth: UInt16? = 0, startHeight: UInt16? = 0, seed: UInt32? = 0,
      steps: UInt32? = 0, guidanceScale: Float32? = 0.0, strength: Float32? = 0.0,
-@@ -429,7 +431,8 @@ public final class GenerationConfiguration: Dflat.Atom, SQLiteDflat.SQLiteAtom,
+@@ -429,7 +433,8 @@ public final class GenerationConfiguration: Dflat.Atom, SQLiteDflat.SQLiteAtom,
      cfgZeroInitSteps: Int32? = 0, compressionArtifacts: CompressionMethod? = .disabled,
      compressionArtifactsQuality: Float32? = 43.1, colorCalibration: ColorCalibration? = .disabled,
      expandPromptToJson: Bool? = false, shiftForAudio: Float32? = 3.0,
 -    usesSolAttention: Bool? = false, solAttentionStart: Int32? = 2, solAttentionTau: Float32? = 0.5
 +    usesSolAttention: Bool? = false, solAttentionStart: Int32? = 2, solAttentionTau: Float32? = 0.5,
-+    scheduler: Int32? = 0
++    scheduler: Int32? = 0, seamlessTile: Int8? = 0
    ) {
      self.id = id
      self.startWidth = startWidth ?? 0
-@@ -521,6 +524,7 @@ public final class GenerationConfiguration: Dflat.Atom, SQLiteDflat.SQLiteAtom,
+@@ -521,6 +526,8 @@ public final class GenerationConfiguration: Dflat.Atom, SQLiteDflat.SQLiteAtom,
      self.usesSolAttention = usesSolAttention ?? false
      self.solAttentionStart = solAttentionStart ?? 2
      self.solAttentionTau = solAttentionTau ?? 0.5
 +    self.scheduler = scheduler ?? 0
++    self.seamlessTile = seamlessTile ?? 0
    }
    public init(_ obj: zzz_DflatGen_GenerationConfiguration) {
      self.id = obj.id
-@@ -624,6 +628,7 @@ public final class GenerationConfiguration: Dflat.Atom, SQLiteDflat.SQLiteAtom,
+@@ -624,6 +631,8 @@ public final class GenerationConfiguration: Dflat.Atom, SQLiteDflat.SQLiteAtom,
      self.usesSolAttention = obj.usesSolAttention
      self.solAttentionStart = obj.solAttentionStart
      self.solAttentionTau = obj.solAttentionTau
 +    self.scheduler = obj.scheduler
++    self.seamlessTile = obj.seamlessTile
    }
    public static func from(data: Data) -> Self {
      return data.withUnsafeBytes { buffer in
-@@ -787,6 +792,7 @@ public struct GenerationConfigurationBuilder {
+@@ -787,6 +796,8 @@ public struct GenerationConfigurationBuilder {
    public var usesSolAttention: Bool
    public var solAttentionStart: Int32
    public var solAttentionTau: Float32
 +  public var scheduler: Int32
++  public var seamlessTile: Int8
    public init(from object: GenerationConfiguration) {
      id = object.id
      startWidth = object.startWidth
-@@ -878,6 +884,7 @@ public struct GenerationConfigurationBuilder {
+@@ -878,6 +889,8 @@ public struct GenerationConfigurationBuilder {
      usesSolAttention = object.usesSolAttention
      solAttentionStart = object.solAttentionStart
      solAttentionTau = object.solAttentionTau
 +    scheduler = object.scheduler
++    seamlessTile = object.seamlessTile
    }
    public func build() -> GenerationConfiguration {
      GenerationConfiguration(
-@@ -917,7 +924,7 @@ public struct GenerationConfigurationBuilder {
+@@ -917,7 +930,8 @@ public struct GenerationConfigurationBuilder {
        compressionArtifactsQuality: compressionArtifactsQuality, colorCalibration: colorCalibration,
        expandPromptToJson: expandPromptToJson, shiftForAudio: shiftForAudio,
        usesSolAttention: usesSolAttention, solAttentionStart: solAttentionStart,
 -      solAttentionTau: solAttentionTau)
-+      solAttentionTau: solAttentionTau, scheduler: scheduler)
++      solAttentionTau: solAttentionTau, scheduler: scheduler,
++      seamlessTile: seamlessTile)
    }
  }
  
 diff --git a/Libraries/DataModels/PreGeneratedSPM/config_generated.swift b/Libraries/DataModels/PreGeneratedSPM/config_generated.swift
-index 95561bc..9d21480 100755
+index 95561bc..670a3d5 100755
 --- a/Libraries/DataModels/PreGeneratedSPM/config_generated.swift
 +++ b/Libraries/DataModels/PreGeneratedSPM/config_generated.swift
-@@ -499,6 +499,7 @@ public struct zzz_DflatGen_GenerationConfiguration: FlatBufferObject, Verifiable
+@@ -499,6 +499,8 @@ public struct zzz_DflatGen_GenerationConfiguration: FlatBufferObject, Verifiable
      case usesSolAttention = 182
      case solAttentionStart = 184
      case solAttentionTau = 186
 +    case scheduler = 188
++    case seamlessTile = 190
      var v: Int32 { Int32(self.rawValue) }
      var p: VOffset { self.rawValue }
    }
-@@ -911,8 +912,12 @@ public struct zzz_DflatGen_GenerationConfiguration: FlatBufferObject, Verifiable
+@@ -911,8 +913,16 @@ public struct zzz_DflatGen_GenerationConfiguration: FlatBufferObject, Verifiable
      let o = _accessor.offset(VTOFFSET.solAttentionTau.v)
      return o == 0 ? 0.5 : _accessor.readBuffer(of: Float32.self, at: o)
    }
@@ -1643,100 +2819,117 @@ index 95561bc..9d21480 100755
 +    let o = _accessor.offset(VTOFFSET.scheduler.v)
 +    return o == 0 ? 0 : _accessor.readBuffer(of: Int32.self, at: o)
 +  }
++  public var seamlessTile: Int8 {
++    let o = _accessor.offset(VTOFFSET.seamlessTile.v)
++    return o == 0 ? 0 : _accessor.readBuffer(of: Int8.self, at: o)
++  }
    public static func startGenerationConfiguration(_ fbb: inout FlatBufferBuilder) -> UOffset {
 -    fbb.startTable(with: 92)
-+    fbb.startTable(with: 93)
++    fbb.startTable(with: 94)
    }
    public static func add(id: Int64, _ fbb: inout FlatBufferBuilder) {
      fbb.add(element: id, def: 0, at: VTOFFSET.id.p)
-@@ -1220,6 +1225,9 @@ public struct zzz_DflatGen_GenerationConfiguration: FlatBufferObject, Verifiable
+@@ -1220,6 +1230,12 @@ public struct zzz_DflatGen_GenerationConfiguration: FlatBufferObject, Verifiable
    public static func add(solAttentionTau: Float32, _ fbb: inout FlatBufferBuilder) {
      fbb.add(element: solAttentionTau, def: 0.5, at: VTOFFSET.solAttentionTau.p)
    }
 +  public static func add(scheduler: Int32, _ fbb: inout FlatBufferBuilder) {
 +    fbb.add(element: scheduler, def: 0, at: VTOFFSET.scheduler.p)
 +  }
++  public static func add(seamlessTile: Int8, _ fbb: inout FlatBufferBuilder) {
++    fbb.add(element: seamlessTile, def: 0, at: VTOFFSET.seamlessTile.p)
++  }
    public static func endGenerationConfiguration(_ fbb: inout FlatBufferBuilder, start: UOffset)
      -> Offset
    {
-@@ -1317,7 +1325,8 @@ public struct zzz_DflatGen_GenerationConfiguration: FlatBufferObject, Verifiable
+@@ -1317,7 +1333,9 @@ public struct zzz_DflatGen_GenerationConfiguration: FlatBufferObject, Verifiable
      shiftForAudio: Float32 = 3.0,
      usesSolAttention: Bool = false,
      solAttentionStart: Int32 = 2,
 -    solAttentionTau: Float32 = 0.5
 +    solAttentionTau: Float32 = 0.5,
-+    scheduler: Int32 = 0
++    scheduler: Int32 = 0,
++    seamlessTile: Int8 = 0
    ) -> Offset {
      let __start = zzz_DflatGen_GenerationConfiguration.startGenerationConfiguration(&fbb)
      zzz_DflatGen_GenerationConfiguration.add(id: id, &fbb)
-@@ -1417,6 +1426,7 @@ public struct zzz_DflatGen_GenerationConfiguration: FlatBufferObject, Verifiable
+@@ -1417,6 +1435,8 @@ public struct zzz_DflatGen_GenerationConfiguration: FlatBufferObject, Verifiable
      zzz_DflatGen_GenerationConfiguration.add(usesSolAttention: usesSolAttention, &fbb)
      zzz_DflatGen_GenerationConfiguration.add(solAttentionStart: solAttentionStart, &fbb)
      zzz_DflatGen_GenerationConfiguration.add(solAttentionTau: solAttentionTau, &fbb)
 +    zzz_DflatGen_GenerationConfiguration.add(scheduler: scheduler, &fbb)
++    zzz_DflatGen_GenerationConfiguration.add(seamlessTile: seamlessTile, &fbb)
      return zzz_DflatGen_GenerationConfiguration.endGenerationConfiguration(&fbb, start: __start)
    }
  
-@@ -1657,6 +1667,9 @@ public struct zzz_DflatGen_GenerationConfiguration: FlatBufferObject, Verifiable
+@@ -1657,6 +1677,12 @@ public struct zzz_DflatGen_GenerationConfiguration: FlatBufferObject, Verifiable
      try _v.visit(
        field: VTOFFSET.solAttentionTau.p, fieldName: "solAttentionTau", required: false,
        type: Float32.self)
 +    try _v.visit(
 +      field: VTOFFSET.scheduler.p, fieldName: "scheduler", required: false,
 +      type: Int32.self)
++    try _v.visit(
++      field: VTOFFSET.seamlessTile.p, fieldName: "seamlessTile", required: false,
++      type: Int8.self)
      _v.finish()
    }
  }
 diff --git a/Libraries/DataModels/PreGeneratedSPM/config_mutating_generated.swift b/Libraries/DataModels/PreGeneratedSPM/config_mutating_generated.swift
-index 7904ed9..7899926 100755
+index 7904ed9..331f5c9 100755
 --- a/Libraries/DataModels/PreGeneratedSPM/config_mutating_generated.swift
 +++ b/Libraries/DataModels/PreGeneratedSPM/config_mutating_generated.swift
-@@ -264,6 +264,7 @@ extension GenerationConfiguration: FlatBuffersEncodable {
+@@ -264,6 +264,8 @@ extension GenerationConfiguration: FlatBuffersEncodable {
        solAttentionStart: self.solAttentionStart, &flatBufferBuilder)
      zzz_DflatGen_GenerationConfiguration.add(
        solAttentionTau: self.solAttentionTau, &flatBufferBuilder)
 +    zzz_DflatGen_GenerationConfiguration.add(scheduler: self.scheduler, &flatBufferBuilder)
++    zzz_DflatGen_GenerationConfiguration.add(seamlessTile: self.seamlessTile, &flatBufferBuilder)
      return zzz_DflatGen_GenerationConfiguration.endGenerationConfiguration(
        &flatBufferBuilder, start: start)
    }
-@@ -381,6 +382,7 @@ public final class GenerationConfigurationChangeRequest: Dflat.ChangeRequest {
+@@ -381,6 +383,8 @@ public final class GenerationConfigurationChangeRequest: Dflat.ChangeRequest {
    public var usesSolAttention: Bool
    public var solAttentionStart: Int32
    public var solAttentionTau: Float32
 +  public var scheduler: Int32
++  public var seamlessTile: Int8
    private init(type _type: ChangeRequestType) {
      _o = nil
      self._type = _type
-@@ -475,6 +477,7 @@ public final class GenerationConfigurationChangeRequest: Dflat.ChangeRequest {
+@@ -475,6 +479,8 @@ public final class GenerationConfigurationChangeRequest: Dflat.ChangeRequest {
      usesSolAttention = false
      solAttentionStart = 2
      solAttentionTau = 0.5
 +    scheduler = 0
++    seamlessTile = 0
    }
    private init(type _type: ChangeRequestType, _ _o: GenerationConfiguration) {
      self._o = _o
-@@ -570,6 +573,7 @@ public final class GenerationConfigurationChangeRequest: Dflat.ChangeRequest {
+@@ -570,6 +576,8 @@ public final class GenerationConfigurationChangeRequest: Dflat.ChangeRequest {
      usesSolAttention = _o.usesSolAttention
      solAttentionStart = _o.solAttentionStart
      solAttentionTau = _o.solAttentionTau
 +    scheduler = _o.scheduler
++    seamlessTile = _o.seamlessTile
    }
    public static func changeRequest(_ o: GenerationConfiguration)
      -> GenerationConfigurationChangeRequest?
-@@ -653,7 +657,7 @@ public final class GenerationConfigurationChangeRequest: Dflat.ChangeRequest {
+@@ -653,7 +661,8 @@ public final class GenerationConfigurationChangeRequest: Dflat.ChangeRequest {
        compressionArtifactsQuality: compressionArtifactsQuality, colorCalibration: colorCalibration,
        expandPromptToJson: expandPromptToJson, shiftForAudio: shiftForAudio,
        usesSolAttention: usesSolAttention, solAttentionStart: solAttentionStart,
 -      solAttentionTau: solAttentionTau)
-+      solAttentionTau: solAttentionTau, scheduler: scheduler)
++      solAttentionTau: solAttentionTau, scheduler: scheduler,
++      seamlessTile: seamlessTile)
      atom._rowid = _rowid
      return atom
    }
 diff --git a/Libraries/DataModels/PreGeneratedSPM/config_query_generated.swift b/Libraries/DataModels/PreGeneratedSPM/config_query_generated.swift
-index 4e8fa9a..912028d 100755
+index 4e8fa9a..86614fc 100755
 --- a/Libraries/DataModels/PreGeneratedSPM/config_query_generated.swift
 +++ b/Libraries/DataModels/PreGeneratedSPM/config_query_generated.swift
-@@ -953,4 +953,15 @@ extension GenerationConfiguration {
+@@ -953,4 +953,26 @@ extension GenerationConfiguration {
    public static let solAttentionTau: FieldExpr<Float32, GenerationConfiguration> = FieldExpr(
      name: "f186", primaryKey: false, hasIndex: false, tableReader: _tr__f186,
      objectReader: _or__f186)
@@ -1751,6 +2944,17 @@ index 4e8fa9a..912028d 100755
 +  public static let scheduler: FieldExpr<Int32, GenerationConfiguration> = FieldExpr(
 +    name: "f188", primaryKey: false, hasIndex: false, tableReader: _tr__f188,
 +    objectReader: _or__f188)
++
++  private static func _tr__f190(_ table: ByteBuffer) -> Int8? {
++    let tr0 = zzz_DflatGen_GenerationConfiguration.getRootAsGenerationConfiguration(bb: table)
++    return tr0.seamlessTile
++  }
++  private static func _or__f190(_ or0: GenerationConfiguration) -> Int8? {
++    return or0.seamlessTile
++  }
++  public static let seamlessTile: FieldExpr<Int8, GenerationConfiguration> = FieldExpr(
++    name: "f190", primaryKey: false, hasIndex: false, tableReader: _tr__f190,
++    objectReader: _or__f190)
  }
 diff --git a/Libraries/DataModels/Sources/DeviceCapability.swift b/Libraries/DataModels/Sources/DeviceCapability.swift
 index 4771b4a..1ee1307 100644
@@ -1766,16 +2970,19 @@ index 4771b4a..1ee1307 100644
          (!isUltraPerformance && !(isMaxPerformance && is8BitModel)) || force
        else {
 diff --git a/Libraries/DataModels/Sources/config.fbs b/Libraries/DataModels/Sources/config.fbs
-index 302da91..7f32596 100644
+index 302da91..81296dc 100644
 --- a/Libraries/DataModels/Sources/config.fbs
 +++ b/Libraries/DataModels/Sources/config.fbs
-@@ -193,6 +193,9 @@ table GenerationConfiguration {
+@@ -193,6 +193,12 @@ table GenerationConfiguration {
    uses_sol_attention: bool = false;
    sol_attention_start: int = 2;
    sol_attention_tau: float = 0.5;
 +  // Atelier's ComfyUI scheduler, appended so readers that don't know it see 0 (the sampler's own).
 +  // 0 default, 1 simple, 2 sgm_uniform, 3 normal, 4 karras, 5 exponential, 6 linear_quadratic, 7 beta.
 +  scheduler: int = 0;
++  // Seamless tile (DT Hub), appended so readers that don't know it see 0 (off).
++  // 0 off, 1 left-right, 2 up-down, 3 both.
++  seamless_tile: byte = 0;
  }
  
  root_type GenerationConfiguration;
@@ -1877,10 +3084,10 @@ index e0b5448..ee14421 100644
            else { return nil }
            return LoRAConfiguration(
 diff --git a/Libraries/LocalImageGenerator/Sources/LocalImageGenerator.swift b/Libraries/LocalImageGenerator/Sources/LocalImageGenerator.swift
-index 5e774de..43a7366 100644
+index 5e774de..db54d02 100644
 --- a/Libraries/LocalImageGenerator/Sources/LocalImageGenerator.swift
 +++ b/Libraries/LocalImageGenerator/Sources/LocalImageGenerator.swift
-@@ -30,7 +30,29 @@ public func xorshift(_ a: UInt32) -> UInt32 {
+@@ -30,13 +30,39 @@ public func xorshift(_ a: UInt32) -> UInt32 {
    return x
  }
  
@@ -1910,7 +3117,17 @@ index 5e774de..43a7366 100644
    public let modelPreloader: ModelPreloader
    /// How every sampler this generator builds spaces its steps (`Denoiser.Scheduler`). Not part of
    /// `GenerationConfiguration` (whose FlatBuffers schema Draw Things owns); callers set it on a
-@@ -202,7 +224,7 @@ extension LocalImageGenerator {
+   /// copy of the generator for one `generate` call, as MediaGenerationKit does from
+   /// `MediaGenerationPipeline.Configuration.scheduler`.
+   public var scheduler: Denoiser.Scheduler = .samplerDefault
++  /// Seamless tile of the current `generate` call, from `GenerationConfiguration.seamlessTile` and
++  /// only for Krea 2, Z-Image, FLUX.2 and FLUX.3 (nil otherwise). Set by `generate` on a copy of the
++  /// generator; every sampler (image RoPE) and first stage (decoder wrap) it builds carries it.
++  var seamlessTile: SeamlessTile? = nil
+   private let tokenizerV1Factory: () -> TextualInversionAttentionCLIPTokenizer
+   private let tokenizerV2Factory: () -> TextualInversionAttentionCLIPTokenizer
+   private let tokenizerXLFactory: () -> TextualInversionAttentionCLIPTokenizer
+@@ -202,7 +228,7 @@ extension LocalImageGenerator {
        ]
      case .sd3, .sd3Large, .pixart, .auraflow, .flux1, .kandinsky21, .wurstchenStageB,
        .wurstchenStageC, .hunyuanVideo, .wan21_1_3b, .wan21_14b, .hiDreamI1, .hiDreamO1, .qwenImage,
@@ -1919,7 +3136,7 @@ index 5e774de..43a7366 100644
        .fibo2,
        .mossImage,
        .cosmos2_5_2b, .cosmos2_5_2_9b,
-@@ -1507,6 +1529,20 @@ extension LocalImageGenerator {
+@@ -1507,6 +1533,21 @@ extension LocalImageGenerator {
      feedback:
        @escaping (ImageGeneratorSignpost, Set<ImageGeneratorSignpost>, Tensor<FloatType>?) -> Bool
    ) -> ([Tensor<FloatType>]?, [Tensor<Float>]?, Int) {
@@ -1937,10 +3154,58 @@ index 5e774de..43a7366 100644
 +        fileMapping: fileMapping, keywords: keywords, audioContext: audioContext,
 +        cancellation: cancellation, feedback: feedback)
 +    }
++    let originalHints = hints
  
      let depth =
        (hints.first {
-@@ -2141,6 +2177,27 @@ extension LocalImageGenerator {
+@@ -1547,6 +1588,46 @@ extension LocalImageGenerator {
+         ModelZoo.isModelDownloaded($0) ? $0 : nil
+       }) ?? ModelZoo.defaultSpecification.file
+     let modelVersion = ModelZoo.versionForModel(file)
++    // Seamless tile (`GenerationConfiguration.seamlessTile`), read only for the four families whose
++    // image RoPE and decoder know the torus; any other version (Ming-Image included) ignores it.
++    // Tiled diffusion and tiled decoding would cut the torus, so they are off for this call; run on
++    // a copy that has the tile and those settings, once (the copy matches, so it goes on).
++    let seamless =
++      SeamlessTile.minTurns(for: modelVersion) != nil
++      ? SeamlessTile(configurationValue: configuration.seamlessTile) : nil
++    if seamless != seamlessTile
++      || (seamless != nil && (configuration.tiledDiffusion || configuration.tiledDecoding))
++    {
++      var generator = self
++      generator.seamlessTile = seamless
++      var configuration = configuration
++      if seamless != nil {
++        var builder = GenerationConfigurationBuilder(from: configuration)
++        builder.tiledDiffusion = false
++        builder.tiledDecoding = false
++        configuration = builder.build()
++      }
++      return generator.generate(
++        trace: trace, image: image, scaleFactor: scaleFactor, mask: mask,
++        hints: originalHints, text: text, negativeText: negativeText,
++        configuration: configuration, fileMapping: fileMapping, keywords: keywords,
++        audioContext: audioContext, cancellation: cancellation, feedback: feedback)
++    }
++    if seamless != nil {
++      // Every pass (the HiRes fix first pass too) needs a latent grid the patch divides, that is a
++      // size in multiples of 16 px. Sizes come in 64 px units today, so this holds; it stays so a
++      // finer size unit can never give a generation whose torus doesn't close.
++      let sizes = [
++        Int(configuration.startWidth), Int(configuration.startHeight),
++      ]
++        + (configuration.hiresFix
++          ? [Int(configuration.hiresFixStartWidth), Int(configuration.hiresFixStartHeight)] : [])
++      guard sizes.allSatisfy({ ($0 * 64) % 16 == 0 }) else {
++        FileHandle.standardError.write(
++          Data("Seamless tile: the size must be a multiple of 16 px\n".utf8))
++        return (nil, nil, 1)
++      }
++    }
+     if audio != nil || audioContext != nil {
+       guard mask == nil else { return (nil, nil, 1) }
+       switch modelVersion {
+@@ -2141,6 +2222,27 @@ extension LocalImageGenerator {
          negativeText: imagePrefix + audioPrefix + (negativeText.isEmpty ? " " : negativeText),
          paddingToken: nil, addSpecialTokens: false, conditionalLength: 5120, modifier: .qwen3,
          potentials: potentials, startLength: 0, endLength: 0, maxLength: 0, paddingLength: 0)
@@ -1968,7 +3233,7 @@ index 5e774de..43a7366 100644
      case .zImage:
        let promptWithTemplate =
          "<|im_start|>user\n\(text)<|im_end|>\n<|im_start|>assistant\n"
-@@ -3831,7 +3888,7 @@ extension LocalImageGenerator {
+@@ -3831,7 +3933,7 @@ extension LocalImageGenerator {
          fatalError()
        case .qwenImage, .qwenImage2_1, .cosmos2_5_2b, .cosmos2_5_2_9b, .krea2:
          fatalError()
@@ -1977,7 +3242,7 @@ index 5e774de..43a7366 100644
          fatalError()
        case .flux2, .flux2_9b, .flux2_4b, .flux3_5b, .fibo2, .mossImage:
          fatalError()
-@@ -3931,7 +3988,7 @@ extension LocalImageGenerator {
+@@ -3931,7 +4033,7 @@ extension LocalImageGenerator {
          )
        case .hiDreamI1, .hiDreamO1:
          fatalError()
@@ -1986,7 +3251,7 @@ index 5e774de..43a7366 100644
          fatalError()
        case .flux2, .flux2_9b, .flux2_4b, .flux3_5b, .fibo2, .mossImage:
          fatalError()
-@@ -3951,7 +4008,7 @@ extension LocalImageGenerator {
+@@ -3951,7 +4053,7 @@ extension LocalImageGenerator {
        case .v1, .v2, .auraflow, .kandinsky21, .pixart, .sd3, .sd3Large, .sdxlBase, .sdxlRefiner,
          .ssd1b, .svdI2v, .wurstchenStageB, .wurstchenStageC, .hunyuanVideo, .wan21_1_3b, .wan21_14b,
          .hiDreamI1, .hiDreamO1, .qwenImage, .qwenImage2_1, .cosmos2_5_2b,
@@ -1995,7 +3260,7 @@ index 5e774de..43a7366 100644
          .ernieImage, .flux2, .flux2_9b, .flux2_4b, .flux3_5b, .fibo2, .mossImage, .ltx2, .ltx2_3,
          .seedvr2_3b,
          .seedvr2_7b,
-@@ -3981,8 +4038,62 @@ extension LocalImageGenerator {
+@@ -3981,8 +4083,62 @@ extension LocalImageGenerator {
          .ssd1b, .svdI2v, .wurstchenStageB, .wurstchenStageC, .hunyuanVideo, .wan21_1_3b, .wan21_14b,
          .hiDreamI1, .hiDreamO1, .wan22_5b, .zImage, .ernieImage, .cosmos2_5_2b,
          .cosmos2_5_2_9b, .seedvr2_3b,
@@ -2059,7 +3324,7 @@ index 5e774de..43a7366 100644
        case .minimaxH3Image:
          // Every picture (the canvas first, then the moodboard) is a reference latent. The VAE
          // sees each with its short edge within 1,024 to 2,048 pixels (ComfyUI's
-@@ -4133,7 +4244,7 @@ extension LocalImageGenerator {
+@@ -4133,7 +4289,7 @@ extension LocalImageGenerator {
        switch version {
        case .v1, .v2, .auraflow, .kandinsky21, .pixart, .sd3, .sd3Large, .sdxlBase, .sdxlRefiner,
          .ssd1b, .svdI2v, .wurstchenStageC, .wurstchenStageB, .hunyuanVideo, .wan21_1_3b, .wan21_14b,
@@ -2068,7 +3333,7 @@ index 5e774de..43a7366 100644
          .cosmos2_5_2b, .cosmos2_5_2_9b, .flux2, .flux2_9b, .flux2_4b, .flux3_5b, .fibo2,
          .mossImage, .seedvr2_3b,
          .seedvr2_7b,
-@@ -4157,7 +4268,7 @@ extension LocalImageGenerator {
+@@ -4157,7 +4313,7 @@ extension LocalImageGenerator {
      switch version {
      case .v1, .v2, .auraflow, .kandinsky21, .pixart, .sd3, .sd3Large, .sdxlBase, .sdxlRefiner,
        .ssd1b, .wurstchenStageB, .wurstchenStageC, .flux1, .hiDreamI1, .hiDreamO1, .qwenImage,
@@ -2077,7 +3342,7 @@ index 5e774de..43a7366 100644
        .flux2_9b, .flux2_4b,
        .flux3_5b, .fibo2, .mossImage,
        .seedvr2_3b, .seedvr2_7b, .ideogram4, .krea2, .minimaxH3, .minimaxH3Image:
-@@ -4177,7 +4288,7 @@ extension LocalImageGenerator {
+@@ -4177,7 +4333,7 @@ extension LocalImageGenerator {
      case .v1, .v2, .auraflow, .kandinsky21, .pixart, .sd3, .sd3Large, .sdxlBase, .sdxlRefiner,
        .ssd1b, .svdI2v, .wurstchenStageB, .wurstchenStageC, .hunyuanVideo, .flux1, .hiDreamI1,
        .hiDreamO1, .qwenImage, .qwenImage2_1, .cosmos2_5_2b, .cosmos2_5_2_9b, .wan22_5b,
@@ -2086,7 +3351,7 @@ index 5e774de..43a7366 100644
        .flux2_9b, .flux2_4b, .flux3_5b, .fibo2, .mossImage, .seedvr2_3b, .seedvr2_7b, .ideogram4,
        .krea2,
        .minimaxH3Image:
-@@ -4283,7 +4394,7 @@ extension LocalImageGenerator {
+@@ -4283,7 +4439,7 @@ extension LocalImageGenerator {
      case .hunyuanVideo, .auraflow, .flux1, .hiDreamI1, .hiDreamO1, .qwenImage, .qwenImage2_1,
        .cosmos2_5_2b, .cosmos2_5_2_9b, .kandinsky21, .pixart, .sd3, .sd3Large, .sdxlBase,
        .sdxlRefiner, .ssd1b,
@@ -2095,7 +3360,7 @@ index 5e774de..43a7366 100644
        .flux2_9b, .flux2_4b, .flux3_5b, .fibo2, .mossImage, .ltx2, .ltx2_3, .seedvr2_3b, .seedvr2_7b,
        .ideogram4, .krea2,
        .minimaxH3, .minimaxH3Image:
-@@ -4346,7 +4457,7 @@ extension LocalImageGenerator {
+@@ -4346,7 +4502,7 @@ extension LocalImageGenerator {
        fatalError()
      case .qwenImage, .qwenImage2_1, .cosmos2_5_2b, .cosmos2_5_2_9b, .krea2:
        fatalError()
@@ -2104,7 +3369,7 @@ index 5e774de..43a7366 100644
        fatalError()
      case .flux1:
        let shape = encodedImage.shape
-@@ -4460,7 +4571,7 @@ extension LocalImageGenerator {
+@@ -4460,7 +4616,7 @@ extension LocalImageGenerator {
      // samplers trim a CFG-sized conditioning and keep the wrong rotary rows.
      var isCfgEnabled =
        !ModelZoo.isConsistencyModelForModel(file) && !isGuidanceEmbedEnabled
@@ -2113,7 +3378,7 @@ index 5e774de..43a7366 100644
      let latentsScaling = ModelZoo.latentsScalingForModel(file)
      let noiseScalingFactor = ModelZoo.noiseScalingFactorForModel(file)
      let paddedTextEncodingLength = ModelZoo.paddedTextEncodingLengthForModel(file)
-@@ -4483,7 +4594,8 @@ extension LocalImageGenerator {
+@@ -4483,7 +4639,8 @@ extension LocalImageGenerator {
        ), tileOverlap: Int(configuration.diffusionTileOverlap))
      var alternativeDecoderFilePath: String? = nil
      var alternativeDecoderVersion: AlternativeDecoderVersion? =
@@ -2123,7 +3388,7 @@ index 5e774de..43a7366 100644
      let lora: [LoRAConfiguration] =
        (ModelZoo.builtinLoRAForModel(file)
          ? [
-@@ -4493,7 +4605,7 @@ extension LocalImageGenerator {
+@@ -4493,7 +4650,7 @@ extension LocalImageGenerator {
          ] : [])
        + configuration.loras.compactMap {
          guard let file = $0.file else { return nil }
@@ -2132,7 +3397,24 @@ index 5e774de..43a7366 100644
          guard LoRAZoo.isModelDownloaded(file),
            modelVersion == loraVersion || refinerVersion == loraVersion
              || (modelVersion == .kandinsky21 && loraVersion == .v1)
-@@ -4793,7 +4905,7 @@ extension LocalImageGenerator {
+@@ -4699,7 +4856,7 @@ extension LocalImageGenerator {
+       ? (Int(configuration.causalInference), max(0, Int(configuration.causalInferencePad))) : (0, 0)
+     let cfgZeroStar = CfgZeroStarConfiguration(
+       isEnabled: configuration.cfgZeroStar, zeroInitSteps: Int(configuration.cfgZeroInitSteps))
+-    let sampler = LocalImageGenerator.sampler(
++    var sampler = LocalImageGenerator.sampler(
+       from: configuration.sampler, isCfgEnabled: isCfgEnabled,
+       filePath: ModelZoo.filePathForModelDownloaded(file), modifier: modifier,
+       version: modelVersion,
+@@ -4726,6 +4883,7 @@ extension LocalImageGenerator {
+       tiledDiffusion: tiledDiffusion, teaCache: teaCache, causalInference: causalInference,
+       cfgZeroStar: cfgZeroStar, isBF16: isBF16, weightsCache: weightsCache,
+       scheduler: scheduler, of: FloatType.self)
++    sampler.seamless = seamlessTile
+     let initTimestep = sampler.timestep(for: hiresFixStrength, sampling: sampling)
+     let hiresFixEnabled =
+       configuration.hiresFix && initTimestep.startStep > 0 && configuration.hiresFixStartWidth > 0
+@@ -4793,7 +4951,7 @@ extension LocalImageGenerator {
            * 4
          firstPassAudioHeight = 0
        case .wurstchenStageC, .sd3, .sd3Large, .flux1, .hunyuanVideo, .wan21_1_3b, .wan21_14b,
@@ -2141,7 +3423,15 @@ index 5e774de..43a7366 100644
          .seedvr2_7b, .krea2,
          .longcatVideoAvatar1_5:
          firstPassChannels = 16
-@@ -5058,7 +5170,7 @@ extension LocalImageGenerator {
+@@ -5031,6 +5189,7 @@ extension LocalImageGenerator {
+         alternativeFilePath: alternativeDecoderFilePath,
+         alternativeDecoderVersion: alternativeDecoderVersion,
+         deviceProperties: DeviceCapability.deviceProperties)
++      firstStage.wrap = seamlessTile
+       var batchSize = (batchSize, 0)
+       switch modelVersion {
+       case .minimaxH3:
+@@ -5058,7 +5217,7 @@ extension LocalImageGenerator {
            hasCustom: custom != nil)
        case .auraflow, .flux1, .kandinsky21, .pixart, .sd3, .sd3Large, .sdxlBase, .sdxlRefiner,
          .ssd1b, .v1, .v2, .wurstchenStageB, .wurstchenStageC, .hiDreamI1, .hiDreamO1, .qwenImage,
@@ -2150,7 +3440,32 @@ index 5e774de..43a7366 100644
          .flux2_9b, .flux2_4b, .flux3_5b, .fibo2, .minimaxH3Image,
          .mossImage,
          .seedvr2_3b, .seedvr2_7b, .ideogram4, .krea2:
-@@ -5628,7 +5740,7 @@ extension LocalImageGenerator {
+@@ -5268,6 +5427,7 @@ extension LocalImageGenerator {
+         alternativeFilePath: alternativeDecoderFilePath,
+         alternativeDecoderVersion: alternativeDecoderVersion,
+         deviceProperties: DeviceCapability.deviceProperties)
++      firstStage.wrap = seamlessTile
+ 
+       if DeviceCapability.isLowPerformance {
+         graph.garbageCollect()
+@@ -5576,7 +5736,7 @@ extension LocalImageGenerator {
+         secondPassModelVersion = modelVersion
+         secondPassModelFilePath = ModelZoo.filePathForModelDownloaded(file)
+       }
+-      let secondPassSampler = LocalImageGenerator.sampler(
++      var secondPassSampler = LocalImageGenerator.sampler(
+         from: configuration.sampler, isCfgEnabled: isCfgEnabled,
+         filePath: secondPassModelFilePath, modifier: modifier,
+         version: secondPassModelVersion,
+@@ -5603,6 +5763,7 @@ extension LocalImageGenerator {
+         tiledDiffusion: tiledDiffusion, teaCache: teaCache, causalInference: causalInference,
+         cfgZeroStar: cfgZeroStar, isBF16: isBF16, weightsCache: weightsCache,
+         scheduler: scheduler, of: FloatType.self)
++      secondPassSampler.seamless = seamlessTile
+       let startStep: (integral: Int, fractional: Float)
+       let xEnc: DynamicGraph.Tensor<FloatType>
+       let secondPassTextGuidance: Float
+@@ -5628,7 +5789,7 @@ extension LocalImageGenerator {
          case .qwenImage2_1:
            channels = 64
          case .wurstchenStageC, .sd3, .sd3Large, .flux1, .hunyuanVideo, .wan21_1_3b, .wan21_14b,
@@ -2159,7 +3474,7 @@ index 5e774de..43a7366 100644
            .seedvr2_7b, .krea2,
            .longcatVideoAvatar1_5:
            channels = 16
-@@ -5899,7 +6011,7 @@ extension LocalImageGenerator {
+@@ -5899,7 +6060,7 @@ extension LocalImageGenerator {
      // H3 Image never uses CFG; see generateTextOnly.
      var isCfgEnabled =
        !ModelZoo.isConsistencyModelForModel(file) && !isGuidanceEmbedEnabled
@@ -2168,7 +3483,7 @@ index 5e774de..43a7366 100644
      let latentsScaling = ModelZoo.latentsScalingForModel(file)
      let paddedTextEncodingLength = ModelZoo.paddedTextEncodingLengthForModel(file)
      let conditioning = ModelZoo.conditioningForModel(file)
-@@ -5921,7 +6033,8 @@ extension LocalImageGenerator {
+@@ -5921,7 +6082,8 @@ extension LocalImageGenerator {
        ), tileOverlap: Int(configuration.diffusionTileOverlap))
      var alternativeDecoderFilePath: String? = nil
      var alternativeDecoderVersion: AlternativeDecoderVersion? =
@@ -2178,7 +3493,7 @@ index 5e774de..43a7366 100644
      let lora: [LoRAConfiguration] =
        (ModelZoo.builtinLoRAForModel(file)
          ? [
-@@ -5931,7 +6044,7 @@ extension LocalImageGenerator {
+@@ -5931,7 +6093,7 @@ extension LocalImageGenerator {
          ] : [])
        + configuration.loras.compactMap {
          guard let file = $0.file else { return nil }
@@ -2187,7 +3502,24 @@ index 5e774de..43a7366 100644
          guard LoRAZoo.isModelDownloaded(file),
            modelVersion == loraVersion || refinerVersion == loraVersion
              || (modelVersion == .kandinsky21 && loraVersion == .v1)
-@@ -6198,7 +6311,7 @@ extension LocalImageGenerator {
+@@ -6107,7 +6269,7 @@ extension LocalImageGenerator {
+       ? (Int(configuration.causalInference), max(0, Int(configuration.causalInferencePad))) : (0, 0)
+     let cfgZeroStar = CfgZeroStarConfiguration(
+       isEnabled: configuration.cfgZeroStar, zeroInitSteps: Int(configuration.cfgZeroInitSteps))
+-    let sampler = LocalImageGenerator.sampler(
++    var sampler = LocalImageGenerator.sampler(
+       from: configuration.sampler, isCfgEnabled: isCfgEnabled,
+       filePath: ModelZoo.filePathForModelDownloaded(file), modifier: modifier,
+       version: modelVersion,
+@@ -6134,6 +6296,7 @@ extension LocalImageGenerator {
+       tiledDiffusion: tiledDiffusion, teaCache: teaCache, causalInference: causalInference,
+       cfgZeroStar: cfgZeroStar, isBF16: isBF16, weightsCache: weightsCache,
+       scheduler: scheduler, of: FloatType.self)
++    sampler.seamless = seamlessTile
+     let initTimestep = sampler.timestep(for: strength, sampling: sampling)
+     guard
+       initTimestep.startStep > 0 || modelVersion == .svdI2v || modelVersion == .seedvr2_3b
+@@ -6198,7 +6361,7 @@ extension LocalImageGenerator {
          startHeight = image.shape[1] / 16 / imageScaleFactor
          audioHeight = 0
        case .wurstchenStageC, .sd3, .sd3Large, .flux1, .hunyuanVideo, .wan21_1_3b, .wan21_14b,
@@ -2196,7 +3528,15 @@ index 5e774de..43a7366 100644
          .seedvr2_7b, .krea2,
          .longcatVideoAvatar1_5:
          channels = 16
-@@ -6432,7 +6545,7 @@ extension LocalImageGenerator {
+@@ -6388,6 +6551,7 @@ extension LocalImageGenerator {
+         alternativeFilePath: alternativeDecoderFilePath,
+         alternativeDecoderVersion: alternativeDecoderVersion,
+         deviceProperties: DeviceCapability.deviceProperties)
++      firstStage.wrap = seamlessTile
+       // Check if strength is 0.
+       guard initTimestep.roundedDownStartStep < sampling.steps && configuration.strength > 0 else {
+         let image = faceRestoreImage(image, configuration: configuration)
+@@ -6432,7 +6596,7 @@ extension LocalImageGenerator {
            hasCustom: custom != nil)
        case .auraflow, .flux1, .kandinsky21, .pixart, .sd3, .sd3Large, .sdxlBase, .sdxlRefiner,
          .ssd1b, .v1, .v2, .wurstchenStageB, .wurstchenStageC, .hiDreamI1, .hiDreamO1, .qwenImage,
@@ -2205,7 +3545,32 @@ index 5e774de..43a7366 100644
          .flux2_9b, .flux2_4b, .flux3_5b, .fibo2, .minimaxH3Image,
          .mossImage,
          .seedvr2_3b, .seedvr2_7b, .ideogram4, .krea2:
-@@ -6982,11 +7095,11 @@ extension LocalImageGenerator {
+@@ -6623,6 +6787,7 @@ extension LocalImageGenerator {
+           alternativeFilePath: alternativeDecoderFilePath,
+           alternativeDecoderVersion: alternativeDecoderVersion,
+           deviceProperties: DeviceCapability.deviceProperties)
++        firstStage.wrap = seamlessTile
+         let (sample, encodedImage) = modelPreloader.consumeFirstStageSample(
+           firstStage.sample(
+             image,
+@@ -6660,7 +6825,7 @@ extension LocalImageGenerator {
+         let secondPassModelVersion = ModelVersion.wurstchenStageB
+         let secondPassModelFilePath = ModelZoo.filePathForModelDownloaded(
+           ModelZoo.stageModelsForModel(file)[0])
+-        let secondPassSampler = LocalImageGenerator.sampler(
++        var secondPassSampler = LocalImageGenerator.sampler(
+           from: configuration.sampler, isCfgEnabled: isCfgEnabled,
+           filePath: secondPassModelFilePath, modifier: modifier,
+           version: secondPassModelVersion,
+@@ -6688,6 +6853,7 @@ extension LocalImageGenerator {
+           cfgZeroStar: cfgZeroStar, isBF16: isBF16, weightsCache: weightsCache,
+           scheduler: scheduler, of: FloatType.self
+         )
++        secondPassSampler.seamless = seamlessTile
+         let noise = randomLatentNoise(
+           graph: graph, batchSize: batchSize.0, startHeight: startHeight,
+           startWidth: startWidth, channels: channels, seed: configuration.seed,
+@@ -6982,11 +7148,11 @@ extension LocalImageGenerator {
      }
      var alternativeDecoderVersion: AlternativeDecoderVersion? =
        (ModelZoo.modifierForModel(configuration.model ?? "") == .qwenimageLayered
@@ -2219,7 +3584,7 @@ index 5e774de..43a7366 100644
        guard LoRAZoo.isModelDownloaded(file),
          modelVersion == loraVersion || refinerVersion == loraVersion
            || (modelVersion == .kandinsky21 && loraVersion == .v1)
-@@ -7049,11 +7162,11 @@ extension LocalImageGenerator {
+@@ -7049,11 +7215,11 @@ extension LocalImageGenerator {
      }
      var alternativeDecoderVersion: AlternativeDecoderVersion? =
        (ModelZoo.modifierForModel(configuration.model ?? "") == .qwenimageLayered
@@ -2233,7 +3598,7 @@ index 5e774de..43a7366 100644
        guard LoRAZoo.isModelDownloaded(file),
          modelVersion == loraVersion || refinerVersion == loraVersion
            || (modelVersion == .kandinsky21 && loraVersion == .v1)
-@@ -7429,7 +7542,7 @@ extension LocalImageGenerator {
+@@ -7429,7 +7595,7 @@ extension LocalImageGenerator {
      // H3 Image never uses CFG; see generateTextOnly.
      var isCfgEnabled =
        !ModelZoo.isConsistencyModelForModel(file) && !isGuidanceEmbedEnabled
@@ -2242,7 +3607,7 @@ index 5e774de..43a7366 100644
      let latentsScaling = ModelZoo.latentsScalingForModel(file)
      let paddedTextEncodingLength = ModelZoo.paddedTextEncodingLengthForModel(file)
      let conditioning = ModelZoo.conditioningForModel(file)
-@@ -7451,7 +7564,8 @@ extension LocalImageGenerator {
+@@ -7451,7 +7617,8 @@ extension LocalImageGenerator {
        ), tileOverlap: Int(configuration.diffusionTileOverlap))
      var alternativeDecoderFilePath: String? = nil
      var alternativeDecoderVersion: AlternativeDecoderVersion? =
@@ -2252,7 +3617,7 @@ index 5e774de..43a7366 100644
      let lora: [LoRAConfiguration] =
        (ModelZoo.builtinLoRAForModel(file)
          ? [
-@@ -7461,7 +7575,7 @@ extension LocalImageGenerator {
+@@ -7461,7 +7628,7 @@ extension LocalImageGenerator {
          ] : [])
        + configuration.loras.compactMap {
          guard let file = $0.file else { return nil }
@@ -2261,7 +3626,7 @@ index 5e774de..43a7366 100644
          guard LoRAZoo.isModelDownloaded(file),
            modelVersion == loraVersion || refinerVersion == loraVersion
              || (modelVersion == .kandinsky21 && loraVersion == .v1)
-@@ -7615,7 +7729,7 @@ extension LocalImageGenerator {
+@@ -7615,7 +7782,7 @@ extension LocalImageGenerator {
          startHeight = image.shape[1] / 16 / imageScaleFactor
          audioHeight = 0
        case .wurstchenStageC, .sd3, .sd3Large, .flux1, .hunyuanVideo, .wan21_1_3b, .wan21_14b,
@@ -2270,7 +3635,32 @@ index 5e774de..43a7366 100644
          .seedvr2_7b, .krea2,
          .longcatVideoAvatar1_5:
          channels = 16
-@@ -7927,7 +8041,7 @@ extension LocalImageGenerator {
+@@ -7728,7 +7895,7 @@ extension LocalImageGenerator {
+       ? (Int(configuration.causalInference), max(0, Int(configuration.causalInferencePad))) : (0, 0)
+     let cfgZeroStar = CfgZeroStarConfiguration(
+       isEnabled: configuration.cfgZeroStar, zeroInitSteps: Int(configuration.cfgZeroInitSteps))
+-    let sampler = LocalImageGenerator.sampler(
++    var sampler = LocalImageGenerator.sampler(
+       from: configuration.sampler, isCfgEnabled: isCfgEnabled,
+       filePath: ModelZoo.filePathForModelDownloaded(file), modifier: modifier,
+       version: modelVersion,
+@@ -7755,6 +7922,7 @@ extension LocalImageGenerator {
+       tiledDiffusion: tiledDiffusion, teaCache: teaCache, causalInference: causalInference,
+       cfgZeroStar: cfgZeroStar, isBF16: isBF16, weightsCache: weightsCache,
+       scheduler: scheduler, of: FloatType.self)
++    sampler.seamless = seamlessTile
+     let initTimestep = sampler.timestep(for: strength, sampling: sampling)
+     let graph = DynamicGraph()
+     if externalOnDemand
+@@ -7895,6 +8063,7 @@ extension LocalImageGenerator {
+         alternativeFilePath: alternativeDecoderFilePath,
+         alternativeDecoderVersion: alternativeDecoderVersion,
+         deviceProperties: DeviceCapability.deviceProperties)
++      firstStage.wrap = seamlessTile
+       var firstPassImage: DynamicGraph.Tensor<FloatType>
+       if modelVersion == .wurstchenStageC {
+         // Try to resize the input image so we can encode with EfficientNetv2s properly.
+@@ -7927,7 +8096,7 @@ extension LocalImageGenerator {
            hasCustom: custom != nil)
        case .auraflow, .flux1, .kandinsky21, .pixart, .sd3, .sd3Large, .sdxlBase, .sdxlRefiner,
          .ssd1b, .v1, .v2, .wurstchenStageB, .wurstchenStageC, .hiDreamI1, .hiDreamO1, .qwenImage,
@@ -2279,7 +3669,32 @@ index 5e774de..43a7366 100644
          .flux2_9b, .flux2_4b, .flux3_5b, .fibo2, .minimaxH3Image,
          .mossImage,
          .seedvr2_3b, .seedvr2_7b, .ideogram4, .krea2:
-@@ -8400,7 +8514,7 @@ extension LocalImageGenerator {
+@@ -8137,6 +8306,7 @@ extension LocalImageGenerator {
+           alternativeFilePath: alternativeDecoderFilePath,
+           alternativeDecoderVersion: alternativeDecoderVersion,
+           deviceProperties: DeviceCapability.deviceProperties)
++        firstStage.wrap = seamlessTile
+         let (sample, _) = modelPreloader.consumeFirstStageSample(
+           firstStage.sample(
+             image,
+@@ -8151,7 +8321,7 @@ extension LocalImageGenerator {
+         let secondPassModelVersion = ModelVersion.wurstchenStageB
+         let secondPassModelFilePath = ModelZoo.filePathForModelDownloaded(
+           ModelZoo.stageModelsForModel(file)[0])
+-        let secondPassSampler = LocalImageGenerator.sampler(
++        var secondPassSampler = LocalImageGenerator.sampler(
+           from: configuration.sampler, isCfgEnabled: isCfgEnabled,
+           filePath: secondPassModelFilePath, modifier: modifier,
+           version: secondPassModelVersion,
+@@ -8179,6 +8349,7 @@ extension LocalImageGenerator {
+           cfgZeroStar: cfgZeroStar, isBF16: isBF16, weightsCache: weightsCache,
+           scheduler: scheduler, of: FloatType.self
+         )
++        secondPassSampler.seamless = seamlessTile
+         let noise = randomLatentNoise(
+           graph: graph, batchSize: batchSize.0, startHeight: startHeight,
+           startWidth: startWidth, channels: channels, seed: configuration.seed,
+@@ -8400,7 +8571,7 @@ extension LocalImageGenerator {
      // H3 Image never uses CFG; see generateTextOnly.
      var isCfgEnabled =
        !ModelZoo.isConsistencyModelForModel(file) && !isGuidanceEmbedEnabled
@@ -2288,7 +3703,7 @@ index 5e774de..43a7366 100644
      let latentsScaling = ModelZoo.latentsScalingForModel(file)
      let paddedTextEncodingLength = ModelZoo.paddedTextEncodingLengthForModel(file)
      let conditioning = ModelZoo.conditioningForModel(file)
-@@ -8422,7 +8536,8 @@ extension LocalImageGenerator {
+@@ -8422,7 +8593,8 @@ extension LocalImageGenerator {
        ), tileOverlap: Int(configuration.diffusionTileOverlap))
      var alternativeDecoderFilePath: String? = nil
      var alternativeDecoderVersion: AlternativeDecoderVersion? =
@@ -2298,7 +3713,7 @@ index 5e774de..43a7366 100644
      let lora: [LoRAConfiguration] =
        (ModelZoo.builtinLoRAForModel(file)
          ? [
-@@ -8432,7 +8547,7 @@ extension LocalImageGenerator {
+@@ -8432,7 +8604,7 @@ extension LocalImageGenerator {
          ] : [])
        + configuration.loras.compactMap {
          guard let file = $0.file else { return nil }
@@ -2307,7 +3722,7 @@ index 5e774de..43a7366 100644
          guard LoRAZoo.isModelDownloaded(file),
            modelVersion == loraVersion || refinerVersion == loraVersion
              || (modelVersion == .kandinsky21 && loraVersion == .v1)
-@@ -8586,7 +8701,7 @@ extension LocalImageGenerator {
+@@ -8586,7 +8758,7 @@ extension LocalImageGenerator {
          startHeight = image.shape[1] / 16 / imageScaleFactor
          audioHeight = 0
        case .wurstchenStageC, .sd3, .sd3Large, .flux1, .hunyuanVideo, .wan21_1_3b, .wan21_14b,
@@ -2316,7 +3731,32 @@ index 5e774de..43a7366 100644
          .seedvr2_7b, .krea2,
          .longcatVideoAvatar1_5:
          channels = 16
-@@ -8897,7 +9012,7 @@ extension LocalImageGenerator {
+@@ -8699,7 +8871,7 @@ extension LocalImageGenerator {
+       ? (Int(configuration.causalInference), max(0, Int(configuration.causalInferencePad))) : (0, 0)
+     let cfgZeroStar = CfgZeroStarConfiguration(
+       isEnabled: configuration.cfgZeroStar, zeroInitSteps: Int(configuration.cfgZeroInitSteps))
+-    let sampler = LocalImageGenerator.sampler(
++    var sampler = LocalImageGenerator.sampler(
+       from: configuration.sampler, isCfgEnabled: isCfgEnabled,
+       filePath: ModelZoo.filePathForModelDownloaded(file), modifier: modifier,
+       version: modelVersion,
+@@ -8726,6 +8898,7 @@ extension LocalImageGenerator {
+       tiledDiffusion: tiledDiffusion, teaCache: teaCache, causalInference: causalInference,
+       cfgZeroStar: cfgZeroStar, isBF16: isBF16, weightsCache: weightsCache,
+       scheduler: scheduler, of: FloatType.self)
++    sampler.seamless = seamlessTile
+     let initTimestep = sampler.timestep(for: strength, sampling: sampling)
+     let graph = DynamicGraph()
+     if externalOnDemand
+@@ -8865,6 +9038,7 @@ extension LocalImageGenerator {
+         alternativeFilePath: alternativeDecoderFilePath,
+         alternativeDecoderVersion: alternativeDecoderVersion,
+         deviceProperties: DeviceCapability.deviceProperties)
++      firstStage.wrap = seamlessTile
+       var firstPassImage: DynamicGraph.Tensor<FloatType>
+       if modelVersion == .wurstchenStageC {
+         // Try to resize the input image so we can encode with EfficientNetv2s properly.
+@@ -8897,7 +9071,7 @@ extension LocalImageGenerator {
            hasCustom: custom != nil)
        case .auraflow, .flux1, .kandinsky21, .pixart, .sd3, .sd3Large, .sdxlBase, .sdxlRefiner,
          .ssd1b, .v1, .v2, .wurstchenStageB, .wurstchenStageC, .hiDreamI1, .hiDreamO1, .qwenImage,
@@ -2325,11 +3765,45 @@ index 5e774de..43a7366 100644
          .flux2_9b, .flux2_4b, .flux3_5b, .fibo2, .minimaxH3Image,
          .mossImage,
          .seedvr2_3b, .seedvr2_7b, .ideogram4, .krea2:
+@@ -9254,6 +9428,7 @@ extension LocalImageGenerator {
+           alternativeFilePath: alternativeDecoderFilePath,
+           alternativeDecoderVersion: alternativeDecoderVersion,
+           deviceProperties: DeviceCapability.deviceProperties)
++        firstStage.wrap = seamlessTile
+         let (sample, _) = modelPreloader.consumeFirstStageSample(
+           firstStage.sample(
+             image,
+@@ -9268,7 +9443,7 @@ extension LocalImageGenerator {
+         let secondPassModelVersion = ModelVersion.wurstchenStageB
+         let secondPassModelFilePath = ModelZoo.filePathForModelDownloaded(
+           ModelZoo.stageModelsForModel(file)[0])
+-        let secondPassSampler = LocalImageGenerator.sampler(
++        var secondPassSampler = LocalImageGenerator.sampler(
+           from: configuration.sampler, isCfgEnabled: isCfgEnabled,
+           filePath: secondPassModelFilePath, modifier: modifier,
+           version: secondPassModelVersion,
+@@ -9296,6 +9471,7 @@ extension LocalImageGenerator {
+           cfgZeroStar: cfgZeroStar, isBF16: isBF16, weightsCache: weightsCache,
+           scheduler: scheduler, of: FloatType.self
+         )
++        secondPassSampler.seamless = seamlessTile
+         let noise = randomLatentNoise(
+           graph: graph, batchSize: batchSize.0, startHeight: startHeight,
+           startWidth: startWidth, channels: channels, seed: configuration.seed,
 diff --git a/Libraries/LocalImageGenerator/Sources/ModelPreloader.swift b/Libraries/LocalImageGenerator/Sources/ModelPreloader.swift
-index 243aaad..288f644 100644
+index 243aaad..26204a5 100644
 --- a/Libraries/LocalImageGenerator/Sources/ModelPreloader.swift
 +++ b/Libraries/LocalImageGenerator/Sources/ModelPreloader.swift
-@@ -165,7 +165,7 @@ public final class ModelPreloader {
+@@ -88,6 +88,8 @@ public final class ModelPreloader {
+   private var firstStageDecoderScale: DeviceCapability.Scale? = nil
+   private var firstStageDecoderHighPrecision: Bool? = nil
+   private var firstStageDecoderTiledDecoding: TiledConfiguration? = nil
++  // A decoder built with the seamless wrap is a different graph: it never serves a request without it.
++  private var firstStageDecoderWrap: SeamlessTile? = nil
+ 
+   private var textEncoderFilePaths: [String]? = nil
+   private var textEncoderVersion: ModelVersion? = nil
+@@ -165,7 +167,7 @@ public final class ModelPreloader {
          } ?? false
        lora = configuration.loras.compactMap {
          guard let file = $0.file, LoRAZoo.isModelDownloaded(file),
@@ -2338,7 +3812,15 @@ index 243aaad..288f644 100644
          else { return nil }
          guard !isRefinerEnabled || $0.mode == .all || $0.mode == .base else { return nil }
          return LoRAConfiguration(
-@@ -550,7 +550,7 @@ extension ModelPreloader {
+@@ -465,6 +467,7 @@ extension ModelPreloader {
+     firstStageDecoderVersion = nil
+     firstStageDecoderHighPrecision = nil
+     firstStageDecoderTiledDecoding = nil
++    firstStageDecoderWrap = nil
+     textModel = nil
+     textEncoderVersion = nil
+     textEncoderInjectEmbeddings = false
+@@ -550,7 +553,7 @@ extension ModelPreloader {
        conditionalLength = 1280
      case .sd3, .sd3Large, .pixart, .auraflow, .flux1, .kandinsky21, .svdI2v, .wurstchenStageC,
        .wurstchenStageB, .hunyuanVideo, .wan21_1_3b, .wan21_14b, .hiDreamI1, .hiDreamO1, .qwenImage,
@@ -2347,7 +3829,15 @@ index 243aaad..288f644 100644
        .flux2_9b, .flux2_4b,
        .flux3_5b, .fibo2, .mossImage,
        .ltx2, .ltx2_3, .seedvr2_3b, .seedvr2_7b, .ideogram4, .krea2, .longcatVideoAvatar1_5,
-@@ -783,7 +783,7 @@ extension ModelPreloader {
+@@ -716,6 +719,7 @@ extension ModelPreloader {
+         firstStageDecoderVersion = modelVersion
+         firstStageDecoderHighPrecision = highPrecisionForAutoencoder
+         firstStageDecoderTiledDecoding = tiledDecoding
++        firstStageDecoderWrap = nil
+       }
+       if firstStageEncoder == nil {
+         let startHeight =
+@@ -783,7 +787,7 @@ extension ModelPreloader {
            textModelLoRAPrefix = "__te2"
          case .sd3, .sd3Large, .pixart, .auraflow, .flux1, .kandinsky21, .svdI2v, .wurstchenStageC,
            .wurstchenStageB, .hunyuanVideo, .wan21_1_3b, .wan21_14b, .hiDreamI1, .hiDreamO1,
@@ -2356,7 +3846,7 @@ index 243aaad..288f644 100644
            .ernieImage, .flux2,
            .flux2_9b, .flux2_4b, .flux3_5b, .fibo2, .mossImage, .ltx2, .ltx2_3, .seedvr2_3b, .seedvr2_7b,
            .ideogram4,
-@@ -829,7 +829,7 @@ extension ModelPreloader {
+@@ -829,7 +833,7 @@ extension ModelPreloader {
                      .wurstchenStageC, .wurstchenStageB, .hunyuanVideo, .wan21_1_3b, .wan21_14b,
                      .hiDreamI1, .hiDreamO1, .qwenImage, .qwenImage2_1, .cosmos2_5_2b,
                      .cosmos2_5_2_9b, .wan22_5b,
@@ -2365,7 +3855,7 @@ index 243aaad..288f644 100644
                      .ltx2, .ltx2_3,
                      .seedvr2_3b,
                      .seedvr2_7b, .ideogram4, .krea2, .longcatVideoAvatar1_5, .minimaxH3, .minimaxH3Image:
-@@ -877,7 +877,7 @@ extension ModelPreloader {
+@@ -877,7 +881,7 @@ extension ModelPreloader {
                    .wurstchenStageC, .wurstchenStageB, .hunyuanVideo, .wan21_1_3b, .wan21_14b,
                    .hiDreamI1, .hiDreamO1, .qwenImage, .qwenImage2_1, .cosmos2_5_2b,
                    .cosmos2_5_2_9b, .wan22_5b,
@@ -2374,7 +3864,7 @@ index 243aaad..288f644 100644
                    .ltx2_3,
                    .seedvr2_3b,
                    .seedvr2_7b, .ideogram4, .krea2, .longcatVideoAvatar1_5, .minimaxH3, .minimaxH3Image:
-@@ -971,7 +971,7 @@ extension ModelPreloader {
+@@ -971,7 +975,7 @@ extension ModelPreloader {
        } ?? false
      let newLora: [LoRAConfiguration] = newConfiguration.loras.compactMap {
        guard let file = $0.file, LoRAZoo.isModelDownloaded(file),
@@ -2383,7 +3873,7 @@ index 243aaad..288f644 100644
        else { return nil }
        guard !isRefinerEnabled || $0.mode == .all || $0.mode == .base else { return nil }
        return LoRAConfiguration(
-@@ -1186,7 +1186,7 @@ extension ModelPreloader {
+@@ -1186,7 +1190,7 @@ extension ModelPreloader {
            case .sd3, .sd3Large, .pixart, .auraflow, .flux1, .sdxlBase, .sdxlRefiner, .ssd1b,
              .wurstchenStageB, .wurstchenStageC, .svdI2v, .hunyuanVideo, .wan21_1_3b, .wan21_14b,
              .hiDreamI1, .qwenImage, .qwenImage2_1, .cosmos2_5_2b, .cosmos2_5_2_9b,
@@ -2392,7 +3882,25 @@ index 243aaad..288f644 100644
              .flux2, .flux2_9b, .flux2_4b, .flux3_5b, .fibo2, .mossImage, .ltx2, .ltx2_3, .seedvr2_3b,
              .seedvr2_7b,
              .ideogram4,
-@@ -1433,7 +1433,7 @@ extension ModelPreloader {
+@@ -1347,7 +1351,8 @@ extension ModelPreloader {
+       firstStageDecoderVersion == firstStage.version,
+       firstStageDecoderScale == scale,
+       firstStageDecoderHighPrecision == firstStage.highPrecisionKeysAndValues,
+-      firstStageDecoderTiledDecoding == firstStage.tiledDecoding
++      firstStageDecoderTiledDecoding == firstStage.tiledDecoding,
++      firstStageDecoderWrap == firstStage.wrap
+     else {
+       firstStageDecoder = nil
+       return nil
+@@ -1369,6 +1374,7 @@ extension ModelPreloader {
+       firstStageDecoderScale = scale
+       firstStageDecoderHighPrecision = firstStage.highPrecisionKeysAndValues
+       firstStageDecoderTiledDecoding = firstStage.tiledDecoding
++      firstStageDecoderWrap = firstStage.wrap
+     }
+     return (x.0, x.1)
+   }
+@@ -1433,7 +1439,7 @@ extension ModelPreloader {
      switch sampler.version {
      case .auraflow, .flux1, .hiDreamI1, .hiDreamO1, .hunyuanVideo, .sd3, .sd3Large, .wan21_14b,
        .wan21_1_3b, .qwenImage, .qwenImage2_1, .cosmos2_5_2b, .cosmos2_5_2_9b, .wan22_5b,
@@ -2901,6 +4409,38 @@ index cff4c13..89e5eda 100644
          .seedvr2_3b,
          .seedvr2_7b,
          .ideogram4, .krea2, .longcatVideoAvatar1_5, .minimaxH3, .minimaxH3Image:
+diff --git a/Libraries/Scripting/Sources/ScriptModels.swift b/Libraries/Scripting/Sources/ScriptModels.swift
+index 1ed649f..7dbc08f 100644
+--- a/Libraries/Scripting/Sources/ScriptModels.swift
++++ b/Libraries/Scripting/Sources/ScriptModels.swift
+@@ -158,6 +158,9 @@ public final class JSGenerationConfiguration: Codable {
+   public var usesSolAttention: Bool?
+   public var solAttentionStart: Int32?
+   public var solAttentionTau: Float?
++  /// Seamless tile (0 off, 1 left-right, 2 up-down, 3 both). nil when off, so the JSON of a normal
++  /// configuration has no new key.
++  public var seamlessTile: Int8?
+   public var stage2Steps: UInt32
+   public var stage2Guidance: Float32
+   public var stage2Shift: Float32
+@@ -248,6 +251,7 @@ public final class JSGenerationConfiguration: Codable {
+     usesSolAttention = configuration.usesSolAttention
+     solAttentionStart = configuration.solAttentionStart
+     solAttentionTau = configuration.solAttentionTau
++    seamlessTile = configuration.seamlessTile == 0 ? nil : configuration.seamlessTile
+     stage2Guidance = configuration.stage2Cfg
+     stage2Shift = configuration.stage2Shift
+     stage2Steps = configuration.stage2Steps
+@@ -383,7 +387,8 @@ public final class JSGenerationConfiguration: Codable {
+       shiftForAudio: shiftForAudio,
+       usesSolAttention: usesSolAttention,
+       solAttentionStart: solAttentionStart,
+-      solAttentionTau: solAttentionTau
++      solAttentionTau: solAttentionTau,
++      seamlessTile: seamlessTile
+     )
+   }
+ }
 diff --git a/Libraries/SwiftDiffusion/Sources/ControlModel.swift b/Libraries/SwiftDiffusion/Sources/ControlModel.swift
 index 824943c..3acde9a 100644
 --- a/Libraries/SwiftDiffusion/Sources/ControlModel.swift
@@ -3108,10 +4648,31 @@ index 2671c7f..8c37966 100644
          .ltx2_3, .seedvr2_3b,
          .seedvr2_7b,
 diff --git a/Libraries/SwiftDiffusion/Sources/FirstStage.swift b/Libraries/SwiftDiffusion/Sources/FirstStage.swift
-index 0d475c2..b7f805d 100644
+index 0d475c2..8c402b3 100644
 --- a/Libraries/SwiftDiffusion/Sources/FirstStage.swift
 +++ b/Libraries/SwiftDiffusion/Sources/FirstStage.swift
-@@ -194,7 +194,7 @@ extension FirstStage {
+@@ -27,6 +27,9 @@ public struct FirstStage<FloatType: TensorNumeric & BinaryFloatingPoint> {
+   private let highPrecisionFallback: Bool
+   private let deviceProperties: DeviceProperties
+   private let isCancelled = ManagedAtomic<Bool>(false)
++  /// Seamless tile: the decoder of Krea 2, Z-Image, FLUX.2 and FLUX.3 wraps its padding on these
++  /// axes and decodes the whole latent at once (no tiles). nil = today's decoder.
++  public var wrap: SeamlessTile? = nil
+   public init(
+     filePath: String, version: ModelVersion,
+     latentsScaling: (
+@@ -150,6 +153,10 @@ extension FirstStage {
+   )
+     -> (DynamicGraph.Tensor<FloatType>, DynamicGraph.Tensor<Float>?, Model?)
+   {
++    // Only the four seamless families read the wrap. A wrapped decoder is a different graph built at
++    // the whole latent size, so a cached decoder is never reused for it.
++    let wrap = SeamlessTile.minTurns(for: version) != nil ? self.wrap : nil
++    let existingDecoder = wrap == nil ? existingDecoder : nil
+     let shape = x.shape
+     let batchSize = shape[0]
+     var startHeight = shape[1]
+@@ -194,7 +201,7 @@ extension FirstStage {
            .reshaped(.HWC(1, audioFrames, shape[3])))
      case .v1, .v2, .kandinsky21, .sdxlBase, .sdxlRefiner, .ssd1b, .svdI2v, .wurstchenStageC,
        .wurstchenStageB, .sd3, .pixart, .auraflow, .flux1, .sd3Large, .hunyuanVideo, .wan21_1_3b,
@@ -3120,7 +4681,7 @@ index 0d475c2..b7f805d 100644
        .ernieImage, .flux2, .flux2_9b, .flux2_4b, .flux3_5b, .fibo2, .minimaxH3Image, .mossImage, .cosmos2_5_2b,
        .cosmos2_5_2_9b, .ideogram4,
        .krea2,
-@@ -274,7 +274,7 @@ extension FirstStage {
+@@ -274,7 +281,7 @@ extension FirstStage {
      case .qwenImage2_1:
        scaleFactor = 16
        scaleFactorZ = 1
@@ -3129,7 +4690,42 @@ index 0d475c2..b7f805d 100644
        .cosmos2_5_2_9b,
        .seedvr2_3b, .seedvr2_7b, .longcatVideoAvatar1_5:
        scaleFactor = 8
-@@ -684,10 +684,10 @@ extension FirstStage {
+@@ -301,8 +308,9 @@ extension FirstStage {
+     )
+     // Cut by half because we will * 2 later.
+     var decodingTileOverlap = (tiledDecodingConfiguration.tileOverlap * (64 / scaleFactor) + 1) / 2
++    // A tiled decode would cut the torus: with the wrap the latent is decoded whole.
+     var tiledDecoding =
+-      tiledDecodingConfiguration.isEnabled
++      wrap == nil && tiledDecodingConfiguration.isEnabled
+       && (startWidth > decodingTileSize.width || startHeight > decodingTileSize.height)
+     let externalData: DynamicGraph.Store.Codec =
+       externalOnDemand ? .externalOnDemand : .externalData
+@@ -384,8 +392,9 @@ extension FirstStage {
+           startHeight: startHeight, inputChannels: 16,
+           highPrecisionKeysAndValues: highPrecisionKeysAndValues,
+           usesFlashAttention: decoderUsesFlashAttention,
+-          paddingFinalConvLayer: true, format: deviceProperties.isNHWCPreferred ? .NHWC : .NCHW,
+-          quantLayer: false
++          paddingFinalConvLayer: true,
++          format: wrap != nil || deviceProperties.isNHWCPreferred ? .NHWC : .NCHW,
++          quantLayer: false, wrap: wrap
+         ).0
+       if existingDecoder == nil {
+         decoder.maxConcurrency = .limit(4)
+@@ -544,8 +553,9 @@ extension FirstStage {
+           startHeight: startHeight, inputChannels: 32,
+           highPrecisionKeysAndValues: highPrecisionKeysAndValues,
+           usesFlashAttention: decoderUsesFlashAttention,
+-          paddingFinalConvLayer: true, format: deviceProperties.isNHWCPreferred ? .NHWC : .NCHW,
+-          quantLayer: true, specializingNames: true
++          paddingFinalConvLayer: true,
++          format: wrap != nil || deviceProperties.isNHWCPreferred ? .NHWC : .NCHW,
++          quantLayer: true, specializingNames: true, wrap: wrap
+         ).0
+       if existingDecoder == nil {
+         decoder.maxConcurrency = .limit(4)
+@@ -684,10 +694,10 @@ extension FirstStage {
        }
        outputChannels = 4
        causalAttentionMask = nil
@@ -3142,7 +4738,27 @@ index 0d475c2..b7f805d 100644
            || version == .cosmos2_5_2_9b ? 1 : shape[0]
        var startWidth = tiledDecoding ? decodingTileSize.width : startWidth
        var startHeight = tiledDecoding ? decodingTileSize.height : startHeight
-@@ -1156,7 +1156,7 @@ extension FirstStage {
+@@ -704,7 +714,9 @@ extension FirstStage {
+       } else {
+         sizeLimit = 1024
+       }
+-      if startWidth > sizeLimit || startHeight > sizeLimit {
++      // With the wrap (Krea 2 seamless) the latent is decoded whole even past the limit: if memory
++      // runs out the error surfaces, never a tiled decode without the wrap.
++      if wrap == nil && (startWidth > sizeLimit || startHeight > sizeLimit) {
+         // We turn on tiled decoding forcefully.
+         if !tiledDecoding {
+           decodingTileOverlap = 4
+@@ -730,7 +742,7 @@ extension FirstStage {
+           outputChannels: alternativeDecoderVersion == .transparent ? 4 : 3,
+           highPrecisionFinalNorm: alternativeDecoderVersion == .transparent,
+           usesFlashAttention: decoderUsesFlashAttention,
+-          format: deviceProperties.isNHWCPreferred ? .NHWC : .NCHW
++          format: wrap != nil || deviceProperties.isNHWCPreferred ? .NHWC : .NCHW, wrap: wrap
+         ).1
+       if existingDecoder == nil {
+         decoder.maxConcurrency = .limit(4)
+@@ -1156,7 +1168,7 @@ extension FirstStage {
            }
          case .v1, .v2, .kandinsky21, .sdxlBase, .sdxlRefiner, .ssd1b, .svdI2v, .wurstchenStageC,
            .wurstchenStageB, .sd3, .pixart, .auraflow, .flux1, .sd3Large, .hunyuanVideo, .wan21_1_3b,
@@ -3151,7 +4767,7 @@ index 0d475c2..b7f805d 100644
            .ernieImage, .flux2, .flux2_9b, .flux2_4b, .flux3_5b, .fibo2, .minimaxH3Image, .mossImage, .cosmos2_5_2b,
            .cosmos2_5_2_9b,
            .ideogram4, .krea2,
-@@ -1295,7 +1295,7 @@ extension FirstStage {
+@@ -1295,7 +1307,7 @@ extension FirstStage {
          return (std .* result + mean).clamped(0...1) * 2 - 1
        case .v1, .v2, .kandinsky21, .sdxlBase, .sdxlRefiner, .ssd1b, .svdI2v, .wurstchenStageC,
          .wurstchenStageB, .sd3, .pixart, .auraflow, .flux1, .sd3Large, .hunyuanVideo, .wan21_1_3b,
@@ -3160,7 +4776,7 @@ index 0d475c2..b7f805d 100644
          .ernieImage, .flux2, .flux2_9b, .flux2_4b, .flux3_5b, .fibo2, .mossImage, .cosmos2_5_2b,
          .cosmos2_5_2_9b, .ideogram4,
          .krea2,
-@@ -1557,7 +1557,7 @@ extension FirstStage {
+@@ -1557,7 +1569,7 @@ extension FirstStage {
      case .qwenImage2_1:
        scaleFactor = 16
        scaleFactorZ = 1
@@ -3169,7 +4785,7 @@ index 0d475c2..b7f805d 100644
        .cosmos2_5_2_9b,
        .seedvr2_3b, .seedvr2_7b, .longcatVideoAvatar1_5:
        scaleFactor = 8
-@@ -1847,10 +1847,10 @@ extension FirstStage {
+@@ -1847,10 +1859,10 @@ extension FirstStage {
        }
        outputChannels = 128
        causalAttentionMask = nil
@@ -3182,7 +4798,7 @@ index 0d475c2..b7f805d 100644
            || version == .cosmos2_5_2_9b
          ? 1 : (shape[0] - 1) / 4 + 1
        var startWidth = tiledEncoding ? encodingTileSize.width : startWidth
-@@ -1905,7 +1905,7 @@ extension FirstStage {
+@@ -1905,7 +1917,7 @@ extension FirstStage {
        if existingEncoder == nil {
          encoder.maxConcurrency = .limit(4)
          let batchSize =
@@ -3191,7 +4807,7 @@ index 0d475c2..b7f805d 100644
              || version == .cosmos2_5_2_9b ? 1 : batchSize
          if highPrecision {
            encoder.compile(
-@@ -1961,7 +1961,7 @@ extension FirstStage {
+@@ -1961,7 +1973,7 @@ extension FirstStage {
        outputChannels = 32
        causalAttentionMask = nil
      case .wan22_5b:
@@ -3200,7 +4816,7 @@ index 0d475c2..b7f805d 100644
        var startWidth = tiledEncoding ? encodingTileSize.width : startWidth
        var startHeight = tiledEncoding ? encodingTileSize.height : startHeight
        let sizeLimit: Int
-@@ -2336,7 +2336,7 @@ extension FirstStage {
+@@ -2336,7 +2348,7 @@ extension FirstStage {
        of: T.self)
      if alternativeDecoderVersion == .transparent,
        version == .qwenImage || version == .qwenImage2_1 || version == .krea2
@@ -3209,19 +4825,277 @@ index 0d475c2..b7f805d 100644
      {
        // If this is the case, we need to switch alpha channel with rgb channel.
        let shape = pixel.shape
+diff --git a/Libraries/SwiftDiffusion/Sources/Models/Autoencoder.swift b/Libraries/SwiftDiffusion/Sources/Models/Autoencoder.swift
+index dfd57a1..4c8e8d6 100644
+--- a/Libraries/SwiftDiffusion/Sources/Models/Autoencoder.swift
++++ b/Libraries/SwiftDiffusion/Sources/Models/Autoencoder.swift
+@@ -3,8 +3,12 @@ import NNC
+ 
+ /// Autoencoder
+ 
++/// `wrap` pads the two 3x3 convolutions circularly (see `WrappingConvolution`); `inputShape` is the
++/// block's NHWC input and matters only with `wrap`.
+ private func NHWCResnetBlock(
+-  prefix: (String, String), outChannels: Int, shortcut: Bool, specializingNames: Bool
++  prefix: (String, String), outChannels: Int, shortcut: Bool, specializingNames: Bool,
++  wrap: SeamlessTile? = nil,
++  inputShape: (batchSize: Int, height: Int, width: Int, channels: Int) = (0, 0, 0, 0)
+ )
+   -> (Model, PythonReader, ModelWeightMapper)
+ {
+@@ -14,21 +18,22 @@ private func NHWCResnetBlock(
+     name: specializingNames ? "resnet_norm1" : "")
+   var out = norm1(x)
+   out = out.swish()
+-  let conv1 = Convolution(
++  let (conv1, applyConv1) = WrappingConvolution(
+     groups: 1, filters: outChannels, filterSize: [3, 3],
+-    hint: Hint(stride: [1, 1], border: Hint.Border(begin: [1, 1], end: [1, 1])), format: .OIHW,
+-    name: specializingNames ? "resnet_conv1" : "")
+-  out = conv1(out)
++    border: Hint.Border(begin: [1, 1], end: [1, 1]), wrap: wrap, inputShape: inputShape,
++    format: .OIHW, name: specializingNames ? "resnet_conv1" : "")
++  out = applyConv1(out)
+   let norm2 = GroupNorm(
+     axis: 3, groups: 32, epsilon: 1e-6, reduce: [1, 2],
+     name: specializingNames ? "resnet_norm2" : "")
+   out = norm2(out)
+   out = out.swish()
+-  let conv2 = Convolution(
++  let (conv2, applyConv2) = WrappingConvolution(
+     groups: 1, filters: outChannels, filterSize: [3, 3],
+-    hint: Hint(stride: [1, 1], border: Hint.Border(begin: [1, 1], end: [1, 1])), format: .OIHW,
+-    name: specializingNames ? "resnet_conv2" : "")
+-  out = conv2(out)
++    border: Hint.Border(begin: [1, 1], end: [1, 1]), wrap: wrap,
++    inputShape: (inputShape.batchSize, inputShape.height, inputShape.width, outChannels),
++    format: .OIHW, name: specializingNames ? "resnet_conv2" : "")
++  out = applyConv2(out)
+   let ninShortcut: Model?
+   if shortcut {
+     let nin = Convolution(
+@@ -453,7 +458,7 @@ private func NHWCEncoder(
+ private func NHWCDecoder(
+   channels: [Int], numRepeat: Int, batchSize: Int, startWidth: Int, startHeight: Int,
+   inputChannels: Int, highPrecisionKeysAndValues: Bool, usesFlashAttention: Bool,
+-  paddingFinalConvLayer: Bool, quantLayer: Bool, specializingNames: Bool
++  paddingFinalConvLayer: Bool, quantLayer: Bool, specializingNames: Bool, wrap: SeamlessTile?
+ )
+   -> (Model, PythonReader, ModelWeightMapper)
+ {
+@@ -471,14 +476,18 @@ private func NHWCDecoder(
+     postQuantConv2d = nil
+   }
+   var previousChannel = channels[channels.count - 1]
+-  let convIn = Convolution(
++  var height = startHeight
++  var width = startWidth
++  let (convIn, applyConvIn) = WrappingConvolution(
+     groups: 1, filters: previousChannel, filterSize: [3, 3],
+-    hint: Hint(stride: [1, 1], border: Hint.Border(begin: [1, 1], end: [1, 1])), format: .OIHW,
++    border: Hint.Border(begin: [1, 1], end: [1, 1]), wrap: wrap,
++    inputShape: (batchSize, height, width, inputChannels), format: .OIHW,
+     name: specializingNames ? "conv_in" : "")
+-  out = convIn(out)
++  out = applyConvIn(out)
+   let (midBlock1, midBlockReader1, midBlockMapper1) = NHWCResnetBlock(
+     prefix: ("decoder.mid.block_1", "decoder.mid_block.resnets.0"), outChannels: previousChannel,
+-    shortcut: false, specializingNames: specializingNames)
++    shortcut: false, specializingNames: specializingNames, wrap: wrap,
++    inputShape: (batchSize, height, width, previousChannel))
+   out = midBlock1(out)
+   let (midAttn1, midAttnReader1, midAttnMapper1) = NHWCAttnBlock(
+     prefix: ("decoder.mid.attn_1", "decoder.mid_block.attentions.0"), inChannels: previousChannel,
+@@ -488,7 +497,8 @@ private func NHWCDecoder(
+   out = midAttn1(out)
+   let (midBlock2, midBlockReader2, midBlockMapper2) = NHWCResnetBlock(
+     prefix: ("decoder.mid.block_2", "decoder.mid_block.resnets.1"), outChannels: previousChannel,
+-    shortcut: false, specializingNames: specializingNames)
++    shortcut: false, specializingNames: specializingNames, wrap: wrap,
++    inputShape: (batchSize, height, width, previousChannel))
+   out = midBlock2(out)
+   var readers = [PythonReader]()
+   var mappers = [ModelWeightMapper]()
+@@ -498,7 +508,8 @@ private func NHWCDecoder(
+         prefix: (
+           "decoder.up.\(i).block.\(j)", "decoder.up_blocks.\(channels.count - 1 - i).resnets.\(j)"
+         ), outChannels: channel,
+-        shortcut: previousChannel != channel, specializingNames: specializingNames)
++        shortcut: previousChannel != channel, specializingNames: specializingNames, wrap: wrap,
++        inputShape: (batchSize, height, width, previousChannel))
+       readers.append(reader)
+       mappers.append(mapper)
+       out = block(out)
+@@ -506,11 +517,14 @@ private func NHWCDecoder(
+     }
+     if i > 0 {
+       out = Upsample(.nearest, widthScale: 2, heightScale: 2)(out)
+-      let conv2d = Convolution(
++      height *= 2
++      width *= 2
++      let (conv2d, applyConv2d) = WrappingConvolution(
+         groups: 1, filters: channel, filterSize: [3, 3],
+-        hint: Hint(stride: [1, 1], border: Hint.Border(begin: [1, 1], end: [1, 1])), format: .OIHW,
++        border: Hint.Border(begin: [1, 1], end: [1, 1]), wrap: wrap,
++        inputShape: (batchSize, height, width, channel), format: .OIHW,
+         name: specializingNames ? "upsample" : "")
+-      out = conv2d(out)
++      out = applyConv2d(out)
+       let upLayer = i
+       let reader: PythonReader = { stateDict, archive in
+         guard
+@@ -554,11 +568,12 @@ private func NHWCDecoder(
+     axis: 3, groups: 32, epsilon: 1e-6, reduce: [1, 2], name: specializingNames ? "norm_out" : "")
+   out = normOut(out)
+   out = out.swish()
+-  let convOut = Convolution(
++  let (convOut, applyConvOut) = WrappingConvolution(
+     groups: 1, filters: paddingFinalConvLayer ? 4 : 3, filterSize: [3, 3],
+-    hint: Hint(stride: [1, 1], border: Hint.Border(begin: [1, 1], end: [1, 1])), format: .OIHW,
++    border: Hint.Border(begin: [1, 1], end: [1, 1]), wrap: wrap,
++    inputShape: (batchSize, height, width, previousChannel), format: .OIHW,
+     name: specializingNames ? "conv_out" : "")
+-  out = convOut(out)
++  out = applyConvOut(out)
+   let reader: PythonReader = { stateDict, archive in
+     if let postQuantConv2d = postQuantConv2d {
+       guard let post_quant_conv_weight = stateDict["first_stage_model.post_quant_conv.weight"]
+@@ -1303,7 +1318,7 @@ public func Decoder(
+   channels: [Int], numRepeat: Int, batchSize: Int, startWidth: Int, startHeight: Int,
+   inputChannels: Int, highPrecisionKeysAndValues: Bool, usesFlashAttention: Bool,
+   paddingFinalConvLayer: Bool, format: TensorFormat, quantLayer: Bool = true,
+-  specializingNames: Bool = false
++  specializingNames: Bool = false, wrap: SeamlessTile? = nil
+ )
+   -> (Model, PythonReader, ModelWeightMapper)
+ {
+@@ -1314,8 +1329,10 @@ public func Decoder(
+       startHeight: startHeight, inputChannels: inputChannels,
+       highPrecisionKeysAndValues: highPrecisionKeysAndValues,
+       usesFlashAttention: usesFlashAttention, paddingFinalConvLayer: paddingFinalConvLayer,
+-      quantLayer: quantLayer, specializingNames: specializingNames)
++      quantLayer: quantLayer, specializingNames: specializingNames, wrap: wrap)
+   case .NCHW:
++    // Wrap padding is NHWC only: a seamless decode builds the NHWC decoder.
++    precondition(wrap == nil, "Decoder: wrap needs the NHWC format")
+     return NCHWDecoder(
+       channels: channels, numRepeat: numRepeat, batchSize: batchSize, startWidth: startWidth,
+       startHeight: startHeight, inputChannels: inputChannels,
+diff --git a/Libraries/SwiftDiffusion/Sources/Models/Flux2.swift b/Libraries/SwiftDiffusion/Sources/Models/Flux2.swift
+index 190f639..ee1bff9 100644
+--- a/Libraries/SwiftDiffusion/Sources/Models/Flux2.swift
++++ b/Libraries/SwiftDiffusion/Sources/Models/Flux2.swift
+@@ -4,10 +4,11 @@ import NNC
+ 
+ public func Flux2RotaryPositionEmbedding(
+   height: Int, width: Int, tokenLength: Int, referenceSizes: [(height: Int, width: Int)],
+-  channels: Int, heads: Int = 1
++  channels: Int, heads: Int = 1, seamless: SeamlessTile? = nil
+ )
+   -> Tensor<Float>
+ {
++  let seamlessMinTurns = 0.5
+   var rotTensor = Tensor<Float>(
+     .CPU,
+     .NHWC(
+@@ -30,14 +31,24 @@ public func Flux2RotaryPositionEmbedding(
+           rotTensor[0, i, j, k * 2 + 1] = Float(sintheta)
+         }
+         for k in 0..<(dim1 / 2) {
+-          let theta = Double(y) * 1.0 / pow(2_000, Double(k) * 2 / Double(dim1))
++          var theta = Double(y) * 1.0 / pow(2_000, Double(k) * 2 / Double(dim1))
++          if let seamless = seamless, seamless.wrapsHeight {
++            theta = torusAngle(
++              position: Double(y), omega: 1.0 / pow(2_000, Double(k) * 2 / Double(dim1)),
++              period: Double(height), minTurns: seamlessMinTurns)
++          }
+           let sintheta = sin(theta)
+           let costheta = cos(theta)
+           rotTensor[0, i, j, (k + (dim0 / 2)) * 2] = Float(costheta)
+           rotTensor[0, i, j, (k + (dim0 / 2)) * 2 + 1] = Float(sintheta)
+         }
+         for k in 0..<(dim2 / 2) {
+-          let theta = Double(x) * 1.0 / pow(2_000, Double(k) * 2 / Double(dim2))
++          var theta = Double(x) * 1.0 / pow(2_000, Double(k) * 2 / Double(dim2))
++          if let seamless = seamless, seamless.wrapsWidth {
++            theta = torusAngle(
++              position: Double(x), omega: 1.0 / pow(2_000, Double(k) * 2 / Double(dim2)),
++              period: Double(width), minTurns: seamlessMinTurns)
++          }
+           let sintheta = sin(theta)
+           let costheta = cos(theta)
+           rotTensor[0, i, j, (k + (dim0 / 2) + (dim1 / 2)) * 2] = Float(costheta)
+diff --git a/Libraries/SwiftDiffusion/Sources/Models/Flux3.swift b/Libraries/SwiftDiffusion/Sources/Models/Flux3.swift
+index 43fe271..8db2db9 100644
+--- a/Libraries/SwiftDiffusion/Sources/Models/Flux3.swift
++++ b/Libraries/SwiftDiffusion/Sources/Models/Flux3.swift
+@@ -4,10 +4,11 @@ import NNC
+ 
+ public func Flux3RotaryPositionEmbedding(
+   height: Int, width: Int, tokenLength: Int, referenceSizes: [(height: Int, width: Int)],
+-  channels: Int, heads: Int = 1
++  channels: Int, heads: Int = 1, seamless: SeamlessTile? = nil
+ )
+   -> Tensor<Float>
+ {
++  let seamlessMinTurns = 0.5
+   var rotTensor = Tensor<Float>(
+     .CPU,
+     .NHWC(
+@@ -16,11 +17,17 @@ public func Flux3RotaryPositionEmbedding(
+   let dim = channels / 4
+   assert(channels % 16 == 0)
+   // Each token has 4 position axes (unused, y, x, text / reference index), each takes channels / 4.
+-  func setPositions(_ i: Int, _ positions: [Double]) {
++  // `periods` holds the tile period (in position units) of the axes that wrap, 0 for the others.
++  func setPositions(_ i: Int, _ positions: [Double], periods: [Double] = []) {
+     for j in 0..<heads {
+       for (axis, position) in positions.enumerated() {
+         for k in 0..<(dim / 2) {
+-          let theta = position * 1.0 / pow(10_000, Double(k) * 2 / Double(dim))
++          var theta = position * 1.0 / pow(10_000, Double(k) * 2 / Double(dim))
++          if axis < periods.count, periods[axis] > 0 {
++            theta = torusAngle(
++              position: position, omega: 1.0 / pow(10_000, Double(k) * 2 / Double(dim)),
++              period: periods[axis], minTurns: seamlessMinTurns)
++          }
+           let sintheta = sin(theta)
+           let costheta = cos(theta)
+           rotTensor[0, i, j, (k + axis * (dim / 2)) * 2] = Float(costheta)
+@@ -29,9 +36,18 @@ public func Flux3RotaryPositionEmbedding(
+       }
+     }
+   }
++  // The positions are the grid * 0.5, so a tile is grid * 0.5 long.
++  var imagePeriods: [Double] = []
++  if let seamless = seamless {
++    imagePeriods = [
++      0, seamless.wrapsHeight ? Double(height) * 0.5 : 0,
++      seamless.wrapsWidth ? Double(width) * 0.5 : 0, 0,
++    ]
++  }
+   for y in 0..<height {
+     for x in 0..<width {
+-      setPositions(y * width + x, [0, Double(y) * 0.5, Double(x) * 0.5, 0])
++      setPositions(
++        y * width + x, [0, Double(y) * 0.5, Double(x) * 0.5, 0], periods: imagePeriods)
+     }
+   }
+   var index = height * width
 diff --git a/Libraries/SwiftDiffusion/Sources/Models/Krea2.swift b/Libraries/SwiftDiffusion/Sources/Models/Krea2.swift
-index e5f8c1d..3b5d677 100644
+index e5f8c1d..f568c15 100644
 --- a/Libraries/SwiftDiffusion/Sources/Models/Krea2.swift
 +++ b/Libraries/SwiftDiffusion/Sources/Models/Krea2.swift
-@@ -2,20 +2,24 @@ import Foundation
+@@ -2,42 +2,58 @@ import Foundation
  import NNC
  
  public func Krea2RotaryPositionEmbedding<FloatType: TensorNumeric & BinaryFloatingPoint>(
 -  textLength: Int, gridHeight: Int, gridWidth: Int, of dataType: FloatType.Type = FloatType.self
 +  textLength: Int, gridHeight: Int, gridWidth: Int, referenceCount: Int = 0,
-+  of dataType: FloatType.Type = FloatType.self
++  of dataType: FloatType.Type = FloatType.self, seamless: SeamlessTile? = nil
  ) -> Tensor<FloatType> {
    let ropeTheta: Double = 1_000
++  let seamlessMinTurns = 1.0
    let imageLength = gridHeight * gridWidth
 -  let tokenLength = imageLength + textLength
 +  // Layout is [image | references | text]. Each reference has the same grid as the image and sits
@@ -3243,7 +5117,32 @@ index e5f8c1d..3b5d677 100644
          let sintheta = sin(theta)
          let costheta = cos(theta)
          rotary[0, i, 0, k * 2] = FloatType(costheta)
-@@ -36,8 +40,9 @@ public func Krea2RotaryPositionEmbedding<FloatType: TensorNumeric & BinaryFloati
+         rotary[0, i, 0, k * 2 + 1] = FloatType(sintheta)
+       }
+       for k in 0..<(dim1 / 2) {
+-        let theta = Double(y) * 1.0 / pow(ropeTheta, Double(k) * 2 / Double(dim1))
++        var theta = Double(y) * 1.0 / pow(ropeTheta, Double(k) * 2 / Double(dim1))
++        if let seamless = seamless, seamless.wrapsHeight {
++          theta = torusAngle(
++            position: Double(y), omega: 1.0 / pow(ropeTheta, Double(k) * 2 / Double(dim1)),
++            period: Double(gridHeight), minTurns: seamlessMinTurns)
++        }
+         let sintheta = sin(theta)
+         let costheta = cos(theta)
+         rotary[0, i, 0, (k + (dim0 / 2)) * 2] = FloatType(costheta)
+         rotary[0, i, 0, (k + (dim0 / 2)) * 2 + 1] = FloatType(sintheta)
+       }
+       for k in 0..<(dim2 / 2) {
+-        let theta = Double(x) * 1.0 / pow(ropeTheta, Double(k) * 2 / Double(dim2))
++        var theta = Double(x) * 1.0 / pow(ropeTheta, Double(k) * 2 / Double(dim2))
++        if let seamless = seamless, seamless.wrapsWidth {
++          theta = torusAngle(
++            position: Double(x), omega: 1.0 / pow(ropeTheta, Double(k) * 2 / Double(dim2)),
++            period: Double(gridWidth), minTurns: seamlessMinTurns)
++        }
+         let sintheta = sin(theta)
+         let costheta = cos(theta)
+         rotary[0, i, 0, (k + (dim0 / 2) + (dim1 / 2)) * 2] = FloatType(costheta)
          rotary[0, i, 0, (k + (dim0 / 2) + (dim1 / 2)) * 2 + 1] = FloatType(sintheta)
        }
      }
@@ -3254,7 +5153,7 @@ index e5f8c1d..3b5d677 100644
    for i in 0..<textLength {
      for k in 0..<(dim0 / 2) {
        let theta = 0 * 1.0 / pow(ropeTheta, Double(k) * 2 / Double(dim0))
-@@ -567,13 +572,13 @@ public func Krea2Fixed(timesteps: Int) -> (ModelWeightMapper, Model) {
+@@ -567,13 +583,13 @@ public func Krea2Fixed(timesteps: Int) -> (ModelWeightMapper, Model) {
  
  public func Krea2(
    batchSize: Int, height: Int, width: Int, textLength: Int,
@@ -3270,7 +5169,7 @@ index e5f8c1d..3b5d677 100644
    let x = Input()
    let text = Input()
    let rot = Input()
-@@ -582,7 +587,22 @@ public func Krea2(
+@@ -582,7 +598,22 @@ public func Krea2(
      .contiguous().reshaped([batchSize, imageLength, 64])
    let imgIn = Dense(count: 6_144, name: "img_in")
    let imageOut = imgIn(packedImage)
@@ -3294,7 +5193,7 @@ index e5f8c1d..3b5d677 100644
    let rotResized = rot.reshaped([1, tokenLength, 1, 128])
    let prescaleMod = Input()
    let preshiftMod = Input()
-@@ -607,6 +627,7 @@ public func Krea2(
+@@ -607,6 +638,7 @@ public func Krea2(
    out = out.reshaped([batchSize, imageLength, 6_144]).contiguous()
    let temb = Input()
    inputs.append(temb)
@@ -3302,7 +5201,7 @@ index e5f8c1d..3b5d677 100644
    let finalScaleTable = Parameter<FloatType>(
      .GPU(0), .CHW(1, 1, 6_144), name: "final_scale_shift_table_0")
    let finalShiftTable = Parameter<FloatType>(
-@@ -1170,13 +1191,14 @@ private func LoRAKrea2TransformerBlock(
+@@ -1170,13 +1202,14 @@ private func LoRAKrea2TransformerBlock(
  
  public func LoRAKrea2(
    batchSize: Int, height: Int, width: Int, textLength: Int,
@@ -3319,7 +5218,7 @@ index e5f8c1d..3b5d677 100644
    let x = Input()
    let text = Input()
    let rot = Input()
-@@ -1185,7 +1207,22 @@ public func LoRAKrea2(
+@@ -1185,7 +1218,22 @@ public func LoRAKrea2(
      .contiguous().reshaped([batchSize, imageLength, 64])
    let imgIn = LoRADense(count: 6_144, configuration: LoRAConfiguration, index: 0, name: "img_in")
    let imageOut = imgIn(packedImage)
@@ -3343,7 +5242,7 @@ index e5f8c1d..3b5d677 100644
    let rotaryHeads = LoRAConfiguration.testing ? 1 : 48
    let rotResized = rot.reshaped([1, tokenLength, rotaryHeads, 128])
    let prescaleMod = Input()
-@@ -1212,6 +1249,7 @@ public func LoRAKrea2(
+@@ -1212,6 +1260,7 @@ public func LoRAKrea2(
    out = out.reshaped([batchSize, imageLength, 6_144]).contiguous()
    let temb = Input()
    inputs.append(temb)
@@ -4431,18 +6330,299 @@ index 0e75799..d34d5c9 100644
        .flux2_4b, .flux3_5b, .fibo2, .mossImage, .cosmos2_5_2b, .cosmos2_5_2_9b, .ideogram4, .krea2,
        .ltx2, .ltx2_3,
        .seedvr2_3b,
+diff --git a/Libraries/SwiftDiffusion/Sources/Models/WanVAE.swift b/Libraries/SwiftDiffusion/Sources/Models/WanVAE.swift
+index 603d20e..8e15eac 100644
+--- a/Libraries/SwiftDiffusion/Sources/Models/WanVAE.swift
++++ b/Libraries/SwiftDiffusion/Sources/Models/WanVAE.swift
+@@ -1,24 +1,71 @@
+ import DiffusionMappings
+ import NNC
+ 
++/// The 3x3 convolution of the Wan decoder on a single frame (a causal 3x3x3 convolution reduces to
++/// it: the loader keeps the last temporal slice of its weights), with its 1-pixel spatial border.
++/// With `wrap == nil` it is exactly today's `Convolution` (same name, same zero border). With
++/// `wrap` the border on each wrapped axis comes from the opposite side (`WrapPad`) and the
++/// convolution's own border there is 0; the other axis keeps its zero border. Returns the
++/// convolution (for its weights) and the function that applies it to an NHWC input of the given
++/// shape (the depth is the batch). The shape matters only with `wrap`.
++public func WanFrameConvolution(filters: Int, wrap: SeamlessTile?, name: String) -> (
++  Convolution, (Model.IO, (depth: Int, height: Int, width: Int, channels: Int)) -> Model.IO
++) {
++  guard let wrap = wrap else {
++    let conv = Convolution(
++      groups: 1, filters: filters, filterSize: [3, 3],
++      hint: Hint(stride: [1, 1], border: Hint.Border(begin: [1, 1], end: [1, 1])),
++      format: .OIHW, name: name)
++    return (conv, { x, _ in conv(x) })
++  }
++  let borderHeight = wrap.wrapsHeight ? 0 : 1
++  let borderWidth = wrap.wrapsWidth ? 0 : 1
++  let conv = Convolution(
++    groups: 1, filters: filters, filterSize: [3, 3],
++    hint: Hint(
++      stride: [1, 1],
++      border: Hint.Border(begin: [borderHeight, borderWidth], end: [borderHeight, borderWidth])),
++    format: .OIHW, name: name)
++  return (
++    conv,
++    { x, shape in
++      guard wrap.wrapsHeight || wrap.wrapsWidth else { return conv(x) }
++      let pad = WrapPad(
++        batchSize: shape.depth, height: shape.height, width: shape.width,
++        channels: shape.channels, top: 1, left: 1, wrapsHeight: wrap.wrapsHeight,
++        wrapsWidth: wrap.wrapsWidth)
++      return conv(pad(x))
++    }
++  )
++}
++
+ private struct NHWCResnetBlockCausal3D {
+   private let norm1: Model
+   private let conv1: Model
+   private let norm2: Model
+   private let conv2: Model
+   private let ninShortcut: Model?
+-  init(outChannels: Int, shortcut: Bool, startDepth: Int) {
++  // On a single frame: the 2D convolutions applied with their (optionally wrapping) padding.
++  private let applyFrameConv1:
++    ((Model.IO, (depth: Int, height: Int, width: Int, channels: Int)) -> Model.IO)?
++  private let applyFrameConv2:
++    ((Model.IO, (depth: Int, height: Int, width: Int, channels: Int)) -> Model.IO)?
++  /// `wrap` pads the single-frame convolutions circularly (see `WanFrameConvolution`); it needs
++  /// `startDepth == 1`.
++  init(outChannels: Int, shortcut: Bool, startDepth: Int, wrap: SeamlessTile? = nil) {
++    precondition(wrap == nil || startDepth == 1, "Wan resnet block: wrap needs a single frame")
+     norm1 = RMSNorm(epsilon: 1e-6, axis: [3], name: "resnet_norm1")
+     if startDepth > 1 {
+       conv1 = Convolution(
+         groups: 1, filters: outChannels, filterSize: [3, 3, 3],
+         hint: Hint(stride: [1, 1, 1], border: Hint.Border(begin: [0, 0, 0], end: [0, 0, 0])),
+         format: .OIHW, name: "resnet_conv1")
++      applyFrameConv1 = nil
+     } else {
+-      conv1 = Convolution(
+-        groups: 1, filters: outChannels, filterSize: [3, 3],
+-        hint: Hint(stride: [1, 1], border: Hint.Border(begin: [1, 1], end: [1, 1])),
+-        format: .OIHW, name: "resnet_conv1")
++      let (conv, apply) = WanFrameConvolution(
++        filters: outChannels, wrap: wrap, name: "resnet_conv1")
++      conv1 = conv
++      applyFrameConv1 = apply
+     }
+     norm2 = RMSNorm(epsilon: 1e-6, axis: [3], name: "resnet_norm2")
+     if startDepth > 1 {
+@@ -26,11 +73,12 @@ private struct NHWCResnetBlockCausal3D {
+         groups: 1, filters: outChannels, filterSize: [3, 3, 3],
+         hint: Hint(stride: [1, 1, 1], border: Hint.Border(begin: [0, 0, 0], end: [0, 0, 0])),
+         format: .OIHW, name: "resnet_conv2")
++      applyFrameConv2 = nil
+     } else {
+-      conv2 = Convolution(
+-        groups: 1, filters: outChannels, filterSize: [3, 3],
+-        hint: Hint(stride: [1, 1], border: Hint.Border(begin: [1, 1], end: [1, 1])),
+-        format: .OIHW, name: "resnet_conv2")
++      let (conv, apply) = WanFrameConvolution(
++        filters: outChannels, wrap: wrap, name: "resnet_conv2")
++      conv2 = conv
++      applyFrameConv2 = apply
+     }
+     if shortcut {
+       ninShortcut = Convolution(
+@@ -63,6 +111,8 @@ private struct NHWCResnetBlockCausal3D {
+           pre.padded(.zero, begin: [2, 1, 1, 0], end: [0, 1, 1, 0]).reshaped([
+             1, depth + 2, height + 2, width + 2, inChannels,
+           ]))
++      } else if let applyFrameConv1 = applyFrameConv1 {
++        out = applyFrameConv1(pre, (depth, height, width, inChannels))
+       } else {
+         out = conv1(pre)
+       }
+@@ -92,6 +142,8 @@ private struct NHWCResnetBlockCausal3D {
+           pre.padded(.zero, begin: [2, 1, 1, 0], end: [0, 1, 1, 0]).reshaped([
+             1, depth + 2, height + 2, width + 2, outChannels,
+           ]))
++      } else if let applyFrameConv2 = applyFrameConv2 {
++        out = applyFrameConv2(pre, (depth, height, width, outChannels))
+       } else {
+         out = conv2(pre)
+       }
+@@ -203,13 +255,16 @@ private struct NHWCAttnBlockCausal3D {
+ // 1. The channel is not halved at the resample convolution time (Wan 2.2);
+ // 2. The input is 48-channel, output is 12-channel and pixel shuffle back to 2x;
+ // 3. There is a separate upsample shortcut such that the higher resolution res blocks should only learn high-frequency information.
++// `wrap` (seamless tile, a single frame only) pads every spatial 3x3 convolution circularly on the
++// wrapped axes; nil builds today's graph.
+ private func NHWCWanDecoderCausal3D(
+   channels: [Int], numRepeat: Int, startWidth: Int, startHeight: Int,
+   startDepth: Int, paddingFinalConvLayer: Bool, wan22: Bool, outputChannels: Int,
+-  highPrecisionFinalNorm: Bool, usesFlashAttention: Bool
++  highPrecisionFinalNorm: Bool, usesFlashAttention: Bool, wrap: SeamlessTile?
+ )
+   -> (ModelWeightMapper, Model)
+ {
++  precondition(wrap == nil || startDepth == 1, "WanDecoderCausal3D: wrap needs a single frame")
+   let x = Input()
+   var previousChannel = channels[channels.count - 1]
+   let inputChannels = wan22 ? 48 : 16
+@@ -219,6 +274,10 @@ private func NHWCWanDecoderCausal3D(
+   let postQuantX = postQuantConv(x)
+   let convIn: Model
+   let convOut: Model
++  var applyFrameConvIn:
++    ((Model.IO, (depth: Int, height: Int, width: Int, channels: Int)) -> Model.IO)? = nil
++  var applyFrameConvOut:
++    ((Model.IO, (depth: Int, height: Int, width: Int, channels: Int)) -> Model.IO)? = nil
+   if startDepth > 1 {
+     convIn = Convolution(
+       groups: 1, filters: previousChannel, filterSize: [3, 3, 3],
+@@ -231,31 +290,31 @@ private func NHWCWanDecoderCausal3D(
+       hint: Hint(stride: [1, 1, 1], border: Hint.Border(begin: [0, 0, 0], end: [0, 0, 0])),
+       format: .OIHW, name: "conv_out")
+   } else {
+-    convIn = Convolution(
+-      groups: 1, filters: previousChannel, filterSize: [3, 3],
+-      hint: Hint(stride: [1, 1], border: Hint.Border(begin: [1, 1], end: [1, 1])),
+-      format: .OIHW, name: "conv_in")
+-    convOut = Convolution(
+-      groups: 1,
++    let (frameConvIn, applyConvIn) = WanFrameConvolution(
++      filters: previousChannel, wrap: wrap, name: "conv_in")
++    convIn = frameConvIn
++    applyFrameConvIn = applyConvIn
++    let (frameConvOut, applyConvOut) = WanFrameConvolution(
+       filters: wan22 ? 12 : (paddingFinalConvLayer ? (outputChannels + 3) / 4 * 4 : outputChannels),
+-      filterSize: [3, 3],
+-      hint: Hint(stride: [1, 1], border: Hint.Border(begin: [1, 1], end: [1, 1])),
+-      format: .OIHW, name: "conv_out")
++      wrap: wrap, name: "conv_out")
++    convOut = frameConvOut
++    applyFrameConvOut = applyConvOut
+   }
+   let normOut = RMSNorm(epsilon: 1e-6, axis: [3], name: "norm_out")
+   var last: Model.IO? = nil
+   var midBlock1Builder = NHWCResnetBlockCausal3D(
+-    outChannels: previousChannel, shortcut: false, startDepth: startDepth)
++    outChannels: previousChannel, shortcut: false, startDepth: startDepth, wrap: wrap)
+   let midAttn1Builder = NHWCAttnBlockCausal3D(
+     inChannels: previousChannel, usesFlashAttention: usesFlashAttention)
+   var midBlock2Builder = NHWCResnetBlockCausal3D(
+-    outChannels: previousChannel, shortcut: false, startDepth: startDepth)
++    outChannels: previousChannel, shortcut: false, startDepth: startDepth, wrap: wrap)
+   var upBlockBuilders = [NHWCResnetBlockCausal3D]()
+   for (i, channel) in channels.enumerated().reversed() {
+     for _ in 0..<numRepeat + 1 {
+       upBlockBuilders.append(
+         NHWCResnetBlockCausal3D(
+-          outChannels: channel, shortcut: previousChannel != channel, startDepth: startDepth))
++          outChannels: channel, shortcut: previousChannel != channel, startDepth: startDepth,
++          wrap: wrap))
+       previousChannel = channel
+     }
+     if i > 0 && !wan22 {
+@@ -270,10 +329,7 @@ private func NHWCWanDecoderCausal3D(
+   }
+   let upsampleConv2d = (0..<(channels.count - 1)).map { i in
+     let channels = wan22 ? channels[channels.count - i - 1] : channels[channels.count - i - 1] / 2
+-    return Convolution(
+-      groups: 1, filters: channels, filterSize: [3, 3],
+-      hint: Hint(stride: [1, 1], border: Hint.Border(begin: [1, 1], end: [1, 1])),
+-      format: .OIHW, name: "upsample")
++    return WanFrameConvolution(filters: channels, wrap: wrap, name: "upsample")
+   }
+   var timeInputs: [Model.IO?] = Array(repeating: nil, count: channels.count - 2)
+   var convOutInputs: Model.IO? = nil
+@@ -295,6 +351,8 @@ private func NHWCWanDecoderCausal3D(
+             1, min(startDepth - d, 3) + 2, startHeight + 2, startWidth + 2, inputChannels,
+           ])
+         ).reshaped([min(startDepth - d, 3), startHeight, startWidth, previousChannel])
++      } else if let applyFrameConvIn = applyFrameConvIn {
++        out = applyFrameConvIn(out, (1, startHeight, startWidth, inputChannels))
+       } else {
+         out = convIn(out)
+       }
+@@ -466,7 +524,7 @@ private func NHWCWanDecoderCausal3D(
+             depth = depth * 2
+           }
+         }
+-        let conv2d = upsampleConv2d[channels.count - i - 1]
++        let (conv2d, applyConv2d) = upsampleConv2d[channels.count - i - 1]
+         // The convolution returns garbage once its input exceeds 2^31 elements (1080p video with 9
+         // frames is ~2^31.75), so upsample and convolve high-resolution video in frame groups.
+         let framesPerGroup = max(1, Int(Int32.max) / (height * 2 * width * 2 * channel))
+@@ -475,11 +533,12 @@ private func NHWCWanDecoderCausal3D(
+           out = Concat(axis: 0)(
+             stride(from: 0, to: depth, by: framesPerGroup).map { t in
+               let frames = min(framesPerGroup, depth - t)
+-              return conv2d(
++              return applyConv2d(
+                 Upsample(.nearest, widthScale: 2, heightScale: 2)(
+                   input.reshaped(
+                     [frames, height, width, channel], offset: [t, 0, 0, 0],
+-                    strides: [height * width * channel, width * channel, channel, 1])))
++                    strides: [height * width * channel, width * channel, channel, 1])),
++                (frames, height * 2, width * 2, channel))
+             })
+           width *= 2
+           height *= 2
+@@ -489,7 +548,7 @@ private func NHWCWanDecoderCausal3D(
+           ).reshaped([depth, height * 2, width * 2, channel])
+           width *= 2
+           height *= 2
+-          out = conv2d(out)
++          out = applyConv2d(out, (depth, height, width, channel))
+         }
+         if let upShortcut = upShortcut {
+           out = upShortcut + out
+@@ -532,6 +591,8 @@ private func NHWCWanDecoderCausal3D(
+             1, depth + 2, height + 2, width + 2, channels[0],
+           ])
+         )
++      } else if let applyFrameConvOut = applyFrameConvOut {
++        out = applyFrameConvOut(pre, (depth, height, width, channels[0]))
+       } else {
+         out = convOut(pre)
+       }
+@@ -1715,10 +1776,13 @@ private func NCHWWanEncoderCausal3D(
+   return (mapper, Model([x], [out]))
+ }
+ 
+-func WanDecoderCausal3D(
++/// `wrap` (seamless tile) pads the spatial convolutions circularly on the wrapped axes; it needs a
++/// single frame (`startDepth == 1`) and the NHWC format. nil builds today's graph.
++public func WanDecoderCausal3D(
+   channels: [Int], numRepeat: Int, startWidth: Int, startHeight: Int,
+   startDepth: Int, paddingFinalConvLayer: Bool, wan22: Bool, outputChannels: Int,
+-  highPrecisionFinalNorm: Bool, usesFlashAttention: Bool, format: TensorFormat
++  highPrecisionFinalNorm: Bool, usesFlashAttention: Bool, format: TensorFormat,
++  wrap: SeamlessTile? = nil
+ ) -> (ModelWeightMapper, Model) {
+   switch format {
+   case .NHWC:
+@@ -1726,8 +1790,10 @@ func WanDecoderCausal3D(
+       channels: channels, numRepeat: numRepeat, startWidth: startWidth, startHeight: startHeight,
+       startDepth: startDepth, paddingFinalConvLayer: paddingFinalConvLayer, wan22: wan22,
+       outputChannels: outputChannels, highPrecisionFinalNorm: highPrecisionFinalNorm,
+-      usesFlashAttention: usesFlashAttention)
++      usesFlashAttention: usesFlashAttention, wrap: wrap)
+   case .NCHW:
++    // Wrap padding is NHWC only: a seamless decode builds the NHWC decoder.
++    precondition(wrap == nil, "WanDecoderCausal3D: wrap needs the NHWC format")
+     return NCHWWanDecoderCausal3D(
+       channels: channels, numRepeat: numRepeat, startWidth: startWidth, startHeight: startHeight,
+       startDepth: startDepth, paddingFinalConvLayer: paddingFinalConvLayer, wan22: wan22,
 diff --git a/Libraries/SwiftDiffusion/Sources/Models/ZImage.swift b/Libraries/SwiftDiffusion/Sources/Models/ZImage.swift
-index a4b4e56..2d73b95 100644
+index a4b4e56..65470ce 100644
 --- a/Libraries/SwiftDiffusion/Sources/Models/ZImage.swift
 +++ b/Libraries/SwiftDiffusion/Sources/Models/ZImage.swift
-@@ -3,19 +3,25 @@ import Foundation
+@@ -3,45 +3,64 @@ import Foundation
  import NNC
  
  public func ZImageRotaryPositionEmbedding(
 -  height: Int, width: Int, tokenLength: Int, imagePaddedLength: Int, heads: Int = 1
 +  height: Int, width: Int, tokenLength: Int, imagePaddedLength: Int, heads: Int = 1,
-+  imageTimePosition: Int? = nil, referenceFrames: Int = 0
++  imageTimePosition: Int? = nil, referenceFrames: Int = 0, seamless: SeamlessTile? = nil
  ) -> Tensor<Float> {
++  let seamlessMinTurns = 1.0
 +  // The image's frame comes first, then one frame per reference (Ming-Image): the same (y, x), a
 +  // time position one further for each.
    var rotTensor = Tensor<Float>(
@@ -4469,7 +6649,34 @@ index a4b4e56..2d73b95 100644
            let sintheta = sin(theta)
            let costheta = cos(theta)
            rotTensor[0, i, j, k * 2] = Float(costheta)
-@@ -38,10 +44,12 @@ public func ZImageRotaryPositionEmbedding(
+           rotTensor[0, i, j, k * 2 + 1] = Float(sintheta)
+         }
+         for k in 0..<(dim1 / 2) {
+-          let theta =
++          var theta =
+             Double(y) * 1.0 / pow(256, Double(k) * 2 / Double(dim1))
++          if let seamless = seamless, seamless.wrapsHeight {
++            theta = torusAngle(
++              position: Double(y), omega: 1.0 / pow(256, Double(k) * 2 / Double(dim1)),
++              period: Double(height), minTurns: seamlessMinTurns)
++          }
+           let sintheta = sin(theta)
+           let costheta = cos(theta)
+           rotTensor[0, i, j, (k + (dim0 / 2)) * 2] = Float(costheta)
+           rotTensor[0, i, j, (k + (dim0 / 2)) * 2 + 1] = Float(sintheta)
+         }
+         for k in 0..<(dim2 / 2) {
+-          let theta =
++          var theta =
+             Double(x) * 1.0 / pow(256, Double(k) * 2 / Double(dim2))
++          if let seamless = seamless, seamless.wrapsWidth {
++            theta = torusAngle(
++              position: Double(x), omega: 1.0 / pow(256, Double(k) * 2 / Double(dim2)),
++              period: Double(width), minTurns: seamlessMinTurns)
++          }
+           let sintheta = sin(theta)
+           let costheta = cos(theta)
+           rotTensor[0, i, j, (k + (dim0 / 2) + (dim1 / 2)) * 2] = Float(costheta)
            rotTensor[0, i, j, (k + (dim0 / 2) + (dim1 / 2)) * 2 + 1] = Float(sintheta)
          }
        }
@@ -4483,7 +6690,7 @@ index a4b4e56..2d73b95 100644
        for j in 0..<heads {
          for k in 0..<(dim0 / 2) {
            let theta = Double(0) * 1.0 / pow(256, Double(k) * 2 / Double(dim0))
-@@ -69,7 +77,7 @@ public func ZImageRotaryPositionEmbedding(
+@@ -69,7 +88,7 @@ public func ZImageRotaryPositionEmbedding(
        }
      }
    }
@@ -4492,7 +6699,7 @@ index a4b4e56..2d73b95 100644
    for i in 0..<tokenLength {
      for j in 0..<heads {
        for k in 0..<(dim0 / 2) {
-@@ -472,7 +480,7 @@ public func ZImage(
+@@ -472,7 +491,7 @@ public func ZImage(
    batchSize: Int, height: Int, width: Int, textLength: Int, channels: Int, layers: Int,
    activationQkScaling: [Int: Int], activationProjScaling: [Int: Int],
    activationFfnProjUpScaling: [Int: Int], activationFfnScaling: [Int: Int],
@@ -4501,7 +6708,7 @@ index a4b4e56..2d73b95 100644
  ) -> (
    Model, ModelWeightMapper
  ) {
-@@ -482,15 +490,24 @@ public func ZImage(
+@@ -482,15 +501,24 @@ public func ZImage(
    let imgIn = Dense(count: channels, name: "x_embedder")
    let h = height / 2
    let w = width / 2
@@ -4532,7 +6739,7 @@ index a4b4e56..2d73b95 100644
      let padTokens = Input()
      xOut = Functional.concat(axis: 1, xOut, padTokens, flags: .disableOpt)
      xPadTokens = padTokens
-@@ -590,7 +607,10 @@ public func ZImage(
+@@ -590,7 +618,10 @@ public func ZImage(
      }
      return mapping
    }
@@ -4544,7 +6751,7 @@ index a4b4e56..2d73b95 100644
  }
  
  private func ZImageTransformerBlockFixed(
-@@ -786,6 +806,106 @@ public func ZImageFixed(
+@@ -786,6 +817,106 @@ public func ZImageFixed(
    return (Model([txt, txtRot, t] + (capPadTokens.map { [$0] } ?? []), outs), mapper)
  }
  
@@ -4651,7 +6858,7 @@ index a4b4e56..2d73b95 100644
  private func ZImageTransformerBlockFixedOutputShapes(
    prefix: String, name: String, batchSize: Int, channels: Int
  ) -> [TensorShape] {
-@@ -1255,7 +1375,7 @@ public func LoRAZImage(
+@@ -1255,7 +1386,7 @@ public func LoRAZImage(
    activationQkScaling: [Int: Int], activationProjScaling: [Int: Int],
    activationFfnProjUpScaling: [Int: Int], activationFfnScaling: [Int: Int],
    usesFlashAttention: FlashAttentionLevel, isBF16: Bool, rotaryEmbeddingHeads: Int = 1,
@@ -4660,7 +6867,7 @@ index a4b4e56..2d73b95 100644
  ) -> (
    Model, ModelWeightMapper
  ) {
-@@ -1266,15 +1386,23 @@ public func LoRAZImage(
+@@ -1266,15 +1397,23 @@ public func LoRAZImage(
      count: channels, configuration: LoRAConfiguration, index: 0, name: "x_embedder")
    let h = height / 2
    let w = width / 2
@@ -4690,7 +6897,7 @@ index a4b4e56..2d73b95 100644
      let padTokens = Input()
      xOut = Functional.concat(axis: 1, xOut, padTokens, flags: .disableOpt)
      xPadTokens = padTokens
-@@ -1396,6 +1524,7 @@ public func LoRAZImage(
+@@ -1396,6 +1535,7 @@ public func LoRAZImage(
    inputs.append(rot)
    inputs.append(txtIn)
    inputs.append(contentsOf: adaLNChunks)
@@ -4698,8 +6905,337 @@ index a4b4e56..2d73b95 100644
    return (
      Model(inputs, [out], trainable: false), mapper
    )
+diff --git a/Libraries/SwiftDiffusion/Sources/Samplers/ComfyMultistepSampler.swift b/Libraries/SwiftDiffusion/Sources/Samplers/ComfyMultistepSampler.swift
+index 1ce3daa..a6f7bcb 100644
+--- a/Libraries/SwiftDiffusion/Sources/Samplers/ComfyMultistepSampler.swift
++++ b/Libraries/SwiftDiffusion/Sources/Samplers/ComfyMultistepSampler.swift
+@@ -51,6 +51,8 @@ where UNet.FloatType == FloatType {
+   public let causalInference: (Int, pad: Int)
+   public let cfgZeroStar: CfgZeroStarConfiguration
+   public let isBF16: Bool
++  /// Seamless tile for the image RoPE (Krea 2, Z-Image, FLUX.2, FLUX.3); nil = off.
++  public var seamless: SeamlessTile? = nil
+   private let discretization: Discretization
+   private let weightsCache: WeightsCache
+   public init(
+@@ -196,7 +198,7 @@ extension ComfyMultistepSampler: Sampler {
+     let result: Result<SamplerOutput<FloatType, UNet>, Error> = graph.withStream(streamContext) {
+       let oldC = c
+       var conditions: [DynamicGraph.AnyTensor] = c
+-      let fixedEncoder = UNetFixedEncoder<FloatType>(
++      var fixedEncoder = UNetFixedEncoder<FloatType>(
+         filePath: filePath, version: version, modifier: modifier,
+         dualAttentionLayers: dualAttentionLayers, activationQkScaling: activationQkScaling,
+         activationProjScaling: activationProjScaling,
+@@ -206,6 +208,7 @@ extension ComfyMultistepSampler: Sampler {
+         zeroNegativePrompt: zeroNegativePrompt, isQuantizedModel: isQuantizedModel,
+         canRunLoRASeparately: canRunLoRASeparately, externalOnDemand: externalOnDemand,
+         deviceProperties: deviceProperties, weightsCache: weightsCache)
++      fixedEncoder.seamless = seamless
+       let injectedControlsC: [[DynamicGraph.Tensor<FloatType>]]
+       let alphasCumprod = discretization.alphasCumprod(steps: sampling.steps, shift: sampling.shift)
+       let sigmas = alphasCumprod.map { discretization.sigma(from: $0) }
+@@ -619,7 +622,7 @@ extension ComfyMultistepSampler: Sampler {
+             + listOfLoras.filter {
+               $0.mode == .all || $0.mode == .refiner
+             }
+-          let fixedEncoder = UNetFixedEncoder<FloatType>(
++          var fixedEncoder = UNetFixedEncoder<FloatType>(
+             filePath: refiner.filePath, version: refiner.version,
+             modifier: modifier, dualAttentionLayers: refiner.dualAttentionLayers,
+             activationQkScaling: refiner.activationQkScaling,
+@@ -631,6 +634,7 @@ extension ComfyMultistepSampler: Sampler {
+             isQuantizedModel: refiner.isQuantizedModel, canRunLoRASeparately: canRunLoRASeparately,
+             externalOnDemand: refiner.externalOnDemand, deviceProperties: deviceProperties,
+             weightsCache: weightsCache)
++          fixedEncoder.seamless = seamless
+           if UNetFixedEncoder<FloatType>.isFixedEncoderRequired(version: refiner.version) {
+             conditions = []
+             let vector = fixedEncoder.vector(
+diff --git a/Libraries/SwiftDiffusion/Sources/Samplers/DDIMSampler.swift b/Libraries/SwiftDiffusion/Sources/Samplers/DDIMSampler.swift
+index 8e84916..3acf70f 100644
+--- a/Libraries/SwiftDiffusion/Sources/Samplers/DDIMSampler.swift
++++ b/Libraries/SwiftDiffusion/Sources/Samplers/DDIMSampler.swift
+@@ -41,6 +41,8 @@ where UNet.FloatType == FloatType {
+   public let causalInference: (Int, pad: Int)
+   public let cfgZeroStar: CfgZeroStarConfiguration
+   public let isBF16: Bool
++  /// Seamless tile for the image RoPE (Krea 2, Z-Image, FLUX.2, FLUX.3); nil = off.
++  public var seamless: SeamlessTile? = nil
+   private let discretization: Discretization
+   private let weightsCache: WeightsCache
+   public init(
+@@ -186,7 +188,7 @@ extension DDIMSampler: Sampler {
+     let result: Result<SamplerOutput<FloatType, UNet>, Error> = graph.withStream(streamContext) {
+       let oldC = c
+       var conditions: [DynamicGraph.AnyTensor] = c
+-      let fixedEncoder = UNetFixedEncoder<FloatType>(
++      var fixedEncoder = UNetFixedEncoder<FloatType>(
+         filePath: filePath, version: version, modifier: modifier,
+         dualAttentionLayers: dualAttentionLayers, activationQkScaling: activationQkScaling,
+         activationProjScaling: activationProjScaling,
+@@ -196,6 +198,7 @@ extension DDIMSampler: Sampler {
+         zeroNegativePrompt: zeroNegativePrompt, isQuantizedModel: isQuantizedModel,
+         canRunLoRASeparately: canRunLoRASeparately, externalOnDemand: externalOnDemand,
+         deviceProperties: deviceProperties, weightsCache: weightsCache)
++      fixedEncoder.seamless = seamless
+       let injectedControlsC: [[DynamicGraph.Tensor<FloatType>]]
+       let alphasCumprod = discretization.alphasCumprod(steps: sampling.steps, shift: sampling.shift)
+       let timesteps = (startStep.integral..<endStep.integral).map {
+@@ -416,7 +419,7 @@ extension DDIMSampler: Sampler {
+             + listOfLoras.filter {
+               $0.mode == .all || $0.mode == .refiner
+             }
+-          let fixedEncoder = UNetFixedEncoder<FloatType>(
++          var fixedEncoder = UNetFixedEncoder<FloatType>(
+             filePath: refiner.filePath, version: refiner.version,
+             modifier: modifier,
+             dualAttentionLayers: refiner.dualAttentionLayers,
+@@ -429,6 +432,7 @@ extension DDIMSampler: Sampler {
+             isQuantizedModel: refiner.isQuantizedModel, canRunLoRASeparately: canRunLoRASeparately,
+             externalOnDemand: refiner.externalOnDemand, deviceProperties: deviceProperties,
+             weightsCache: weightsCache)
++          fixedEncoder.seamless = seamless
+           if UNetFixedEncoder<FloatType>.isFixedEncoderRequired(version: refiner.version) {
+             conditions = []
+             let vector = fixedEncoder.vector(
+diff --git a/Libraries/SwiftDiffusion/Sources/Samplers/DPMPP2MSampler.swift b/Libraries/SwiftDiffusion/Sources/Samplers/DPMPP2MSampler.swift
+index e296dae..f67658a 100644
+--- a/Libraries/SwiftDiffusion/Sources/Samplers/DPMPP2MSampler.swift
++++ b/Libraries/SwiftDiffusion/Sources/Samplers/DPMPP2MSampler.swift
+@@ -41,6 +41,8 @@ where UNet.FloatType == FloatType {
+   public let causalInference: (Int, pad: Int)
+   public let cfgZeroStar: CfgZeroStarConfiguration
+   public let isBF16: Bool
++  /// Seamless tile for the image RoPE (Krea 2, Z-Image, FLUX.2, FLUX.3); nil = off.
++  public var seamless: SeamlessTile? = nil
+   private let discretization: Discretization
+   private let weightsCache: WeightsCache
+   public init(
+@@ -186,7 +188,7 @@ extension DPMPP2MSampler: Sampler {
+     let result: Result<SamplerOutput<FloatType, UNet>, Error> = graph.withStream(streamContext) {
+       let oldC = c
+       var conditions: [DynamicGraph.AnyTensor] = c
+-      let fixedEncoder = UNetFixedEncoder<FloatType>(
++      var fixedEncoder = UNetFixedEncoder<FloatType>(
+         filePath: filePath, version: version, modifier: modifier,
+         dualAttentionLayers: dualAttentionLayers, activationQkScaling: activationQkScaling,
+         activationProjScaling: activationProjScaling,
+@@ -196,6 +198,7 @@ extension DPMPP2MSampler: Sampler {
+         zeroNegativePrompt: zeroNegativePrompt, isQuantizedModel: isQuantizedModel,
+         canRunLoRASeparately: canRunLoRASeparately, externalOnDemand: externalOnDemand,
+         deviceProperties: deviceProperties, weightsCache: weightsCache)
++      fixedEncoder.seamless = seamless
+       let injectedControlsC: [[DynamicGraph.Tensor<FloatType>]]
+       let alphasCumprod = discretization.alphasCumprod(steps: sampling.steps, shift: sampling.shift)
+       var sigmas = alphasCumprod.map { discretization.sigma(from: $0) }
+@@ -436,7 +439,7 @@ extension DPMPP2MSampler: Sampler {
+             + listOfLoras.filter {
+               $0.mode == .all || $0.mode == .refiner
+             }
+-          let fixedEncoder = UNetFixedEncoder<FloatType>(
++          var fixedEncoder = UNetFixedEncoder<FloatType>(
+             filePath: refiner.filePath, version: refiner.version,
+             modifier: modifier, dualAttentionLayers: refiner.dualAttentionLayers,
+             activationQkScaling: refiner.activationQkScaling,
+@@ -448,6 +451,7 @@ extension DPMPP2MSampler: Sampler {
+             isQuantizedModel: refiner.isQuantizedModel, canRunLoRASeparately: canRunLoRASeparately,
+             externalOnDemand: refiner.externalOnDemand, deviceProperties: deviceProperties,
+             weightsCache: weightsCache)
++          fixedEncoder.seamless = seamless
+           if UNetFixedEncoder<FloatType>.isFixedEncoderRequired(version: refiner.version) {
+             conditions = []
+             let vector = fixedEncoder.vector(
+diff --git a/Libraries/SwiftDiffusion/Sources/Samplers/DPMPPSDESampler.swift b/Libraries/SwiftDiffusion/Sources/Samplers/DPMPPSDESampler.swift
+index 82cb187..64b8849 100644
+--- a/Libraries/SwiftDiffusion/Sources/Samplers/DPMPPSDESampler.swift
++++ b/Libraries/SwiftDiffusion/Sources/Samplers/DPMPPSDESampler.swift
+@@ -41,6 +41,8 @@ where UNet.FloatType == FloatType {
+   public let causalInference: (Int, pad: Int)
+   public let cfgZeroStar: CfgZeroStarConfiguration
+   public let isBF16: Bool
++  /// Seamless tile for the image RoPE (Krea 2, Z-Image, FLUX.2, FLUX.3); nil = off.
++  public var seamless: SeamlessTile? = nil
+   private let discretization: Discretization
+   private let weightsCache: WeightsCache
+   public init(
+@@ -186,7 +188,7 @@ extension DPMPPSDESampler: Sampler {
+     let result: Result<SamplerOutput<FloatType, UNet>, Error> = graph.withStream(streamContext) {
+       let oldC = c
+       var allConditions: [DynamicGraph.AnyTensor] = c
+-      let fixedEncoder = UNetFixedEncoder<FloatType>(
++      var fixedEncoder = UNetFixedEncoder<FloatType>(
+         filePath: filePath, version: version, modifier: modifier,
+         dualAttentionLayers: dualAttentionLayers, activationQkScaling: activationQkScaling,
+         activationProjScaling: activationProjScaling,
+@@ -196,6 +198,7 @@ extension DPMPPSDESampler: Sampler {
+         zeroNegativePrompt: zeroNegativePrompt, isQuantizedModel: isQuantizedModel,
+         canRunLoRASeparately: canRunLoRASeparately, externalOnDemand: externalOnDemand,
+         deviceProperties: deviceProperties, weightsCache: weightsCache)
++      fixedEncoder.seamless = seamless
+       let injectedControlsC: [[DynamicGraph.Tensor<FloatType>]]
+       let alphasCumprod = discretization.alphasCumprod(steps: sampling.steps, shift: sampling.shift)
+       let sigmas = alphasCumprod.map { discretization.sigma(from: $0) }
+@@ -437,7 +440,7 @@ extension DPMPPSDESampler: Sampler {
+             + listOfLoras.filter {
+               $0.mode == .all || $0.mode == .refiner
+             }
+-          let fixedEncoder = UNetFixedEncoder<FloatType>(
++          var fixedEncoder = UNetFixedEncoder<FloatType>(
+             filePath: refiner.filePath, version: refiner.version,
+             modifier: modifier, dualAttentionLayers: refiner.dualAttentionLayers,
+             activationQkScaling: refiner.activationQkScaling,
+@@ -449,6 +452,7 @@ extension DPMPPSDESampler: Sampler {
+             isQuantizedModel: refiner.isQuantizedModel, canRunLoRASeparately: canRunLoRASeparately,
+             externalOnDemand: refiner.externalOnDemand, deviceProperties: deviceProperties,
+             weightsCache: weightsCache)
++          fixedEncoder.seamless = seamless
+           if UNetFixedEncoder<FloatType>.isFixedEncoderRequired(version: refiner.version) {
+             allConditions = []
+             let vector = fixedEncoder.vector(
+diff --git a/Libraries/SwiftDiffusion/Sources/Samplers/EulerASampler.swift b/Libraries/SwiftDiffusion/Sources/Samplers/EulerASampler.swift
+index 56907a5..9ea935c 100644
+--- a/Libraries/SwiftDiffusion/Sources/Samplers/EulerASampler.swift
++++ b/Libraries/SwiftDiffusion/Sources/Samplers/EulerASampler.swift
+@@ -41,6 +41,8 @@ where UNet.FloatType == FloatType {
+   public let causalInference: (Int, pad: Int)
+   public let cfgZeroStar: CfgZeroStarConfiguration
+   public let isBF16: Bool
++  /// Seamless tile for the image RoPE (Krea 2, Z-Image, FLUX.2, FLUX.3); nil = off.
++  public var seamless: SeamlessTile? = nil
+   private let discretization: Discretization
+   private let weightsCache: WeightsCache
+   public init(
+@@ -186,7 +188,7 @@ extension EulerASampler: Sampler {
+     let result: Result<SamplerOutput<FloatType, UNet>, Error> = graph.withStream(streamContext) {
+       let oldC = c
+       var conditions: [DynamicGraph.AnyTensor] = c
+-      let fixedEncoder = UNetFixedEncoder<FloatType>(
++      var fixedEncoder = UNetFixedEncoder<FloatType>(
+         filePath: filePath, version: version, modifier: modifier,
+         dualAttentionLayers: dualAttentionLayers, activationQkScaling: activationQkScaling,
+         activationProjScaling: activationProjScaling,
+@@ -196,6 +198,7 @@ extension EulerASampler: Sampler {
+         zeroNegativePrompt: zeroNegativePrompt, isQuantizedModel: isQuantizedModel,
+         canRunLoRASeparately: canRunLoRASeparately, externalOnDemand: externalOnDemand,
+         deviceProperties: deviceProperties, weightsCache: weightsCache)
++      fixedEncoder.seamless = seamless
+       let injectedControlsC: [[DynamicGraph.Tensor<FloatType>]]
+       let alphasCumprod = discretization.alphasCumprod(steps: sampling.steps, shift: sampling.shift)
+       let sigmas = alphasCumprod.map { discretization.sigma(from: $0) }
+@@ -433,7 +436,7 @@ extension EulerASampler: Sampler {
+             + listOfLoras.filter {
+               $0.mode == .all || $0.mode == .refiner
+             }
+-          let fixedEncoder = UNetFixedEncoder<FloatType>(
++          var fixedEncoder = UNetFixedEncoder<FloatType>(
+             filePath: refiner.filePath, version: refiner.version,
+             modifier: modifier, dualAttentionLayers: refiner.dualAttentionLayers,
+             activationQkScaling: refiner.activationQkScaling,
+@@ -445,6 +448,7 @@ extension EulerASampler: Sampler {
+             isQuantizedModel: refiner.isQuantizedModel, canRunLoRASeparately: canRunLoRASeparately,
+             externalOnDemand: refiner.externalOnDemand, deviceProperties: deviceProperties,
+             weightsCache: weightsCache)
++          fixedEncoder.seamless = seamless
+           if UNetFixedEncoder<FloatType>.isFixedEncoderRequired(version: refiner.version) {
+             conditions = []
+             let vector = fixedEncoder.vector(
+diff --git a/Libraries/SwiftDiffusion/Sources/Samplers/LCMSampler.swift b/Libraries/SwiftDiffusion/Sources/Samplers/LCMSampler.swift
+index 47a798a..3d89dba 100644
+--- a/Libraries/SwiftDiffusion/Sources/Samplers/LCMSampler.swift
++++ b/Libraries/SwiftDiffusion/Sources/Samplers/LCMSampler.swift
+@@ -39,6 +39,8 @@ where UNet.FloatType == FloatType {
+   public let teaCache: TeaCacheConfiguration
+   public let causalInference: (Int, pad: Int)
+   public let isBF16: Bool
++  /// Seamless tile for the image RoPE (Krea 2, Z-Image, FLUX.2, FLUX.3); nil = off.
++  public var seamless: SeamlessTile? = nil
+   private let discretization: Discretization
+   /// Steps on `discretization.alphasCumprod(steps:shift:)`, as ComfyUI's `sample_lcm` steps on
+   /// whatever sigmas its scheduler gives, instead of LCM's own 1000-entry index table. Set for a
+@@ -223,7 +225,7 @@ extension LCMSampler: Sampler {
+     let result: Result<SamplerOutput<FloatType, UNet>, Error> = graph.withStream(streamContext) {
+       let oldC = c
+       var conditions: [DynamicGraph.AnyTensor] = c
+-      let fixedEncoder = UNetFixedEncoder<FloatType>(
++      var fixedEncoder = UNetFixedEncoder<FloatType>(
+         filePath: filePath, version: version, modifier: modifier,
+         dualAttentionLayers: dualAttentionLayers, activationQkScaling: activationQkScaling,
+         activationProjScaling: activationProjScaling,
+@@ -233,6 +235,7 @@ extension LCMSampler: Sampler {
+         zeroNegativePrompt: zeroNegativePrompt, isQuantizedModel: isQuantizedModel,
+         canRunLoRASeparately: canRunLoRASeparately, externalOnDemand: externalOnDemand,
+         deviceProperties: deviceProperties, weightsCache: weightsCache)
++      fixedEncoder.seamless = seamless
+       let injectedControlsC: [[DynamicGraph.Tensor<FloatType>]]
+       // Per step: the alphaCumprod (and sigma) it denoises from, the one it renoises to, what the
+       // model is told, and LCM's boundary-condition scalings (c_skip, c_out).
+@@ -533,7 +536,7 @@ extension LCMSampler: Sampler {
+             + listOfLoras.filter {
+               $0.mode == .all || $0.mode == .refiner
+             }
+-          let fixedEncoder = UNetFixedEncoder<FloatType>(
++          var fixedEncoder = UNetFixedEncoder<FloatType>(
+             filePath: refiner.filePath, version: refiner.version,
+             modifier: modifier, dualAttentionLayers: refiner.dualAttentionLayers,
+             activationQkScaling: refiner.activationQkScaling,
+@@ -545,6 +548,7 @@ extension LCMSampler: Sampler {
+             isQuantizedModel: refiner.isQuantizedModel, canRunLoRASeparately: canRunLoRASeparately,
+             externalOnDemand: refiner.externalOnDemand, deviceProperties: deviceProperties,
+             weightsCache: weightsCache)
++          fixedEncoder.seamless = seamless
+           if UNetFixedEncoder<FloatType>.isFixedEncoderRequired(version: refiner.version) {
+             conditions = []
+             let vector = fixedEncoder.vector(
+diff --git a/Libraries/SwiftDiffusion/Sources/Samplers/PLMSSampler.swift b/Libraries/SwiftDiffusion/Sources/Samplers/PLMSSampler.swift
+index 6119857..09c0b33 100644
+--- a/Libraries/SwiftDiffusion/Sources/Samplers/PLMSSampler.swift
++++ b/Libraries/SwiftDiffusion/Sources/Samplers/PLMSSampler.swift
+@@ -51,6 +51,8 @@ where UNet.FloatType == FloatType {
+   public let causalInference: (Int, pad: Int)
+   public let cfgZeroStar: CfgZeroStarConfiguration
+   public let isBF16: Bool
++  /// Seamless tile for the image RoPE (Krea 2, Z-Image, FLUX.2, FLUX.3); nil = off.
++  public var seamless: SeamlessTile? = nil
+   private let discretization: Discretization
+   private let weightsCache: WeightsCache
+   public init(
+@@ -198,7 +200,7 @@ extension PLMSSampler: Sampler {
+     let result: Result<SamplerOutput<FloatType, UNet>, Error> = graph.withStream(streamContext) {
+       let oldC = c
+       var conditions: [DynamicGraph.AnyTensor] = c
+-      let fixedEncoder = UNetFixedEncoder<FloatType>(
++      var fixedEncoder = UNetFixedEncoder<FloatType>(
+         filePath: filePath, version: version, modifier: modifier,
+         dualAttentionLayers: dualAttentionLayers, activationQkScaling: activationQkScaling,
+         activationProjScaling: activationProjScaling,
+@@ -208,6 +210,7 @@ extension PLMSSampler: Sampler {
+         zeroNegativePrompt: zeroNegativePrompt, isQuantizedModel: isQuantizedModel,
+         canRunLoRASeparately: canRunLoRASeparately, externalOnDemand: externalOnDemand,
+         deviceProperties: deviceProperties, weightsCache: weightsCache)
++      fixedEncoder.seamless = seamless
+       let injectedControlsC: [[DynamicGraph.Tensor<FloatType>]]
+       let alphasCumprod = discretization.alphasCumprod(steps: sampling.steps, shift: sampling.shift)
+       let timesteps = (startStep..<endStep).map {
+@@ -401,7 +404,7 @@ extension PLMSSampler: Sampler {
+             + listOfLoras.filter {
+               $0.mode == .all || $0.mode == .refiner
+             }
+-          let fixedEncoder = UNetFixedEncoder<FloatType>(
++          var fixedEncoder = UNetFixedEncoder<FloatType>(
+             filePath: refiner.filePath, version: refiner.version,
+             modifier: modifier, dualAttentionLayers: refiner.dualAttentionLayers,
+             activationQkScaling: refiner.activationQkScaling,
+@@ -413,6 +416,7 @@ extension PLMSSampler: Sampler {
+             isQuantizedModel: refiner.isQuantizedModel, canRunLoRASeparately: canRunLoRASeparately,
+             externalOnDemand: refiner.externalOnDemand, deviceProperties: deviceProperties,
+             weightsCache: weightsCache)
++          fixedEncoder.seamless = seamless
+           if UNetFixedEncoder<FloatType>.isFixedEncoderRequired(version: refiner.version) {
+             conditions = []
+             let vector = fixedEncoder.vector(
 diff --git a/Libraries/SwiftDiffusion/Sources/Samplers/Sampler.swift b/Libraries/SwiftDiffusion/Sources/Samplers/Sampler.swift
-index e74edb7..7ea4523 100644
+index e74edb7..b031c38 100644
 --- a/Libraries/SwiftDiffusion/Sources/Samplers/Sampler.swift
 +++ b/Libraries/SwiftDiffusion/Sources/Samplers/Sampler.swift
 @@ -43,6 +43,7 @@ public enum ModelVersion: String, Codable {
@@ -4710,7 +7246,16 @@ index e74edb7..7ea4523 100644
  }
  
  public enum TextEncoderVersion: String, Codable {
-@@ -389,7 +390,7 @@ public func isCfgEnabled(
+@@ -266,6 +267,8 @@ public protocol Sampler<FloatType, UNet> {
+   var tiledDiffusion: TiledConfiguration { get }
+   var teaCache: TeaCacheConfiguration { get }
+   var isGuidanceEmbedEnabled: Bool { get }
++  /// Seamless tile for the image RoPE of Krea 2, Z-Image, FLUX.2 and FLUX.3 (nil = off).
++  var seamless: SeamlessTile? { get set }
+ 
+   func sample(
+     _ x_T: DynamicGraph.Tensor<FloatType>, unets: [UNet?], sample: DynamicGraph.Tensor<FloatType>?,
+@@ -389,7 +392,7 @@ public func isCfgEnabled(
      // Only Fibo 2.0 Edit Turbo (distilled, no classifier-free guidance) is wired.
      return false
    }
@@ -4719,7 +7264,7 @@ index e74edb7..7ea4523 100644
      // MiniMax H3 Image is CFG-distilled: it runs one positive branch per step.
      return false
    }
-@@ -549,7 +550,7 @@ func isBatchEnabled(_ version: ModelVersion) -> Bool {
+@@ -549,7 +552,7 @@ func isBatchEnabled(_ version: ModelVersion) -> Bool {
    switch version {
    case .auraflow, .flux1, .hiDreamI1, .hiDreamO1, .kandinsky21, .pixart, .sd3, .sd3Large, .sdxlBase,
      .sdxlRefiner, .ssd1b, .v1, .v2, .wurstchenStageB, .wurstchenStageC, .qwenImage, .qwenImage2_1,
@@ -4728,6 +7273,100 @@ index e74edb7..7ea4523 100644
      .cosmos2_5_2_9b,
      .ideogram4,
      .krea2:
+diff --git a/Libraries/SwiftDiffusion/Sources/Samplers/TCDSampler.swift b/Libraries/SwiftDiffusion/Sources/Samplers/TCDSampler.swift
+index c8fc38a..6b4d13c 100644
+--- a/Libraries/SwiftDiffusion/Sources/Samplers/TCDSampler.swift
++++ b/Libraries/SwiftDiffusion/Sources/Samplers/TCDSampler.swift
+@@ -40,6 +40,8 @@ where UNet.FloatType == FloatType {
+   public let teaCache: TeaCacheConfiguration
+   public let causalInference: (Int, pad: Int)
+   public let isBF16: Bool
++  /// Seamless tile for the image RoPE (Krea 2, Z-Image, FLUX.2, FLUX.3); nil = off.
++  public var seamless: SeamlessTile? = nil
+   private let discretization: Discretization
+   private let weightsCache: WeightsCache
+   public init(
+@@ -209,7 +211,7 @@ extension TCDSampler: Sampler {
+     let result: Result<SamplerOutput<FloatType, UNet>, Error> = graph.withStream(streamContext) {
+       let oldC = c
+       var conditions: [DynamicGraph.AnyTensor] = c
+-      let fixedEncoder = UNetFixedEncoder<FloatType>(
++      var fixedEncoder = UNetFixedEncoder<FloatType>(
+         filePath: filePath, version: version, modifier: modifier,
+         dualAttentionLayers: dualAttentionLayers, activationQkScaling: activationQkScaling,
+         activationProjScaling: activationProjScaling,
+@@ -219,6 +221,7 @@ extension TCDSampler: Sampler {
+         zeroNegativePrompt: zeroNegativePrompt, isQuantizedModel: isQuantizedModel,
+         canRunLoRASeparately: canRunLoRASeparately, externalOnDemand: externalOnDemand,
+         deviceProperties: deviceProperties, weightsCache: weightsCache)
++      fixedEncoder.seamless = seamless
+       let injectedControlsC: [[DynamicGraph.Tensor<FloatType>]]
+       let alphasCumprod = discretization.alphasCumprod(
+         steps: sampling.steps + 1, shift: sampling.shift)
+@@ -429,7 +432,7 @@ extension TCDSampler: Sampler {
+             + listOfLoras.filter {
+               $0.mode == .all || $0.mode == .refiner
+             }
+-          let fixedEncoder = UNetFixedEncoder<FloatType>(
++          var fixedEncoder = UNetFixedEncoder<FloatType>(
+             filePath: refiner.filePath, version: refiner.version,
+             modifier: modifier, dualAttentionLayers: refiner.dualAttentionLayers,
+             activationQkScaling: refiner.activationQkScaling,
+@@ -441,6 +444,7 @@ extension TCDSampler: Sampler {
+             isQuantizedModel: refiner.isQuantizedModel, canRunLoRASeparately: canRunLoRASeparately,
+             externalOnDemand: refiner.externalOnDemand, deviceProperties: deviceProperties,
+             weightsCache: weightsCache)
++          fixedEncoder.seamless = seamless
+           if UNetFixedEncoder<FloatType>.isFixedEncoderRequired(version: refiner.version) {
+             conditions = []
+             let vector = fixedEncoder.vector(
+diff --git a/Libraries/SwiftDiffusion/Sources/Samplers/UniPCSampler.swift b/Libraries/SwiftDiffusion/Sources/Samplers/UniPCSampler.swift
+index 749d25b..36652d5 100644
+--- a/Libraries/SwiftDiffusion/Sources/Samplers/UniPCSampler.swift
++++ b/Libraries/SwiftDiffusion/Sources/Samplers/UniPCSampler.swift
+@@ -41,6 +41,8 @@ where UNet.FloatType == FloatType {
+   public let causalInference: (Int, pad: Int)
+   public let cfgZeroStar: CfgZeroStarConfiguration
+   public let isBF16: Bool
++  /// Seamless tile for the image RoPE (Krea 2, Z-Image, FLUX.2, FLUX.3); nil = off.
++  public var seamless: SeamlessTile? = nil
+   private let discretization: Discretization
+   private let weightsCache: WeightsCache
+   public init(
+@@ -309,7 +311,7 @@ extension UniPCSampler: Sampler {
+     let result: Result<SamplerOutput<FloatType, UNet>, Error> = graph.withStream(streamContext) {
+       let oldC = c
+       var conditions: [DynamicGraph.AnyTensor] = c
+-      let fixedEncoder = UNetFixedEncoder<FloatType>(
++      var fixedEncoder = UNetFixedEncoder<FloatType>(
+         filePath: filePath, version: version, modifier: modifier,
+         dualAttentionLayers: dualAttentionLayers, activationQkScaling: activationQkScaling,
+         activationProjScaling: activationProjScaling,
+@@ -319,6 +321,7 @@ extension UniPCSampler: Sampler {
+         zeroNegativePrompt: zeroNegativePrompt, isQuantizedModel: isQuantizedModel,
+         canRunLoRASeparately: canRunLoRASeparately, externalOnDemand: externalOnDemand,
+         deviceProperties: deviceProperties, weightsCache: weightsCache)
++      fixedEncoder.seamless = seamless
+       let injectedControlsC: [[DynamicGraph.Tensor<FloatType>]]
+       var alphasCumprod = discretization.alphasCumprod(steps: sampling.steps, shift: sampling.shift)
+       if Float(startStep.integral) != startStep.fractional {
+@@ -539,7 +542,7 @@ extension UniPCSampler: Sampler {
+             + listOfLoras.filter {
+               $0.mode == .all || $0.mode == .refiner
+             }
+-          let fixedEncoder = UNetFixedEncoder<FloatType>(
++          var fixedEncoder = UNetFixedEncoder<FloatType>(
+             filePath: refiner.filePath, version: refiner.version,
+             modifier: modifier, dualAttentionLayers: refiner.dualAttentionLayers,
+             activationQkScaling: refiner.activationQkScaling,
+@@ -551,6 +554,7 @@ extension UniPCSampler: Sampler {
+             isQuantizedModel: refiner.isQuantizedModel, canRunLoRASeparately: canRunLoRASeparately,
+             externalOnDemand: refiner.externalOnDemand, deviceProperties: deviceProperties,
+             weightsCache: weightsCache)
++          fixedEncoder.seamless = seamless
+           if UNetFixedEncoder<FloatType>.isFixedEncoderRequired(version: refiner.version) {
+             conditions = []
+             let vector = fixedEncoder.vector(
 diff --git a/Libraries/SwiftDiffusion/Sources/ScheduledDiscretization.swift b/Libraries/SwiftDiffusion/Sources/ScheduledDiscretization.swift
 index 64d6d10..59d62b1 100644
 --- a/Libraries/SwiftDiffusion/Sources/ScheduledDiscretization.swift
@@ -4769,6 +7408,145 @@ index 64d6d10..59d62b1 100644
      /// EDM models have no timestep table for the t-space schedulers to walk; ComfyUI only offers
      /// them the sigma-space ones in practice, so the others fall back to the sampler's own.
      public func isSupported(by parameterization: Parameterization) -> Bool {
+diff --git a/Libraries/SwiftDiffusion/Sources/SeamlessTile.swift b/Libraries/SwiftDiffusion/Sources/SeamlessTile.swift
+new file mode 100644
+index 0000000..19cc2a9
+--- /dev/null
++++ b/Libraries/SwiftDiffusion/Sources/SeamlessTile.swift
+@@ -0,0 +1,133 @@
++import Foundation
++import NNC
++
++/// Seamless tile: the image repeats with no edge along the axes it wraps. The request carries it as
++/// `GenerationConfiguration.seamlessTile` (0 off, 1 left-right, 2 up-down, 3 both).
++public struct SeamlessTile: Equatable, Sendable {
++  public var wrapsHeight: Bool
++  public var wrapsWidth: Bool
++
++  public init(wrapsHeight: Bool, wrapsWidth: Bool) {
++    self.wrapsHeight = wrapsHeight
++    self.wrapsWidth = wrapsWidth
++  }
++
++  /// nil for 0 (off) and for a value this build doesn't know; 1 wraps the width only, 2 the height
++  /// only, 3 both.
++  public init?(configurationValue: Int8) {
++    switch configurationValue {
++    case 1: self.init(wrapsHeight: false, wrapsWidth: true)
++    case 2: self.init(wrapsHeight: true, wrapsWidth: false)
++    case 3: self.init(wrapsHeight: true, wrapsWidth: true)
++    default: return nil
++    }
++  }
++
++  /// The smallest number of turns a RoPE frequency makes over the tile period and still gets
++  /// snapped to a whole number of turns (slower ones become constant); nil when the version does
++  /// not support seamless tiles.
++  public static func minTurns(for version: ModelVersion) -> Double? {
++    switch version {
++    case .zImage, .krea2:
++      return 1.0
++    case .flux2, .flux2_9b, .flux2_4b, .flux3_5b:
++      return 0.5
++    default:
++      return nil
++    }
++  }
++}
++
++/// A RoPE frequency snapped to whole turns over `period`: `turns = round(ω·P/2π)`, or 0 when
++/// `ω·P/2π < minTurns`; the result is `turns·2π/P`. All in `Double`.
++public func torusFrequency(omega: Double, period: Double, minTurns: Double) -> Double {
++  let turns = omega * period / (2 * Double.pi)
++  guard turns >= minTurns else { return 0 }
++  return turns.rounded() * 2 * Double.pi / period
++}
++
++/// The RoPE angle of `position` on the torus: the position is taken modulo `period`, so
++/// `position` and `position + period` give the same angle (as a point on the circle).
++public func torusAngle(position: Double, omega: Double, period: Double, minTurns: Double) -> Double
++{
++  var wrapped = position.truncatingRemainder(dividingBy: period)
++  if wrapped < 0 { wrapped += period }
++  return wrapped * torusFrequency(omega: omega, period: period, minTurns: minTurns)
++}
++
++/// Circular padding in NHWC: the last `top` rows go above the first and the first `top` rows below
++/// the last (and the same with `left` for the columns), only on the axes that wrap. The input is
++/// `batchSize`x`height`x`width`x`channels`; the output grows by `2 * top` rows and `2 * left`
++/// columns on the wrapped axes. Slices need the shape, so the caller gives it.
++public func WrapPad(
++  batchSize: Int, height: Int, width: Int, channels: Int, top: Int, left: Int,
++  wrapsHeight: Bool, wrapsWidth: Bool
++) -> Model {
++  let x = Input()
++  var out: Model.IO = x
++  var height = height
++  if wrapsHeight && top > 0 {
++    precondition(top <= height, "WrapPad: \(top) rows from a height of \(height)")
++    let strides: TensorShape = [height * width * channels, width * channels, channels, 1]
++    let last = out.reshaped(
++      [batchSize, top, width, channels], offset: [0, height - top, 0, 0], strides: strides
++    ).contiguous()
++    let first = out.reshaped(
++      [batchSize, top, width, channels], offset: [0, 0, 0, 0], strides: strides
++    ).contiguous()
++    out = Functional.concat(axis: 1, last, out, first)
++    height += 2 * top
++  }
++  if wrapsWidth && left > 0 {
++    precondition(left <= width, "WrapPad: \(left) columns from a width of \(width)")
++    let strides: TensorShape = [height * width * channels, width * channels, channels, 1]
++    let last = out.reshaped(
++      [batchSize, height, left, channels], offset: [0, 0, width - left, 0], strides: strides
++    ).contiguous()
++    let first = out.reshaped(
++      [batchSize, height, left, channels], offset: [0, 0, 0, 0], strides: strides
++    ).contiguous()
++    out = Functional.concat(axis: 2, last, out, first)
++  }
++  return Model([x], [out])
++}
++
++/// A stride-1 convolution on an NHWC input of `inputShape` that pads circularly on the axes `wrap`
++/// wraps. With `wrap == nil` it is exactly `Convolution(..., hint: Hint(stride: [1, 1], border:
++/// border), ...)`, so the weights keep their names. Otherwise the input goes through `WrapPad` by
++/// the border on each wrapped axis (begin and end must match there) and the convolution's border
++/// on that axis becomes 0; the other axis keeps its border. Returns the convolution (for its
++/// weights) and the function that applies it.
++public func WrappingConvolution(
++  groups: Int, filters: Int, filterSize: [Int], border: Hint.Border, wrap: SeamlessTile?,
++  inputShape: (batchSize: Int, height: Int, width: Int, channels: Int),
++  format: Convolution.Format, name: String = ""
++) -> (Convolution, (Model.IO) -> Model.IO) {
++  guard let wrap = wrap else {
++    let conv = Convolution(
++      groups: groups, filters: filters, filterSize: filterSize,
++      hint: Hint(stride: [1, 1], border: border), format: format, name: name)
++    return (conv, { conv($0) })
++  }
++  let begin = border.begin.count == 2 ? border.begin : [0, 0]
++  let end = border.end.count == 2 ? border.end : [0, 0]
++  let wrapsHeight = wrap.wrapsHeight && (begin[0] > 0 || end[0] > 0)
++  let wrapsWidth = wrap.wrapsWidth && (begin[1] > 0 || end[1] > 0)
++  precondition(!wrapsHeight || begin[0] == end[0], "WrappingConvolution: uneven height border")
++  precondition(!wrapsWidth || begin[1] == end[1], "WrappingConvolution: uneven width border")
++  let conv = Convolution(
++    groups: groups, filters: filters, filterSize: filterSize,
++    hint: Hint(
++      stride: [1, 1],
++      border: Hint.Border(
++        begin: [wrapsHeight ? 0 : begin[0], wrapsWidth ? 0 : begin[1]],
++        end: [wrapsHeight ? 0 : end[0], wrapsWidth ? 0 : end[1]])), format: format, name: name)
++  guard wrapsHeight || wrapsWidth else {
++    return (conv, { conv($0) })
++  }
++  let pad = WrapPad(
++    batchSize: inputShape.batchSize, height: inputShape.height, width: inputShape.width,
++    channels: inputShape.channels, top: begin[0], left: begin[1], wrapsHeight: wrapsHeight,
++    wrapsWidth: wrapsWidth)
++  return (conv, { conv(pad($0)) })
++}
 diff --git a/Libraries/SwiftDiffusion/Sources/TeaCache/TeaCache.swift b/Libraries/SwiftDiffusion/Sources/TeaCache/TeaCache.swift
 index 4a44409..c3263e3 100644
 --- a/Libraries/SwiftDiffusion/Sources/TeaCache/TeaCache.swift
@@ -5152,10 +7930,19 @@ index 9d167ee..c19c386 100644
                  .ltx2_3, .seedvr2_3b, .seedvr2_7b, .ideogram4, .krea2, .longcatVideoAvatar1_5,
                  .minimaxH3, .minimaxH3Image:
 diff --git a/Libraries/SwiftDiffusion/Sources/UNetFixedEncoder.swift b/Libraries/SwiftDiffusion/Sources/UNetFixedEncoder.swift
-index b364789..9d8c87c 100644
+index b364789..f931848 100644
 --- a/Libraries/SwiftDiffusion/Sources/UNetFixedEncoder.swift
 +++ b/Libraries/SwiftDiffusion/Sources/UNetFixedEncoder.swift
-@@ -56,8 +56,8 @@ extension UNetFixedEncoder {
+@@ -20,6 +20,8 @@ public struct UNetFixedEncoder<FloatType: TensorNumeric & BinaryFloatingPoint> {
+   public let externalOnDemand: Bool
+   public let deviceProperties: DeviceProperties
+   private let weightsCache: WeightsCache
++  /// Seamless tiling for the image grid of Krea 2, Z-Image, FLUX.2 and FLUX.3 (nil = off).
++  public var seamless: SeamlessTile? = nil
+   public init(
+     filePath: String, version: ModelVersion, modifier: SamplerModifier, dualAttentionLayers: [Int],
+     activationQkScaling: [Int: Int], activationProjScaling: [Int: Int],
+@@ -56,8 +58,8 @@ extension UNetFixedEncoder {
      switch version {
      case .sdxlBase, .sdxlRefiner, .ssd1b, .svdI2v, .sd3, .sd3Large, .pixart, .auraflow, .flux1,
        .wurstchenStageC, .wurstchenStageB, .hunyuanVideo, .wan21_1_3b, .wan21_14b, .hiDreamI1,
@@ -5166,7 +7953,7 @@ index b364789..9d8c87c 100644
        .seedvr2_3b, .seedvr2_7b,
        .ideogram4,
        .krea2,
-@@ -204,8 +204,8 @@ extension UNetFixedEncoder {
+@@ -204,8 +206,8 @@ extension UNetFixedEncoder {
        // We don't need other vectors for sampling.
        return []
      case .sd3, .sd3Large, .pixart, .auraflow, .flux1, .hunyuanVideo, .wan21_1_3b, .wan21_14b,
@@ -5177,7 +7964,7 @@ index b364789..9d8c87c 100644
        .ltx2_3, .seedvr2_3b,
        .seedvr2_7b,
        .ideogram4,
-@@ -869,12 +869,32 @@ extension UNetFixedEncoder {
+@@ -869,12 +871,32 @@ extension UNetFixedEncoder {
          weightsCache.attach("\(filePath):[fixed]", from: unetFixed.parameters)
        }
        let maxTextLength = isCfgEnabled ? max(tokenLengthUncond, tokenLengthCond) : tokenLengthCond
@@ -5202,7 +7989,7 @@ index b364789..9d8c87c 100644
          Krea2RotaryPositionEmbedding(
 -          textLength: maxTextLength, gridHeight: h, gridWidth: w, of: FloatType.self
 +          textLength: maxTextLength, gridHeight: h, gridWidth: w,
-+          referenceCount: krea2References.count, of: FloatType.self
++          referenceCount: krea2References.count, of: FloatType.self, seamless: seamless
          ).toGPU(0))
        precondition(fixedConditions.count == 1 + 6 + 1)
 -      return ([fixedConditions[0], rotary] + Array(fixedConditions[1...]), nil)
@@ -5212,7 +7999,7 @@ index b364789..9d8c87c 100644
      case .sdxlBase, .ssd1b:
        let batchSize = textEncoding[0].shape[0]
        let maxTokenLength = textEncoding[0].shape[1]
-@@ -1322,8 +1342,8 @@ extension UNetFixedEncoder {
+@@ -1322,8 +1344,8 @@ extension UNetFixedEncoder {
            dualAttentionLayers: [])
        case .v1, .v2, .auraflow, .flux1, .kandinsky21, .pixart, .sdxlBase, .sdxlRefiner, .ssd1b,
          .svdI2v, .wurstchenStageB, .wurstchenStageC, .hunyuanVideo, .wan21_1_3b, .wan21_14b,
@@ -5223,7 +8010,31 @@ index b364789..9d8c87c 100644
          .ltx2_3, .seedvr2_3b,
          .seedvr2_7b,
          .ideogram4,
-@@ -3012,6 +3032,89 @@ extension UNetFixedEncoder {
+@@ -2866,12 +2888,12 @@ extension UNetFixedEncoder {
+         let rotaryEmbeddingUncond = Tensor<FloatType>(
+           from: ZImageRotaryPositionEmbedding(
+             height: h, width: w, tokenLength: roundUpTokenLengthUncond,
+-            imagePaddedLength: imagePaddedLength)
++            imagePaddedLength: imagePaddedLength, seamless: seamless)
+         ).toGPU(0)
+         let rotaryEmbeddingCond = Tensor<FloatType>(
+           from: ZImageRotaryPositionEmbedding(
+             height: h, width: w, tokenLength: roundUpTokenLengthCond,
+-            imagePaddedLength: imagePaddedLength)
++            imagePaddedLength: imagePaddedLength, seamless: seamless)
+         ).toGPU(0)
+         rotaryEmbeddings = [
+           graph.variable(rotaryEmbeddingUncond), graph.variable(rotaryEmbeddingCond),
+@@ -2880,7 +2902,7 @@ extension UNetFixedEncoder {
+         let rotaryEmbedding = Tensor<FloatType>(
+           from: ZImageRotaryPositionEmbedding(
+             height: h, width: w, tokenLength: roundUpTokenLengthCond,
+-            imagePaddedLength: imagePaddedLength)
++            imagePaddedLength: imagePaddedLength, seamless: seamless)
+         ).toGPU(0)
+         let rot = graph.variable(rotaryEmbedding)
+         rotaryEmbeddings = [rot, rot]
+@@ -3012,6 +3034,89 @@ extension UNetFixedEncoder {
          ]
        }
        return (rotaryEmbeddings + conditions, nil)
@@ -5313,6 +8124,24 @@ index b364789..9d8c87c 100644
      case .mossImage:
        precondition(timesteps.count > 0)
        let c0 = textEncoding[0]
+@@ -3382,7 +3487,7 @@ extension UNetFixedEncoder {
+         from: Flux3RotaryPositionEmbedding(
+           height: h, width: w, tokenLength: textLength,
+           referenceSizes: referenceSizes.map { (height: $0.height / 2, width: $0.width / 2) },
+-          channels: 128)
++          channels: 128, seamless: seamless)
+       ).toGPU(0)
+       return ([graph.variable(rotaryEmbedding)] + conditions, nil)
+     case .flux2, .flux2_9b, .flux2_4b:
+@@ -3597,7 +3702,7 @@ extension UNetFixedEncoder {
+       let rotaryEmbedding = Tensor<FloatType>(
+         from: Flux2RotaryPositionEmbedding(
+           height: h, width: w, tokenLength: textLength, referenceSizes: referenceSizes,
+-          channels: 128)
++          channels: 128, seamless: seamless)
+       ).toGPU(0)
+       return ([graph.variable(rotaryEmbedding)] + conditions, nil)
+     case .cosmos2_5_2b, .cosmos2_5_2_9b:
 diff --git a/Libraries/Tokenizer/Sources/Tiktoken.swift b/Libraries/Tokenizer/Sources/Tiktoken.swift
 index 5b4e20a..ff809ce 100644
 --- a/Libraries/Tokenizer/Sources/Tiktoken.swift
@@ -5612,10 +8441,10 @@ index 9b0e8cd..b24b431 100644
        case .v1, .v2:
          UNetMapping = LoRAMapping.SDUNet
 diff --git a/Package.swift b/Package.swift
-index a8647f3..003485f 100644
+index a8647f3..b4c20c6 100644
 --- a/Package.swift
 +++ b/Package.swift
-@@ -480,6 +480,57 @@ let package = Package(
+@@ -480,6 +480,66 @@ let package = Package(
        path: "Libraries/GRPC/ServerLoRALoader/Sources"
      ),
  
@@ -5649,6 +8478,15 @@ index a8647f3..003485f 100644
 +        .product(name: "NNC", package: "s4nnc"),
 +      ],
 +      path: "Apps/MingVAETest",
++      sources: ["main.swift"]
++    ),
++    .executableTarget(
++      name: "SeamlessTileTest",
++      dependencies: [
++        "Diffusion",
++        .product(name: "NNC", package: "s4nnc"),
++      ],
++      path: "Apps/SeamlessTileTest",
 +      sources: ["main.swift"]
 +    ),
 +    .executableTarget(

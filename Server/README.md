@@ -22,6 +22,10 @@ This is a custom build of `gRPCServerCLI` (the Draw Things image server), so tha
 
 The fork's engine spaces the steps with ComfyUI's schedulers independently of the sampler, but only for local use. The patch in `krea2-edit.patch` carries the choice over gRPC: `GenerationConfiguration` gets an appended field `scheduler` (0 the sampler's own, 1 simple, 2 sgm_uniform, 3 normal, 4 karras, 5 exponential, 6 linear_quadratic, 7 beta), and the server runs the request on a copy of the generator that has it. A client or server without the field sees 0, so nothing changes for them. The Substep samplers and Stable Cascade keep their own schedule; MiniMax H3 Image ignores Shift, as in ComfyUI.
 
+## Seamless tile (new)
+
+`GenerationConfiguration` gets an appended field `seamlessTile` (0 off, 1 left-right, 2 up-down, 3 both): the sampler and decoder wrap around the picture edges on those axes, so the result tiles with no visible seam. It works for Z-Image, FLUX.2, FLUX.3 and Krea 2; the size must be a multiple of 16 px, and the picture is decoded whole (no tiled decoding). A client or server without the field sees 0, so nothing changes for them.
+
 ## Krea 2 Edit (new)
 
 The patch in `krea2-edit.patch` lets Krea 2 take reference pictures (the canvas and the Moodboard images) the way the ComfyUI node pack [comfyui-krea2edit](https://github.com/lbouaraba/comfyui-krea2edit) does: each picture is encoded by the VAE and added to the model's token sequence next to the image being generated, aligned with it. Without a reference picture, Krea 2 behaves exactly as before (the same prompt, settings and seed give the same image).
