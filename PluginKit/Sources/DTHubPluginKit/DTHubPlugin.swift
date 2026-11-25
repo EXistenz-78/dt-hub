@@ -278,6 +278,8 @@ public struct DTHubContext: Decodable, Sendable {
   public var lastResult: DTHubLastResult?
   /// True when the app accepts a `loraSettings` message (`DTHubHost.setLoRASettings`); nil from an older app.
   public var loraSettings: Bool?
+  /// True when the server is the custom one DT Hub brings (the bundled program), false for any other; nil from an older app.
+  public var customServer: Bool?
 
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -285,6 +287,7 @@ public struct DTHubContext: Decodable, Sendable {
     startImageFramed = (try? container.decodeIfPresent(String.self, forKey: .startImageFramed)) ?? nil
     lastResult = (try? container.decodeIfPresent(DTHubLastResult.self, forKey: .lastResult)) ?? nil
     loraSettings = (try? container.decodeIfPresent(Bool.self, forKey: .loraSettings)) ?? nil
+    customServer = (try? container.decodeIfPresent(Bool.self, forKey: .customServer)) ?? nil
     model = try container.decodeIfPresent(String.self, forKey: .model)
     family = try container.decodeIfPresent(String.self, forKey: .family)
     tempFolder = try container.decode(String.self, forKey: .tempFolder)
@@ -304,7 +307,7 @@ public struct DTHubContext: Decodable, Sendable {
 
   private enum CodingKeys: String, CodingKey {
     case model, family, tempFolder, startImage, moodboard, languageModels, parameters, prompt, negativePrompt, strength
-    case promptGuide, loraCatalog, startImageWindow, startImageFramed, lastResult, loraSettings
+    case promptGuide, loraCatalog, startImageWindow, startImageFramed, lastResult, loraSettings, customServer
   }
 }
 
