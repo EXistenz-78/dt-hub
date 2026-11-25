@@ -1628,10 +1628,10 @@ index 0000000..8047ffe
 +exit $fail
 diff --git a/Apps/SeamlessTileTest/e2e.sh b/Apps/SeamlessTileTest/e2e.sh
 new file mode 100755
-index 0000000..c42d7a8
+index 0000000..bd88a54
 --- /dev/null
 +++ b/Apps/SeamlessTileTest/e2e.sh
-@@ -0,0 +1,109 @@
+@@ -0,0 +1,123 @@
 +#!/bin/bash
 +# Seamless tile, end to end: one generation per family with draw-things-cli, then the seam check of the
 +# ComfyUI node (comfyui-pixaroma/nodes/_seamless_helpers.py, seam_check) on each picture.
@@ -1644,13 +1644,17 @@ index 0000000..c42d7a8
 +# baseline.sha256 next to this script: e2e.sh --baseline with the defaults below, made with a Release
 +# draw-things-cli built from bcdc18f (before the generator read the flag). With the flag off, a newer build
 +# must give the same bytes:
-+#   OUT=/tmp/x e2e.sh --baseline && (cd /tmp/x && shasum -a 256 -c "$HERE/baseline.sha256")
++#   MODELS=<models folder> OUT=/tmp/x e2e.sh --baseline && (cd /tmp/x && shasum -a 256 -c "$HERE/baseline.sha256")
 +# Ming-Image (FAMILIES=ming) is not in it: two runs of the same binary already differ (max 22/255, mean
 +# ~0.5), so Ming is compared by pixel difference against that run-to-run spread, not by sha256.
 +#
-+# Environment (all optional):
++# Environment, required:
++#   MODELS   models folder of DT Hub's managed server (generating: plain run and --baseline)
++#   COMFY    ComfyUI folder with the comfyui-pixaroma custom node (seam check: plain run and --seam)
++# Environment, optional:
++#   PY       Python with numpy, torch and Pillow (default: $COMFY/.venv/bin/python3)
++#   HELPERS  the node's helpers (default: $COMFY/custom_nodes/comfyui-pixaroma/nodes/_seamless_helpers.py)
 +#   DTCLI    draw-things-cli binary            (default: .build/out/Products/Release/draw-things-cli)
-+#   MODELS   models folder of DT Hub's managed server (default: /Volumes/LLM-VLM/Models)
 +#   OUT      output folder                     (default: ./seamless-e2e-out)
 +#   FAMILIES families to run, space separated  (default: "krea2 zimage flux2 flux3")
 +#   PROMPT   prompt                            (default: a stone texture)
@@ -1664,7 +1668,7 @@ index 0000000..c42d7a8
 +HERE="$(cd "$(dirname "$0")" && pwd)"
 +ROOT="$(cd "$HERE/../.." && pwd)"
 +DTCLI="${DTCLI:-$ROOT/.build/out/Products/Release/draw-things-cli}"
-+MODELS="${MODELS:-/Volumes/LLM-VLM/Models}"
++MODELS="${MODELS:-}"
 +OUT="${OUT:-$PWD/seamless-e2e-out}"
 +FAMILIES="${FAMILIES:-krea2 zimage flux2 flux3}"
 +PROMPT="${PROMPT:-seamless texture of rough grey stone, top-down, even lighting}"
@@ -1673,9 +1677,19 @@ index 0000000..c42d7a8
 +SEED="${SEED:-7}"
 +EXTRA="${EXTRA:-}"
 +TAG="${TAG:-}"
-+COMFY="/Users/existenz/ComfyUI-Installs/eXistenZ/ComfyUI"
++COMFY="${COMFY:-}"
++
++usage() {
++  echo "usage: MODELS=<models folder> COMFY=<ComfyUI folder> $0 [--baseline | --seam <png>...]" >&2
++  echo "  $1 is not set (see the Environment notes at the top of this script)." >&2
++  exit 2
++}
++
++# The seam check needs the ComfyUI node; generating needs the models folder.
++if [ "${1:-}" != "--baseline" ] && [ -z "${PY:-}" -o -z "${HELPERS:-}" ] && [ -z "$COMFY" ]; then usage COMFY; fi
++if [ "${1:-}" != "--seam" ] && [ -z "$MODELS" ]; then usage MODELS; fi
 +PY="${PY:-$COMFY/.venv/bin/python3}"
-+HELPERS="$COMFY/custom_nodes/comfyui-pixaroma/nodes/_seamless_helpers.py"
++HELPERS="${HELPERS:-$COMFY/custom_nodes/comfyui-pixaroma/nodes/_seamless_helpers.py}"
 +
 +model_for() {
 +  case "$1" in
