@@ -113,6 +113,8 @@ struct DTHubApp: App {
       return true
     }
     plugins.loraCatalog = { connection.monitor.catalog.loras }
+    // The seamless tiling needs the custom server DT Hub brings: the managed one running the bundled program.
+    plugins.customServer = { connection.managed.mode == .managed && connection.managed.usesBundledServer() }
     plugins.currentPrompts = { (generation.prompt, generation.negativePrompt) }
     plugins.promptGuide = {
       PromptLibrary.live.family(generation.family()).map {

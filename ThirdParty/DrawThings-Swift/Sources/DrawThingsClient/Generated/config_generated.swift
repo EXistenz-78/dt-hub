@@ -496,6 +496,7 @@ public struct GenerationConfiguration: FlatBufferObject, Verifiable, ObjectAPIPa
     case solAttentionStart = 184
     case solAttentionTau = 186
     case scheduler = 188
+    case seamlessTile = 190
     var v: Int32 { Int32(self.rawValue) }
     var p: VOffset { self.rawValue }
   }
@@ -603,7 +604,8 @@ public struct GenerationConfiguration: FlatBufferObject, Verifiable, ObjectAPIPa
   public var solAttentionStart: Int32 { let o = _accessor.offset(VTOFFSET.solAttentionStart.v); return o == 0 ? 2 : _accessor.readBuffer(of: Int32.self, at: o) }
   public var solAttentionTau: Float32 { let o = _accessor.offset(VTOFFSET.solAttentionTau.v); return o == 0 ? 0.5 : _accessor.readBuffer(of: Float32.self, at: o) }
   public var scheduler: Int32 { let o = _accessor.offset(VTOFFSET.scheduler.v); return o == 0 ? 0 : _accessor.readBuffer(of: Int32.self, at: o) }
-  public static func startGenerationConfiguration(_ fbb: inout FlatBufferBuilder) -> UOffset { fbb.startTable(with: 93) }
+  public var seamlessTile: Int8 { let o = _accessor.offset(VTOFFSET.seamlessTile.v); return o == 0 ? 0 : _accessor.readBuffer(of: Int8.self, at: o) }
+  public static func startGenerationConfiguration(_ fbb: inout FlatBufferBuilder) -> UOffset { fbb.startTable(with: 94) }
   public static func add(id: Int64, _ fbb: inout FlatBufferBuilder) { fbb.add(element: id, def: 0, at: VTOFFSET.id.p) }
   public static func add(startWidth: UInt16, _ fbb: inout FlatBufferBuilder) { fbb.add(element: startWidth, def: 0, at: VTOFFSET.startWidth.p) }
   public static func add(startHeight: UInt16, _ fbb: inout FlatBufferBuilder) { fbb.add(element: startHeight, def: 0, at: VTOFFSET.startHeight.p) }
@@ -712,6 +714,7 @@ public struct GenerationConfiguration: FlatBufferObject, Verifiable, ObjectAPIPa
   public static func add(solAttentionStart: Int32, _ fbb: inout FlatBufferBuilder) { fbb.add(element: solAttentionStart, def: 2, at: VTOFFSET.solAttentionStart.p) }
   public static func add(solAttentionTau: Float32, _ fbb: inout FlatBufferBuilder) { fbb.add(element: solAttentionTau, def: 0.5, at: VTOFFSET.solAttentionTau.p) }
   public static func add(scheduler: Int32, _ fbb: inout FlatBufferBuilder) { fbb.add(element: scheduler, def: 0, at: VTOFFSET.scheduler.p) }
+  public static func add(seamlessTile: Int8, _ fbb: inout FlatBufferBuilder) { fbb.add(element: seamlessTile, def: 0, at: VTOFFSET.seamlessTile.p) }
   public static func endGenerationConfiguration(_ fbb: inout FlatBufferBuilder, start: UOffset) -> Offset { let end = Offset(offset: fbb.endTable(at: start)); return end }
   public static func createGenerationConfiguration(
     _ fbb: inout FlatBufferBuilder,
@@ -805,7 +808,8 @@ public struct GenerationConfiguration: FlatBufferObject, Verifiable, ObjectAPIPa
     usesSolAttention: Bool = false,
     solAttentionStart: Int32 = 2,
     solAttentionTau: Float32 = 0.5,
-    scheduler: Int32 = 0
+    scheduler: Int32 = 0,
+    seamlessTile: Int8 = 0
   ) -> Offset {
     let __start = GenerationConfiguration.startGenerationConfiguration(&fbb)
     GenerationConfiguration.add(id: id, &fbb)
@@ -899,6 +903,7 @@ public struct GenerationConfiguration: FlatBufferObject, Verifiable, ObjectAPIPa
     GenerationConfiguration.add(solAttentionStart: solAttentionStart, &fbb)
     GenerationConfiguration.add(solAttentionTau: solAttentionTau, &fbb)
     GenerationConfiguration.add(scheduler: scheduler, &fbb)
+    GenerationConfiguration.add(seamlessTile: seamlessTile, &fbb)
     return GenerationConfiguration.endGenerationConfiguration(&fbb, start: __start)
   }
   
@@ -1070,6 +1075,7 @@ public struct GenerationConfiguration: FlatBufferObject, Verifiable, ObjectAPIPa
     GenerationConfiguration.add(solAttentionStart: obj.solAttentionStart, &builder)
     GenerationConfiguration.add(solAttentionTau: obj.solAttentionTau, &builder)
     GenerationConfiguration.add(scheduler: obj.scheduler, &builder)
+    GenerationConfiguration.add(seamlessTile: obj.seamlessTile, &builder)
     return GenerationConfiguration.endGenerationConfiguration(&builder, start: __root)
   }
 
@@ -1166,6 +1172,7 @@ public struct GenerationConfiguration: FlatBufferObject, Verifiable, ObjectAPIPa
     try _v.visit(field: VTOFFSET.solAttentionStart.p, fieldName: "solAttentionStart", required: false, type: Int32.self)
     try _v.visit(field: VTOFFSET.solAttentionTau.p, fieldName: "solAttentionTau", required: false, type: Float32.self)
     try _v.visit(field: VTOFFSET.scheduler.p, fieldName: "scheduler", required: false, type: Int32.self)
+    try _v.visit(field: VTOFFSET.seamlessTile.p, fieldName: "seamlessTile", required: false, type: Int8.self)
     _v.finish()
   }
 }
@@ -1263,6 +1270,7 @@ public class GenerationConfigurationT: NativeObject {
   public var solAttentionStart: Int32
   public var solAttentionTau: Float32
   public var scheduler: Int32
+  public var seamlessTile: Int8
 
   public init(_ _t: inout GenerationConfiguration) {
     id = _t.id
@@ -1364,6 +1372,7 @@ public class GenerationConfigurationT: NativeObject {
     solAttentionStart = _t.solAttentionStart
     solAttentionTau = _t.solAttentionTau
     scheduler = _t.scheduler
+    seamlessTile = _t.seamlessTile
   }
 
   public init() {
@@ -1450,6 +1459,7 @@ public class GenerationConfigurationT: NativeObject {
     solAttentionStart = 2
     solAttentionTau = 0.5
     scheduler = 0
+    seamlessTile = 0
   }
 
   public func serialize() -> ByteBuffer { return serialize(type: GenerationConfiguration.self) }

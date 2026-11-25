@@ -123,13 +123,15 @@ public final class ContributionStore {
   public private(set) var conflicts: [ContributionConflict] = []
 
   @ObservationIgnored public weak var target: (any ContributionTarget)?
+  /// Why a seamless step cannot run with the model of this family (nil: it can). Without it nothing is refused.
+  @ObservationIgnored public var seamlessProblem: ((_ family: String?) -> String?)?
 
   public init() {}
 
   /// Takes a contribution. Fields, LoRAs and Moodboard pictures that do not clash go in at once; what clashes
   /// with another plug-in's becomes a conflict. Returns the reasons for what could not be used.
   @discardableResult
-  public func receive(_ contribution: PluginContribution, from pluginID: String) -> [String] {
+  public func receive(_ contribution: PluginContribution, from pluginID: String, family: String? = nil) -> [String] {
     guard let target else { return ["The app is not ready."] }
     var problems: [String] = []
 
@@ -242,9 +244,21 @@ public final class ContributionStore {
       }
     }
 
+    if contribution.withdrawsPipeline, contribution.pipeline == nil {
+      if pipelineLocked {
+        problems.append("pipeline: a pipeline is running.")
+      } else {
+        // Only the plug-in's own: another plug-in's and the user's stay, and so does a question about them.
+        if pipeline?.pluginID == pluginID { pipeline = nil }
+        conflicts.removeAll { $0.subject == .pipeline && $0.proposed.pluginID == pluginID }
+      }
+    }
+
     if let proposed = contribution.pipeline {
       if pipelineLocked {
         problems.append("pipeline: a pipeline is running.")
+      } else if let reason = seamlessReason(of: proposed, family: family) {
+        problems.append(reason)
       } else if let held = pipeline, let owner = held.pluginID, owner != pluginID {
         // Only another plug-in's pipeline is a conflict: the user's own is replaced (the user pressed the plug-in's button).
         addConflict(
@@ -255,6 +269,14 @@ public final class ContributionStore {
       }
     }
     return problems
+  }
+
+  /// The refusal for a pipeline with a seamless pass (a listed one, or the estimate of a guided one); nil when there is none
+  /// or it can run.
+  private func seamlessReason(of pipeline: PluginPipeline, family: String?) -> String? {
+    let uses = pipeline.steps.contains { $0.seamless != nil } || pipeline.guided?.estimate.seamless != nil
+    guard uses else { return nil }
+    return seamlessProblem?(family)
   }
 
   /// The user's pick in the pop-up: the plug-in that was writing (`proposed`) or the one already there.

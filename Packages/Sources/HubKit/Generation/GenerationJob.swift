@@ -19,11 +19,14 @@ public struct GenerationJob: Equatable, Codable, Sendable {
   /// The files of the job's LoRAs the user marked as edit LoRAs (category `edit`): the server must treat them as taking
   /// reference images even when their own specification says nothing. Nil when there are none.
   public var editLoRAFiles: [String]?
+  /// The tiling of a pass of a plug-in's pipeline (a seamless pattern); nil for every other job. The key is left out of
+  /// the saved job then.
+  public var seamlessTile: SeamlessTile?
 
   public init(
     prompt: String, negativePrompt: String = "", model: String, parameters: GenerationParameters,
     imageStrength: Double? = nil, moodboardCount: Int = 0, maskSettings: MaskSettings? = nil,
-    videoFPS: Double? = nil, editLoRAFiles: [String]? = nil
+    videoFPS: Double? = nil, editLoRAFiles: [String]? = nil, seamlessTile: SeamlessTile? = nil
   ) {
     self.prompt = prompt
     self.negativePrompt = negativePrompt
@@ -34,6 +37,7 @@ public struct GenerationJob: Equatable, Codable, Sendable {
     self.maskSettings = maskSettings
     self.videoFPS = videoFPS
     self.editLoRAFiles = editLoRAFiles
+    self.seamlessTile = seamlessTile
   }
 
   public var isVideo: Bool { videoFPS != nil }
@@ -60,6 +64,7 @@ public struct GenerationJob: Equatable, Codable, Sendable {
     moodboardCount = (try? container.decodeIfPresent(Int.self, forKey: .moodboardCount)) ?? 0
     maskSettings = try? container.decodeIfPresent(MaskSettings.self, forKey: .maskSettings)
     videoFPS = try? container.decodeIfPresent(Double.self, forKey: .videoFPS)
+    seamlessTile = try? container.decodeIfPresent(SeamlessTile.self, forKey: .seamlessTile)
   }
 }
 

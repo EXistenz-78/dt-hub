@@ -225,6 +225,9 @@ public struct PluginContext: Codable, Equatable, Sendable {
   public var lastResult: PluginLastResult?
   /// True when the app takes the `loraSettings` message (trigger, category, turbo settings). Absent from an older app.
   public var loraSettings: Bool?
+  /// True when the server is the custom one DT Hub brings (the seamless tiling needs it); false for any other (a remote
+  /// server, the Draw Things app, another gRPC). Absent from an older app.
+  public var customServer: Bool?
 
   public init(
     model: String?, family: String?, parameters: GenerationParameters, tempFolder: String, startImage: String? = nil,
@@ -232,8 +235,9 @@ public struct PluginContext: Codable, Equatable, Sendable {
     negativePrompt: String? = nil, strength: Double? = nil, promptGuide: PluginPromptGuide? = nil,
     loraCatalog: [PluginCatalogLoRA]? = nil, startImageWindow: PluginImageWindow? = nil,
     lastResult: PluginLastResult? = nil, startImageFramed: String? = nil,
-    loraSettings: Bool? = nil
+    loraSettings: Bool? = nil, customServer: Bool? = nil
   ) {
+    self.customServer = customServer
     self.loraSettings = loraSettings
     self.startImageFramed = startImageFramed
     self.lastResult = lastResult

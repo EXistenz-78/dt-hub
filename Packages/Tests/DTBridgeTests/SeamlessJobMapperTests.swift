@@ -28,3 +28,15 @@ struct SeamlessJobMapperTests {
     #expect(now == Self.capturedBefore)
   }
 }
+
+extension SeamlessJobMapperTests {
+  @Test func aSeamlessJobCarriesTheConfigurationValue() throws {
+    for (tile, value) in [(SeamlessTile.both, Int8(3)), (.leftRight, 1), (.upDown, 2)] {
+      var job = Self.typicalJob()
+      job.seamlessTile = tile
+      #expect(JobMapper.request(for: job).configuration.seamlessTile == value)
+      #expect(try JobMapper.request(for: job, inputs: .none).configuration.seamlessTile == value)
+    }
+    #expect(JobMapper.request(for: Self.typicalJob()).configuration.seamlessTile == 0)
+  }
+}

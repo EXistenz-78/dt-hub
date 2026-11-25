@@ -195,7 +195,7 @@ extension DrawThingsConfiguration: Codable {
         case separateT5, t5Text, causalInference, causalInferencePad, cfgZeroStar, cfgZeroInitSteps
         case compressionArtifacts, compressionArtifactsQuality, colorCalibration, expandPromptToJson
         // DrawThingsClient additions (ignored by the Draw Things app)
-        case name, enableInpainting
+        case name, enableInpainting, seamlessTile
     }
 
     public init(from decoder: any Decoder) throws {
@@ -320,6 +320,7 @@ extension DrawThingsConfiguration: Codable {
         try read(.expandPromptToJson, into: &config.expandPromptToJson)
         config.name = try readName(.name)
         try read(.enableInpainting, into: &config.enableInpainting)
+        try read(.seamlessTile, into: &config.seamlessTile)
 
         self = config
     }
@@ -416,6 +417,7 @@ extension DrawThingsConfiguration: Codable {
         try c.encode(expandPromptToJson, forKey: .expandPromptToJson)
         try c.encodeIfPresent(name, forKey: .name)
         if enableInpainting { try c.encode(true, forKey: .enableInpainting) }
+        if seamlessTile != 0 { try c.encode(seamlessTile, forKey: .seamlessTile) }
     }
 }
 

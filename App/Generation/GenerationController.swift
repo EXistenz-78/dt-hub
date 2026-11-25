@@ -612,7 +612,8 @@ final class GenerationController {
       parameters: used.parameters, catalog: connection.monitor.catalog, imageStrength: strength,
       moodboardCount: inputs.hints.count,
       maskSettings: inputs.mask == nil
-        ? nil : (intermediate != nil ? (pass.maskSettings ?? control.inputs.maskSettings) : control.inputs.maskSettings))
+        ? nil : (intermediate != nil ? (pass.maskSettings ?? control.inputs.maskSettings) : control.inputs.maskSettings),
+      seamlessTile: pass.seamless)
     let before = session.results.first?.id
     session.start(batches, inputs: inputs, backend: backend, monitor: connection.monitor, intermediate: intermediate)
     await session.waitUntilFinished()

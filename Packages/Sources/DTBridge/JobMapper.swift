@@ -8,14 +8,14 @@ enum JobMapper {
   static func request(for job: GenerationJob) -> GenerationRequest {
     GenerationRequest(
       prompt: job.promptWithTriggers, negativePrompt: job.negativePrompt,
-      configuration: configuration(model: job.model, parameters: job.parameters))
+      configuration: configuration(model: job.model, parameters: job.parameters, seamlessTile: job.seamlessTile))
   }
 
   /// The request with the Control tab's images: the start image (and its strength), and the
   /// Moodboard as one "shuffle" hint whose weights are the pictures' shares. A picture the library
   /// cannot read stops the RUN with a message.
   static func request(for job: GenerationJob, inputs: GenerationInputs) throws -> GenerationRequest {
-    var configuration = configuration(model: job.model, parameters: job.parameters)
+    var configuration = configuration(model: job.model, parameters: job.parameters, seamlessTile: job.seamlessTile)
     // The start image and its strength come from the Control tab, after the JSON editor's
     // extra settings: they win. Without an image the RUN stays text-to-image.
     if inputs.image != nil, let strength = job.imageStrength { configuration.strength = Float(strength) }
@@ -44,7 +44,9 @@ enum JobMapper {
 
   /// The Draw Things configuration for a model and parameters: clamped, the Advanced cards
   /// applied, then the JSON editor's extra settings on top.
-  static func configuration(model: String, parameters unclamped: GenerationParameters) -> DrawThingsConfiguration {
+  static func configuration(
+    model: String, parameters unclamped: GenerationParameters, seamlessTile: SeamlessTile? = nil
+  ) -> DrawThingsConfiguration {
     let parameters = unclamped.clamped()
     var configuration = DrawThingsConfiguration(
       width: Int32(parameters.width),
@@ -80,6 +82,8 @@ enum JobMapper {
       configuration.solAttentionStart = Int32(video.solAttentionStart)
       configuration.solAttentionTau = Float(video.solAttentionTau)
     }
+    // Only a job of a plug-in's pipeline carries it: the JSON editor's extra settings never set it.
+    configuration.seamlessTile = seamlessTile?.configurationValue ?? 0
     return configuration
   }
 

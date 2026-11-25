@@ -81,7 +81,7 @@ extension PipelineSize: Codable {
 extension PipelineStep: Codable {
   private enum CodingKeys: String, CodingKey {
     case title, preset, fields, loras, moodboard, startImage, useOutputAsStart, usesPresetModel, scale, strength, mask,
-      maskSettings, size
+      maskSettings, size, seamless
   }
 
   public init(from decoder: any Decoder) throws {
@@ -99,7 +99,8 @@ extension PipelineStep: Codable {
       strength: try container.decodeIfPresent(Double.self, forKey: .strength),
       mask: try container.decodeIfPresent(PluginImageRef.self, forKey: .mask),
       maskSettings: try container.decodeIfPresent(MaskSettings.self, forKey: .maskSettings),
-      size: try container.decodeIfPresent(PipelineSize.self, forKey: .size))
+      size: try container.decodeIfPresent(PipelineSize.self, forKey: .size),
+      seamless: try? container.decodeIfPresent(SeamlessTile.self, forKey: .seamless))
   }
 
   public func encode(to encoder: any Encoder) throws {
@@ -117,5 +118,6 @@ extension PipelineStep: Codable {
     try container.encodeIfPresent(mask, forKey: .mask)
     try container.encodeIfPresent(maskSettings, forKey: .maskSettings)
     try container.encodeIfPresent(size, forKey: .size)
+    try container.encodeIfPresent(seamless, forKey: .seamless)
   }
 }

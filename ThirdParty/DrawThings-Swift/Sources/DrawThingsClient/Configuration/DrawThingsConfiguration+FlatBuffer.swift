@@ -227,6 +227,7 @@ extension DrawThingsConfiguration {
         configT.solAttentionStart = solAttentionStart
         configT.solAttentionTau = solAttentionTau
         configT.scheduler = scheduler
+        configT.seamlessTile = seamlessTile
 
         // Causal inference parameters
         configT.causalInferenceEnabled = causalInferenceEnabled

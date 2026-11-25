@@ -315,6 +315,18 @@ public final class PluginRegistry: PluginHosting {
   /// The parameters as they are now. The context carries these when set, so a plug-in whose tab is opened after only
   /// a number changed does not get an old copy; without it, the last `updateContext` counts.
   @ObservationIgnored public var currentParameters: (@MainActor () -> GenerationParameters)?
+  /// Whether the server in use is the custom one DT Hub brings (the managed, bundled server). Not set: the context leaves
+  /// `customServer` out and a seamless step is never refused for the server.
+  @ObservationIgnored public var customServer: (@MainActor () -> Bool)? {
+    didSet { wireSeamless() }
+  }
+
+  private func wireSeamless() {
+    contributions.seamlessProblem = { [weak self] family in
+      guard let self, let customServer = self.customServer else { return nil }
+      return SeamlessTile.problem(customServer: customServer(), family: family)
+    }
+  }
   /// The LoRAs of the server as the LoRA manager has them (the user's trigger words and weights); they go with every
   /// context as `loraCatalog`.
   @ObservationIgnored public var loraCatalog: (@MainActor () -> [CatalogLoRA])?
@@ -347,7 +359,8 @@ public final class PluginRegistry: PluginHosting {
       strength: startImageStrength?(), promptGuide: promptGuide?(),
       loraCatalog: loraCatalog?().map(PluginCatalogLoRA.init), startImageWindow: startImageWindow?(),
       lastResult: lastResultPath?().map { PluginLastResult(path: $0, name: URL(fileURLWithPath: $0).lastPathComponent) },
-      startImageFramed: startImageFramedPath?(), loraSettings: setLoRASettings != nil ? true : nil)
+      startImageFramed: startImageFramedPath?(), loraSettings: setLoRASettings != nil ? true : nil,
+      customServer: customServer?())
     return try? JSONEncoder().encode(context)
   }
 
@@ -520,7 +533,7 @@ public final class PluginRegistry: PluginHosting {
     guard let contribution = PluginContribution(message: message) else {
       return PluginMessageType.failure("The message is not a JSON object.")
     }
-    let problems = contributions.receive(contribution, from: pluginID)
+    let problems = contributions.receive(contribution, from: pluginID, family: family)
     var answer: [String: Any] = ["type": PluginMessageType.ok, "conflicts": contributions.conflicts.count]
     if !problems.isEmpty { answer["problems"] = problems }
     return (try? JSONSerialization.data(withJSONObject: answer)) ?? PluginMessageType.bare(PluginMessageType.ok)

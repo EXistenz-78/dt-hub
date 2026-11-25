@@ -71,13 +71,17 @@ public struct PipelineStep: Equatable, Sendable {
   public var maskSettings: MaskSettings?
   /// The size the pass generates at, in pixels (a multiple of 64).
   public var size: PipelineSize?
+  /// Tiles this pass so its edges meet (the custom server); nil is a normal pass. The app refuses a pipeline that has
+  /// it when the server is not the custom one or the family does not support it.
+  public var seamless: SeamlessTile?
 
   public init(
     title: String = "", preset: String = "", fields: FieldOverlay = FieldOverlay(), loras: [LoRASelection] = [],
     moodboard: [PluginImageRef]? = nil, startImage: PluginImageRef? = nil, useOutputAsStart: Bool = false,
     usesPresetModel: Bool = false, scale: Double = 1, strength: Double? = nil, mask: PluginImageRef? = nil,
-    maskSettings: MaskSettings? = nil, size: PipelineSize? = nil
+    maskSettings: MaskSettings? = nil, size: PipelineSize? = nil, seamless: SeamlessTile? = nil
   ) {
+    self.seamless = seamless
     self.mask = mask
     self.maskSettings = maskSettings
     self.size = size
@@ -112,11 +116,13 @@ public struct PipelineStep: Equatable, Sendable {
     {
       size = PipelineSize(width: width, height: height)
     }
+    var seamless: SeamlessTile?
+    if case .string(let text)? = object["seamless"] { seamless = SeamlessTile(rawValue: text) }
     self.init(
       title: title, preset: preset, fields: fields, loras: PluginContribution.loras(object["loras"]) ?? [],
       moodboard: PluginContribution.images(object["moodboard"]),
       startImage: PluginImageRef(object["startImage"]), useOutputAsStart: useOutput,
-      mask: PluginImageRef(object["mask"]), maskSettings: maskSettings, size: size)
+      mask: PluginImageRef(object["mask"]), maskSettings: maskSettings, size: size, seamless: seamless)
   }
 }
 
@@ -179,12 +185,16 @@ public struct PluginContribution: Equatable, Sendable {
   public var preset: String?
   /// With `loras`: the LoRAs on the tab are taken off first, so that only these remain (`replaceLoRAs`).
   public var replaceLoRAs: Bool
+  /// `"pipeline": null`: the plug-in takes back the pipeline it proposed (never another's, never the user's).
+  public var withdrawsPipeline: Bool
 
   public init(
     fields: FieldOverlay = FieldOverlay(), loras: [LoRASelection] = [], moodboard: [PluginImageRef] = [],
     startImage: PluginImageRef? = nil, pipeline: PluginPipeline? = nil, strength: Double? = nil,
-    paint: PluginImageRef? = nil, result: PluginResult? = nil, preset: String? = nil, replaceLoRAs: Bool = false
+    paint: PluginImageRef? = nil, result: PluginResult? = nil, preset: String? = nil, replaceLoRAs: Bool = false,
+    withdrawsPipeline: Bool = false
   ) {
+    self.withdrawsPipeline = withdrawsPipeline
     self.replaceLoRAs = replaceLoRAs
     self.preset = preset
     self.result = result
@@ -226,7 +236,8 @@ public struct PluginContribution: Equatable, Sendable {
       fields: fields, loras: Self.loras(object["loras"]) ?? [], moodboard: Self.images(object["moodboard"]) ?? [],
       startImage: PluginImageRef(object["startImage"]), pipeline: pipeline, strength: Self.strength(object["strength"]),
       paint: PluginImageRef(object["paint"]), result: Self.result(object["result"]), preset: Self.presetName(object["preset"]),
-      replaceLoRAs: { if case .bool(true)? = object["replaceLoRAs"] { return true } else { return false } }())
+      replaceLoRAs: { if case .bool(true)? = object["replaceLoRAs"] { return true } else { return false } }(),
+      withdrawsPipeline: object["pipeline"] == .null)
   }
 
   /// A preset name, trimmed; nothing when it is empty or not a string.
@@ -265,7 +276,7 @@ public struct PluginContribution: Equatable, Sendable {
   /// True when the message carries nothing the app can use.
   public var isEmpty: Bool {
     fields.isEmpty && loras.isEmpty && moodboard.isEmpty && startImage == nil && pipeline == nil && strength == nil
-      && paint == nil && result == nil && preset == nil
+      && paint == nil && result == nil && preset == nil && !withdrawsPipeline
   }
 
   static func loras(_ value: JSONValue?) -> [LoRASelection]? {

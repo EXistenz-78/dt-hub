@@ -187,6 +187,9 @@ public struct DrawThingsConfiguration: Sendable, Hashable {
     /// Atelier-fork field: 0 is the sampler's own scheduler, then simple, sgm_uniform, normal, karras,
     /// exponential, linear_quadratic, beta. Servers without the field ignore it.
     public var scheduler: Int32
+    /// Atelier-fork field: the custom server tiles the picture seamlessly when it is not 0 (1 left-right, 2 up-down,
+    /// 3 both). 0 is off and is never written to the wire. Servers without the field ignore it.
+    public var seamlessTile: Int8
 
     // Causal inference parameters
     public var causalInferenceEnabled: Bool
@@ -295,6 +298,7 @@ public struct DrawThingsConfiguration: Sendable, Hashable {
         solAttentionStart: Int32 = 2,
         solAttentionTau: Float = 0.5,
         scheduler: Int32 = 0,
+        seamlessTile: Int8 = 0,
         causalInferenceEnabled: Bool = false,
         causalInference: Int32 = 3,
         causalInferencePad: Int32 = 0,
@@ -387,6 +391,7 @@ public struct DrawThingsConfiguration: Sendable, Hashable {
         self.solAttentionStart = solAttentionStart
         self.solAttentionTau = solAttentionTau
         self.scheduler = scheduler
+        self.seamlessTile = seamlessTile
         self.causalInferenceEnabled = causalInferenceEnabled
         self.causalInference = causalInference
         self.causalInferencePad = causalInferencePad
