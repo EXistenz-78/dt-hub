@@ -81,6 +81,38 @@ struct SPStateTests {
     #expect(wire.sent.last == SPSender.stop())
   }
 
+  @Test func aRefusedStopKeepsThePipelineAndShowsWhy() async {
+    let wire = Wire()
+    let state = make(wire)
+    await ready(state)
+    await state.prepare()
+    wire.answer = ["type": "ok", "conflicts": 0, "problems": ["pipeline: a pipeline is running."]]
+    await state.stop()
+    #expect(state.isPrepared)
+    #expect(state.notice == "pipeline: a pipeline is running.")
+    wire.answer = ["type": "error", "text": "Plug-in is off."]
+    await state.stop()
+    #expect(state.isPrepared && state.notice == "Plug-in is off.")
+    wire.answer = nil
+    await state.stop()
+    #expect(state.isPrepared && state.notice == L.notAnswered)
+  }
+
+  @Test func aCleanStopClearsThePipelineAndTheNotice() async {
+    let wire = Wire()
+    let state = make(wire)
+    await ready(state)
+    await state.prepare()
+    wire.answer = ["type": "ok", "conflicts": 0, "problems": ["pipeline: a pipeline is running."]]
+    await state.stop()
+    #expect(state.notice != nil)
+    wire.answer = ["type": "ok", "conflicts": 0, "problems": [String]()]
+    await state.stop()
+    #expect(!state.isPrepared)
+    #expect(state.notice == nil)
+    #expect(wire.sent.last == SPSender.stop())
+  }
+
   @Test func withoutTheCustomServerThereIsOnlyTheWarning() async {
     let wire = Wire()
     let state = make(wire)

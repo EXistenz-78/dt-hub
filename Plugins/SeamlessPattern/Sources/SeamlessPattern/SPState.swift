@@ -82,10 +82,25 @@ final class SPState: ObservableObject {
     notice = problems.isEmpty ? nil : problems.joined(separator: " ")
   }
 
+  /// Takes the pipeline back. Only a clean answer of the app clears it: a refusal (a pipeline is running), an error or no
+  /// answer leaves it prepared and its text becomes the notice.
   func stop() async {
+    let answer = await send(SPSender.stop())
+    guard let answer else {
+      notice = L.notAnswered
+      return
+    }
+    if answer["type"] as? String == "error" {
+      notice = answer["text"] as? String ?? L.notAnswered
+      return
+    }
+    let problems = (answer["problems"] as? [String]) ?? []
+    guard problems.isEmpty else {
+      notice = problems.joined(separator: " ")
+      return
+    }
     notice = nil
     isPrepared = false
-    _ = await send(SPSender.stop())
   }
 
   /// A new mode while the pipeline is proposed proposes it again with the new one.
