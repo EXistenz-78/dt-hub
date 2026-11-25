@@ -52,4 +52,10 @@ struct PluginContextKeyTests {
     again.lastResultID = "r1"
     #expect(first == again)
   }
+
+  @Test func switchingServerChangesTheContextKeySoASeamlessPipelineIsWithdrawn() {
+    var custom = base
+    custom.customServer = true
+    #expect(base != custom)
+  }
 }

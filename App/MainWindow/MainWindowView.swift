@@ -103,7 +103,8 @@ private struct PluginContextFeeder: View {
       moodboardIDs: moodboard, width: generation.parameters.width, height: generation.parameters.height,
       framingZoom: generation.control.inputs.framing.zoom, framingOffsetX: generation.control.inputs.framing.offsetX,
       framingOffsetY: generation.control.inputs.framing.offsetY,
-      lastResultID: generation.session.results.first?.id.uuidString)
+      lastResultID: generation.session.results.first?.id.uuidString,
+      customServer: connection.managed.mode == .managed && connection.managed.usesBundledServer())
   }
 
   var body: some View {

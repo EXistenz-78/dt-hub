@@ -18,12 +18,16 @@ public struct PluginContextKey: Equatable, Sendable {
   public var framingOffsetY: Double
   /// The id of the newest result of the project: a plug-in that shows it has to hear when a new one arrives.
   public var lastResultID: String?
+  /// Whether the server in use is the custom one DT Hub brings: switching server changes `customServer` in the context,
+  /// and a plug-in whose pipeline needs it (a seamless one) has to hear about it to withdraw it.
+  public var customServer: Bool
 
   public init(
     model: String?, family: String?, isEditModel: Bool? = nil, startImageID: String?, moodboardIDs: String, width: Int,
     height: Int, framingZoom: Double = 0, framingOffsetX: Double = 0, framingOffsetY: Double = 0,
-    lastResultID: String? = nil
+    lastResultID: String? = nil, customServer: Bool = false
   ) {
+    self.customServer = customServer
     self.lastResultID = lastResultID
     self.framingZoom = framingZoom
     self.framingOffsetX = framingOffsetX

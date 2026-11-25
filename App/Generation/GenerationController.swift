@@ -567,6 +567,9 @@ final class GenerationController {
     let file = PipelinePresets.model(for: pass, presets: loaded, header: connection.selection.selectedFile)
     let passModel = file.flatMap { connection.monitor.catalog.model(forFile: $0) }
     let family = passModel?.family
+    // A pass that tiles is checked again here, where every pass goes through (a queue entry put back, a server switched
+    // after the proposal, a parked proposal chosen, a guided pass): refused, the pipeline fails and nothing is sent.
+    if session.refusesSeamlessPass(pass, family: family, check: contributions?.seamlessProblem) { return nil }
     var inputs: GenerationInputs
     var replacesStart = false
     if intermediate != nil {
