@@ -26,7 +26,7 @@ struct SPTabView: View {
 
   private var controls: some View {
     VStack(spacing: 0) {
-      DSPanelHeader(icon: "square.grid.3x3", title: L.text(.title))
+      DSPanelHeader(icon: "square.split.2x2.fill", title: L.text(.title))
       VStack(alignment: .leading, spacing: DS.rowGap) {
         HStack(spacing: DS.controlGap) {
           Text(L.text(.repeatTitle)).font(.callout).foregroundStyle(.secondary)

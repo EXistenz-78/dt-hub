@@ -8,7 +8,7 @@ final class SeamlessPatternPlugin: DTHubPlugin {
   /// depend on HubKit). On any other family the plug-in is switched off and its tab is hidden.
   static let families = ["krea_2", "z_image", "flux2_9b", "flux2_4b", "flux3_5b"]
   let manifest = DTHubManifest(
-    id: "com.exiztenz.dthub.seamlesspattern", name: "Seamless Pattern", version: "1.0", symbol: "square.grid.3x3",
+    id: "com.exiztenz.dthub.seamlesspattern", name: "Seamless Pattern", version: "1.0", symbol: "square.split.2x2.fill",
     families: SeamlessPatternPlugin.families, tools: SPTools.declarations)
   private let state = SPState()
   private var host: DTHubHost?
