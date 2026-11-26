@@ -5,8 +5,7 @@ import SwiftUI
 /// picture on show and its seam check.
 @MainActor
 final class SPState: ObservableObject {
-  static let customServerWarning =
-    "Seamless Pattern needs DT Hub's own server (Preferences › Draw Things: use the included server)."
+  static let customServerWarning = L.agentNeedsServer
 
   private var store: SPStore
   private var isRestoring = false
@@ -33,7 +32,6 @@ final class SPState: ObservableObject {
   @Published private(set) var seam: (leftRight: SPSeamResult, upDown: SPSeamResult)?
   @Published private(set) var previewImage: NSImage?
   @Published var active = false
-  @Published var status = ""
 
   /// Sends a `contribute` message and returns the app's answer (the plug-in connects it to the host).
   var send: @MainActor (Data) async -> [String: Any]? = { _ in nil }
@@ -58,7 +56,7 @@ final class SPState: ObservableObject {
   /// Why the pipeline cannot be proposed now (what the tab shows, and what an agent is told); nil when it can.
   var prepareRefusal: String? {
     if customServer != true { return Self.customServerWarning }
-    return familySupported ? nil : L.unsupportedFamily
+    return familySupported ? nil : L.agentUnsupportedFamily
   }
 
   // MARK: Pipeline
@@ -188,21 +186,5 @@ final class SPState: ObservableObject {
     case .fail: return "FAIL"
     case .notApplicable: return "N/A"
     }
-  }
-
-  // MARK: Files
-
-  func savePNG() {
-    guard let image, let png = SPPNG.data(from: image) else { return }
-    let panel = NSSavePanel()
-    panel.allowedContentTypes = [.png]
-    panel.nameFieldStringValue = (source?.deletingPathExtension().lastPathComponent ?? "pattern") + "-tile.png"
-    guard panel.runModal() == .OK, let url = panel.url else { return }
-    status = (try? png.write(to: url, options: .atomic)) != nil ? L.saved : L.saveFailed
-  }
-
-  func showInFinder() {
-    guard let source else { return }
-    NSWorkspace.shared.activateFileViewerSelecting([source])
   }
 }

@@ -10,11 +10,13 @@ The idea follows the *Seamless Tile Pixaroma* node for ComfyUI (the transformer 
 
 ## How it works
 
-1. **Repeat.** Choose **Both**, **Left-right** or **Up-down**: the directions that must repeat. The choice is remembered for each project.
+1. **Repeat.** Choose **Both**, **Left-right** (⇄) or **Up-down** (⇅): the directions that must repeat. The choice is remembered for each project.
 2. **Prepare Run · Seamless.** The plug-in proposes a one-step pipeline to DT Hub. The Run button then says *Run · Seamless*, so you always see that the next run will tile. Write the prompt, size, seed, LoRAs and preset as usual in the Generation tab: the step only carries the flag. Press Run as many times as you like, changing seed or prompt; it works with the queue. **Stop seamless** (or switching the plug-in off) takes the pipeline back and Run is plain again.
-3. **The picture.** The preview shows the newest result, or any image you drop on it. Views: **Tile**, **2×2**, **3×3**, **Offset** (moved by half a tile both ways: the four corners meet in the middle), **Half-drop** and **Half-brick**.
+3. **The picture.** The preview shows the newest result, or any image you drop on it. Views: **Tile**, **2×2**, **3×3** and **Offset** (moved by half a tile both ways: the four corners meet in the middle).
 4. **Seam.** Next to the preview the tab says PASS, WARN, FAIL or N/A for each direction (←→ and ↑↓). The check compares the jump across the wrap line with the jumps across the lines inside the picture, every 4 px: PASS when the wrap line is no worse than the worst inner line, WARN within 1.25 times it, FAIL beyond; N/A under 64 px. For a direction you did not ask for only the number is shown.
-5. **Save PNG…** writes the picture on show (the tile, not the repeated view).
+5. **The file.** DT Hub already saves every result as a PNG: use that file as the pattern (in Photoshop *Edit › Define Pattern*).
+
+The tab speaks Italian or English, following the language of the system.
 
 ## Limits
 

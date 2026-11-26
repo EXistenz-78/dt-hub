@@ -10,7 +10,7 @@ struct SPTabView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: DS.groupGap) {
       if let warning = state.warning {
-        Text(warning).font(.callout).foregroundStyle(.secondary)
+        Text(warning == SPState.customServerWarning ? L.text(.needsServer) : warning).font(.callout).foregroundStyle(.secondary)
           .padding(DS.panelPadding)
           .frame(maxWidth: .infinity, alignment: .leading)
           .dsPanel()
@@ -26,29 +26,27 @@ struct SPTabView: View {
 
   private var controls: some View {
     VStack(spacing: 0) {
-      DSPanelHeader(icon: "square.grid.3x3", title: L.title)
+      DSPanelHeader(icon: "square.grid.3x3", title: L.text(.title))
       VStack(alignment: .leading, spacing: DS.rowGap) {
         HStack(spacing: DS.controlGap) {
-          Text(L.repeatTitle).font(.callout).foregroundStyle(.secondary)
+          Text(L.text(.repeatTitle)).font(.callout).foregroundStyle(.secondary)
           ForEach(SPMode.allCases, id: \.self) { mode in
-            Button(L.mode(mode)) { Task { await state.setMode(mode) } }
-              .buttonStyle(DSPillButtonStyle(prominent: state.mode == mode))
+            modeButton(mode)
           }
-        }
-        HStack(spacing: DS.controlGap) {
-          Button(L.prepare) { Task { await state.prepare() } }
+          Spacer(minLength: DS.groupGap)
+          Button(L.text(.prepare)) { Task { await state.prepare() } }
             .buttonStyle(DSPillButtonStyle(prominent: true))
             .disabled(!state.canPrepare || !state.active)
-          Button(L.stop) { Task { await state.stop() } }
+          Button(L.text(.stop)) { Task { await state.stop() } }
             .buttonStyle(DSPillButtonStyle())
             .disabled(!state.isPrepared)
         }
         if let notice = state.notice {
           Text(notice).font(.caption).foregroundStyle(DS.remove)
         } else if state.isPrepared {
-          Text(L.prepared).font(.caption).foregroundStyle(.secondary)
+          Text(L.text(.prepared)).font(.caption).foregroundStyle(.secondary)
         } else if !state.familySupported {
-          Text(L.unsupportedFamily).font(.caption).foregroundStyle(.secondary)
+          Text(L.text(.unsupportedFamily)).font(.caption).foregroundStyle(.secondary)
         }
       }
       .padding(DS.panelPadding)
@@ -58,14 +56,14 @@ struct SPTabView: View {
 
   private var preview: some View {
     VStack(spacing: 0) {
-      DSPanelHeader(icon: "photo", title: state.source == nil ? L.lastResult : state.source!.lastPathComponent)
+      DSPanelHeader(icon: "photo", title: state.source == nil ? L.text(.lastResult) : state.source!.lastPathComponent)
       VStack(alignment: .leading, spacing: DS.rowGap) {
         ZStack {
           RoundedRectangle(cornerRadius: DS.minorRadius, style: .continuous).fill(Color.primary.opacity(0.06))
           if let image = state.previewImage {
             Image(nsImage: image).resizable().interpolation(.high).scaledToFit().padding(6)
           } else {
-            Text(L.noImage).font(.caption).foregroundStyle(.secondary)
+            Text(L.text(.noImage)).font(.caption).foregroundStyle(.secondary)
           }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -81,33 +79,37 @@ struct SPTabView: View {
         } isTargeted: { isTargeted = $0 }
 
         HStack(spacing: 6) {
-          Text(L.view).font(.callout).foregroundStyle(.secondary)
+          Text(L.text(.view)).font(.callout).foregroundStyle(.secondary)
           ForEach(SPView.allCases, id: \.self) { view in
             Button(L.view(view)) { state.view = view }
               .buttonStyle(DSPillButtonStyle(prominent: state.view == view))
           }
         }
         seamRow
-        HStack(spacing: DS.controlGap) {
-          Button(L.savePNG) { state.savePNG() }
-            .buttonStyle(DSPillButtonStyle())
-            .disabled(state.image == nil)
-          Button(L.showInFinder) { state.showInFinder() }
-            .buttonStyle(DSPillButtonStyle())
-            .disabled(state.source == nil)
-          if !state.status.isEmpty {
-            Text(state.status).font(.caption).foregroundStyle(.secondary)
-          }
-        }
       }
       .padding(DS.panelPadding)
     }
     .dsPanel()
   }
 
+  /// Both is a word; the two single directions are only their arrows (the name is the tooltip).
+  @ViewBuilder private func modeButton(_ mode: SPMode) -> some View {
+    let button = Button { Task { await state.setMode(mode) } } label: {
+      switch mode {
+      case .both: Text(L.mode(mode))
+      case .leftRight: Image(systemName: "arrow.left.arrow.right.square.fill")
+      case .upDown: Image(systemName: "arrow.up.arrow.down.square.fill")
+      }
+    }
+    button
+      .buttonStyle(DSPillButtonStyle(prominent: state.mode == mode))
+      .help(L.mode(mode))
+      .accessibilityLabel(L.mode(mode))
+  }
+
   private var seamRow: some View {
     HStack(spacing: DS.groupGap) {
-      Text(L.seam).font(.callout).foregroundStyle(.secondary)
+      Text(L.text(.seam)).font(.callout).foregroundStyle(.secondary)
       if let seam = state.seam {
         Text("←→ \(SPState.seamText(seam.leftRight, judged: state.mode.judgesLeftRight))")
         Text("↑↓ \(SPState.seamText(seam.upDown, judged: state.mode.judgesUpDown))")

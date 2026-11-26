@@ -36,19 +36,7 @@ struct SPTileViewTests {
     #expect(TestImages.pixel(out, 31, 15) == [63, 31, 7])
   }
 
-  @Test func halfDropIsThreeColumnsTheMiddleOneMovedDown() throws {
-    let out = try #require(SPTileView.render(tile, view: .halfDrop))
-    #expect(out.width == 3 * 64 && out.height == 2 * 32)
-    #expect(TestImages.pixel(out, 3, 4) == [3, 4, 7])
-    #expect(TestImages.pixel(out, 64 + 3, 16 + 4) == [3, 4, 7])
-    #expect(TestImages.pixel(out, 128 + 3, 4) == [3, 4, 7])
-  }
-
-  @Test func halfBrickIsThreeRowsTheMiddleOneMovedRight() throws {
-    let out = try #require(SPTileView.render(tile, view: .halfBrick))
-    #expect(out.width == 2 * 64 && out.height == 3 * 32)
-    #expect(TestImages.pixel(out, 3, 4) == [3, 4, 7])
-    #expect(TestImages.pixel(out, 32 + 3, 32 + 4) == [3, 4, 7])
-    #expect(TestImages.pixel(out, 3, 64 + 4) == [3, 4, 7])
+  @Test func theViewsAreTheFourThatJoin() {
+    #expect(SPView.allCases == [.tile, .twoByTwo, .threeByThree, .offset])
   }
 }

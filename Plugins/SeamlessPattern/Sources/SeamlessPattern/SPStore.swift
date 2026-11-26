@@ -4,6 +4,19 @@ import Foundation
 struct SPSession: Codable, Equatable {
   var mode: SPMode = .both
   var view: SPView = .tile
+
+  init(mode: SPMode = .both, view: SPView = .tile) {
+    self.mode = mode
+    self.view = view
+  }
+
+  /// A value the plug-in no longer knows (the views Half-drop and Half-brick of 1.0) falls back to the default instead
+  /// of losing the whole session.
+  init(from decoder: Decoder) throws {
+    let c = try decoder.container(keyedBy: CodingKeys.self)
+    mode = (try? c.decodeIfPresent(SPMode.self, forKey: .mode)) ?? .both
+    view = (try? c.decodeIfPresent(SPView.self, forKey: .view)) ?? .tile
+  }
 }
 
 /// `state.json` in the folder the app gives the plug-in for the open project; nothing is read or written before the app

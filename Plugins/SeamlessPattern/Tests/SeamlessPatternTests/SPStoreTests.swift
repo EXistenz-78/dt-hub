@@ -15,8 +15,8 @@ struct SPStoreTests {
     let dir = folder()
     var store = SPStore()
     store.folder = dir
-    store.save(SPSession(mode: .leftRight, view: .halfBrick))
-    #expect(store.load() == SPSession(mode: .leftRight, view: .halfBrick))
+    store.save(SPSession(mode: .leftRight, view: .offset))
+    #expect(store.load() == SPSession(mode: .leftRight, view: .offset))
   }
 
   @Test func eachProjectKeepsItsOwnState() {
@@ -39,5 +39,13 @@ struct SPStoreTests {
     #expect(store.load() == nil)
     try Data("nope".utf8).write(to: dir.appendingPathComponent(SPStore.fileName))
     #expect(store.load() == nil)
+  }
+
+  @Test func aSessionWithAViewThatNoLongerExistsKeepsItsMode() throws {
+    let dir = folder()
+    var store = SPStore()
+    store.folder = dir
+    try Data(#"{"mode":"upDown","view":"halfBrick"}"#.utf8).write(to: dir.appendingPathComponent(SPStore.fileName))
+    #expect(store.load() == SPSession(mode: .upDown, view: .tile))
   }
 }

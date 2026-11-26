@@ -166,7 +166,7 @@ struct SPToolsTests {
     await ready(family: "sdxl")
     let answer = await call("prepare_run")
     #expect(answer.isError && !answer.startsRun)
-    #expect(answer.text == L.unsupportedFamily)
+    #expect(answer.text == L.agentUnsupportedFamily)
     #expect(wire.sent.isEmpty && !state.isPrepared)
   }
 

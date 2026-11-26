@@ -1,12 +1,12 @@
 import CoreGraphics
 
 enum SPView: String, CaseIterable, Codable, Sendable {
-  case tile, twoByTwo, threeByThree, offset, halfDrop, halfBrick
+  case tile, twoByTwo, threeByThree, offset
 }
 
 /// Port of `tile_view` of `_seamless_helpers.py`: the pattern laid out the way the view shows it. Tile = the picture
-/// itself; 2x2 / 3x3 = repeats; Offset = moved by half a tile both ways (the four corners meet in the middle);
-/// Half-drop = 3 columns, the middle one moved down by half a tile; Half-brick = 3 rows, the middle one moved right.
+/// itself; 2x2 / 3x3 = repeats; Offset = moved by half a tile both ways (the four corners meet in the middle). The node's
+/// Half-drop and Half-brick views are left out.
 enum SPTileView {
   static func render(_ image: CGImage, view: SPView) -> CGImage? {
     guard let p = SPPixels(image) else { return nil }
@@ -18,16 +18,6 @@ enum SPTileView {
     case .offset:
       // torch.roll(shifts=(h // 2, w // 2)): out[y][x] = in[(y - h // 2) mod h][(x - w // 2) mod w].
       return build(p, outW: w, outH: h) { x, y in (mod(x - w / 2, w), mod(y - h / 2, h)) }
-    case .halfDrop:
-      return build(p, outW: 3 * w, outH: 2 * h) { x, y in
-        let column = x / w
-        return (x % w, column % 2 == 0 ? y % h : mod(y - h / 2, h))
-      }
-    case .halfBrick:
-      return build(p, outW: 2 * w, outH: 3 * h) { x, y in
-        let row = y / h
-        return (row % 2 == 0 ? x % w : mod(x - w / 2, w), y % h)
-      }
     }
   }
 

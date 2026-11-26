@@ -154,35 +154,35 @@ tab è nascosta (regola già in vigore per i plug-in). Stato salvato per progett
 
 ```
 ┌ Seamless Pattern ─────────────────────────────────┐
-│ Repeat:  (●) Both  ( ) Left-right  ( ) Up-down    │
-│ [ Prepare Run · Seamless ]   [ Stop seamless ]    │
+│ Repeat: [Both] [⇄] [⇅]   [Prepare Run · Seamless] [Stop seamless] │
 ├───────────────────────────────────────────────────┤
-│ Last result    View: Tile | 2×2 | 3×3 | Offset |  │
-│ ┌──────────┐         Half-drop | Half-brick       │
+│ Last result    View: Tile | 2×2 | 3×3 | Offset    │
+│ ┌──────────┐                                      │
 │ │  ░▒▓▒░   │   Seam:  ←→ PASS    ↑↓ PASS          │
-│ └──────────┘   [ Save PNG… ]  [ Show in Finder ]  │
+│ └──────────┘                                      │
 └───────────────────────────────────────────────────┘
 ```
 
-- **Repeat**: Both / Left-right / Up-down.
+- **Repeat**: Both / Left-right / Up-down; le due direzioni singole sono solo frecce (`arrow.left.arrow.right.square.fill`, `arrow.up.arrow.down.square.fill`, il nome nel tooltip). I tre bottoni a sinistra, Prepare e Stop a destra sulla stessa riga (prova dal vivo, 26 nov).
 - **Prepare Run · Seamless**: propone la pipeline di un passo con il flag. Il passo non cambia i campi della tab: prompt, seed,
   dimensione, LoRA e preset restano quelli dell'utente. Cambiare il modo con la pipeline già proposta la ripropone.
 - **Stop seamless**: toglie la pipeline proposta dal plug-in (lo stesso effetto di *clear pipeline*). Spegnere il plug-in ha
   lo stesso effetto.
 - **Anteprima**: mostra l'ultimo risultato. *Tile* è l'immagine; *2×2* e *3×3* la ripetono; *Offset* la sposta di mezzo tile
-  in tutte e due le direzioni, così gli angoli si incontrano al centro; *Half-drop* sono 3 colonne con quella centrale scesa di
-  mezzo tile; *Half-brick* sono 3 righe con quella centrale spostata di mezzo tile. Si può trascinarci un'immagine dai Results
+  in tutte e due le direzioni, così gli angoli si incontrano al centro. *Half-drop* e *Half-brick* del nodo sono stati tolti dopo la
+  prova dal vivo (26 nov): su questi tile non danno una vista utile. Si può trascinarci un'immagine dai Results
   o dal Finder per vederla ripetuta.
 - **Seam**: il controllo della giunzione del nodo, portato in Swift (`seam_check`). Per ogni direzione confronta il salto di
   colore sulla linea di wrap con quello delle linee interne ogni 4 px. **PASS** se la linea di wrap non è la peggiore,
   **WARN** se è la peggiore ma entro 1,25 volte la seconda, **FAIL** se spicca, **N/A** sotto 64 px. Per la direzione non
   richiesta mostra solo il valore, senza giudizio.
-- **Save PNG…** salva il tile (l'immagine, non la vista). **Show in Finder** apre il file del risultato.
+- **Save PNG…** e **Show in Finder** tolti dopo la prova dal vivo (26 nov): DT Hub salva già il PNG di ogni risultato.
+- **Lingua**: la tab è in italiano o in inglese secondo il sistema, come gli altri plug-in; i testi degli strumenti MCP restano in inglese.
 - **Server non custom**: la tab mostra solo un avviso che lo spiega; tutto il resto è disattivato.
 
 **Flusso tipico**: scegli il modello (una delle quattro famiglie) → scrivi il prompt nella tab Generazione → nel plug-in
 *Prepare Run · Seamless* → il bottone dice "Run · Seamless" → RUN, più volte se vuoi → guardi le viste e il Seam nel plug-in →
-*Save PNG…* → in Photoshop *Edit › Define Pattern*.
+il PNG che DT Hub ha salvato → in Photoshop *Edit › Define Pattern*.
 
 **MCP** (strumenti `plugin__seamlesspattern__<tool>`, regole di
 `docs/superpowers/specs/2026-11-08-server-mcp-design.md`, con una sezione nuova lì):
