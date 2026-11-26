@@ -1,8 +1,9 @@
-# Custom gRPCServerCLI (Ming-Image, Krea 2 Edit, MOSS Image Edit, MiniMax H3 Image, schedulers)
+# Custom gRPCServerCLI (Ming-Image Design and Design-Layer, Krea 2 Edit, MOSS Image Edit, MiniMax H3 Image, schedulers)
 
 This is a custom build of `gRPCServerCLI` (the Draw Things image server), so that [DT Hub](https://github.com/EXistenz-78/dt-hub) can use things the official server does not have:
 
 - **Ming-Image 0.1 Design** (`ming_image`): text to image, transparent (RGBA) output, image editing with reference pictures, and Z-Image LoRAs (new in this build, see below).
+- **Ming-Image 0.1 Design-Layer** (new): splits a flat design into transparent layers (see below).
 - **Krea 2 Edit LoRAs** with reference pictures, for example [Krea 2 General Edit V2](https://huggingface.co/conradlocke/krea2-identity-edit).
 - **MOSS Image Edit LoRAs** with reference pictures (see `MOSS-Image-Edit-LoRA-guide.md` in the DT Hub release).
 - **MiniMax H3 Image** (`minimax_h3_image`).
@@ -17,6 +18,16 @@ This is a custom build of `gRPCServerCLI` (the Draw Things image server), so tha
 - **Settings:** 12 steps, DDIM Trailing, guidance 1, shift about 3.86; 1024 or 2048 pixels on the long side. Transparency needs 1024 px or more and a prompt that asks for it ("RGBA, 4-channel, transparent background").
 - **Activation scaling:** in FP16 the model overflows (a black image, no result) when image and text tokens grow, for example above 1216 px with a long prompt. The `custom.json` entry must carry Z-Image Base's `activation_*_scaling` (Model Converter writes it).
 - **Z-Image LoRAs:** Ming's DiT is Z-Image's graph with the same weight names, so a Z-Image LoRA runs on Ming as its own (`LoRAZoo.versionForModel(_:runningWith:)`). Its text-encoder part is not used.
+
+## Ming-Image Design-Layer (new)
+
+[Ming-Image 0.1 Design-Layer](https://huggingface.co/inclusionAI/Ming-Image-0.1-Design-Layer) (inclusionAI, MIT) takes a finished design (the start image) and a plan of its layers, and returns each layer as a transparent (RGBA) picture. Its DiT is Design's with learned padding tokens; its text encoder is Design's with a different connector, projections and query tokens (the language model and the vision tower are the same).
+
+- **How it runs:** one generation returns *batch size* pictures: the first is the whole design put back together, the others are the layers from the front to the back. So for N layers set the batch size to N + 1 (up to 16). The engine denoises all of them as one sequence (`frames` in Z-Image's graph, the picture to split after them), with the learned padding, and guides against an all-zero caption as inclusionAI's pipeline does.
+- **Prompt:** `Decompose this image into N layers with the following specifications:` then `Number of layers: N` and one line per layer, `Layer 1: <the front one>` to `Layer N: <the background>`.
+- **Settings:** 12 steps, DDIM Trailing, shift about 3.86, **guidance 3** (inclusionAI's 2.0 on Draw Things' scale), strength 1, 1024 px at the design's aspect ratio.
+- **Converting the model:** [Model Converter](https://github.com/EXistenz-78/Fibo-Converter/releases/latest), tab *Ming Layer*, after Ming-Image Design: it converts the Layer model and builds the Layer text encoder from Design's, taking only the parts that differ.
+- **Guidance for Ming-Image in general:** with a guidance other than 1, Ming-Image now runs a second pass against an all-zero caption (before, guidance was ignored). Design at guidance 1 is unchanged.
 
 ## Scheduler
 
@@ -42,11 +53,11 @@ With the manual entry, restart DT Hub. Put the picture in the DT Hub Moodboard o
 
 ## Credits
 
-**The engine work (MOSS edit LoRAs, MiniMax H3 Image and the rest of the fork) is by ianiv, the author of [Atelier](https://github.com/ianiv/Atelier).** The Krea 2 Edit, scheduler and Ming-Image patches are by the DT Hub author. This is not an official Draw Things build and not an Atelier release.
+**The engine work (MOSS edit LoRAs, MiniMax H3 Image and the rest of the fork) is by ianiv, the author of [Atelier](https://github.com/ianiv/Atelier).** The Krea 2 Edit, scheduler, seamless tile and Ming-Image patches are by the DT Hub author. This is not an official Draw Things build and not an Atelier release.
 
 - Source: <https://github.com/ianiv/draw-things-community>, branch `atelier-engine`, revision `f4d03b02` (22 November 2026) **plus** `krea2-edit.patch` (in this folder).
 - That fork comes from Draw Things' community repository, <https://github.com/drawthingsai/draw-things-community>.
-- This revision is newer than the previous DT Hub engine (`8f899411`): it brings the upload checks and `--no-file-upload`, schedulers and four ComfyUI samplers, H3 Image fixes, a fix for masks at few steps, and upstream's Inkling 2 Small and GLM 5.3. `krea2-edit.patch` holds the Krea 2 patch, the scheduler patch, the Ming-Image patch, and the SwiftPM targets of the conversion tools (`ModelConverter`, `QuantI8x`) that Model Converter bundles.
+- This revision is newer than the previous DT Hub engine (`8f899411`): it brings the upload checks and `--no-file-upload`, schedulers and four ComfyUI samplers, H3 Image fixes, a fix for masks at few steps, and upstream's Inkling 2 Small and GLM 5.3. `krea2-edit.patch` holds the Krea 2 patch, the scheduler patch, the Ming-Image patch (Design and Design-Layer), the seamless tile patch, and the SwiftPM targets of the conversion tools (`ModelConverter`, `QuantI8x`) that Model Converter bundles.
 - License: **GPL-3.0**, see `LICENSE.md`. The source of exactly this binary is the revision above with the patch applied; to rebuild it:
 
 ```

@@ -31,10 +31,10 @@ index 078f27c..54e4a20 100644
        .ltx2_3, .seedvr2_3b, .seedvr2_7b, .ideogram4, .krea2, .longcatVideoAvatar1_5, .minimaxH3, .minimaxH3Image:
 diff --git a/Apps/MingDiTTest/main.swift b/Apps/MingDiTTest/main.swift
 new file mode 100644
-index 0000000..ba16ebe
+index 0000000..be48cfe
 --- /dev/null
 +++ b/Apps/MingDiTTest/main.swift
-@@ -0,0 +1,250 @@
+@@ -0,0 +1,291 @@
 +import Diffusion
 +import Foundation
 +import NNC
@@ -43,6 +43,8 @@ index 0000000..ba16ebe
 +// with the PyTorch reference (Tools/ming-reference/ref_dit.py in DT Hub).
 +//
 +// Usage: MingDiTTest <design.ckpt> <ref_encoder.safetensors> <ref_dit.safetensors>
++// Design-Layer (reference from ref_dit_layer.py): MING_FRAMES=F target frames, MING_LEARNED=1
++// learned padding (the checkpoint's cap_pad_token / x_pad_token).
 +
 +typealias Half = Float16
 +
@@ -68,13 +70,32 @@ index 0000000..ba16ebe
 +
 +let queries = tensor(encoderReference, "query_embeds")  // [256, 2560]
 +let direct = tensor(encoderReference, "directvlm")  // [L, 3840]
-+let latents = tensor(ditReference, "latents")  // [1, h, w, 16]
++let latents = tensor(ditReference, "latents")  // [F, h, w, 16]
++let frames = Int(ProcessInfo.processInfo.environment["MING_FRAMES"] ?? "1")!
++let learned = ProcessInfo.processInfo.environment["MING_LEARNED"] == "1"
++precondition(latents.shape[0] == frames, "the reference has \(latents.shape[0]) frames")
 +let expected = tensor(ditReference, "output")
 +let timestepInput = tensor(ditReference, "timestep")[0]  // (1000 - sigma * 1000) / 1000
 +let queryLength = queries.shape[0]
 +let directLength = direct.shape[0]
 +let captionLength = queryLength + directLength
 +let paddedCaptionLength = (captionLength + 31) / 32 * 32
++let capPadLength = learned ? paddedCaptionLength - captionLength : 0
++let fixedCaptionLength = captionLength + capPadLength
++var padTokens: (x: Tensor<Float>, cap: Tensor<Float>)? = nil
++if learned {
++  graph.openStore(checkpoint, flags: .readOnly) { store in
++    padTokens = (
++      Tensor<Float>(from: store.read("x_pad_token", kind: .CPU, codec: codec)!).toCPU(),
++      Tensor<Float>(from: store.read("cap_pad_token", kind: .CPU, codec: codec)!).toCPU()
++    )
++  }
++}
++func padRows(_ token: Tensor<Float>, _ count: Int) -> Tensor<Float> {
++  var rows = Tensor<Float>(.CPU, .WC(count, channels))
++  for i in 0..<count { for j in 0..<channels { rows[i, j] = token.shape.count == 2 ? token[0, j] : token[j] } }
++  return rows
++}
 +let height = latents.shape[1]
 +let width = latents.shape[2]
 +print("Caption \(captionLength) tokens (padded \(paddedCaptionLength)), latents \(height)x\(width)")
@@ -141,7 +162,7 @@ index 0000000..ba16ebe
 +try graph.withNoGrad {
 +  let txt = half(queries, .HWC(1, queryLength, 2_560))
 +  let directTokens = half(direct, .HWC(1, directLength, channels))
-+  let x = half(latents, .NHWC(1, height, width, 16))
++  let x = half(latents, .NHWC(frames, height, width, 16))
 +
 +  // The time embedding of 1000 * timestepInput: cos then sin of t * exp(-ln(10000) i / 128).
 +  var timeEmbedding = Tensor<Half>(.CPU, .WC(1, 256))
@@ -156,11 +177,10 @@ index 0000000..ba16ebe
 +  let captionRotary = graph.variable(
 +    Tensor<Half>(
 +      from: ZImageRotaryPositionEmbedding(
-+        height: 0, width: 0, tokenLength: captionLength, imagePaddedLength: 0)
++        height: 0, width: 0, tokenLength: fixedCaptionLength, imagePaddedLength: 0)
 +    ).toGPU(0))
 +  let tokensHeight = height / 2
 +  let tokensWidth = width / 2
-+  precondition((tokensHeight * tokensWidth) % 32 == 0, "image tokens would need padding")
 +  // MING_REFS=n: the n clean reference latents of the reference (ref_dit.py MING_REFS=n).
 +  let referenceCount = Int(ProcessInfo.processInfo.environment["MING_REFS"] ?? "0")!
 +  var referenceLatents = [DynamicGraph.Tensor<Half>]()
@@ -172,22 +192,28 @@ index 0000000..ba16ebe
 +      referenceLatents.append(half(one, .NHWC(1, height, width, 16)))
 +    }
 +  }
-+  precondition((tokensHeight * tokensWidth * (1 + referenceCount)) % 32 == 0)
++  let imageTokens = tokensHeight * tokensWidth * (frames + referenceCount)
++  let imagePaddedLength = (imageTokens + 31) / 32 * 32 - imageTokens
++  precondition(learned || imagePaddedLength == 0, "image tokens would need padding")
 +  let imageRotary = graph.variable(
 +    Tensor<Half>(
 +      from: ZImageRotaryPositionEmbedding(
-+        height: tokensHeight, width: tokensWidth, tokenLength: captionLength,
-+        imagePaddedLength: 0, imageTimePosition: paddedCaptionLength,
-+        referenceFrames: referenceCount)
++        height: tokensHeight, width: tokensWidth, tokenLength: fixedCaptionLength,
++        imagePaddedLength: imagePaddedLength, imageTimePosition: paddedCaptionLength,
++        referenceFrames: frames - 1 + referenceCount)
 +    ).toGPU(0))
++  var fixedInputs: [DynamicGraph.AnyTensor] = [txt, directTokens, captionRotary, timeEmbeds]
++  if capPadLength > 0, let padTokens {
++    fixedInputs.append(half(padRows(padTokens.cap, capPadLength), .HWC(1, capPadLength, channels)))
++  }
 +
 +  let flash: FlashAttentionLevel = ProcessInfo.processInfo.environment["MING_FLASH"] == "merged" ? .scaleMerged : .scale1
 +  let (fixed, _) = MingImageFixed(
 +    batchSize: 1, queryLength: queryLength, directLength: directLength, channels: channels,
 +    layers: layers, activationQkScaling: [:], activationProjScaling: [:],
 +    activationFfnProjUpScaling: [:], activationFfnScaling: [:], usesFlashAttention: flash,
-+    isBF16: isBF16, contextRefinerLayers: refinerLayers)
-+  fixed.compile(inputs: txt, directTokens, captionRotary, timeEmbeds)
++    isBF16: isBF16, contextRefinerLayers: refinerLayers, capPadLength: capPadLength)
++  fixed.compile(inputs: fixedInputs)
 +  graph.openStore(checkpoint, flags: .readOnly) { store in
 +    do {
 +      try store.read("dit", model: fixed, strict: true, codec: codec) { name, dataType, format, shape in
@@ -200,7 +226,7 @@ index 0000000..ba16ebe
 +      print("  ! reading the fixed part: \(error)")
 +    }
 +  }
-+  let fixedOutputs = fixed(inputs: txt, directTokens, captionRotary, timeEmbeds)
++  let fixedOutputs = fixed(inputs: fixedInputs[0], Array(fixedInputs[1...]))
 +  print("Fixed outputs: \(fixedOutputs.count)")
 +  func relative(_ mine: Tensor<Float>, _ theirs: Tensor<Float>, rows: Int, columns: Int, offset: Int = 0) -> Double {
 +    var difference = 0.0
@@ -239,7 +265,7 @@ index 0000000..ba16ebe
 +      refinerLayers == 0 ? "cap_embedded" : (refinerLayers == 1 ? "cap_refiner0" : "cap_refined"))
 +    var difference = 0.0
 +    var norm = 0.0
-+    for i in 0..<captionLength {
++    for i in 0..<fixedCaptionLength {
 +      for j in 0..<channels {
 +        let d = Double(mine[0, i, j] - theirs[i, j])
 +        difference += d * d
@@ -250,11 +276,17 @@ index 0000000..ba16ebe
 +  }
 +
 +  let (unet, _) = ZImage(
-+    batchSize: 1, height: height, width: width, textLength: captionLength, channels: channels,
++    batchSize: 1, height: height, width: width, textLength: fixedCaptionLength, channels: channels,
 +    layers: layers, activationQkScaling: [:], activationProjScaling: [:],
 +    activationFfnProjUpScaling: [:], activationFfnScaling: [:], usesFlashAttention: flash,
-+    isBF16: isBF16, referenceCount: referenceCount)
-+  var inputs: [DynamicGraph.AnyTensor] = [x, imageRotary]
++    isBF16: isBF16, referenceCount: referenceCount, frames: frames)
++  var inputs: [DynamicGraph.AnyTensor] = [x]
++  if imagePaddedLength > 0 {
++    if let padTokens {
++      inputs.append(half(padRows(padTokens.x, imagePaddedLength), .HWC(1, imagePaddedLength, channels)))
++    }
++  }
++  inputs.append(imageRotary)
 +  inputs.append(contentsOf: fixedOutputs)
 +  inputs.append(contentsOf: referenceLatents)
 +  unet.compile(inputs: inputs)
@@ -269,17 +301,26 @@ index 0000000..ba16ebe
 +  var difference = 0.0
 +  var norm = 0.0
 +  var worst: Float = 0
++  for f in 0..<frames {
++  var frameDifference = 0.0
++  var frameNorm = 0.0
 +  for y in 0..<height {
 +    for xx in 0..<width {
 +      for c in 0..<16 {
-+        let mine = -result[0, y, xx, c]
-+        let theirs = expected[0, y, xx, c]
++        let mine = -result[f, y, xx, c]
++        let theirs = expected[f, y, xx, c]
 +        let d = Double(mine - theirs)
 +        difference += d * d
 +        norm += Double(theirs * theirs)
++        frameDifference += d * d
++        frameNorm += Double(theirs * theirs)
 +        worst = max(worst, abs(mine - theirs))
 +      }
 +    }
++  }
++  if frames > 1 {
++    print("  frame \(f): relative error \(String(format: "%.5f", (frameDifference / frameNorm).squareRoot()))")
++  }
 +  }
 +  print(
 +    "DiT output vs PyTorch: relative error \(String(format: "%.5f", (difference / norm).squareRoot())), max |diff| \(worst)"
@@ -777,10 +818,10 @@ index 0000000..1001021
 +  }
 +}
 diff --git a/Apps/ModelConverter/Converter.swift b/Apps/ModelConverter/Converter.swift
-index 26ae6ad..ae21abd 100644
+index 26ae6ad..2172845 100644
 --- a/Apps/ModelConverter/Converter.swift
 +++ b/Apps/ModelConverter/Converter.swift
-@@ -33,6 +33,21 @@ struct Converter: ParsableCommand {
+@@ -33,6 +33,26 @@ struct Converter: ParsableCommand {
        "Convert the MiniMax H3 Image VAE: --file is its safetensors file (vae/diffusion_pytorch_model.safetensors of MiniMaxAI/MiniMax-H3-Image, or ComfyUI's minimax_h3_image_vae_fp16.safetensors)."
    )
    var h3ImageVae = false
@@ -789,6 +830,11 @@ index 26ae6ad..ae21abd 100644
 +      "Convert Ming-Image's text encoder: --file is ComfyUI's ming_image_0.1_ling_mini_2.0_bf16.safetensors (Comfy-Org/Ming-Image, text_encoders/). Writes the language model, connector and projections as <name>_f16.ckpt, and the tokenizer next to it."
 +  )
 +  var mingTextEncoder = false
++  @Flag(
++    help:
++      "With --ming-text-encoder: write only the connector, proj_in/proj_out, the DirectVLM projection and the query tokens (no language model, no tokenizer). Ming-Image Design-Layer shares the Design language model and vision tower; only these parts differ, so --file may be a safetensors holding just them."
++  )
++  var mingConnectorOnly = false
 +  @Flag(
 +    help:
 +      "Convert Ming-Image's VAE (4 channels, RGBA): --file is ComfyUI's ming_image_vae_bf16.safetensors (Comfy-Org/Ming-Image, vae/). Writes <name>_f16.ckpt."
@@ -802,7 +848,7 @@ index 26ae6ad..ae21abd 100644
  
    private struct Specification: Codable {
      var name: String
-@@ -60,6 +75,18 @@ struct Converter: ParsableCommand {
+@@ -60,6 +80,18 @@ struct Converter: ParsableCommand {
        try convertMiniMaxH3ImageVAE()
        return
      }
@@ -821,7 +867,7 @@ index 26ae6ad..ae21abd 100644
      let fileName = Importer.cleanup(filename: name)
      let importer = ModelImporter(
        filePath: file, modelName: fileName,
-@@ -191,6 +218,13 @@ struct Converter: ParsableCommand {
+@@ -191,6 +223,13 @@ struct Converter: ParsableCommand {
        }
      case .zImage:
        fatalError()
@@ -835,7 +881,7 @@ index 26ae6ad..ae21abd 100644
      case .ernieImage:
        textEncoder =
          fileNames.first {
-@@ -306,6 +340,312 @@ struct Converter: ParsableCommand {
+@@ -306,6 +345,318 @@ struct Converter: ParsableCommand {
      }
    }
  
@@ -907,7 +953,8 @@ index 26ae6ad..ae21abd 100644
 +              }
 +            }
 +          }
-+          // Token embedding and the final norm.
++          // Token embedding, the final norm and the layers (skipped for the connector only).
++          if !mingConnectorOnly {
 +          do {
 +            let (mapper, model) = MingLingEmbedding(
 +              FloatType.self, tokenLength: length, configuration: configuration)
@@ -962,6 +1009,7 @@ index 26ae6ad..ae21abd 100644
 +            }
 +            print("Converted layer \(layer)")
 +          }
++          }
 +          // Connector, proj_in, proj_out.
 +          do {
 +            let (mapper, model) = MingConnector(
@@ -986,6 +1034,10 @@ index 26ae6ad..ae21abd 100644
 +          }
 +        }
 +      }
++    }
++    if mingConnectorOnly {
++      print("Wrote \(outputPath)")
++      return
 +    }
 +    // The tokenizer is stored as a tensor of bytes.
 +    let tokenizerPath = URL(fileURLWithPath: outputDirectory)
@@ -4053,23 +4105,53 @@ index 4ca552f..8daf580 100644
        case .v1, .v2, .kandinsky21, .sdxlBase, .sdxlRefiner, .ssd1b, .svdI2v:
          modelPrefix = "unet"
 diff --git a/Libraries/ModelOp/Sources/ModelImporter.swift b/Libraries/ModelOp/Sources/ModelImporter.swift
-index 83357b6..51d3394 100644
+index 83357b6..584724b 100644
 --- a/Libraries/ModelOp/Sources/ModelImporter.swift
 +++ b/Libraries/ModelOp/Sources/ModelImporter.swift
-@@ -206,6 +206,12 @@ public final class ModelImporter {
+@@ -97,6 +97,26 @@ public final class ModelImporter {
+     }
+   }
+ 
++  /// Whether a safetensors file's `__metadata__` says the model is Ming-Image (ComfyUI's repack:
++  /// `"config": "{\"transformer\": {\"image_model\": \"ming_image\"}}"`).
++  static func safeTensorsMetadataNamesMingImage(filePath: String) -> Bool {
++    guard let handle = FileHandle(forReadingAtPath: filePath) else { return false }
++    defer { try? handle.close() }
++    guard let lengthData = try? handle.read(upToCount: 8), lengthData.count == 8 else {
++      return false
++    }
++    let length = lengthData.withUnsafeBytes { $0.loadUnaligned(as: UInt64.self) }
++    guard length > 0, length < 100_000_000,
++      let header = try? handle.read(upToCount: Int(length)),
++      let json = try? JSONSerialization.jsonObject(with: header) as? [String: Any],
++      let metadata = json["__metadata__"] as? [String: String],
++      let config = metadata["config"]?.data(using: .utf8),
++      let configJSON = try? JSONSerialization.jsonObject(with: config) as? [String: Any],
++      let transformer = configJSON["transformer"] as? [String: Any]
++    else { return false }
++    return (transformer["image_model"] as? String) == "ming_image"
++  }
++
+   public func inspect() throws -> InspectionResult {
+     var archive: TensorArchive
+     var stateDict: [String: TensorDescriptor]
+@@ -206,6 +226,15 @@ public final class ModelImporter {
      var isZImage = stateDict.keys.contains {
        $0.contains("layers.29.feed_forward.w3.")
      }
-+    // Ming-Image's DiT is Z-Image's graph and tensor names, without the two learned pad tokens.
++    // Ming-Image's DiT is Z-Image's graph and tensor names. Design has no learned pad tokens;
++    // Design-Layer has them (as Z-Image), so it is told apart by the safetensors metadata that
++    // ComfyUI's repack writes (`{"transformer": {"image_model": "ming_image"}}`).
 +    let isMingImage =
 +      stateDict.keys.contains { $0.contains("layers.29.feed_forward.w3.") }
-+      && !stateDict.keys.contains { $0 == "x_pad_token" || $0.hasSuffix(".x_pad_token") }
-+      && !stateDict.keys.contains { $0 == "cap_pad_token" || $0.hasSuffix(".cap_pad_token") }
 +      && stateDict.keys.contains { $0.contains("all_x_embedder.2-1.") }
++      && ((!stateDict.keys.contains { $0 == "x_pad_token" || $0.hasSuffix(".x_pad_token") }
++        && !stateDict.keys.contains { $0 == "cap_pad_token" || $0.hasSuffix(".cap_pad_token") })
++        || Self.safeTensorsMetadataNamesMingImage(filePath: filePath))
      var isErnieImage = stateDict.keys.contains {
        $0.contains("layers.35.mlp.linear_fc2.") || $0.contains("layers_35_mlp_linear_fc2")
      }
-@@ -470,6 +476,15 @@ public final class ModelImporter {
+@@ -470,6 +499,15 @@ public final class ModelImporter {
        // 478 + 305 tensors across the two diffusers shards.
        expectedTotalAccess = 783
        isDiffusersFormat = true
@@ -4077,7 +4159,7 @@ index 83357b6..51d3394 100644
 +      modelVersion = .mingImage
 +      modifier = .none
 +      inputDim = 16
-+      // Z-Image's 1652 minus its two learned pad tokens (x_pad_token, cap_pad_token).
++      // Z-Image's 1652 (Design has no learned pad tokens, Design-Layer has them).
 +      expectedTotalAccess = 1652
 +      isDiffusersFormat = stateDict.keys.contains {
 +        $0.contains("layers.29.attention.to_out.0.")
@@ -4085,7 +4167,7 @@ index 83357b6..51d3394 100644
      } else if isZImage {
        modelVersion = .zImage
        modifier = .none
-@@ -647,7 +662,7 @@ public final class ModelImporter {
+@@ -647,7 +685,7 @@ public final class ModelImporter {
          throw Error.noTextEncoder
        case .hiDreamI1, .hiDreamO1, .qwenImage2_1:
          throw Error.noTextEncoder
@@ -4094,7 +4176,7 @@ index 83357b6..51d3394 100644
          throw Error.noTextEncoder
        case .ernieImage, .flux2, .flux2_9b, .flux2_4b, .flux3_5b, .fibo2, .mossImage:
          throw Error.noTextEncoder
-@@ -726,7 +741,7 @@ public final class ModelImporter {
+@@ -726,7 +764,7 @@ public final class ModelImporter {
                "\(modelName)_open_clip_vit_bigg14_f16.ckpt")
            case .sd3, .sd3Large, .pixart, .auraflow, .flux1, .kandinsky21, .svdI2v, .wurstchenStageC,
              .wurstchenStageB, .hunyuanVideo, .wan21_1_3b, .wan21_14b, .hiDreamI1, .hiDreamO1,
@@ -4103,7 +4185,7 @@ index 83357b6..51d3394 100644
              .ernieImage, .flux2,
              .flux2_9b, .flux2_4b, .flux3_5b, .fibo2, .mossImage, .ltx2, .ltx2_3, .seedvr2_3b, .seedvr2_7b,
              .ideogram4,
-@@ -773,7 +788,7 @@ public final class ModelImporter {
+@@ -773,7 +811,7 @@ public final class ModelImporter {
              case .sd3, .sd3Large, .pixart, .auraflow, .flux1, .kandinsky21, .svdI2v,
                .wurstchenStageC, .wurstchenStageB, .hunyuanVideo, .wan21_1_3b, .wan21_14b,
                .hiDreamI1, .hiDreamO1, .qwenImage2_1, .qwenImage, .cosmos2_5_2b,
@@ -4112,7 +4194,7 @@ index 83357b6..51d3394 100644
                .flux3_5b, .fibo2, .mossImage, .ltx2, .ltx2_3,
                .seedvr2_3b,
                .seedvr2_7b,
-@@ -931,7 +946,7 @@ public final class ModelImporter {
+@@ -931,7 +969,7 @@ public final class ModelImporter {
      case .qwenImage:
        conditionalLength = 3854
        batchSize = 1
@@ -4121,7 +4203,7 @@ index 83357b6..51d3394 100644
        conditionalLength = 2560
        batchSize = 1
      case .ernieImage:
-@@ -1056,7 +1071,7 @@ public final class ModelImporter {
+@@ -1056,7 +1094,7 @@ public final class ModelImporter {
            vectors = [graph.variable(.CPU, .WC(batchSize, 768), of: FloatType.self)]
          case .wurstchenStageC, .wurstchenStageB, .pixart, .sd3, .sd3Large, .auraflow, .flux1,
            .hunyuanVideo, .wan21_1_3b, .wan21_14b, .hiDreamI1, .hiDreamO1, .qwenImage2_1, .qwenImage,
@@ -4130,7 +4212,7 @@ index 83357b6..51d3394 100644
            .flux2_4b, .flux3_5b, .fibo2,
            .mossImage,
            .ltx2,
-@@ -1186,7 +1201,7 @@ public final class ModelImporter {
+@@ -1186,7 +1224,7 @@ public final class ModelImporter {
            ).map {
              graph.variable(.CPU, format: .NHWC, shape: $0, of: FloatType.self)
            }
@@ -4139,7 +4221,7 @@ index 83357b6..51d3394 100644
          cArr =
            [
              graph.variable(
-@@ -1540,7 +1555,7 @@ public final class ModelImporter {
+@@ -1540,7 +1578,7 @@ public final class ModelImporter {
          (unetFixedMapper, unetFixed) = AuraFlowFixed(
            batchSize: (1, 1), channels: 3072, layers: (4, 32),
            of: FloatType.self)
@@ -4148,7 +4230,7 @@ index 83357b6..51d3394 100644
          (unet, unetMapper) = ZImage(
            batchSize: 1, height: 64, width: 64, textLength: 32, channels: 3840, layers: 30,
            activationQkScaling: [:], activationProjScaling: [:], activationFfnProjUpScaling: [:],
-@@ -1772,7 +1787,7 @@ public final class ModelImporter {
+@@ -1772,7 +1810,7 @@ public final class ModelImporter {
              graph.variable(.CPU, .WC(1, 256), of: FloatType.self),
            ]
          tEmb = nil
@@ -4157,7 +4239,7 @@ index 83357b6..51d3394 100644
          crossattn = [
            graph.variable(.CPU, .HWC(1, 32, 2560), of: FloatType.self),
            graph.variable(
-@@ -1971,7 +1986,7 @@ public final class ModelImporter {
+@@ -1971,7 +2009,7 @@ public final class ModelImporter {
              stateDict[String(key.dropFirst(6))] = value
            }
          }
@@ -4166,7 +4248,7 @@ index 83357b6..51d3394 100644
          // Remove the model.diffusion_model / model prefix.
          for (key, value) in stateDict {
            if key.hasPrefix("model.diffusion_model.") {
-@@ -2176,7 +2191,7 @@ public final class ModelImporter {
+@@ -2176,7 +2214,7 @@ public final class ModelImporter {
              modelPrefixFixed = "dit"
            case .pixart, .sd3, .sd3Large, .flux1, .hunyuanVideo, .wan21_14b, .wan21_1_3b, .hiDreamI1,
              .hiDreamO1, .wan22_5b, .qwenImage, .cosmos2_5_2b,
@@ -4175,19 +4257,29 @@ index 83357b6..51d3394 100644
              .flux3_5b, .ltx2, .ltx2_3,
              .longcatVideoAvatar1_5,
              .ideogram4, .krea2, .minimaxH3, .minimaxH3Image:
-@@ -2582,6 +2597,11 @@ public final class ModelImporter {
+@@ -2217,7 +2255,8 @@ public final class ModelImporter {
+                 store.write("__encoder_hid_proj__[t-0-1]", tensor: tensor)
+               }
+             }
+-            if modelVersion == .zImage, let xPadTokenDescriptor = stateDict["x_pad_token"],
++            if modelVersion == .zImage || modelVersion == .mingImage,
++              let xPadTokenDescriptor = stateDict["x_pad_token"],
+               let capPadTokenDescriptor = stateDict["cap_pad_token"]
+             {
+               try archive.with(xPadTokenDescriptor) { tensor in
+@@ -2582,6 +2621,11 @@ public final class ModelImporter {
            if $0.keys.count != 713 {
              throw Error.tensorWritesFailed
            }
 +        case .mingImage:
-+          // Z-Image's 713 without x_pad_token and cap_pad_token.
-+          if $0.keys.count != 711 {
++          // Z-Image's 713 without x_pad_token and cap_pad_token (Design), or with them (Layer).
++          if $0.keys.count != 711 && $0.keys.count != 713 {
 +            throw Error.tensorWritesFailed
 +          }
          case .ernieImage:
            if $0.keys.count != 421 {
              throw Error.tensorWritesFailed
-@@ -2883,6 +2903,10 @@ extension ModelImporter {
+@@ -2883,6 +2927,10 @@ extension ModelImporter {
        textEncoder = fileNames.first {
          $0.hasSuffix("_qwen_3_vl_4b_instruct_f16.ckpt")
        }
@@ -4198,7 +4290,7 @@ index 83357b6..51d3394 100644
      case .ernieImage:
        textEncoder = fileNames.first {
          $0.hasSuffix("_ministral_3_3b_f16.ckpt")
-@@ -3230,12 +3254,15 @@ extension ModelImporter {
+@@ -3230,12 +3278,15 @@ extension ModelImporter {
        specification.objective = .u(conditionScale: 1000)
        specification.noiseDiscretization = .rf(
          .init(sigmaMin: 0, sigmaMax: 1, conditionScale: 1_000))
@@ -4424,7 +4516,7 @@ index cff4c13..89e5eda 100644
          .seedvr2_7b,
          .ideogram4, .krea2, .longcatVideoAvatar1_5, .minimaxH3, .minimaxH3Image:
 diff --git a/Libraries/Scripting/Sources/ScriptModels.swift b/Libraries/Scripting/Sources/ScriptModels.swift
-index 1ed649f..7dbc08f 100644
+index 1ed649f..f280c9a 100644
 --- a/Libraries/Scripting/Sources/ScriptModels.swift
 +++ b/Libraries/Scripting/Sources/ScriptModels.swift
 @@ -158,6 +158,9 @@ public final class JSGenerationConfiguration: Codable {
@@ -4445,7 +4537,17 @@ index 1ed649f..7dbc08f 100644
      stage2Guidance = configuration.stage2Cfg
      stage2Shift = configuration.stage2Shift
      stage2Steps = configuration.stage2Steps
-@@ -383,7 +387,8 @@ public final class JSGenerationConfiguration: Codable {
+@@ -328,7 +332,8 @@ public final class JSGenerationConfiguration: Codable {
+       seed: seed >= 0 ? UInt32(seed) : UInt32.random(in: UInt32.min...UInt32.max), steps: steps,
+       guidanceScale: guidanceScale, strength: strength, model: model,
+       sampler: SamplerType(rawValue: sampler)!, batchCount: max(batchCount, 1),
+-      batchSize: min(max(batchSize, 1), 4),
++      // Up to 16: Ming-Image Design-Layer decomposes into N layers as a batch of N + 1 frames.
++      batchSize: min(max(batchSize, 1), 16),
+       hiresFix: hiresFix, hiresFixStartWidth: UInt16(hiresFixWidth / 64),
+       hiresFixStartHeight: UInt16(hiresFixHeight / 64), hiresFixStrength: hiresFixStrength,
+       upscaler: upscaler, imageGuidanceScale: imageGuidanceScale,
+@@ -383,7 +388,8 @@ public final class JSGenerationConfiguration: Codable {
        shiftForAudio: shiftForAudio,
        usesSolAttention: usesSolAttention,
        solAttentionStart: solAttentionStart,
@@ -6072,7 +6174,7 @@ index 219513b..dac4e42 100644
    return Model([x, rot], [out])
  }
 diff --git a/Libraries/SwiftDiffusion/Sources/Models/UNetProtocol.swift b/Libraries/SwiftDiffusion/Sources/Models/UNetProtocol.swift
-index 0e75799..d34d5c9 100644
+index 0e75799..8fbddfc 100644
 --- a/Libraries/SwiftDiffusion/Sources/Models/UNetProtocol.swift
 +++ b/Libraries/SwiftDiffusion/Sources/Models/UNetProtocol.swift
 @@ -131,7 +131,7 @@ extension UNetProtocol {
@@ -6158,7 +6260,7 @@ index 0e75799..d34d5c9 100644
        tiledWidth =
          tiledDiffusion.isEnabled ? min(tiledDiffusion.tileSize.width * 8, startWidth) : startWidth
        tiledHeight =
-@@ -1847,12 +1852,14 @@ extension UNetFromNNC {
+@@ -1847,37 +1852,47 @@ extension UNetFromNNC {
        didRunLoRASeparately =
          !lora.isEmpty && rankOfLoRA > 0 && !isLoHa && runLoRASeparatelyIsPreferred
          && canRunLoRASeparately
@@ -6170,16 +6272,22 @@ index 0e75799..d34d5c9 100644
          unet = ModelBuilderOrModel.modelBuilder(
            ModelBuilder { _, inputs in
 -            let textLength = inputs[inputs.count - 130].shape[1]
-+            let textLength = inputs[inputs.count - 130 - mingReferences].shape[1]
++            let text = inputs[inputs.count - 130 - mingReferences]
++            let textLength = text.shape[1]
++            // Ming-Image Design-Layer: the caption's batch is the guidance branch's, the latents'
++            // batch holds that many times `frames` (the recomposed picture and the layers).
++            let frames = version == .mingImage ? max(1, inputs[0].shape[0] / max(1, text.shape[0])) : 1
              return LoRAZImage(
-               batchSize: inputs[0].shape[0], height: tiledHeight, width: tiledWidth,
+-              batchSize: inputs[0].shape[0], height: tiledHeight, width: tiledWidth,
++              batchSize: inputs[0].shape[0] / frames, height: tiledHeight, width: tiledWidth,
                textLength: textLength,
-@@ -1861,14 +1868,14 @@ extension UNetFromNNC {
+               channels: 3_840, layers: 30, activationQkScaling: activationQkScaling,
+               activationProjScaling: activationProjScaling,
                activationFfnProjUpScaling: activationFfnProjUpScaling,
                activationFfnScaling: activationFfnScaling,
                usesFlashAttention: valueOr(useFlashAttention, isBF16 ? .scaleMerged : .scale1),
 -              isBF16: isBF16,
-+              isBF16: isBF16, referenceCount: mingReferences,
++              isBF16: isBF16, referenceCount: mingReferences, frames: frames,
                LoRAConfiguration: configuration
              ).0
            })
@@ -6187,20 +6295,26 @@ index 0e75799..d34d5c9 100644
          unet = ModelBuilderOrModel.modelBuilder(
            ModelBuilder { _, inputs in
 -            let textLength = inputs[inputs.count - 130].shape[1]
-+            let textLength = inputs[inputs.count - 130 - mingReferences].shape[1]
++            let text = inputs[inputs.count - 130 - mingReferences]
++            let textLength = text.shape[1]
++            // Ming-Image Design-Layer: the caption's batch is the guidance branch's, the latents'
++            // batch holds that many times `frames` (the recomposed picture and the layers).
++            let frames = version == .mingImage ? max(1, inputs[0].shape[0] / max(1, text.shape[0])) : 1
              return ZImage(
-               batchSize: inputs[0].shape[0], height: tiledHeight, width: tiledWidth,
+-              batchSize: inputs[0].shape[0], height: tiledHeight, width: tiledWidth,
++              batchSize: inputs[0].shape[0] / frames, height: tiledHeight, width: tiledWidth,
                textLength: textLength,
-@@ -1877,7 +1884,7 @@ extension UNetFromNNC {
+               channels: 3_840, layers: 30, activationQkScaling: activationQkScaling,
+               activationProjScaling: activationProjScaling,
                activationFfnProjUpScaling: activationFfnProjUpScaling,
                activationFfnScaling: activationFfnScaling,
                usesFlashAttention: valueOr(useFlashAttention, isBF16 ? .scaleMerged : .scale1),
 -              isBF16: isBF16
-+              isBF16: isBF16, referenceCount: mingReferences
++              isBF16: isBF16, referenceCount: mingReferences, frames: frames
              ).0
            })
        }
-@@ -1917,16 +1924,20 @@ extension UNetFromNNC {
+@@ -1917,16 +1932,20 @@ extension UNetFromNNC {
            })
        }
      case .krea2:
@@ -6223,7 +6337,7 @@ index 0e75799..d34d5c9 100644
        if didRunLoRASeparately {
          let keys = LoRALoader.keys(graph, of: lora.map { $0.file }, modelFile: filePath)
          configuration.keys = keys
-@@ -1936,7 +1947,8 @@ extension UNetFromNNC {
+@@ -1936,7 +1955,8 @@ extension UNetFromNNC {
              return LoRAKrea2(
                batchSize: inputs[0].shape[0], height: tiledHeight, width: tiledWidth,
                textLength: textShape[1], usesFlashAttention: valueOr(useFlashAttention, .scale1),
@@ -6233,7 +6347,7 @@ index 0e75799..d34d5c9 100644
              ).1
            })
        } else {
-@@ -1945,7 +1957,8 @@ extension UNetFromNNC {
+@@ -1945,7 +1965,8 @@ extension UNetFromNNC {
              let textShape = inputs[1].shape
              return Krea2(
                batchSize: inputs[0].shape[0], height: tiledHeight, width: tiledWidth,
@@ -6243,7 +6357,7 @@ index 0e75799..d34d5c9 100644
              ).1
            })
        }
-@@ -2404,7 +2417,7 @@ extension UNetFromNNC {
+@@ -2404,7 +2425,7 @@ extension UNetFromNNC {
          c.append(contentsOf: injectedIPAdapters)
        case .v2, .sd3, .sd3Large, .pixart, .auraflow, .kandinsky21, .svdI2v, .wurstchenStageC,
          .wurstchenStageB, .hunyuanVideo, .wan21_1_3b, .wan21_14b, .hiDreamI1, .hiDreamO1,
@@ -6252,7 +6366,7 @@ index 0e75799..d34d5c9 100644
          .flux3_5b, .fibo2, .mossImage,
          .cosmos2_5_2b, .cosmos2_5_2_9b, .ltx2, .ltx2_3, .seedvr2_3b, .seedvr2_7b,
          .ideogram4, .krea2,
-@@ -2472,7 +2485,7 @@ extension UNetFromNNC {
+@@ -2472,7 +2493,7 @@ extension UNetFromNNC {
      case .wurstchenStageC:
        modelKey = "stage_c"
      case .sd3, .pixart, .auraflow, .flux1, .sd3Large, .hunyuanVideo, .wan21_1_3b, .wan21_14b,
@@ -6261,7 +6375,7 @@ index 0e75799..d34d5c9 100644
        .flux2_9b, .flux2_4b, .flux3_5b, .fibo2, .mossImage, .cosmos2_5_2b, .cosmos2_5_2_9b,
        .ideogram4, .krea2, .ltx2,
        .ltx2_3,
-@@ -2621,7 +2634,7 @@ extension UNetFromNNC {
+@@ -2621,7 +2642,7 @@ extension UNetFromNNC {
                  uniqueKeysWithValues: (0..<60).map {
                    return ($0, $0)
                  })
@@ -6270,7 +6384,7 @@ index 0e75799..d34d5c9 100644
                return [Int: Int](
                  uniqueKeysWithValues: (0..<30).map {
                    return ($0, $0)
-@@ -3249,7 +3262,7 @@ extension UNetFromNNC {
+@@ -3249,7 +3270,7 @@ extension UNetFromNNC {
              tokenEncoding
            return finalEncoding
          }
@@ -6279,7 +6393,7 @@ index 0e75799..d34d5c9 100644
          if $0.0 == count - 131 || $0.0 == count - 132 {
            let shape = $0.1.shape
            let tokenLength = shape[1] - (originalShape[1] / 2) * (originalShape[2] / 2)
-@@ -3773,10 +3786,12 @@ extension UNetFromNNC {
+@@ -3773,17 +3794,24 @@ extension UNetFromNNC {
        unet.compile(inputs: inputs)
        // TODO: TeaCache insert here.
        return
@@ -6294,7 +6408,22 @@ index 0e75799..d34d5c9 100644
          unet.compile(inputs: inputs)
          // TODO: TeaCache insert here.
          return
-@@ -4936,10 +4951,11 @@ extension UNetFromNNC {
+       }
+-      let count = inputs.count
+-      let roundUpTokenLengthUncond = (tokenLengthUncond + 31) / 32 * 32
+-      let roundUpTokenLengthCond = (tokenLengthCond + 31) / 32 * 32
++      // Ming-Image's reference latents come last: the caption and rotary offsets count before them.
++      let count = inputs.count - (version == .mingImage ? referenceImageCount : 0)
++      // Ming-Image's two captions are the same length (the negative one is all zero), side by side.
++      let mingCaptionLength = version == .mingImage ? inputs[count - 130].shape[1] / 2 : 0
++      let roundUpTokenLengthUncond =
++        version == .mingImage ? mingCaptionLength : (tokenLengthUncond + 31) / 32 * 32
++      let roundUpTokenLengthCond =
++        version == .mingImage ? mingCaptionLength : (tokenLengthCond + 31) / 32 * 32
+       let inputs: [DynamicGraph.AnyTensor] = inputs.enumerated().compactMap {
+         let shape = $0.1.shape
+         switch $0.0 {
+@@ -4936,19 +4964,25 @@ extension UNetFromNNC {
          }
          return et
        }
@@ -6308,7 +6437,24 @@ index 0e75799..d34d5c9 100644
          let et = unet(inputs: firstInput, restInputs)[0].as(of: FloatType.self)
          return et
        }
-@@ -5825,7 +5841,7 @@ extension UNetFromNNC {
+       let shape = firstInput.shape
+       let etUncond: DynamicGraph.Tensor<FloatType>
+       let etCond: DynamicGraph.Tensor<FloatType>
+-      let roundUpTokenLengthUncond = (tokenLengthUncond + 31) / 32 * 32
+-      let roundUpTokenLengthCond = (tokenLengthCond + 31) / 32 * 32
+-      let count = restInputs.count
++      // Ming-Image's reference latents come last: the caption and rotary offsets count before them.
++      let count = restInputs.count - (version == .mingImage ? referenceImageCount : 0)
++      // Ming-Image's two captions are the same length (the negative one is all zero), side by side.
++      let mingCaptionLength = version == .mingImage ? restInputs[count - 130].shape[1] / 2 : 0
++      let roundUpTokenLengthUncond =
++        version == .mingImage ? mingCaptionLength : (tokenLengthUncond + 31) / 32 * 32
++      let roundUpTokenLengthCond =
++        version == .mingImage ? mingCaptionLength : (tokenLengthCond + 31) / 32 * 32
+       if roundUpTokenLengthCond > roundUpTokenLengthUncond {
+         // This if-clause is useful because we compiled the graph with longest token, so later we don't need to trigger the automatic re-compilation.
+         let xCond = firstInput[
+@@ -5825,7 +5859,7 @@ extension UNetFromNNC {
        return ((rows * 32 + 23) / 24, height)
      case .v1, .v2, .kandinsky21, .sdxlBase, .sdxlRefiner, .ssd1b, .svdI2v, .wurstchenStageC,
        .wurstchenStageB, .sd3, .pixart, .auraflow, .flux1, .sd3Large, .hunyuanVideo, .wan21_1_3b,
@@ -6317,7 +6463,7 @@ index 0e75799..d34d5c9 100644
        .ernieImage, .flux2, .flux2_9b, .flux2_4b, .flux3_5b, .fibo2, .minimaxH3Image, .mossImage, .cosmos2_5_2b,
        .cosmos2_5_2_9b, .seedvr2_3b, .seedvr2_7b,
        .ideogram4, .krea2, .longcatVideoAvatar1_5:
-@@ -5958,7 +5974,7 @@ extension UNetFromNNC {
+@@ -5958,7 +5992,7 @@ extension UNetFromNNC {
        .hiDreamI1,
        .kandinsky21, .qwenImage, .sd3, .sd3Large, .sdxlBase, .sdxlRefiner, .ssd1b,
        .svdI2v, .v1, .v2,
@@ -6326,7 +6472,7 @@ index 0e75799..d34d5c9 100644
        .seedvr2_7b, .ideogram4, .krea2, .longcatVideoAvatar1_5:
        tileScaleFactor = 8
      case .hiDreamO1:
-@@ -6206,7 +6222,7 @@ extension UNetFromNNC {
+@@ -6206,7 +6240,7 @@ extension UNetFromNNC {
          c = newC
        case .v2, .sd3, .sd3Large, .pixart, .auraflow, .kandinsky21, .svdI2v, .wurstchenStageC,
          .wurstchenStageB, .hunyuanVideo, .wan21_1_3b, .wan21_14b, .hiDreamI1, .hiDreamO1,
@@ -6335,7 +6481,7 @@ index 0e75799..d34d5c9 100644
          .flux3_5b, .fibo2, .mossImage,
          .cosmos2_5_2b, .cosmos2_5_2_9b, .ltx2, .ltx2_3, .seedvr2_3b, .seedvr2_7b,
          .ideogram4, .krea2,
-@@ -6247,7 +6263,7 @@ extension UNetFromNNC {
+@@ -6247,7 +6281,7 @@ extension UNetFromNNC {
        return x
      case .v1, .v2, .sd3, .sd3Large, .pixart, .auraflow, .flux1, .sdxlBase, .sdxlRefiner, .ssd1b,
        .svdI2v, .kandinsky21, .wurstchenStageB, .hunyuanVideo, .wan21_1_3b, .wan21_14b, .hiDreamI1,
@@ -6625,7 +6771,7 @@ index 603d20e..8e15eac 100644
        channels: channels, numRepeat: numRepeat, startWidth: startWidth, startHeight: startHeight,
        startDepth: startDepth, paddingFinalConvLayer: paddingFinalConvLayer, wan22: wan22,
 diff --git a/Libraries/SwiftDiffusion/Sources/Models/ZImage.swift b/Libraries/SwiftDiffusion/Sources/Models/ZImage.swift
-index a4b4e56..65470ce 100644
+index a4b4e56..d958dfb 100644
 --- a/Libraries/SwiftDiffusion/Sources/Models/ZImage.swift
 +++ b/Libraries/SwiftDiffusion/Sources/Models/ZImage.swift
 @@ -3,45 +3,64 @@ import Foundation
@@ -6713,16 +6859,17 @@ index a4b4e56..65470ce 100644
    for i in 0..<tokenLength {
      for j in 0..<heads {
        for k in 0..<(dim0 / 2) {
-@@ -472,7 +491,7 @@ public func ZImage(
+@@ -472,7 +491,8 @@ public func ZImage(
    batchSize: Int, height: Int, width: Int, textLength: Int, channels: Int, layers: Int,
    activationQkScaling: [Int: Int], activationProjScaling: [Int: Int],
    activationFfnProjUpScaling: [Int: Int], activationFfnScaling: [Int: Int],
 -  usesFlashAttention: FlashAttentionLevel, isBF16: Bool
-+  usesFlashAttention: FlashAttentionLevel, isBF16: Bool, referenceCount: Int = 0
++  usesFlashAttention: FlashAttentionLevel, isBF16: Bool, referenceCount: Int = 0,
++  frames: Int = 1
  ) -> (
    Model, ModelWeightMapper
  ) {
-@@ -482,15 +501,24 @@ public func ZImage(
+@@ -482,15 +502,27 @@ public func ZImage(
    let imgIn = Dense(count: channels, name: "x_embedder")
    let h = height / 2
    let w = width / 2
@@ -6730,19 +6877,22 @@ index a4b4e56..65470ce 100644
 -    x.reshaped([batchSize, h, 2, w, 2, 16]).permuted(0, 1, 3, 2, 4, 5).contiguous()
 -      .reshaped([batchSize, h * w, 2 * 2 * 16], format: .NHWC)
 -  )
-+  func patches(_ latent: Model.IO) -> Model.IO {
++  // Ming-Image Design-Layer denoises `frames` latents as one sequence: the input's batch is
++  // `batchSize * frames` (the frames of one sample next to each other), embedded one frame
++  // after the other (time position + 1 for each), and read out the same way.
++  func patches(_ latent: Model.IO, frames: Int = 1) -> Model.IO {
 +    imgIn(
-+      latent.reshaped([batchSize, h, 2, w, 2, 16]).permuted(0, 1, 3, 2, 4, 5).contiguous()
-+        .reshaped([batchSize, h * w, 2 * 2 * 16], format: .NHWC))
++      latent.reshaped([batchSize * frames, h, 2, w, 2, 16]).permuted(0, 1, 3, 2, 4, 5).contiguous()
++        .reshaped([batchSize, frames * h * w, 2 * 2 * 16], format: .NHWC))
 +  }
-+  var xOut = patches(x)
++  var xOut = patches(x, frames: frames)
 +  // Ming-Image's references are clean latents of the target's size, embedded like the image and
 +  // laid out after it, one frame each; only the image's own tokens are read out.
 +  let references = (0..<referenceCount).map { _ in Input() }
 +  for reference in references {
 +    xOut = Functional.concat(axis: 1, xOut, patches(reference), flags: .disableOpt)
 +  }
-+  let imageTokenCount = h * w * (1 + referenceCount)
++  let imageTokenCount = h * w * (frames + referenceCount)
    var mappers = [ModelWeightMapper]()
    var adaLNChunks = [Input]()
 -  let roundUpHW = (h * w + 31) / 32 * 32
@@ -6753,7 +6903,29 @@ index a4b4e56..65470ce 100644
      let padTokens = Input()
      xOut = Functional.concat(axis: 1, xOut, padTokens, flags: .disableOpt)
      xPadTokens = padTokens
-@@ -590,7 +618,10 @@ public func ZImage(
+@@ -551,7 +583,7 @@ public func ZImage(
+     let (block, mapper) = ZImageTransformerBlock(
+       prefix: "layers.\(i)", name: "", k: 128, h: channels / 128, b: batchSize,
+       t: (
+-        keyValue: roundUpHW + textLength, query: i == layers - 1 ? h * w : roundUpHW + textLength
++        keyValue: roundUpHW + textLength, query: i == layers - 1 ? frames * h * w : roundUpHW + textLength
+       ),
+       segments: [],
+       scaleFactor: (
+@@ -566,10 +598,10 @@ public func ZImage(
+   adaLNChunks.append(scale)
+   let projOut = Dense(count: 2 * 2 * 16, name: "linear_final")
+   out = normFinal(out).to(.Float16) .* scale
+-  out = (-projOut(out)).reshaped([batchSize, h, w, 2, 2, 16]).permuted(0, 1, 3, 2, 4, 5)
++  out = (-projOut(out)).reshaped([batchSize * frames, h, w, 2, 2, 16]).permuted(0, 1, 3, 2, 4, 5)
+     .contiguous()
+     .reshaped([
+-      batchSize, h * 2, w * 2, 16,
++      batchSize * frames, h * 2, w * 2, 16,
+     ])
+   let mapper: ModelWeightMapper = { format in
+     var mapping = ModelWeightMapping()
+@@ -590,7 +622,10 @@ public func ZImage(
      }
      return mapping
    }
@@ -6765,7 +6937,7 @@ index a4b4e56..65470ce 100644
  }
  
  private func ZImageTransformerBlockFixed(
-@@ -786,6 +817,106 @@ public func ZImageFixed(
+@@ -786,6 +821,118 @@ public func ZImageFixed(
    return (Model([txt, txtRot, t] + (capPadTokens.map { [$0] } ?? []), outs), mapper)
  }
  
@@ -6776,11 +6948,15 @@ index a4b4e56..65470ce 100644
 +/// is taken from the padded length (see `ZImageRotaryPositionEmbedding.imageTimePosition`).
 +/// Inputs: queries `[B, queryLength, 2560]`, direct `[B, directLength, channels]`, the caption's
 +/// rotary table and the time embedding. Outputs are `ZImageFixed`'s.
++/// Design-Layer pads with learned tokens instead (`cap_pad_token`, like Z-Image): with
++/// `capPadLength > 0` a last input `[B, capPadLength, channels]` is appended to the caption, and
++/// the caption (and the rotary table) is `queryLength + directLength + capPadLength` long.
 +public func MingImageFixed(
 +  batchSize: Int, queryLength: Int, directLength: Int, channels: Int, layers: Int,
 +  activationQkScaling: [Int: Int], activationProjScaling: [Int: Int],
 +  activationFfnProjUpScaling: [Int: Int], activationFfnScaling: [Int: Int],
-+  usesFlashAttention: FlashAttentionLevel, isBF16: Bool, contextRefinerLayers: Int = 2
++  usesFlashAttention: FlashAttentionLevel, isBF16: Bool, contextRefinerLayers: Int = 2,
++  capPadLength: Int = 0
 +) -> (
 +  Model, ModelWeightMapper
 +) {
@@ -6791,7 +6967,15 @@ index a4b4e56..65470ce 100644
 +  let txtNorm = RMSNorm(epsilon: 1e-5, axis: [2], name: "cap_norm")
 +  let txtIn = Dense(count: channels, name: "cap_embedder")
 +  var txtOut = Functional.concat(axis: 1, txtIn(txtNorm(txt)), direct, flags: .disableOpt)
-+  let tokenLength = queryLength + directLength
++  let capPadTokens: Input?
++  if capPadLength > 0 {
++    let padTokens = Input()
++    txtOut = Functional.concat(axis: 1, txtOut, padTokens, flags: .disableOpt)
++    capPadTokens = padTokens
++  } else {
++    capPadTokens = nil
++  }
++  let tokenLength = queryLength + directLength + capPadLength
 +  txtOut = txtOut.to(.Float32)
 +  let (timeInMlp0, timeInMlp2, timeIn) = MLPEmbedder(
 +    channels: 256, intermediateSize: 1024, name: "t")
@@ -6866,22 +7050,22 @@ index a4b4e56..65470ce 100644
 +    }
 +    return mapping
 +  }
-+  return (Model([txt, direct, txtRot, t], outs), mapper)
++  return (Model([txt, direct, txtRot, t] + (capPadTokens.map { [$0] } ?? []), outs), mapper)
 +}
 +
  private func ZImageTransformerBlockFixedOutputShapes(
    prefix: String, name: String, batchSize: Int, channels: Int
  ) -> [TensorShape] {
-@@ -1255,7 +1386,7 @@ public func LoRAZImage(
+@@ -1255,7 +1402,7 @@ public func LoRAZImage(
    activationQkScaling: [Int: Int], activationProjScaling: [Int: Int],
    activationFfnProjUpScaling: [Int: Int], activationFfnScaling: [Int: Int],
    usesFlashAttention: FlashAttentionLevel, isBF16: Bool, rotaryEmbeddingHeads: Int = 1,
 -  LoRAConfiguration: LoRANetworkConfiguration
-+  referenceCount: Int = 0, LoRAConfiguration: LoRANetworkConfiguration
++  referenceCount: Int = 0, frames: Int = 1, LoRAConfiguration: LoRANetworkConfiguration
  ) -> (
    Model, ModelWeightMapper
  ) {
-@@ -1266,15 +1397,23 @@ public func LoRAZImage(
+@@ -1266,15 +1413,26 @@ public func LoRAZImage(
      count: channels, configuration: LoRAConfiguration, index: 0, name: "x_embedder")
    let h = height / 2
    let w = width / 2
@@ -6889,18 +7073,21 @@ index a4b4e56..65470ce 100644
 -    x.reshaped([batchSize, h, 2, w, 2, 16]).permuted(0, 1, 3, 2, 4, 5).contiguous()
 -      .reshaped([batchSize, h * w, 2 * 2 * 16], format: .NHWC)
 -  )
-+  func patches(_ latent: Model.IO) -> Model.IO {
++  // Ming-Image Design-Layer denoises `frames` latents as one sequence: the input's batch is
++  // `batchSize * frames` (the frames of one sample next to each other), embedded one frame
++  // after the other (time position + 1 for each), and read out the same way.
++  func patches(_ latent: Model.IO, frames: Int = 1) -> Model.IO {
 +    imgIn(
-+      latent.reshaped([batchSize, h, 2, w, 2, 16]).permuted(0, 1, 3, 2, 4, 5).contiguous()
-+        .reshaped([batchSize, h * w, 2 * 2 * 16], format: .NHWC))
++      latent.reshaped([batchSize * frames, h, 2, w, 2, 16]).permuted(0, 1, 3, 2, 4, 5).contiguous()
++        .reshaped([batchSize, frames * h * w, 2 * 2 * 16], format: .NHWC))
 +  }
-+  var xOut = patches(x)
++  var xOut = patches(x, frames: frames)
 +  // Ming-Image's references, as in `ZImage`: one frame each after the image.
 +  let references = (0..<referenceCount).map { _ in Input() }
 +  for reference in references {
 +    xOut = Functional.concat(axis: 1, xOut, patches(reference), flags: .disableOpt)
 +  }
-+  let imageTokenCount = h * w * (1 + referenceCount)
++  let imageTokenCount = h * w * (frames + referenceCount)
    var mappers = [ModelWeightMapper]()
    var adaLNChunks = [Input]()
 -  let roundUpHW = (h * w + 31) / 32 * 32
@@ -6911,7 +7098,29 @@ index a4b4e56..65470ce 100644
      let padTokens = Input()
      xOut = Functional.concat(axis: 1, xOut, padTokens, flags: .disableOpt)
      xPadTokens = padTokens
-@@ -1396,6 +1535,7 @@ public func LoRAZImage(
+@@ -1344,7 +1502,7 @@ public func LoRAZImage(
+     let (block, mapper) = LoRAZImageTransformerBlock(
+       prefix: "layers.\(i)", name: "", k: 128, h: channels / 128, b: batchSize,
+       t: (
+-        keyValue: roundUpHW + textLength, query: i == layers - 1 ? h * w : roundUpHW + textLength
++        keyValue: roundUpHW + textLength, query: i == layers - 1 ? frames * h * w : roundUpHW + textLength
+       ),
+       segments: [],
+       scaleFactor: (
+@@ -1365,10 +1523,10 @@ public func LoRAZImage(
+   let projOut = LoRADense(
+     count: 2 * 2 * 16, configuration: LoRAConfiguration, index: 0, name: "linear_final")
+   out = normFinal(out).to(.Float16) .* scale
+-  out = (-projOut(out)).reshaped([batchSize, h, w, 2, 2, 16]).permuted(0, 1, 3, 2, 4, 5)
++  out = (-projOut(out)).reshaped([batchSize * frames, h, w, 2, 2, 16]).permuted(0, 1, 3, 2, 4, 5)
+     .contiguous()
+     .reshaped([
+-      batchSize, h * 2, w * 2, 16,
++      batchSize * frames, h * 2, w * 2, 16,
+     ])
+   let mapper: ModelWeightMapper = { format in
+     var mapping = ModelWeightMapping()
+@@ -1396,6 +1554,7 @@ public func LoRAZImage(
    inputs.append(rot)
    inputs.append(txtIn)
    inputs.append(contentsOf: adaLNChunks)
@@ -7249,7 +7458,7 @@ index 6119857..09c0b33 100644
              conditions = []
              let vector = fixedEncoder.vector(
 diff --git a/Libraries/SwiftDiffusion/Sources/Samplers/Sampler.swift b/Libraries/SwiftDiffusion/Sources/Samplers/Sampler.swift
-index e74edb7..b031c38 100644
+index e74edb7..f00bc4e 100644
 --- a/Libraries/SwiftDiffusion/Sources/Samplers/Sampler.swift
 +++ b/Libraries/SwiftDiffusion/Sources/Samplers/Sampler.swift
 @@ -43,6 +43,7 @@ public enum ModelVersion: String, Codable {
@@ -7269,16 +7478,19 @@ index e74edb7..b031c38 100644
  
    func sample(
      _ x_T: DynamicGraph.Tensor<FloatType>, unets: [UNet?], sample: DynamicGraph.Tensor<FloatType>?,
-@@ -389,7 +392,7 @@ public func isCfgEnabled(
-     // Only Fibo 2.0 Edit Turbo (distilled, no classifier-free guidance) is wired.
-     return false
-   }
--  guard version != .minimaxH3Image else {
-+  guard version != .minimaxH3Image && version != .mingImage else {
+@@ -393,6 +396,11 @@ public func isCfgEnabled(
      // MiniMax H3 Image is CFG-distilled: it runs one positive branch per step.
      return false
    }
-@@ -549,7 +552,7 @@ func isBatchEnabled(_ version: ModelVersion) -> Bool {
++  guard version != .mingImage else {
++    // Ming-Image Design runs at guidance 1 (one branch); Design-Layer guides against an all-zero
++    // caption (official scale 2.0, this scale 3.0).
++    return (textGuidanceScale - 1).magnitude > 1e-3
++  }
+   guard version != .longcatVideoAvatar1_5 else {
+     // Only the distilled no-CFG path is wired; the triple-guidance base path is not implemented.
+     return false
+@@ -549,7 +557,7 @@ func isBatchEnabled(_ version: ModelVersion) -> Bool {
    switch version {
    case .auraflow, .flux1, .hiDreamI1, .hiDreamO1, .kandinsky21, .pixart, .sd3, .sd3Large, .sdxlBase,
      .sdxlRefiner, .ssd1b, .v1, .v2, .wurstchenStageB, .wurstchenStageC, .qwenImage, .qwenImage2_1,
@@ -7611,10 +7823,10 @@ index 4a44409..c3263e3 100644
        .ltx2_3,
        .seedvr2_3b,
 diff --git a/Libraries/SwiftDiffusion/Sources/TextEncoder.swift b/Libraries/SwiftDiffusion/Sources/TextEncoder.swift
-index 9d167ee..c19c386 100644
+index 9d167ee..9de6067 100644
 --- a/Libraries/SwiftDiffusion/Sources/TextEncoder.swift
 +++ b/Libraries/SwiftDiffusion/Sources/TextEncoder.swift
-@@ -3860,6 +3860,291 @@ extension TextEncoder {
+@@ -3860,6 +3860,293 @@ extension TextEncoder {
      return ([conditioning], [textModel])
    }
  
@@ -7894,6 +8106,8 @@ index 9d167ee..c19c386 100644
 +      readModel(directProjection)
 +      let direct = directProjection(inputs: directGPU)[0].as(of: FloatType.self)
 +      tokenLengthCond = 256 + promptLength
++      // The negative branch (Design-Layer's guidance) is an all-zero caption of the same length.
++      tokenLengthUncond = tokenLengthCond
 +      return (
 +        [
 +          conditioning.reshaped(.HWC(1, 256, 2_560)),
@@ -7906,7 +8120,7 @@ index 9d167ee..c19c386 100644
    private func encodeMOSSImage(
      tokens: [DynamicGraph.Tensor<Int32>], tokenLengthUncond: Int, tokenLengthCond: Int
    )
-@@ -4754,6 +5039,9 @@ extension TextEncoder {
+@@ -4754,6 +5041,9 @@ extension TextEncoder {
      case .flux3_5b:
        return encodeFlux3(
          tokens: tokens, tokenLengthUncond: &tokenLengthUncond, tokenLengthCond: &tokenLengthCond)
@@ -7916,7 +8130,7 @@ index 9d167ee..c19c386 100644
      case .mossImage:
        return encodeMOSSImage(
          tokens: tokens, tokenLengthUncond: tokenLengthUncond, tokenLengthCond: tokenLengthCond)
-@@ -4898,7 +5186,7 @@ extension TextEncoder {
+@@ -4898,7 +5188,7 @@ extension TextEncoder {
        case .sd3, .sd3Large, .pixart, .auraflow, .flux1, .kandinsky21, .sdxlBase, .sdxlRefiner,
          .ssd1b, .svdI2v, .wurstchenStageC, .wurstchenStageB, .hunyuanVideo, .wan21_1_3b, .wan21_14b,
          .hiDreamI1, .hiDreamO1, .qwenImage, .qwenImage2_1, .wan22_5b, .zImage, .ernieImage, .flux2,
@@ -7925,7 +8139,7 @@ index 9d167ee..c19c386 100644
          .ideogram4, .krea2, .ltx2,
          .ltx2_3,
          .seedvr2_3b,
-@@ -4941,7 +5229,7 @@ extension TextEncoder {
+@@ -4941,7 +5231,7 @@ extension TextEncoder {
                    .sdxlRefiner, .ssd1b, .svdI2v, .wurstchenStageC, .wurstchenStageB, .hunyuanVideo,
                    .wan21_1_3b, .wan21_14b, .hiDreamI1, .hiDreamO1, .qwenImage, .qwenImage2_1,
                    .wan22_5b, .zImage, .ernieImage, .flux2, .flux2_9b, .flux2_4b, .flux3_5b, .fibo2,
@@ -7934,7 +8148,7 @@ index 9d167ee..c19c386 100644
                    .cosmos2_5_2b, .cosmos2_5_2_9b,
                    .ltx2, .ltx2_3, .seedvr2_3b, .seedvr2_7b, .ideogram4, .krea2,
                    .longcatVideoAvatar1_5, .minimaxH3, .minimaxH3Image:
-@@ -4985,7 +5273,7 @@ extension TextEncoder {
+@@ -4985,7 +5275,7 @@ extension TextEncoder {
                  .sdxlRefiner, .ssd1b, .svdI2v, .wurstchenStageC, .wurstchenStageB, .hunyuanVideo,
                  .wan21_1_3b, .wan21_14b, .hiDreamI1, .hiDreamO1, .qwenImage, .qwenImage2_1,
                  .wan22_5b, .zImage, .ernieImage, .flux2, .flux2_9b, .flux2_4b, .flux3_5b, .fibo2,
@@ -7944,7 +8158,7 @@ index 9d167ee..c19c386 100644
                  .ltx2_3, .seedvr2_3b, .seedvr2_7b, .ideogram4, .krea2, .longcatVideoAvatar1_5,
                  .minimaxH3, .minimaxH3Image:
 diff --git a/Libraries/SwiftDiffusion/Sources/UNetFixedEncoder.swift b/Libraries/SwiftDiffusion/Sources/UNetFixedEncoder.swift
-index b364789..f931848 100644
+index b364789..ef9a7d1 100644
 --- a/Libraries/SwiftDiffusion/Sources/UNetFixedEncoder.swift
 +++ b/Libraries/SwiftDiffusion/Sources/UNetFixedEncoder.swift
 @@ -20,6 +20,8 @@ public struct UNetFixedEncoder<FloatType: TensorNumeric & BinaryFloatingPoint> {
@@ -8048,13 +8262,18 @@ index b364789..f931848 100644
          ).toGPU(0)
          let rot = graph.variable(rotaryEmbedding)
          rotaryEmbeddings = [rot, rot]
-@@ -3012,6 +3034,89 @@ extension UNetFixedEncoder {
+@@ -3012,6 +3034,170 @@ extension UNetFixedEncoder {
          ]
        }
        return (rotaryEmbeddings + conditions, nil)
 +    case .mingImage:
 +      // Z-Image's graph, with a caption made of the 256 learnable-query features (through
-+      // cap_embedder) and the language model's own tokens, and no negative branch.
++      // cap_embedder) and the language model's own tokens.
++      // Design: no negative branch, the caption is not padded (the reference pads with zeros and
++      // masks them out). Design-Layer (the DiT file has `cap_pad_token` / `x_pad_token`): learned
++      // padding as Z-Image, the batch's `batchSize` latents are the frames of one sample (the
++      // recomposed picture and the layers), and guidance runs against an all-zero caption of the
++      // same length, as the reference pipeline does.
 +      let queries = textEncoding[0]
 +      let directTokens = textEncoding[1]
 +      let queryLength = queries.shape[1]
@@ -8063,6 +8282,30 @@ index b364789..f931848 100644
 +      let paddedCaptionLength = (captionLength + 31) / 32 * 32
 +      let h = startHeight / 2
 +      let w = startWidth / 2
++      var learnedPadTokens: (x: Tensor<FloatType>, cap: Tensor<FloatType>)? = nil
++      graph.openStore(
++        filePath, flags: .readOnly, externalStore: TensorData.externalStore(filePath: filePath)
++      ) { store in
++        if let x = store.read(
++          "x_pad_token", kind: .CPU, codec: [.jit, .q6p, .q8p, .i8x, .ezm7, externalData]),
++          let cap = store.read(
++            "cap_pad_token", kind: .CPU, codec: [.jit, .q6p, .q8p, .i8x, .ezm7, externalData])
++        {
++          learnedPadTokens = (
++            Tensor<FloatType>(from: x).reshaped(.HWC(1, 1, 3_840)),
++            Tensor<FloatType>(from: cap).reshaped(.HWC(1, 1, 3_840))
++          )
++        }
++      }
++      let isLayer = learnedPadTokens != nil
++      // Layer: one sequence of `frames` target frames per guidance branch.
++      let frames = isLayer ? batchSize : 1
++      // Captions per guidance branch: one for Layer (its frames share it), one per image otherwise.
++      // The conditions arrive repeated to the batch size, all rows the same prompt.
++      let branchBatchSize = isLayer ? 1 : batchSize
++      let fixedBatchSize = branchBatchSize * (isCfgEnabled ? 2 : 1)
++      let capPadLength = isLayer ? paddedCaptionLength - captionLength : 0
++      let fixedCaptionLength = captionLength + capPadLength
 +      var timeEmbeds = graph.variable(.GPU(0), .WC(timesteps.count, 256), of: FloatType.self)
 +      for (i, timestep) in timesteps.enumerated() {
 +        let timeEmbed = graph.variable(
@@ -8074,44 +8317,84 @@ index b364789..f931848 100644
 +      }
 +      precondition(timesteps.count > 0)
 +      let (unetFixed, _) = MingImageFixed(
-+        batchSize: batchSize, queryLength: queryLength, directLength: directLength,
++        batchSize: fixedBatchSize, queryLength: queryLength, directLength: directLength,
 +        channels: 3_840, layers: 30, activationQkScaling: activationQkScaling,
 +        activationProjScaling: activationProjScaling,
 +        activationFfnProjUpScaling: activationFfnProjUpScaling,
 +        activationFfnScaling: activationFfnScaling,
 +        usesFlashAttention: valueOr(usesFlashAttention, isBF16 ? .scaleMerged : .scale1),
-+        isBF16: isBF16)
++        isBF16: isBF16, capPadLength: capPadLength)
 +      unetFixed.maxConcurrency = .limit(4)
 +      let txtRot = graph.variable(
 +        Tensor<FloatType>(
 +          from: ZImageRotaryPositionEmbedding(
-+            height: 0, width: 0, tokenLength: captionLength, imagePaddedLength: 0)
++            height: 0, width: 0, tokenLength: fixedCaptionLength, imagePaddedLength: 0)
 +        ).toGPU(0))
-+      unetFixed.compile(inputs: [queries, directTokens, txtRot, timeEmbeds])
-+      // Reference pictures (editing) are clean latents of the target's grid, one frame each after
-+      // the image's own.
++      // With guidance the negative captions come first and are all zero, as in the reference
++      // pipeline; the positive ones follow.
++      let negativeRows = isCfgEnabled ? branchBatchSize : 0
++      var fixedQueries = graph.variable(
++        .GPU(0), .HWC(fixedBatchSize, queryLength, queries.shape[2]), of: FloatType.self)
++      var fixedDirectTokens = graph.variable(
++        .GPU(0), .HWC(fixedBatchSize, directLength, 3_840), of: FloatType.self)
++      fixedQueries.full(0)
++      fixedDirectTokens.full(0)
++      for i in 0..<branchBatchSize {
++        let row = min(i, queries.shape[0] - 1)
++        let directRow = min(i, directTokens.shape[0] - 1)
++        fixedQueries[(negativeRows + i)..<(negativeRows + i + 1), 0..<queryLength, 0..<queries.shape[2]] =
++          queries[row..<(row + 1), 0..<queryLength, 0..<queries.shape[2]]
++        fixedDirectTokens[(negativeRows + i)..<(negativeRows + i + 1), 0..<directLength, 0..<3_840] =
++          directTokens[directRow..<(directRow + 1), 0..<directLength, 0..<3_840]
++      }
++      var fixedInputs: [DynamicGraph.AnyTensor] = [fixedQueries, fixedDirectTokens, txtRot, timeEmbeds]
++      if let learnedPadTokens, capPadLength > 0 {
++        var capPadTokens = Tensor<FloatType>(.CPU, .HWC(fixedBatchSize, capPadLength, 3_840))
++        for i in 0..<fixedBatchSize {
++          for j in 0..<capPadLength {
++            capPadTokens[i..<(i + 1), j..<(j + 1), 0..<3_840] = learnedPadTokens.cap
++          }
++        }
++        fixedInputs.append(graph.variable(capPadTokens.toGPU(0)))
++      }
++      unetFixed.compile(inputs: fixedInputs)
++      // Reference pictures (editing, or the picture to decompose) are clean latents of the
++      // target's grid, one frame each after the target's.
++      let referenceBatchSize = isLayer ? 1 : batchSize
 +      let mingReferences: [DynamicGraph.AnyTensor] = referenceImages.compactMap { reference in
 +        let shape = reference.shape
 +        guard shape.count == 4, shape[1] == startHeight, shape[2] == startWidth, shape[3] == 16
 +        else { return nil }
-+        guard batchSize > 1 else { return reference }
++        guard referenceBatchSize > 1 else { return reference }
 +        var repeated = graph.variable(
-+          .GPU(0), .NHWC(batchSize, shape[1], shape[2], shape[3]), of: FloatType.self)
-+        for i in 0..<batchSize {
++          .GPU(0), .NHWC(referenceBatchSize, shape[1], shape[2], shape[3]), of: FloatType.self)
++        for i in 0..<referenceBatchSize {
 +          repeated[i..<(i + 1), 0..<shape[1], 0..<shape[2], 0..<shape[3]] =
 +            reference[0..<1, 0..<shape[1], 0..<shape[2], 0..<shape[3]]
 +        }
 +        return repeated
 +      }
 +      precondition(mingReferences.count == referenceImages.count)
-+      let imageTokenCount = h * w * (1 + mingReferences.count)
++      let imageTokenCount = h * w * (frames + mingReferences.count)
 +      let imagePaddedLength = (imageTokenCount + 31) / 32 * 32 - imageTokenCount
++      // The main graph runs one guidance branch at a time (as Z-Image): its batch is 1 for Layer.
++      let xPadBatchSize = isLayer ? 1 : batchSize
 +      var xPadTokens: Tensor<FloatType>? = nil
 +      if imagePaddedLength > 0 {
-+        // The reference pads with zeros and keeps the padding out of attention.
-+        xPadTokens = Tensor<FloatType>(
-+          Array(repeating: 0, count: batchSize * imagePaddedLength * 3_840), .CPU,
-+          .HWC(batchSize, imagePaddedLength, 3_840))
++        if let learnedPadTokens {
++          var padTokens = Tensor<FloatType>(.CPU, .HWC(xPadBatchSize, imagePaddedLength, 3_840))
++          for i in 0..<xPadBatchSize {
++            for j in 0..<imagePaddedLength {
++              padTokens[i..<(i + 1), j..<(j + 1), 0..<3_840] = learnedPadTokens.x
++            }
++          }
++          xPadTokens = padTokens
++        } else {
++          // The reference pads with zeros and keeps the padding out of attention.
++          xPadTokens = Tensor<FloatType>(
++            Array(repeating: 0, count: xPadBatchSize * imagePaddedLength * 3_840), .CPU,
++            .HWC(xPadBatchSize, imagePaddedLength, 3_840))
++        }
 +      }
 +      let loadedFromWeightsCache = weightsCache.detach(
 +        "\(filePath):[fixed]", to: unetFixed.parameters)
@@ -8122,14 +8405,26 @@ index b364789..f931848 100644
 +          store.read("dit", model: unetFixed, codec: [.jit, .q6p, .q8p, .i8x, .ezm7, externalData])
 +        }
 +      }
-+      let conditions = unetFixed(inputs: queries, [directTokens, txtRot, timeEmbeds])
++      var conditions = unetFixed(inputs: fixedInputs[0], Array(fixedInputs[1...]))
 +      weightsCache.attach("\(filePath):[fixed]", from: unetFixed.parameters)
++      if isCfgEnabled {
++        // As Z-Image: the negative and positive captions side by side on the token axis.
++        let caption = conditions[0].as(of: Float.self)
++        conditions[0] = Functional.concat(
++          axis: 1,
++          caption[0..<branchBatchSize, 0..<fixedCaptionLength, 0..<3_840].copied(),
++          caption[branchBatchSize..<(2 * branchBatchSize), 0..<fixedCaptionLength, 0..<3_840]
++            .copied())
++      }
 +      // The image's time position is the padded caption length + 1; the caption's rows count up.
++      // Layer: the target frames come first (time position + 1 each), then the references.
 +      let rotaryEmbedding = graph.variable(
 +        Tensor<FloatType>(
 +          from: ZImageRotaryPositionEmbedding(
-+            height: h, width: w, tokenLength: captionLength, imagePaddedLength: imagePaddedLength,
-+            imageTimePosition: paddedCaptionLength, referenceFrames: mingReferences.count)
++            height: h, width: w, tokenLength: fixedCaptionLength,
++            imagePaddedLength: imagePaddedLength,
++            imageTimePosition: paddedCaptionLength,
++            referenceFrames: frames - 1 + mingReferences.count)
 +        ).toGPU(0))
 +      return (
 +        (xPadTokens.map { [graph.variable($0.toGPU(0))] } ?? []) + [rotaryEmbedding, rotaryEmbedding]
@@ -8138,7 +8433,7 @@ index b364789..f931848 100644
      case .mossImage:
        precondition(timesteps.count > 0)
        let c0 = textEncoding[0]
-@@ -3382,7 +3487,7 @@ extension UNetFixedEncoder {
+@@ -3382,7 +3568,7 @@ extension UNetFixedEncoder {
          from: Flux3RotaryPositionEmbedding(
            height: h, width: w, tokenLength: textLength,
            referenceSizes: referenceSizes.map { (height: $0.height / 2, width: $0.width / 2) },
@@ -8147,7 +8442,7 @@ index b364789..f931848 100644
        ).toGPU(0)
        return ([graph.variable(rotaryEmbedding)] + conditions, nil)
      case .flux2, .flux2_9b, .flux2_4b:
-@@ -3597,7 +3702,7 @@ extension UNetFixedEncoder {
+@@ -3597,7 +3783,7 @@ extension UNetFixedEncoder {
        let rotaryEmbedding = Tensor<FloatType>(
          from: Flux2RotaryPositionEmbedding(
            height: h, width: w, tokenLength: textLength, referenceSizes: referenceSizes,

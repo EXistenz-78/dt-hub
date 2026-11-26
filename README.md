@@ -18,6 +18,7 @@ This is an independent community project, not affiliated with or endorsed by Dra
 - **Zoom and rotation.** The Results window zooms with the wheel or a pinch (drag to move, double-click to fit) and the arrow keys step through the strip. In the Control tab's Canvas the wheel and the pinch zoom the picture, a **Rotation** slider turns it, and in Draw mode the view zooms and moves (Space + drag); the plug-ins that draw on the start image (Qwen 2.1 Inpainting, Flux3 Editing) now draw on the picture as framed.
 - **Result details.** A collapsible sidebar in the Results window shows the prompt, settings, LoRAs and timing saved in the selected image; the text can be selected and copied.
 - **Ming-Image 0.1 Design.** inclusionAI's design model (posters, UI, lettering, logos) runs on the server inside the app: text to image up to 2048 px, a transparent background (RGBA) at 1024 px or more, image editing with the Canvas and the Moodboard, and every Z-Image LoRA (the LoRA card lists them for Ming too). Its Family prompt writes the structured JSON prompt Ming reads for designs and keeps the style you ask for. Convert the model with [Model Converter](https://github.com/EXistenz-78/Fibo-Converter/releases/latest) (tab *Ming-Image*).
+- **Ming-Image 0.1 Design-Layer.** Splits a finished design into transparent layers: put the design as the start image (strength 1), describe the layers in the prompt (`Decompose this image into N layers…`, then `Layer 1: …` from the front to the background) and set the batch size to the number of layers + 1. One generation returns the design put back together and then each layer as an RGBA picture. Guidance 3 and the other settings are applied when you choose the model. Convert it with [Model Converter](https://github.com/EXistenz-78/Fibo-Converter/releases/latest) (tab *Ming Layer*, after Ming-Image Design).
 - **Incremental mode.** A switch in the header makes each result the start image of the next RUN.
 - **Projects.** Each project is a subfolder of the output folder with its own start image, mask, Moodboard, results strip and plug-in state; reopening one restores the prompt and settings of its last image. Switch from the **Project** menu in the header.
 - **Your own LoRA trigger words and weights.** *Manage LoRAs…* (LoRA card) lists the LoRAs of the server by model family, compactly: change a trigger word or the default weight (−4 to 4) of any of them. The server's trigger words are inherited and only your changes are kept, in a file of DT Hub's own: Draw Things' files are never touched.
@@ -104,7 +105,7 @@ This is an independent community project, not affiliated with or endorsed by Dra
 
 ## Install
 
-1. Download **`DT-Hub-1.9.0-macOS-arm64.dmg`** from the [latest release](https://github.com/EXistenz-78/dt-hub/releases/latest).
+1. Download **`DT-Hub-1.10.0-macOS-arm64.dmg`** from the [latest release](https://github.com/EXistenz-78/dt-hub/releases/latest).
 2. Open it and drag **DT Hub.app** into `/Applications`. The disk image also holds the licence and notes of the server (the `Docs` folder).
 3. Read **First launch** below before you open it.
 4. Optional: add the plug-ins (they are in the same release, see [`Plugins/`](Plugins/README.md#install)).
@@ -136,7 +137,7 @@ You only need to do this once per download. If you would rather not trust a bina
 
 ## The image server (`gRPCServerCLI`)
 
-DT Hub carries a **custom `gRPCServerCLI`** (Draw Things' image server from the Atelier fork plus Ming-Image, Krea 2 and MOSS Image edit LoRAs, MiniMax H3 Image, schedulers and seamless tiling; credits, source and licence are in `DT Hub.app/Contents/Resources/Server` and in the `Docs` folder of the disk image) and starts it by itself. It is updated together with the app. In **Preferences › Draw Things › gRPCServerCLI program**, leave the field empty to use it, or **Choose…** another program (for example the official one); **Use the server included in DT Hub** puts it back.
+DT Hub carries a **custom `gRPCServerCLI`** (Draw Things' image server from the Atelier fork plus Ming-Image Design and Design-Layer, Krea 2 and MOSS Image edit LoRAs, MiniMax H3 Image, schedulers and seamless tiling; credits, source and licence are in `DT Hub.app/Contents/Resources/Server` and in the `Docs` folder of the disk image) and starts it by itself. It is updated together with the app. In **Preferences › Draw Things › gRPCServerCLI program**, leave the field empty to use it, or **Choose…** another program (for example the official one); **Use the server included in DT Hub** puts it back.
 
 If you choose another program, the same pane shows which release it is and tells you when a newer one exists. DT Hub does not update it by itself: download it, put it in place of the old one (same folder, same name, so the path stays valid), and, because a file downloaded with a browser is not executable and is marked as quarantined by macOS, run in Terminal, with the path of your file:
 
@@ -257,7 +258,7 @@ The interface of the app and of the plug-ins is available in **English and Itali
 
 > **Video (in development).** Support for video models (MiniMax H3, LTX-2.3) is still under development: some functions may not work as expected.
 
-Version 1.9.0, used daily by its author. Feedback, bug reports and ideas are welcome: open an [Issue](../../issues).
+Version 1.10.0, used daily by its author. Feedback, bug reports and ideas are welcome: open an [Issue](../../issues).
 
 ## License
 
