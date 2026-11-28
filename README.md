@@ -15,7 +15,7 @@ This is an independent community project, not affiliated with or endorsed by Dra
 - **A lock on the canvas proportions.** Width and height follow the ratio you choose: *Lock ratio* keeps it while you type or step either value, and the Ratios menu and the swap button change it in one click.
 - **Everything you made, at hand.** The Results window keeps the images of the session (and brings back the last ones after a restart); each thumbnail shows **how many seconds it took**, can be dragged anywhere, and offers *Use as image*, *Add to Moodboard*, *Show in Finder*, *Resume parameters* and *Trash*. Every PNG is saved with its prompt, its whole configuration and the time it took inside the file, in the same layout as Draw Things' own images, so tools made for those read DT Hub's too.
 - **Explore.** A second tab of the Results window shows **every picture of every project** in one grid (and of any folder you add with **+**, kept between launches): search the metadata of all of them at once (prompt, model, LoRAs, any setting), star your favourites and filter by them, select several, drag, use as image, add to the Moodboard or send to the Trash as in the strip; the space bar opens a large preview.
-- **Start image scaling and 1:1.** When the start image is not used at its own size, the Canvas card shows how it is scaled to the canvas: Automatic (Catmull-Rom for SeedVR2, which turns the sharp scaling's artifacts into texture; Core Graphics for every other model), Core Graphics, Catmull-Rom, Mitchell, B-spline, Bilinear, Lanczos or Nearest. The icon next to the menu keeps the choice as the default of the model's family (in `recommended-overrides.json`); presets and results remember it, and the MCP sets it with `set_advanced` (`resampling`). The **1:1** button in the canvas's corner shows the picture at its own size.
+- **Start image scaling and 1:1.** When the start image is not used at its own size, the Canvas card shows how it is scaled to the canvas: Automatic (Catmull-Rom for SeedVR2, which turns the sharp scaling's artifacts into texture; Core Graphics for every other model), Core Graphics, Catmull-Rom, Mitchell, B-spline, Bilinear, Lanczos or Nearest. The icon next to the menu keeps the choice as the default of the model's family (in `recommended-overrides.json`); presets and results remember it, and the MCP sets it with `set_advanced` (`resampling`). The **1:1** button in the canvas's corner shows the picture at its own size. The Results window says which algorithm scaled each picture. Choosing SeedVR2 in the header also turns *Color calibration* on (it keeps the source's tones, as SeedVR2's own pipelines do), and leaving it turns it off.
 - **Zoom and rotation.** The Results window zooms with the wheel or a pinch (drag to move, double-click to fit) and the arrow keys step through the strip. In the Control tab's Canvas the wheel and the pinch zoom the picture, a **Rotation** slider turns it, and in Draw mode the view zooms and moves (Space + drag); the plug-ins that draw on the start image (Qwen 2.1 Inpainting, Flux3 Editing) now draw on the picture as framed.
 - **Result details.** A collapsible sidebar in the Results window shows the prompt, settings, LoRAs and timing saved in the selected image; the text can be selected and copied.
 - **Ming-Image 0.1 Design.** inclusionAI's design model (posters, UI, lettering, logos) runs on the server inside the app: text to image up to 2048 px, a transparent background (RGBA) at 1024 px or more, image editing with the Canvas and the Moodboard, and every Z-Image LoRA (the LoRA card lists them for Ming too). Its Family prompt writes the structured JSON prompt Ming reads for designs and keeps the style you ask for. Convert the model with [Model Converter](https://github.com/EXistenz-78/Fibo-Converter/releases/latest) (tab *Ming-Image*).
@@ -106,7 +106,7 @@ This is an independent community project, not affiliated with or endorsed by Dra
 
 ## Install
 
-1. Download **`DT-Hub-1.10.0-macOS-arm64.dmg`** from the [latest release](https://github.com/EXistenz-78/dt-hub/releases/latest).
+1. Download **`DT-Hub-1.11.0-macOS-arm64.dmg`** from the [latest release](https://github.com/EXistenz-78/dt-hub/releases/latest).
 2. Open it and drag **DT Hub.app** into `/Applications`. The disk image also holds the licence and notes of the server (the `Docs` folder).
 3. Read **First launch** below before you open it.
 4. Optional: add the plug-ins (they are in the same release, see [`Plugins/`](Plugins/README.md#install)).
@@ -259,7 +259,7 @@ The interface of the app and of the plug-ins is available in **English and Itali
 
 > **Video (in development).** Support for video models (MiniMax H3, LTX-2.3) is still under development: some functions may not work as expected.
 
-Version 1.10.0, used daily by its author. Feedback, bug reports and ideas are welcome: open an [Issue](../../issues).
+Version 1.11.0, used daily by its author. Feedback, bug reports and ideas are welcome: open an [Issue](../../issues).
 
 ## License
 
