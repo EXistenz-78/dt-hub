@@ -13566,6 +13566,108 @@
           }
         }
       }
+    },
+    "control.stage.oneToOne": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actual size (1:1)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dimensione reale (1:1)"
+          }
+        }
+      }
+    },
+    "control.resampling.label": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scaling"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ingrandimento"
+          }
+        }
+      }
+    },
+    "control.resampling.automatic": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatic (%@)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatico (%@)"
+          }
+        }
+      }
+    },
+    "control.resampling.save": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use %1$@ as the default for %2$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa %1$@ come predefinito per %2$@"
+          }
+        }
+      }
+    },
+    "control.resampling.reset": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back to the factory default for %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Torna al predefinito di fabbrica per %@"
+          }
+        }
+      }
+    },
+    "control.resampling.help": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "How the start image is scaled to the canvas. Automatic follows the model family: Catmull-Rom for SeedVR2, Core Graphics for the others, unless you saved another one with the icon."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Come l’immagine di partenza viene portata alla dimensione del canvas. Automatico segue la famiglia del modello: Catmull-Rom per SeedVR2, Core Graphics per gli altri, salvo un altro salvato con l’icona."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

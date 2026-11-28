@@ -95,7 +95,7 @@ struct CanvasStage: View {
             stage(for: image)
             zoomRow(for: image)
             rotationRow
-            if control.hasMargins(canvasWidth: canvasWidth, canvasHeight: canvasHeight) { fillRow }
+            scalingRow
             StartImageControls(generation: generation, connection: connection, report: report) {
               caption(for: image)
             }
@@ -264,6 +264,22 @@ struct CanvasStage: View {
         .accessibilityLabel(String(localized: "control.image.remove"))
         .help(String(localized: "control.image.remove"))
       }
+      // 1:1 shows the picture at its own size: one of its pixels is one of the canvas.
+      .overlay(alignment: .bottomLeading) {
+        let zoom = control.oneToOneZoom(canvasWidth: canvasWidth, canvasHeight: canvasHeight)
+        let enabled = zoom != nil && !control.isOneToOne(canvasWidth: canvasWidth, canvasHeight: canvasHeight)
+        Button {
+          if let zoom { control.setZoom(zoom) }
+        } label: {
+          Image(systemName: "1.magnifyingglass").font(.system(size: 20)).symbolRenderingMode(.palette)
+            .foregroundStyle(enabled ? .white : Color.white.opacity(0.35), Color.black.opacity(0.55))
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+        .padding(8)
+        .accessibilityLabel(String(localized: "control.stage.oneToOne"))
+        .help(String(localized: "control.stage.oneToOne"))
+      }
       .overlay(alignment: .bottomTrailing) {
         if let number = control.startImageNumber, FamilyTraits.of(generation.family()).usesMoodboard {
           ImageNumberBadge(number: number).padding(8)
@@ -408,27 +424,96 @@ struct CanvasStage: View {
     control.setRotation(value)
   }
 
-  /// What fills the margins: automatic follows the LoRAs (an outpaint LoRA asks for a flat grey or green
-  /// and no mask), or the user picks. Shown only when the image leaves margins.
-  private var fillRow: some View {
-    let automatic = MarginFill.automatic(loras: generation.parameters.loras)
-    return CardRow(label: String(localized: "control.stage.fill")) {
-      EmptyView()
-    } control: {
-      Picker(
-        String(localized: "control.stage.fill"),
-        selection: Binding(get: { control.inputs.marginFill }, set: { control.setMarginFill($0) })
-      ) {
-        Text(String(format: String(localized: "control.fill.automatic"), fillName(automatic))).tag(MarginFill?.none)
-        ForEach(MarginFill.allCases, id: \.self) { fill in
-          Text(fillName(fill)).tag(MarginFill?.some(fill))
+  /// The row under the rotation: on the left how the picture is scaled (only when it is not 1:1), on the right what fills
+  /// the margins (only when there are margins). With neither, no row.
+  @ViewBuilder private var scalingRow: some View {
+    let oneToOne = control.isOneToOne(canvasWidth: canvasWidth, canvasHeight: canvasHeight)
+    let margins = control.hasMargins(canvasWidth: canvasWidth, canvasHeight: canvasHeight)
+    if !oneToOne || margins {
+      VStack(alignment: .leading, spacing: 4) {
+        HStack(spacing: DS.controlGap) {
+          if !oneToOne {
+            resamplingControls
+          } else {
+            Text(String(localized: "control.stage.fill")).foregroundStyle(.secondary).lineLimit(1)
+          }
+          Spacer(minLength: DS.controlGap)
+          if margins { fillPicker }
+        }
+        if !oneToOne, let notice = generation.defaults.resamplingNotice(forFamily: generation.family()) {
+          Text(notice).font(.caption).foregroundStyle(.secondary)
         }
       }
-      .labelsHidden()
-      .pickerStyle(.menu)
-      .fixedSize()
-      .help(String(localized: "control.fill.help"))
     }
+  }
+
+  /// The save icon, the name and the menu of the algorithm that scales the start image.
+  private var resamplingControls: some View {
+    let family = generation.family()
+    let saved = generation.defaults.savedResampling
+    let chosen = generation.parameters.advanced.resampling
+    let automatic = Resampling.effective(explicit: nil, family: family, saved: saved)
+    let canSave = family != nil && chosen != nil && chosen != automatic
+    let automaticTitle = String(format: String(localized: "control.resampling.automatic"), ResamplingText.name(automatic))
+    return HStack(spacing: 4) {
+      Button {
+        if let family, let chosen { generation.defaults.saveResampling(chosen, forFamily: family) }
+      } label: {
+        Image(systemName: "square.and.arrow.down").font(.system(size: 13, weight: .medium))
+          .frame(width: 26, height: 24)
+          .foregroundStyle(canSave ? Color.primary : Color.secondary.opacity(0.5))
+      }
+      .buttonStyle(.plain)
+      .disabled(!canSave)
+      .help(
+        String(
+          format: String(localized: "control.resampling.save"), ResamplingText.name(chosen ?? automatic), family ?? "—"))
+      Text(String(localized: "control.resampling.label")).foregroundStyle(.secondary).lineLimit(1)
+      Menu {
+        Picker(
+          String(localized: "control.resampling.label"),
+          selection: Binding(
+            get: { generation.parameters.advanced.resampling },
+            set: { generation.parameters.advanced.resampling = $0 })
+        ) {
+          Text(automaticTitle).tag(Resampling?.none)
+          ForEach(Resampling.allCases, id: \.self) { method in
+            Text(ResamplingText.name(method)).tag(Resampling?.some(method))
+          }
+        }
+        .pickerStyle(.inline)
+        .labelsHidden()
+        if let family, saved[family] != nil {
+          Divider()
+          Button(String(format: String(localized: "control.resampling.reset"), family)) {
+            generation.defaults.resetResampling(forFamily: family)
+          }
+        }
+      } label: {
+        Text(chosen.map(ResamplingText.name) ?? automaticTitle)
+      }
+      .fixedSize()
+      .help(String(localized: "control.resampling.help"))
+    }
+  }
+
+  /// What fills the margins: automatic follows the LoRAs (an outpaint LoRA asks for a flat grey or green
+  /// and no mask), or the user picks.
+  private var fillPicker: some View {
+    let automatic = MarginFill.automatic(loras: generation.parameters.loras)
+    return Picker(
+      String(localized: "control.stage.fill"),
+      selection: Binding(get: { control.inputs.marginFill }, set: { control.setMarginFill($0) })
+    ) {
+      Text(String(format: String(localized: "control.fill.automatic"), fillName(automatic))).tag(MarginFill?.none)
+      ForEach(MarginFill.allCases, id: \.self) { fill in
+        Text(fillName(fill)).tag(MarginFill?.some(fill))
+      }
+    }
+    .labelsHidden()
+    .pickerStyle(.menu)
+    .fixedSize()
+    .help(String(localized: "control.fill.help"))
   }
 
   private func fillName(_ fill: MarginFill) -> String {

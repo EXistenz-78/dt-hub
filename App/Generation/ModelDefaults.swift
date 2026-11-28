@@ -69,6 +69,15 @@ final class ModelDefaults {
     return parameters.applying(values, installedLoRAs: installed)
   }
 
+  /// The last line about a family's start image algorithm (saved or reset), shown under the Canvas card's menu.
+  private var resamplingNotice: (family: String, text: String)?
+
+  /// The line for `family`, if the last save or reset was about it.
+  func resamplingNotice(forFamily family: String?) -> String? {
+    guard let family, let notice = resamplingNotice, notice.family == family else { return nil }
+    return notice.text
+  }
+
   /// The start image algorithm the user saved per family (`resampling` in `recommended-overrides.json`).
   var savedResampling: [String: Resampling] { saved.resampling }
 
@@ -77,13 +86,15 @@ final class ModelDefaults {
   func saveResampling(_ value: Resampling, forFamily family: String) {
     saved = saved.settingResampling(value, forFamily: family)
     store.save(saved)
-    notice = String(format: String(localized: "defaults.resampling.saved"), ResamplingText.name(value), family)
+    resamplingNotice = (
+      family, String(format: String(localized: "defaults.resampling.saved"), ResamplingText.name(value), family)
+    )
   }
 
   /// Forgets the family's saved algorithm: the factory one applies again.
   func resetResampling(forFamily family: String) {
     saved = saved.removingResampling(forFamily: family)
     store.save(saved)
-    notice = String(format: String(localized: "defaults.resampling.reset"), family)
+    resamplingNotice = (family, String(format: String(localized: "defaults.resampling.reset"), family))
   }
 }
