@@ -25,7 +25,7 @@ public final class ModelSelection {
 
   /// The user chose this model in the header: selects it, and, if it is another model than the one selected and
   /// the table knows it (by its file, then by its family), returns `parameters` with the recommended steps,
-  /// guidance, sampler and shift (for an enabled video family, its video defaults instead). Nil when nothing about the parameters should change. Only the header's menu
+  /// guidance, sampler and shift (for an enabled video family, its video defaults instead; SeedVR2 also gets Color calibration). Nil when nothing about the parameters should change. Only the header's menu
   /// goes through here: a preset, the JSON editor, "resume parameters" and the restored session choose models
   /// with `select`, and keep their own values.
   public func choose(
@@ -50,8 +50,21 @@ public final class ModelSelection {
       reset.advanced.hiresFix = false
       result = reset
     }
+    // SeedVR2 shifts tone and contrast unless the result is calibrated on the start image (SeedVR2's own pipeline
+    // and SeedVR2-MLX always do it): choosing it turns Color calibration on; leaving it turns it off again, since on
+    // another model's image-to-image it would pull the colors back to the start image.
+    let entersSeedVR2 = Self.seedVR2Families.contains(family ?? "")
+    let leavesSeedVR2 =
+      !entersSeedVR2 && previous.flatMap { catalog.model(forFile: $0)?.family }.map(Self.seedVR2Families.contains) == true
+    if entersSeedVR2 || leavesSeedVR2, (result ?? parameters).advanced.colorCalibration != entersSeedVR2 {
+      var calibrated = result ?? parameters
+      calibrated.advanced.colorCalibration = entersSeedVR2
+      result = calibrated
+    }
     return result
   }
+
+  static let seedVR2Families: Set<String> = ["seedvr2_3b", "seedvr2_7b"]
 
   /// An empty name means no model, as it does for RUN (`RunAvailability`).
   private static func normalized(_ file: String?) -> String? {
