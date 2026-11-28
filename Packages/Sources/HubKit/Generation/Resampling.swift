@@ -28,4 +28,16 @@ public enum Resampling: String, Codable, Sendable, CaseIterable {
   public static func effective(explicit: Resampling?, family: String?, saved: [String: Resampling]) -> Resampling {
     explicit ?? family.flatMap { saved[$0] } ?? factory(forFamily: family)
   }
+
+  /// The names the MCP tools use: "automatic" (nil) and the raw values, in the menu's order.
+  public static let agentNames = ["automatic"] + allCases.map(\.rawValue)
+
+  /// The name an agent sees for a choice.
+  public static func agentValue(_ value: Resampling?) -> String { value?.rawValue ?? "automatic" }
+
+  /// The choice an agent's name stands for: `.some(nil)` for automatic, nil for a name that is not one of `agentNames`.
+  public static func choice(agentValue: String) -> Resampling?? {
+    if agentValue == "automatic" { return .some(nil) }
+    return Resampling(rawValue: agentValue).map { .some($0) }
+  }
 }

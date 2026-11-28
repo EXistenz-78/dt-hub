@@ -225,8 +225,10 @@ final class AppAgentHost: AgentHost {
 
   func advancedValues() -> [String: AgentValue] {
     guard let data = try? JSONEncoder().encode(generation.parameters.advanced),
-      let values = try? JSONDecoder().decode([String: AgentValue].self, from: data)
+      var values = try? JSONDecoder().decode([String: AgentValue].self, from: data)
     else { return [:] }
+    // Always listed, also when automatic (nil is not encoded).
+    values["resampling"] = .string(Resampling.agentValue(generation.parameters.advanced.resampling))
     return values
   }
 
@@ -339,7 +341,19 @@ final class AppAgentHost: AgentHost {
   func setIncremental(_ on: Bool) { generation.incremental = on }
 
   func setAdvanced(_ values: [String: AgentValue]) throws(AgentError) -> [String] {
+    // The start image algorithm is a name, "automatic" for nil: checked here, set with the rest.
+    var resampling = generation.parameters.advanced.resampling
+    if let given = values["resampling"] {
+      guard case .string(let name) = given, let choice = Resampling.choice(agentValue: name) else {
+        throw .invalid("Field 'resampling' takes \(Resampling.agentNames.joined(separator: ", ")).")
+      }
+      resampling = choice
+    }
+    let appliedKeys = values.keys.sorted()
+    var values = values
+    values["resampling"] = nil
     var current = advancedValues()
+    current["resampling"] = nil
     var requested: [String: Double] = [:]
     for (key, new) in values.sorted(by: { $0.key < $1.key }) {
       guard let old = current[key] else {
@@ -367,8 +381,10 @@ final class AppAgentHost: AgentHost {
         if abs(got - number) > 1e-9 { throw .invalid("Field '\(key)' takes a whole number.") }
       }
     }
-    generation.parameters.advanced = merged.clamped()
-    return values.keys.sorted()
+    var applied = merged.clamped()
+    applied.resampling = resampling
+    generation.parameters.advanced = applied
+    return appliedKeys
   }
 
   func clearMoodboard() throws(AgentError) -> Int {

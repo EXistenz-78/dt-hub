@@ -248,3 +248,14 @@ struct ConfigurationCodecTests {
     #expect(image.parameters.video == VideoParameters())
   }
 }
+
+struct ConfigurationCodecResamplingTests {
+  @Test func applyingJSONKeepsTheStartImageAlgorithm() throws {
+    var parameters = GenerationParameters()
+    parameters.advanced.resampling = .bSpline
+    let state = ConfigurationState(model: "seedvr2_7b_q8p.ckpt", parameters: parameters)
+    let result = try DrawThingsConfigurationCodec().apply(json: #"{"steps": 2}"#, to: state)
+    #expect(result.parameters.steps == 2)
+    #expect(result.parameters.advanced.resampling == .bSpline)
+  }
+}

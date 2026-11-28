@@ -133,7 +133,7 @@ enum ReadTools {
       ToolSpec(
         name: "get_advanced",
         description:
-          "The values of the Advanced cards (refiner, hires fix, upscaler, guidance, text encoders, SDXL conditioning, tiled decoding and diffusion, TeaCache, output), and which groups apply to the current model. Change them with set_advanced.",
+          "The values of the Advanced cards (refiner, hires fix, upscaler, guidance, text encoders, SDXL conditioning, tiled decoding and diffusion, TeaCache, output, resampling = how the start image is scaled to the canvas), and which groups apply to the current model. Change them with set_advanced.",
         level: .read
       ) { ctx, _ in [jsonText(AdvancedView(values: ctx.host.advancedValues(), appliesToCurrentModel: ctx.host.advancedApplicable()))] },
       ToolSpec(name: "list_projects", description: "The projects, and which one is open. Results, Control and the queue belong to the open project.", level: .read) {

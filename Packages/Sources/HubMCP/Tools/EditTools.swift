@@ -125,7 +125,7 @@ enum EditTools {
       ToolSpec(
         name: "set_advanced",
         description:
-          "Changes Advanced values by name, with the type get_advanced shows (numbers, true/false, text). Use get_advanced first: only the groups it lists as applying to the model have an effect.",
+          "Changes Advanced values by name, with the type get_advanced shows (numbers, true/false, text). Use get_advanced first: only the groups it lists as applying to the model have an effect. 'resampling' takes automatic, coreGraphics, catmullRom, mitchell, bSpline, bilinear, lanczos or nearest.",
         schema: .object([
           "type": .string("object"),
           "properties": .object(["values": .object(["type": .string("object"), "description": .string("Name to value, as in get_advanced.")])]),

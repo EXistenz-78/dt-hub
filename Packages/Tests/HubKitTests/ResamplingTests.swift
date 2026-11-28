@@ -43,3 +43,21 @@ struct ResamplingTests {
     #expect(!automatic.contains("resampling"))
   }
 }
+
+struct ResamplingAgentTests {
+  @Test func automaticIsNilBothWays() {
+    #expect(Resampling.agentValue(nil) == "automatic")
+    #expect(Resampling.choice(agentValue: "automatic") == .some(nil))
+  }
+
+  @Test func namesRoundTrip() {
+    for method in Resampling.allCases {
+      #expect(Resampling.choice(agentValue: Resampling.agentValue(method)) == .some(method))
+    }
+  }
+
+  @Test func unknownNameIsRejected() {
+    #expect(Resampling.choice(agentValue: "sinc") == nil)
+    #expect(Resampling.agentNames == ["automatic", "coreGraphics", "catmullRom", "mitchell", "bSpline", "bilinear", "lanczos", "nearest"])
+  }
+}

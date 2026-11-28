@@ -260,6 +260,8 @@ public struct DrawThingsConfigurationCodec: ConfigurationCodec {
     a.colorCalibration = c.colorCalibration != .disabled
     a.compressionArtifacts = CompressionArtifacts(rawValue: Int(c.compressionArtifacts.rawValue)) ?? .none
     a.compressionQuality = d(c.compressionArtifactsQuality)
+    // DT Hub's own: Draw Things' configuration has no such field, so it stays as it was.
+    a.resampling = base.advanced.resampling
     p.advanced = a
     // A still image's configuration keeps the library's 14 frames: that is no clip, so the video block stays.
     if c.numFrames != DrawThingsConfiguration().numFrames || base.video.numFrames > 1 {
