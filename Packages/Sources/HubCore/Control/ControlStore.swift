@@ -57,33 +57,49 @@ public final class ControlStore {
 
   /// The start image as the canvas has it: cut, zoomed, turned, the margins filled, without the Brush drawing. For the
   /// plug-ins that draw on it. nil without a start image or when it cannot be read.
-  public func framedStartImage(canvasWidth: Int, canvasHeight: Int, fill: MarginFill) -> CGImage? {
-    framedStartImageRender(canvasWidth: canvasWidth, canvasHeight: canvasHeight, fill: fill)?()
+  public func framedStartImage(
+    canvasWidth: Int, canvasHeight: Int, fill: MarginFill, resampling: Resampling = .coreGraphics
+  ) -> CGImage? {
+    framedStartImageRender(canvasWidth: canvasWidth, canvasHeight: canvasHeight, fill: fill, resampling: resampling)?()
   }
 
   /// `framedStartImage` as work to do away from the main actor (decoding and framing a big picture takes a while): it
   /// holds the picture and the framing as they are now. nil without a start image.
-  public func framedStartImageRender(canvasWidth: Int, canvasHeight: Int, fill: MarginFill) -> (@Sendable () -> CGImage?)? {
+  public func framedStartImageRender(
+    canvasWidth: Int, canvasHeight: Int, fill: MarginFill, resampling: Resampling = .coreGraphics
+  ) -> (@Sendable () -> CGImage?)? {
     guard let image = inputs.image else { return nil }
     let (storage, framing) = (storage, inputs.framing)
     return {
       let crop = FramingMath.cropRect(
         imageWidth: image.pixelWidth, imageHeight: image.pixelHeight, canvasWidth: canvasWidth,
         canvasHeight: canvasHeight, framing: framing)
-      let scale = Double(canvasWidth) / crop.width
-      let longest = max(image.pixelWidth, image.pixelHeight)
-      let maxPixel = scale < 1 ? Int((Double(longest) * scale).rounded(.up)) + 1 : longest
+      let maxPixel = Self.decodingSide(image: image, crop: crop, canvasWidth: canvasWidth, resampling: resampling)
       guard let decoded = storage.image(named: image.fileName, maxPixel: maxPixel) else { return nil }
       return InputComposer.frame(
-        decoded, toWidth: canvasWidth, height: canvasHeight, framing: framing, paint: nil, fill: fill)
+        decoded, toWidth: canvasWidth, height: canvasHeight, framing: framing, paint: nil, fill: fill,
+        resampling: resampling)
     }
   }
 
   /// What `framedStartImage` depends on: when this changes, the framed picture is another.
-  public func framedStartImageKey(canvasWidth: Int, canvasHeight: Int, fill: MarginFill) -> String? {
+  public func framedStartImageKey(
+    canvasWidth: Int, canvasHeight: Int, fill: MarginFill, resampling: Resampling = .coreGraphics
+  ) -> String? {
     guard let image = inputs.image else { return nil }
     let f = inputs.framing
-    return "\(image.id.uuidString)|\(canvasWidth)x\(canvasHeight)|\(f.zoom)|\(f.offsetX)|\(f.offsetY)|\(f.rotation)|\(fill.rawValue)"
+    return "\(image.id.uuidString)|\(canvasWidth)x\(canvasHeight)|\(f.zoom)|\(f.offsetX)|\(f.offsetY)|\(f.rotation)|\(fill.rawValue)|\(resampling.rawValue)"
+  }
+
+  /// The longest side to decode the start image at. Core Graphics gets a picture already reduced near the canvas's scale
+  /// (a 50-megapixel photo is not decoded whole); another algorithm gets it whole, so that it does the reduction itself.
+  nonisolated static func decodingSide(
+    image: ReferenceImage, crop: CGRect, canvasWidth: Int, resampling: Resampling
+  ) -> Int {
+    let scale = Double(canvasWidth) / crop.width
+    let longest = max(image.pixelWidth, image.pixelHeight)
+    guard resampling == .coreGraphics else { return longest }
+    return scale < 1 ? Int((Double(longest) * scale).rounded(.up)) + 1 : longest
   }
 
   /// The number a model gives the start image in the prompt (“image 1”), as Draw Things numbers them
@@ -591,14 +607,15 @@ public final class ControlStore {
   /// What a RUN needs to prepare its inputs, to be rendered away from the main actor. The Moodboard
   /// goes only when `includeMoodboard` (the model uses it).
   public func pendingInputs(
-    canvasWidth: Int, canvasHeight: Int, includeMoodboard: Bool = true, marginFill: MarginFill = .edges
+    canvasWidth: Int, canvasHeight: Int, includeMoodboard: Bool = true, marginFill: MarginFill = .edges,
+    resampling: Resampling = .coreGraphics
   ) -> PendingInputs {
     let sent = inputs.moodboard.filter(\.isOn).map { (image: $0.image, weight: 1.0) }
     return PendingInputs(
       storage: storage, image: inputs.image, mask: inputs.image == nil ? nil : inputs.mask,
       paint: inputs.image == nil ? nil : inputs.paint, framing: inputs.framing,
       canvasWidth: canvasWidth, canvasHeight: canvasHeight, moodboard: includeMoodboard ? sent : [],
-      marginFill: marginFill)
+      marginFill: marginFill, resampling: resampling)
   }
 
   // MARK: Private
@@ -717,6 +734,8 @@ public struct PendingInputs: Sendable {
   let moodboard: [(image: ReferenceImage, weight: Double)]
   /// What fills the margins of the canvas (already resolved: never "automatic").
   let marginFill: MarginFill
+  /// How the start image is scaled to the canvas (already resolved: never "automatic").
+  let resampling: Resampling
 
   /// Longest side of a Moodboard picture when it is sent.
   static let moodboardPixels = 1024
@@ -736,9 +755,7 @@ public struct PendingInputs: Sendable {
     let crop = FramingMath.cropRect(
       imageWidth: image.pixelWidth, imageHeight: image.pixelHeight, canvasWidth: canvasWidth,
       canvasHeight: canvasHeight, framing: framing)
-    let scale = Double(canvasWidth) / crop.width
-    let longest = max(image.pixelWidth, image.pixelHeight)
-    let maxPixel = scale < 1 ? Int((Double(longest) * scale).rounded(.up)) + 1 : longest
+    let maxPixel = ControlStore.decodingSide(image: image, crop: crop, canvasWidth: canvasWidth, resampling: resampling)
     var layer: PaintBitmap?
     if let paint {
       guard let stored = storage.image(named: paint.fileName, maxPixel: MaskBitmap.maxSide),
@@ -748,7 +765,8 @@ public struct PendingInputs: Sendable {
     }
     guard let decoded = storage.image(named: image.fileName, maxPixel: maxPixel),
       let framed = InputComposer.frame(
-        decoded, toWidth: canvasWidth, height: canvasHeight, framing: framing, paint: layer, fill: marginFill)
+        decoded, toWidth: canvasWidth, height: canvasHeight, framing: framing, paint: layer, fill: marginFill,
+        resampling: resampling)
     else { throw .unreadable(image.name) }
     let margins = !FramingMath.margins(
       imageWidth: image.pixelWidth, imageHeight: image.pixelHeight, canvasWidth: canvasWidth,

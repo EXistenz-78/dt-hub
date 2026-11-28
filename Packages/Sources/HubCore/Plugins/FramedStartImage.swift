@@ -24,8 +24,13 @@ public final class FramedStartImage {
 
   /// The file for the framing the Control tab has now, or the previous one while the new one is being made; nil without a
   /// start image.
-  public func path(for control: ControlStore, canvasWidth: Int, canvasHeight: Int, fill: MarginFill) -> String? {
-    guard let wanted = control.framedStartImageKey(canvasWidth: canvasWidth, canvasHeight: canvasHeight, fill: fill)
+  public func path(
+    for control: ControlStore, canvasWidth: Int, canvasHeight: Int, fill: MarginFill,
+    resampling: Resampling = .coreGraphics
+  ) -> String? {
+    guard
+      let wanted = control.framedStartImageKey(
+        canvasWidth: canvasWidth, canvasHeight: canvasHeight, fill: fill, resampling: resampling)
     else {
       reset()
       return nil
@@ -38,7 +43,9 @@ public final class FramedStartImage {
       pending = Task { [weak self] in
         if !first { try? await Task.sleep(for: .milliseconds(300)) }
         guard !Task.isCancelled else { return }
-        await self?.make(wanted, control: control, canvasWidth: canvasWidth, canvasHeight: canvasHeight, fill: fill)
+        await self?.make(
+          wanted, control: control, canvasWidth: canvasWidth, canvasHeight: canvasHeight, fill: fill,
+          resampling: resampling)
       }
     }
     return path
@@ -47,10 +54,13 @@ public final class FramedStartImage {
   /// Frames, encodes and writes the picture away from the main actor (a third of a second for 2048 px, which the tab
   /// would spend frozen), then offers it.
   private func make(
-    _ wanted: String, control: ControlStore, canvasWidth: Int, canvasHeight: Int, fill: MarginFill
+    _ wanted: String, control: ControlStore, canvasWidth: Int, canvasHeight: Int, fill: MarginFill,
+    resampling: Resampling
   ) async {
     defer { if pendingKey == wanted { pendingKey = nil } }
-    guard let render = control.framedStartImageRender(canvasWidth: canvasWidth, canvasHeight: canvasHeight, fill: fill)
+    guard
+      let render = control.framedStartImageRender(
+        canvasWidth: canvasWidth, canvasHeight: canvasHeight, fill: fill, resampling: resampling)
     else { return }
     counter += 1
     let (number, startedIn) = (counter, epoch)

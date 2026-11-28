@@ -558,3 +558,49 @@ struct ControlStoreTests {
     #expect(empty.warnings(canvasWidth: 512, canvasHeight: 512, usesMoodboard: false).isEmpty)
   }
 }
+
+@MainActor
+struct ControlStoreResamplingTests {
+  func store() -> ControlStore {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent("ControlStoreResampling-\(UUID())", isDirectory: true)
+    return ControlStore(
+      storage: FileReferenceStorage(folder: root.appendingPathComponent("Control", isDirectory: true)),
+      fileURL: root.appendingPathComponent("control.json"))
+  }
+
+  @Test func framedKeyChangesWithResampling() async throws {
+    let store = store()
+    try await store.setImage(ImageResamplerTests.noise(size: 64), name: "n.png", source: .pasteboard)
+    let plain = store.framedStartImageKey(canvasWidth: 128, canvasHeight: 128, fill: .edges, resampling: .coreGraphics)
+    let soft = store.framedStartImageKey(canvasWidth: 128, canvasHeight: 128, fill: .edges, resampling: .bSpline)
+    #expect(plain != nil && plain != soft)
+  }
+
+  @Test func pendingRenderUsesTheAlgorithm() async throws {
+    let store = store()
+    try await store.setImage(ImageResamplerTests.noise(size: 64), name: "n.png", source: .pasteboard)
+    func blocksAreEqual(_ method: Resampling) throws -> Bool {
+      let image = try #require(try store.pendingInputs(canvasWidth: 128, canvasHeight: 128, resampling: method).render().image)
+      let p = ImageResamplerTests.pixels(image)
+      for y in stride(from: 0, to: 128, by: 2) {
+        for x in stride(from: 0, to: 128, by: 2) where p[(y * 128 + x) * 4] != p[(y * 128 + x + 1) * 4] {
+          return false
+        }
+      }
+      return true
+    }
+    #expect(try blocksAreEqual(.nearest))
+    #expect(try !blocksAreEqual(.coreGraphics))
+  }
+
+  @Test func reductionDecodesFullSizeWithCoreImage() async throws {
+    let store = store()
+    let source = ImageResamplerTests.noise(size: 256)
+    try await store.setImage(source, name: "n.png", source: .pasteboard)
+    let image = try #require(try store.pendingInputs(canvasWidth: 64, canvasHeight: 64, resampling: .lanczos).render().image)
+    let expected = ImageResamplerTests.pixels(try #require(ImageResampler.scaled(source, toWidth: 64, height: 64, with: .lanczos)))
+    let got = ImageResamplerTests.pixels(image)
+    let worst = zip(got, expected).enumerated().filter { $0.offset % 4 != 3 }.map { abs(Int($0.element.0) - Int($0.element.1)) }.max() ?? 0
+    #expect(worst <= 2, "largest difference \(worst)")
+  }
+}
