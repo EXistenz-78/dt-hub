@@ -159,4 +159,27 @@ struct OutpaintComposerTests {
     #expect(sample(mask, 10, 10)[3] == 255)
     #expect(sample(mask, 0, 0)[3] == 255 && sample(mask, 99, 99)[3] == 255)
   }
+
+  @Test func coreGraphicsIsUnchanged() throws {
+    let source = ImageResamplerTests.noise(size: 50)
+    let before = try #require(InputComposer.frame(source, toWidth: 120, height: 80, framing: Framing(zoom: 20, offsetX: 0.3)))
+    let after = try #require(
+      InputComposer.frame(
+        source, toWidth: 120, height: 80, framing: Framing(zoom: 20, offsetX: 0.3), resampling: .coreGraphics))
+    #expect(ImageResamplerTests.pixels(before) == ImageResamplerTests.pixels(after))
+  }
+
+  @Test func marginsUnchangedWithCoreImage() throws {
+    let source = ImageResamplerTests.noise(size: 64)
+    for rotation in [0.0, 30.0] {
+      let framing = Framing(zoom: -50, rotation: rotation)
+      let framed = try #require(
+        InputComposer.frame(source, toWidth: 256, height: 256, framing: framing, fill: .green, resampling: .bSpline))
+      for (x, y) in [(2, 2), (253, 2), (2, 253), (253, 253), (128, 4), (4, 128)] {
+        #expect(sample(framed, x, y).prefix(3) == [0, 255, 0], "margin \(x),\(y) at \(rotation)°")
+      }
+      // The image itself is in the middle, not green.
+      #expect(sample(framed, 128, 128).prefix(3) != [0, 255, 0])
+    }
+  }
 }

@@ -8,10 +8,11 @@ public enum InputComposer {
   /// be made (a size of zero).
   /// With `paint` (the Brush drawing, in the image's own coordinates) it is put over the image in
   /// the same cut. The margins the image leaves are `fill`: its own edge pixels stretched outwards, or a
-  /// flat grey or green.
+  /// flat grey or green. `resampling` scales the image (Core Graphics is what DT Hub always did); with another algorithm
+  /// the image is scaled first, then placed at the nearest whole pixel and drawn without further interpolation.
   public static func frame(
     _ image: CGImage, toWidth width: Int, height: Int, framing: Framing, paint: PaintBitmap? = nil,
-    fill: MarginFill = .edges
+    fill: MarginFill = .edges, resampling: Resampling = .coreGraphics
   ) -> CGImage? {
     guard width > 0, height > 0 else { return nil }
     let crop = FramingMath.cropRect(
@@ -24,10 +25,23 @@ public enum InputComposer {
     context.interpolationQuality = .high
     // The image drawn so that the cut fills the canvas (Core Graphics counts from the bottom-left).
     let scale = Double(width) / crop.width
-    let drawn = CGRect(
+    var drawn = CGRect(
       x: -crop.minX * scale, y: -(Double(image.height) - crop.maxY) * scale,
       width: Double(image.width) * scale, height: Double(image.height) * scale)
     let rotation = framing.clamped().rotation
+    var image = image
+    if resampling != .coreGraphics {
+      guard
+        let scaled = ImageResampler.scaled(
+          image, toWidth: max(1, Int(drawn.width.rounded())), height: max(1, Int(drawn.height.rounded())),
+          with: resampling)
+      else { return nil }
+      image = scaled
+      drawn = CGRect(
+        x: drawn.minX.rounded(), y: drawn.minY.rounded(), width: Double(scaled.width), height: Double(scaled.height))
+      // Already at scale: unturned, it is copied pixel for pixel; a turn still has to be interpolated.
+      context.interpolationQuality = rotation == 0 ? .none : .high
+    }
     switch fill {
     case .edges where rotation != 0:
       extendRotatedEdges(of: image, drawn: drawn, rotation: rotation, in: context, width: width, height: height)
@@ -41,6 +55,7 @@ public enum InputComposer {
     context.saveGState()
     turn(context, about: drawn, rotation: rotation)
     context.draw(image, in: drawn)
+    context.interpolationQuality = .high
     if let layer = paint?.cgImage() { context.draw(layer, in: drawn) }
     context.restoreGState()
     return context.makeImage()
