@@ -271,8 +271,9 @@ struct CanvasStage: View {
         Button {
           if let zoom { control.setZoom(zoom) }
         } label: {
-          Image(systemName: "1.magnifyingglass").font(.system(size: 20)).symbolRenderingMode(.palette)
-            .foregroundStyle(enabled ? .white : Color.white.opacity(0.35), Color.black.opacity(0.55))
+          // All in the main colour: white in dark mode, black in light mode.
+          Image(systemName: "1.magnifyingglass").font(.system(size: 20)).symbolRenderingMode(.monochrome)
+            .foregroundStyle(enabled ? Color.primary : Color.primary.opacity(0.35))
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
