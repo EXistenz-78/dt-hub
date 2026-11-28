@@ -71,6 +71,8 @@ public struct AdvancedParameters: Equatable, Codable, Sendable {
   public var colorCalibration = false
   public var compressionArtifacts = CompressionArtifacts.none
   public var compressionQuality = 43.1
+  /// How the start image is scaled to the canvas; nil = automatic (per family). DT Hub's own: not sent to Draw Things.
+  public var resampling: Resampling?
 
   public init() {}
 
@@ -199,5 +201,7 @@ public struct AdvancedParameters: Equatable, Codable, Sendable {
     colorCalibration = value(.colorCalibration, d.colorCalibration)
     compressionArtifacts = value(.compressionArtifacts, d.compressionArtifacts)
     compressionQuality = value(.compressionQuality, d.compressionQuality)
+    // An unknown name (a later version's) is automatic, not an error.
+    resampling = (try? container.decodeIfPresent(String.self, forKey: .resampling))?.flatMap(Resampling.init(rawValue:))
   }
 }
