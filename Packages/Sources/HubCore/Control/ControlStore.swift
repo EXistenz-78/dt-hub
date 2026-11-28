@@ -485,6 +485,21 @@ public final class ControlStore {
   }
 
   /// Whether the image leaves margins in the canvas (they are regenerated).
+  /// True when the start image is used at its own size, not scaled nor turned (false without one).
+  public func isOneToOne(canvasWidth: Int, canvasHeight: Int) -> Bool {
+    guard let image = inputs.image else { return false }
+    return FramingMath.isOneToOne(
+      imageWidth: image.pixelWidth, imageHeight: image.pixelHeight, canvasWidth: canvasWidth,
+      canvasHeight: canvasHeight, framing: inputs.framing)
+  }
+
+  /// The zoom that shows the start image at its own size; nil without one or when out of the slider's range.
+  public func oneToOneZoom(canvasWidth: Int, canvasHeight: Int) -> Double? {
+    guard let image = inputs.image else { return nil }
+    return FramingMath.oneToOneZoom(
+      imageWidth: image.pixelWidth, imageHeight: image.pixelHeight, canvasWidth: canvasWidth, canvasHeight: canvasHeight)
+  }
+
   public func hasMargins(canvasWidth: Int, canvasHeight: Int) -> Bool {
     guard let image = inputs.image else { return false }
     return !FramingMath.margins(

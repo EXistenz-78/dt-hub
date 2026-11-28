@@ -59,6 +59,29 @@ public enum FramingMath {
       y: (Double(imageHeight) - height) * (1 + framing.offsetY) / 2, width: width, height: height)
   }
 
+  /// The zoom at which one pixel of the image is one pixel of the canvas: the fill window's width divided by the
+  /// canvas's, as a power of 4. nil when that zoom is outside the slider's range.
+  public static func oneToOneZoom(imageWidth: Int, imageHeight: Int, canvasWidth: Int, canvasHeight: Int) -> Double? {
+    guard canvasWidth > 0 else { return nil }
+    let fill = cropRect(
+      imageWidth: imageWidth, imageHeight: imageHeight, canvasWidth: canvasWidth, canvasHeight: canvasHeight,
+      framing: Framing())
+    let zoom = 100 * log(fill.width / Double(canvasWidth)) / log(4)
+    guard zoom.isFinite, Framing.zoomRange.contains(zoom) else { return nil }
+    return zoom
+  }
+
+  /// True when the image is not scaled (its window is as wide as the canvas, within half a pixel) nor turned: then it
+  /// is not resampled at all.
+  public static func isOneToOne(
+    imageWidth: Int, imageHeight: Int, canvasWidth: Int, canvasHeight: Int, framing: Framing
+  ) -> Bool {
+    let crop = cropRect(
+      imageWidth: imageWidth, imageHeight: imageHeight, canvasWidth: canvasWidth, canvasHeight: canvasHeight,
+      framing: framing)
+    return abs(crop.width - Double(canvasWidth)) < 0.5 && framing.clamped().rotation == 0
+  }
+
   /// The margins around the image in the canvas, in canvas pixels.
   public struct Margins: Equatable, Sendable {
     public var left: Double

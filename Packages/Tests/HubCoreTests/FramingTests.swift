@@ -117,3 +117,34 @@ struct InputComposerTests {
     #expect(framed.alphaInfo == .noneSkipLast || framed.alphaInfo == .premultipliedLast)
   }
 }
+
+struct OneToOneTests {
+  @Test func oneToOneZoomForHalfSizeImage() throws {
+    let zoom = try #require(FramingMath.oneToOneZoom(imageWidth: 1024, imageHeight: 1024, canvasWidth: 2048, canvasHeight: 2048))
+    #expect(abs(zoom - -50) < 1e-9)
+  }
+
+  @Test func oneToOneZoomForSameSize() throws {
+    let zoom = try #require(FramingMath.oneToOneZoom(imageWidth: 1024, imageHeight: 1024, canvasWidth: 1024, canvasHeight: 1024))
+    #expect(abs(zoom) < 1e-9)
+  }
+
+  @Test func oneToOneZoomPortraitInLandscape() throws {
+    let zoom = try #require(FramingMath.oneToOneZoom(imageWidth: 768, imageHeight: 1024, canvasWidth: 1536, canvasHeight: 1024))
+    #expect(abs(zoom - -50) < 1e-9)
+  }
+
+  @Test func oneToOneZoomOutOfRangeIsNil() {
+    #expect(FramingMath.oneToOneZoom(imageWidth: 64, imageHeight: 64, canvasWidth: 2048, canvasHeight: 2048) == nil)
+  }
+
+  @Test func isOneToOneAfterApplyingTheZoom() throws {
+    let zoom = try #require(FramingMath.oneToOneZoom(imageWidth: 1024, imageHeight: 1024, canvasWidth: 2048, canvasHeight: 2048))
+    func check(_ framing: Framing) -> Bool {
+      FramingMath.isOneToOne(imageWidth: 1024, imageHeight: 1024, canvasWidth: 2048, canvasHeight: 2048, framing: framing)
+    }
+    #expect(check(Framing(zoom: zoom)))
+    #expect(!check(Framing(zoom: zoom, rotation: 10)))
+    #expect(!check(Framing(zoom: 0)))
+  }
+}
