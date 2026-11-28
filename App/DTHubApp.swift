@@ -140,7 +140,7 @@ struct DTHubApp: App {
     plugins.startImageFramedPath = {
       framed.path(
         for: control, canvasWidth: generation.parameters.width, canvasHeight: generation.parameters.height,
-        fill: generation.marginFill)
+        fill: generation.marginFill, resampling: generation.resampling)
     }
     plugins.lastResultPath = { generation.session.results.first?.fileURL?.path }
     plugins.moodboardPaths = { control.moodboardURLs.map(\.path) }

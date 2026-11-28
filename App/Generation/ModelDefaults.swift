@@ -68,4 +68,22 @@ final class ModelDefaults {
     let installed: Set<String>? = catalog.fileCount == 0 ? nil : Set(catalog.loras.map(\.file))
     return parameters.applying(values, installedLoRAs: installed)
   }
+
+  /// The start image algorithm the user saved per family (`resampling` in `recommended-overrides.json`).
+  var savedResampling: [String: Resampling] { saved.resampling }
+
+  /// Keeps `value` as the start image algorithm of the family. Not part of "Save as default" (another tab: it would
+  /// change without the user noticing).
+  func saveResampling(_ value: Resampling, forFamily family: String) {
+    saved = saved.settingResampling(value, forFamily: family)
+    store.save(saved)
+    notice = String(format: String(localized: "defaults.resampling.saved"), ResamplingText.name(value), family)
+  }
+
+  /// Forgets the family's saved algorithm: the factory one applies again.
+  func resetResampling(forFamily family: String) {
+    saved = saved.removingResampling(forFamily: family)
+    store.save(saved)
+    notice = String(format: String(localized: "defaults.resampling.reset"), family)
+  }
 }

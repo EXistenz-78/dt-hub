@@ -750,7 +750,10 @@ final class GenerationController {
     let pending = control.pendingInputs(
       canvasWidth: parameters.width, canvasHeight: parameters.height,
       includeMoodboard: FamilyTraits.of(model?.family).usesMoodboard,
-      marginFill: control.inputs.marginFill ?? MarginFill.automatic(loras: parameters.loras))
+      marginFill: control.inputs.marginFill ?? MarginFill.automatic(loras: parameters.loras),
+      // The job's own parameters: a pipeline pass may carry another choice than the tab.
+      resampling: Resampling.effective(
+        explicit: parameters.advanced.resampling, family: model?.family, saved: defaults.savedResampling))
     do {
       var inputs = try await Task.detached { try pending.render() }.value
       inputs.enableInpainting = model?.capabilities.needsInpaintControl ?? false
@@ -761,6 +764,14 @@ final class GenerationController {
       return nil
     }
   }
+
+  /// How the start image is scaled for a job with `model`: the tab's choice, else the family's saved one, else the factory.
+  func resampling(for model: CatalogModel?) -> Resampling {
+    Resampling.effective(explicit: parameters.advanced.resampling, family: model?.family, saved: defaults.savedResampling)
+  }
+
+  /// `resampling(for:)` with the header's model.
+  var resampling: Resampling { resampling(for: selectedModel()) }
 
   /// What fills the margins of the canvas: the user's choice, or what the LoRAs of the job ask for.
   var marginFill: MarginFill {
