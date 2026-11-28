@@ -30,23 +30,37 @@ public enum InputComposer {
       width: Double(image.width) * scale, height: Double(image.height) * scale)
     let rotation = framing.clamped().rotation
     var image = image
+    // Where the image goes: the whole drawn rect, or with another algorithm the part of it the canvas shows.
+    var placed = drawn
     if resampling != .coreGraphics {
-      guard
-        let scaled = ImageResampler.scaled(
-          image, toWidth: max(1, Int(drawn.width.rounded())), height: max(1, Int(drawn.height.rounded())),
-          with: resampling)
-      else { return nil }
-      image = scaled
+      let scaledWidth = max(1, Int(drawn.width.rounded()))
+      let scaledHeight = max(1, Int(drawn.height.rounded()))
       drawn = CGRect(
-        x: drawn.minX.rounded(), y: drawn.minY.rounded(), width: Double(scaled.width), height: Double(scaled.height))
+        x: drawn.minX.rounded(), y: drawn.minY.rounded(), width: Double(scaledWidth), height: Double(scaledHeight))
+      if scaledWidth == image.width, scaledHeight == image.height {
+        // 1:1: not resampled at all (Mitchell and B-spline would soften it even at scale 1).
+        placed = drawn
+      } else {
+        // Only the part the canvas shows is made: at a high zoom the whole picture would take hundreds of megabytes.
+        let region = visibleRegion(drawn: drawn, canvasWidth: width, canvasHeight: height, rotation: rotation)
+        guard
+          let scaled = ImageResampler.scaled(
+            image, toWidth: scaledWidth, height: scaledHeight, with: resampling, region: region)
+        else { return nil }
+        image = scaled
+        placed = CGRect(
+          x: drawn.minX + region.minX, y: drawn.minY + region.minY, width: Double(scaled.width),
+          height: Double(scaled.height))
+      }
       // Already at scale: unturned, it is copied pixel for pixel; a turn still has to be interpolated.
       context.interpolationQuality = rotation == 0 ? .none : .high
     }
     switch fill {
     case .edges where rotation != 0:
-      extendRotatedEdges(of: image, drawn: drawn, rotation: rotation, in: context, width: width, height: height)
+      extendRotatedEdges(
+        of: image, placed: placed, pivot: drawn, rotation: rotation, in: context, width: width, height: height)
     case .edges:
-      extendEdges(of: image, drawn: drawn, in: context, width: width, height: height)
+      extendEdges(of: image, drawn: placed, in: context, width: width, height: height)
     case .gray, .green:
       context.setFillColorSpace(CGColorSpaceCreateDeviceRGB())
       context.setFillColor(fill == .gray ? [0.5, 0.5, 0.5, 1] : [0, 1, 0, 1])
@@ -54,11 +68,37 @@ public enum InputComposer {
     }
     context.saveGState()
     turn(context, about: drawn, rotation: rotation)
-    context.draw(image, in: drawn)
+    context.draw(image, in: placed)
     context.interpolationQuality = .high
     if let layer = paint?.cgImage() { context.draw(layer, in: drawn) }
     context.restoreGState()
     return context.makeImage()
+  }
+
+  /// The part of the scaled image the canvas shows, in the scaled image's pixels counted from its bottom-left (as Core
+  /// Image and Core Graphics count).
+  /// The canvas's corners are turned back about the drawn rect's centre (the image is turned about it), so with a turn
+  /// the region is the box around what the canvas sees. Whole pixels; the whole picture when the canvas sees none of it.
+  static func visibleRegion(drawn: CGRect, canvasWidth: Int, canvasHeight: Int, rotation: Double) -> CGRect {
+    let angle = rotation * .pi / 180  // `turn` rotates by −angle: undo it
+    let centre = CGPoint(x: drawn.midX, y: drawn.midY)
+    let corners = [
+      CGPoint(x: 0, y: 0), CGPoint(x: canvasWidth, y: 0), CGPoint(x: 0, y: canvasHeight),
+      CGPoint(x: canvasWidth, y: canvasHeight),
+    ].map { point -> CGPoint in
+      let dx = point.x - centre.x
+      let dy = point.y - centre.y
+      return CGPoint(
+        x: centre.x + dx * cos(angle) - dy * sin(angle) - drawn.minX,
+        y: centre.y + dx * sin(angle) + dy * cos(angle) - drawn.minY)
+    }
+    let xs = corners.map(\.x)
+    let ys = corners.map(\.y)
+    let box = CGRect(
+      x: xs.min()!.rounded(.down), y: ys.min()!.rounded(.down), width: (xs.max()!.rounded(.up) - xs.min()!.rounded(.down)),
+      height: (ys.max()!.rounded(.up) - ys.min()!.rounded(.down)))
+    let region = box.intersection(CGRect(origin: .zero, size: drawn.size)).integral
+    return region.isNull || region.isEmpty ? CGRect(origin: .zero, size: drawn.size) : region
   }
 
   /// A drawing made on the framed picture (the size of the canvas) brought back to the start image's own coordinates, at
@@ -111,7 +151,7 @@ public enum InputComposer {
   /// The margins of a turned image: the picture is drawn turned on a transparent bitmap, and every pixel it does not
   /// cover takes the colour of the nearest one it does (two sweeps over the bitmap), so the corners continue the edges.
   private static func extendRotatedEdges(
-    of image: CGImage, drawn: CGRect, rotation: Double, in context: CGContext, width: Int, height: Int
+    of image: CGImage, placed: CGRect, pivot: CGRect, rotation: Double, in context: CGContext, width: Int, height: Int
   ) {
     var bytes = [UInt8](repeating: 0, count: width * height * 4)
     let drew = bytes.withUnsafeMutableBytes { buffer -> Bool in
@@ -121,8 +161,8 @@ public enum InputComposer {
           space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
       else { return false }
       scratch.interpolationQuality = .high
-      turn(scratch, about: drawn, rotation: rotation)
-      scratch.draw(image, in: drawn)
+      turn(scratch, about: pivot, rotation: rotation)
+      scratch.draw(image, in: placed)
       return true
     }
     guard drew else { return }

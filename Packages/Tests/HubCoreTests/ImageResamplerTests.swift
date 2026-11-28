@@ -116,3 +116,74 @@ struct ImageResamplerTests {
     #expect(deviation < 20, "a 1-pixel checker reduced 4× should be an even grey, got σ \(deviation)")
   }
 }
+
+struct ImageResamplerReviewTests {
+  /// A flat colour in Display P3.
+  static func p3Flat(_ r: CGFloat, _ g: CGFloat, _ b: CGFloat, size: Int) -> CGImage {
+    let space = CGColorSpace(name: CGColorSpace.displayP3)!
+    let context = CGContext(
+      data: nil, width: size, height: size, bitsPerComponent: 8, bytesPerRow: 0, space: space,
+      bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
+    context.setFillColor(CGColor(colorSpace: space, components: [r, g, b, 1])!)
+    context.fill(CGRect(x: 0, y: 0, width: size, height: size))
+    return context.makeImage()!
+  }
+
+  @Test func wideGamutKeepsItsColourWithCoreImage() throws {
+    let source = Self.p3Flat(200 / 255, 100 / 255, 50 / 255, size: 16)
+    let reference = ImageResamplerTests.pixels(try #require(ImageResampler.scaled(source, toWidth: 32, height: 32, with: .coreGraphics)))
+    let soft = ImageResamplerTests.pixels(try #require(ImageResampler.scaled(source, toWidth: 32, height: 32, with: .catmullRom)))
+    let i = (16 * 32 + 16) * 4
+    for c in 0..<3 { #expect(abs(Int(reference[i + c]) - Int(soft[i + c])) <= 2, "channel \(c): \(reference[i + c]) vs \(soft[i + c])") }
+  }
+
+  @Test func oneToOneIsNotResampled() throws {
+    let source = ImageResamplerTests.noise(size: 64)
+    let framed = try #require(
+      InputComposer.frame(source, toWidth: 64, height: 64, framing: Framing(), resampling: .bSpline))
+    #expect(ImageResamplerTests.pixels(framed) == ImageResamplerTests.pixels(source))
+  }
+
+  @Test func highZoomScalesOnlyWhatTheCanvasShows() {
+    // 64 px at zoom +100 in a 256 canvas: the whole image would be 1024 px; the canvas sees 256 of them.
+    let region = InputComposer.visibleRegion(
+      drawn: CGRect(x: -384, y: -384, width: 1024, height: 1024), canvasWidth: 256, canvasHeight: 256, rotation: 0)
+    #expect(region == CGRect(x: 384, y: 384, width: 256, height: 256))
+  }
+
+  @Test func highZoomMatchesTheWholeScale() throws {
+    let source = ImageResamplerTests.noise(size: 64)
+    let framing = Framing(zoom: 100, offsetX: 0.3, offsetY: -0.2)
+    let framed = try #require(InputComposer.frame(source, toWidth: 256, height: 256, framing: framing, resampling: .catmullRom))
+    // The same picture from the whole image scaled, then cut where the canvas looks.
+    let crop = FramingMath.cropRect(imageWidth: 64, imageHeight: 64, canvasWidth: 256, canvasHeight: 256, framing: framing)
+    let scale = 256 / crop.width
+    let whole = try #require(ImageResampler.scaled(source, toWidth: Int((64 * scale).rounded()), height: Int((64 * scale).rounded()), with: .catmullRom))
+    let cut = try #require(whole.cropping(to: CGRect(x: (crop.minX * scale).rounded(), y: (crop.minY * scale).rounded(), width: 256, height: 256)))
+    let a = ImageResamplerTests.pixels(framed)
+    let b = ImageResamplerTests.pixels(cut)
+    let differences = zip(a, b).enumerated().filter { $0.offset % 4 != 3 }.map { abs(Int($0.element.0) - Int($0.element.1)) }
+    let mean = Double(differences.reduce(0, +)) / Double(differences.count)
+    // The reference is itself a Core Image render, of the whole 1024 px picture, which Core Image makes in tiles: a few
+    // pixels along its seams differ by some levels (measured mean 0.16 of 255). A wrong place would be ~20 on noise.
+    #expect(mean < 0.5, "mean difference \(mean), largest \(differences.max() ?? 0)")
+  }
+
+  /// A 4× reduction of noise compared with the exact mean of each 4×4 block: a method that skipped pixels (aliasing) would
+  /// be far from it; the filters differ only by their shape (measured: bilinear 0.3, Catmull-Rom 7, B-spline 11.5).
+  @Test(arguments: [Resampling.bilinear, .catmullRom, .mitchell, .bSpline, .lanczos])
+  func reductionFollowsTheBlockMean(_ method: Resampling) throws {
+    let source = ImageResamplerTests.noise(size: 64)
+    let l = ImageResamplerTests.luminance(source)
+    let reduced = ImageResamplerTests.luminance(try #require(ImageResampler.scaled(source, toWidth: 16, height: 16, with: method)))
+    var total = 0.0
+    for y in 0..<16 {
+      for x in 0..<16 {
+        var block = 0.0
+        for dy in 0..<4 { for dx in 0..<4 { block += l[(y * 4 + dy) * 64 + x * 4 + dx] } }
+        total += abs(reduced[y * 16 + x] - block / 16)
+      }
+    }
+    #expect(total / 256 < 14, "mean distance from the block mean \(total / 256)")
+  }
+}
