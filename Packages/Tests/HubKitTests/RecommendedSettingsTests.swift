@@ -97,3 +97,44 @@ struct RecommendedSettingsTests {
     #expect(shipped.values(forFile: "some_sdxl_finetune.ckpt", family: "sdxl_base_v0.9") != nil)
   }
 }
+
+struct RecommendedSettingsResamplingTests {
+  @Test func readsTheResamplingSection() {
+    let table = RecommendedSettings(
+      data: Data(#"{"models":{},"families":{},"resampling":{"seedvr2_7b":"bSpline","x":"sinc"}}"#.utf8))
+    #expect(table.resampling == ["seedvr2_7b": .bSpline])
+  }
+
+  @Test func oldFileWithoutSectionKeepsModels() {
+    let table = RecommendedSettings(
+      data: Data(#"{"models":{"flux_2_klein_9b":{"steps":4,"guidanceScale":1,"sampler":16}}}"#.utf8))
+    #expect(table.hasModel(forFile: "flux_2_klein_9b_f16.ckpt"))
+    #expect(table.resampling.isEmpty)
+  }
+
+  @Test func encodedRoundTripsResampling() {
+    let table = RecommendedSettings(
+      data: Data(#"{"models":{"flux_2_klein_9b":{"steps":4,"guidanceScale":1,"sampler":16}}}"#.utf8)
+    ).settingResampling(.mitchell, forFamily: "seedvr2_3b")
+    let back = RecommendedSettings(data: table.encoded())
+    #expect(back.resampling == ["seedvr2_3b": .mitchell])
+    #expect(back.hasModel(forFile: "flux_2_klein_9b.ckpt"))
+  }
+
+  @Test func removingResamplingForgetsOnlyThatFamily() {
+    let table = RecommendedSettings()
+      .settingResampling(.mitchell, forFamily: "seedvr2_3b")
+      .settingResampling(.bSpline, forFamily: "seedvr2_7b")
+      .removingResampling(forFamily: "seedvr2_3b")
+    #expect(table.resampling == ["seedvr2_7b": .bSpline])
+  }
+
+  @Test func encodedWithoutResamplingHasNoKey() {
+    #expect(!String(decoding: RecommendedSettings().encoded(), as: UTF8.self).contains("resampling"))
+  }
+
+  @Test func overridingKeepsTheOverridesResampling() {
+    let saved = RecommendedSettings().settingResampling(.bSpline, forFamily: "seedvr2_7b")
+    #expect(RecommendedSettings().overriding(with: saved).resampling == ["seedvr2_7b": .bSpline])
+  }
+}

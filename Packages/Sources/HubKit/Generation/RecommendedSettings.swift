@@ -44,10 +44,16 @@ public struct RecommendedValues: Equatable, Sendable {
 public struct RecommendedSettings: Equatable, Sendable {
   private var models: [String: RecommendedValues]
   private var families: [String: RecommendedValues]
+  /// The start image algorithm the user saved per family (the `resampling` section; only the user's file has it).
+  public private(set) var resampling: [String: Resampling]
 
-  public init(models: [String: RecommendedValues] = [:], families: [String: RecommendedValues] = [:]) {
+  public init(
+    models: [String: RecommendedValues] = [:], families: [String: RecommendedValues] = [:],
+    resampling: [String: Resampling] = [:]
+  ) {
     self.models = models
     self.families = families
+    self.resampling = resampling
   }
 
   public static let empty = RecommendedSettings()
@@ -72,7 +78,11 @@ public struct RecommendedSettings: Equatable, Sendable {
       }
       return result
     }
-    self.init(models: read(root["models"]), families: read(root["families"]))
+    // A name this version does not know is left out.
+    let resampling = ((root["resampling"] as? [String: Any]) ?? [:]).compactMapValues {
+      ($0 as? String).flatMap(Resampling.init(rawValue:))
+    }
+    self.init(models: read(root["models"]), families: read(root["families"]), resampling: resampling)
   }
 
   /// A `loras` array, leniently: an element without a file, or that is not an object, is left out. nil when the entry has none.
@@ -113,13 +123,16 @@ public struct RecommendedSettings: Equatable, Sendable {
   /// other model of the family falls back to).
   public func merging(_ live: RecommendedSettings) -> RecommendedSettings {
     RecommendedSettings(
-      models: models.merging(live.models) { _, new in new }, families: families.merging(live.families) { old, _ in old })
+      models: models.merging(live.models) { _, new in new }, families: families.merging(live.families) { old, _ in old },
+      resampling: resampling)
   }
 
   /// This table with the entries of `overrides` (the user's own defaults) on top: its models win over the ones here,
   /// whatever the online list said. Families are not touched.
   public func overriding(with overrides: RecommendedSettings) -> RecommendedSettings {
-    RecommendedSettings(models: models.merging(overrides.models) { _, new in new }, families: families)
+    RecommendedSettings(
+      models: models.merging(overrides.models) { _, new in new }, families: families,
+      resampling: resampling.merging(overrides.resampling) { _, new in new })
   }
 
   /// This table with `values` as the model's entry (by its key, so for every quantization of the model).
@@ -133,6 +146,20 @@ public struct RecommendedSettings: Equatable, Sendable {
   public func removingModel(forFile file: String) -> RecommendedSettings {
     var copy = self
     copy.models[Self.key(forFile: file)] = nil
+    return copy
+  }
+
+  /// This table with `value` as the family's start image algorithm.
+  public func settingResampling(_ value: Resampling, forFamily family: String) -> RecommendedSettings {
+    var copy = self
+    copy.resampling[family] = value
+    return copy
+  }
+
+  /// This table without the family's start image algorithm (the factory one applies again).
+  public func removingResampling(forFamily family: String) -> RecommendedSettings {
+    var copy = self
+    copy.resampling[family] = nil
     return copy
   }
 
@@ -154,6 +181,7 @@ public struct RecommendedSettings: Equatable, Sendable {
     struct File: Encodable {
       var models: [String: Entry]
       var families: [String: Entry]
+      var resampling: [String: Resampling]?
     }
     func entries(_ table: [String: RecommendedValues]) -> [String: Entry] {
       table.mapValues {
@@ -164,7 +192,8 @@ public struct RecommendedSettings: Equatable, Sendable {
     }
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.sortedKeys, .prettyPrinted]
-    return (try? encoder.encode(File(models: entries(models), families: entries(families)))) ?? Data()
+    return (try? encoder.encode(File(
+          models: entries(models), families: entries(families), resampling: resampling.isEmpty ? nil : resampling))) ?? Data()
   }
 
   /// The model's file name without its quantization and extension: `flux_2_klein_9b_f16.ckpt` and
