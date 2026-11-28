@@ -29,6 +29,19 @@ public enum Resampling: String, Codable, Sendable, CaseIterable {
     explicit ?? family.flatMap { saved[$0] } ?? factory(forFamily: family)
   }
 
+  /// The name the Results window shows (technical names, like the samplers').
+  public var displayName: String {
+    switch self {
+    case .coreGraphics: "Core Graphics"
+    case .catmullRom: "Catmull-Rom"
+    case .mitchell: "Mitchell"
+    case .bSpline: "B-spline"
+    case .bilinear: "Bilinear"
+    case .lanczos: "Lanczos"
+    case .nearest: "Nearest"
+    }
+  }
+
   /// The names the MCP tools use: "automatic" (nil) and the raw values, in the menu's order.
   public static let agentNames = ["automatic"] + allCases.map(\.rawValue)
 

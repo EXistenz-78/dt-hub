@@ -88,7 +88,8 @@ extension GenerationController {
     let job = GenerationJob(
       prompt: attempt.job.prompt, negativePrompt: attempt.job.negativePrompt, model: attempt.job.model,
       parameters: parameters, imageStrength: attempt.job.imageStrength, moodboardCount: attempt.job.moodboardCount,
-      maskSettings: attempt.job.maskSettings, videoFPS: attempt.job.videoFPS)
+      maskSettings: attempt.job.maskSettings, videoFPS: attempt.job.videoFPS,
+      startImageResampling: attempt.job.startImageResampling)
     guard await session.adopt(fileAt: montage.url, job: job) else { throw .unreadable(attemptName) }
     let adopted = session.results.first?.id
 

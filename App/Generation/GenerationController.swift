@@ -616,7 +616,10 @@ final class GenerationController {
       moodboardCount: inputs.hints.count,
       maskSettings: inputs.mask == nil
         ? nil : (intermediate != nil ? (pass.maskSettings ?? control.inputs.maskSettings) : control.inputs.maskSettings),
-      seamlessTile: pass.seamless)
+      seamlessTile: pass.seamless,
+      // Only when the start image is the Control tab's, framed to the canvas (not a previous pass's output).
+      startImageResampling: intermediate == nil && !replacesStart
+        ? startImageResampling(hasStartImage: inputs.image != nil, parameters: used.parameters, model: passModel) : nil)
     let before = session.results.first?.id
     session.start(batches, inputs: inputs, backend: backend, monitor: connection.monitor, intermediate: intermediate)
     await session.waitUntilFinished()
@@ -735,7 +738,9 @@ final class GenerationController {
         editModel: JobComposer.usesFullStrength(editModel: isEditModel(), family: family()),
         hasMargins: control.hasMargins(canvasWidth: parameters.width, canvasHeight: parameters.height)),
       moodboardCount: inputs.hints.count,
-      maskSettings: inputs.mask == nil ? nil : control.inputs.maskSettings)
+      maskSettings: inputs.mask == nil ? nil : control.inputs.maskSettings,
+      startImageResampling: startImageResampling(
+        hasStartImage: inputs.image != nil, parameters: parameters, model: selectedModel()))
     if parameters.randomSeed, let first = batches.first { parameters.seed = first.parameters.seed }
     session.start(batches, inputs: inputs, backend: backend, monitor: connection.monitor)
   }
@@ -768,6 +773,16 @@ final class GenerationController {
   /// How the start image is scaled for a job with `model`: the tab's choice, else the family's saved one, else the factory.
   func resampling(for model: CatalogModel?) -> Resampling {
     Resampling.effective(explicit: parameters.advanced.resampling, family: model?.family, saved: defaults.savedResampling)
+  }
+
+  /// The algorithm that scales the start image for a job, to keep in it: nil without a start image or when it is used at
+  /// its own size (not scaled, not turned).
+  func startImageResampling(hasStartImage: Bool, parameters: GenerationParameters, model: CatalogModel?) -> Resampling? {
+    guard hasStartImage, !control.isOneToOne(canvasWidth: parameters.width, canvasHeight: parameters.height) else {
+      return nil
+    }
+    return Resampling.effective(
+      explicit: parameters.advanced.resampling, family: model?.family, saved: defaults.savedResampling)
   }
 
   /// `resampling(for:)` with the header's model.

@@ -8,7 +8,7 @@ public struct ResultInfo: Equatable, Sendable {
     case prompt, sentPrompt, negativePrompt
     case model, size, seed, steps, guidance, sampler, shift, cfgZero
     case lora
-    case imageStrength, moodboard, mask
+    case imageStrength, resampling, moodboard, mask
     case advanced(key: String), extra(key: String)
     case time, date, fileName, folder, notSaved
     case frames, duration, videoSize, partial
@@ -76,6 +76,7 @@ public struct ResultInfo: Equatable, Sendable {
 
     var input: [Row] = []
     if let strength = job.imageStrength { input.append(Row(field: .imageStrength, value: number(strength))) }
+    if let resampling = job.startImageResampling { input.append(Row(field: .resampling, value: resampling.displayName)) }
     if job.moodboardCount > 0 { input.append(Row(field: .moodboard, value: integer(job.moodboardCount))) }
     if let mask = job.maskSettings {
       var text = "blur \(number(mask.blur)) · outset \(integer(mask.outset))"

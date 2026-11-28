@@ -13668,6 +13668,23 @@
           }
         }
       }
+    },
+    "results.info.field.resampling": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start image scaling"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ingrandimento"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -76,6 +76,7 @@ struct ResultInfoSidebar: View {
     case .cfgZero: Text("results.info.field.cfgZero")
     case .lora: Text("results.info.field.lora")
     case .imageStrength: Text("results.info.field.imageStrength")
+    case .resampling: Text("results.info.field.resampling")
     case .moodboard: Text("results.info.field.moodboard")
     case .mask: Text("results.info.field.mask")
     case .time: Text("results.info.field.time")

@@ -22,11 +22,15 @@ public struct GenerationJob: Equatable, Codable, Sendable {
   /// The tiling of a pass of a plug-in's pipeline (a seamless pattern); nil for every other job. The key is left out of
   /// the saved job then.
   public var seamlessTile: SeamlessTile?
+  /// How the start image was scaled to the canvas (the algorithm used, automatic or chosen); nil when the RUN had no
+  /// start image or used it at its own size. Only to tell the user: recalling a result does not set it.
+  public var startImageResampling: Resampling?
 
   public init(
     prompt: String, negativePrompt: String = "", model: String, parameters: GenerationParameters,
     imageStrength: Double? = nil, moodboardCount: Int = 0, maskSettings: MaskSettings? = nil,
-    videoFPS: Double? = nil, editLoRAFiles: [String]? = nil, seamlessTile: SeamlessTile? = nil
+    videoFPS: Double? = nil, editLoRAFiles: [String]? = nil, seamlessTile: SeamlessTile? = nil,
+    startImageResampling: Resampling? = nil
   ) {
     self.prompt = prompt
     self.negativePrompt = negativePrompt
@@ -38,6 +42,7 @@ public struct GenerationJob: Equatable, Codable, Sendable {
     self.videoFPS = videoFPS
     self.editLoRAFiles = editLoRAFiles
     self.seamlessTile = seamlessTile
+    self.startImageResampling = startImageResampling
   }
 
   public var isVideo: Bool { videoFPS != nil }
@@ -65,6 +70,9 @@ public struct GenerationJob: Equatable, Codable, Sendable {
     maskSettings = try? container.decodeIfPresent(MaskSettings.self, forKey: .maskSettings)
     videoFPS = try? container.decodeIfPresent(Double.self, forKey: .videoFPS)
     seamlessTile = try? container.decodeIfPresent(SeamlessTile.self, forKey: .seamlessTile)
+    // A name a later version adds is left out, not an error.
+    startImageResampling = (try? container.decodeIfPresent(String.self, forKey: .startImageResampling))?
+      .flatMap(Resampling.init(rawValue:))
   }
 }
 
